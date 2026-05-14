@@ -1,0 +1,162 @@
+'use client'
+
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { MessageCircle, Clock, CheckCircle, Radio } from 'lucide-react'
+
+const konsultasi = [
+  { 
+    id: '1', 
+    orderId: 'ORD-2024-001', 
+    user: 'Budi Santoso',
+    service: 'Konsultasi Unlock',
+    amount: 50000,
+    status: 'completed',
+    date: '2 hari lalu',
+    rating: 5
+  },
+  { 
+    id: '2', 
+    orderId: 'ORD-2024-002', 
+    user: 'Siti Nurhaliza',
+    service: 'Remote Flashing',
+    amount: 150000,
+    status: 'in-progress',
+    date: '1 hari lalu',
+    rating: null
+  },
+  { 
+    id: '3', 
+    orderId: 'ORD-2024-003', 
+    user: 'Rudi Hartono',
+    service: 'Root & Custom ROM',
+    amount: 200000,
+    status: 'pending',
+    date: '5 jam lalu',
+    rating: null
+  },
+]
+
+const formatPrice = (price: number) => {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+  }).format(price)
+}
+
+export default function TeknisiKonsultasiPage() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-white">Konsultasi</h1>
+        <p className="text-surface-400 mt-1">Kelola konsultasi dari user</p>
+      </div>
+
+      {/* Stats */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Konsultasi</CardTitle>
+            <MessageCircle className="h-4 w-4 text-primary-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{konsultasi.length}</div>
+            <p className="text-xs text-surface-500">Semua waktu</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pending</CardTitle>
+            <Clock className="h-4 w-4 text-yellow-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{konsultasi.filter(k => k.status === 'pending').length}</div>
+            <p className="text-xs text-surface-500">Menunggu</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">In Progress</CardTitle>
+            <Radio className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{konsultasi.filter(k => k.status === 'in-progress').length}</div>
+            <p className="text-xs text-surface-500">Sedang berjalan</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Completed</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{konsultasi.filter(k => k.status === 'completed').length}</div>
+            <p className="text-xs text-surface-500">Selesai</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Konsultasi Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Daftar Konsultasi</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Order ID</TableHead>
+                <TableHead>User</TableHead>
+                <TableHead>Service</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Rating</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {konsultasi.map((k) => (
+                <TableRow key={k.id}>
+                  <TableCell className="font-medium">{k.orderId}</TableCell>
+                  <TableCell>{k.user}</TableCell>
+                  <TableCell>{k.service}</TableCell>
+                  <TableCell>{formatPrice(k.amount)}</TableCell>
+                  <TableCell>
+                    <Badge 
+                      variant={
+                        k.status === 'completed' ? 'default' : 
+                        k.status === 'pending' ? 'secondary' : 
+                        'outline'
+                      }
+                    >
+                      {k.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {k.rating ? (
+                      <div className="flex items-center gap-1">
+                        <span className="font-semibold">{k.rating}</span>
+                        <span className="text-yellow-400">★</span>
+                      </div>
+                    ) : (
+                      <span className="text-surface-400">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell>{k.date}</TableCell>
+                  <TableCell>
+                    <Button size="sm" variant="outline">Chat</Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
