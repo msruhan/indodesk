@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Navbar } from '@/components/landing'
-import { BottomNav } from '@/components/mobile'
+import { BottomNav, MobileSafeAreaSpacer } from '@/components/mobile'
 import { 
   Search,
   Send,
@@ -15,7 +15,7 @@ import {
   MoreVertical,
   Check,
   CheckCheck
-} from 'lucide-react'
+} from '@/lib/icons'
 
 interface Message {
   id: string
@@ -139,7 +139,7 @@ export default function ChatPage() {
                         <span className="text-xs text-surface-500">{chat.timestamp}</span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <p className="text-sm text-surface-400 truncate">{chat.lastMessage}</p>
+                        <p className="text-sm text-surface-500 truncate">{chat.lastMessage}</p>
                         {chat.unread > 0 && (
                           <Badge className="bg-primary-600 text-white text-xs">
                             {chat.unread}
@@ -197,7 +197,7 @@ export default function ChatPage() {
                         className={`max-w-[70%] rounded-2xl px-4 py-2 ${
                           msg.sender === 'me'
                             ? 'bg-primary-600 text-white'
-                            : 'bg-surface-100 text-white'
+                            : 'bg-surface-100 text-ink'
                         }`}
                       >
                         <p className="text-sm">{msg.text}</p>
@@ -249,6 +249,7 @@ export default function ChatPage() {
           </Card>
         </div>
       </div>
+      <MobileSafeAreaSpacer />
       <BottomNav />
     </div>
   )

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Search, Plus, Edit, Trash2, UserCheck, X } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, UserCheck, X } from '@/lib/icons'
 
 const users = [
   { id: '1', name: 'Budi Santoso', email: 'budi@example.com', role: 'User', status: 'active', joinDate: '2024-01-15', totalOrder: 12 },
@@ -29,8 +29,8 @@ export default function AdminUsersPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Manajemen User</h1>
-          <p className="text-surface-400 mt-1">Kelola semua user dan teknisi di platform</p>
+          <h1 className="text-2xl font-semibold tracking-tightest text-ink lg:text-3xl">Manajemen User</h1>
+          <p className="text-sm text-surface-500 mt-1">Kelola semua user dan teknisi di platform</p>
         </div>
         <Button onClick={() => setShowAddForm(!showAddForm)}>
           <Plus className="w-4 h-4 mr-2" />

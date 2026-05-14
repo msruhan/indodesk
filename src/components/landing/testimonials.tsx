@@ -2,211 +2,197 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Badge } from '@/components/ui/badge'
-import { Star, Quote, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Star, Quote, ChevronLeft, ChevronRight } from '@/lib/icons'
 import { motion } from 'framer-motion'
+import { Reveal } from '@/components/motion'
+import { cn } from '@/lib/utils'
 
 const testimonials = [
   {
     name: 'Ahmad Hidayat',
     role: 'Teknisi Handphone',
     avatar: 'AH',
-    content: 'Platform IndoTeknizi sangat membantu bisnis saya. Sekarang saya bisa menerima konsultasi online dengan mudah dan sistem rekber membuat transaksi lebih aman. Revenue meningkat 40%!',
+    content:
+      'Platform IndoTeknizi sangat membantu bisnis saya. Konsultasi online jadi mudah dan rekber bikin transaksi terasa aman. Revenue saya naik 40%!',
     rating: 5,
   },
   {
     name: 'Budi Santoso',
     role: 'Pemilik Toko HP',
     avatar: 'BS',
-    content: 'Sebagai pemilik toko, marketplace di IndoTeknizi sangat membantu promosi. Banyak customer baru yang datang dari platform ini. Rating dan review membantu membangun kepercayaan.',
+    content:
+      'Marketplace di IndoTeknizi sangat membantu promosi. Banyak customer baru datang dari platform ini. Rating dan review membangun kepercayaan dengan cepat.',
     rating: 5,
   },
   {
     name: 'Siti Nurhaliza',
     role: 'User',
     avatar: 'SN',
-    content: 'Saya puas sekali dengan konsultasi online di IndoTeknizi. Teknisi sangat responsif dan masalah iPhone saya langsung terselesaikan. Sistem rekber juga membuat saya merasa aman saat beli barang.',
+    content:
+      'Konsultasi online sangat memuaskan. Teknisi responsif dan masalah iPhone saya langsung selesai. Sistem rekber juga bikin saya tenang saat beli barang.',
     rating: 5,
   },
   {
     name: 'Rudi Hartono',
     role: 'Teknisi Senior',
     avatar: 'RH',
-    content: 'Dashboard teknisi sangat informatif. Saya bisa track semua order, rating, dan saldo dengan mudah. Badge "Top Teknisi" membantu meningkatkan kredibilitas saya.',
+    content:
+      'Dashboard teknisi sangat informatif. Track order, rating, dan saldo terasa effortless. Badge "Top Teknisi" bikin kredibilitas saya naik.',
     rating: 5,
   },
   {
     name: 'Dewi Lestari',
     role: 'User',
     avatar: 'DL',
-    content: 'Marketplace-nya lengkap! Saya bisa beli handphone second dengan harga terjangkau dan transaksi rekber membuat saya tidak perlu khawatir. Highly recommended!',
+    content:
+      'Marketplace-nya lengkap. Bisa beli handphone second harga oke dan rekber bikin saya tidak khawatir. Highly recommended!',
     rating: 5,
   },
   {
     name: 'Eko Prasetyo',
     role: 'Service Center Owner',
     avatar: 'EP',
-    content: 'Paket Toko di IndoTeknizi sangat worth it! Promosi toko kami meningkat drastis dan fitur analytics membantu kami memahami customer behavior. ROI sangat bagus!',
+    content:
+      'Paket Toko sangat worth it. Promosi toko meningkat drastis dan analytics bantu kami pahami customer. ROI sangat bagus!',
     rating: 5,
   },
-  {
-    name: 'Fajar Pratama',
-    role: 'Teknisi Handphone',
-    avatar: 'FP',
-    content: 'Sistem konsultasi online sangat memudahkan. Saya bisa membantu customer dari berbagai daerah tanpa harus bertemu langsung. Platform ini benar-benar inovatif!',
-    rating: 5,
-  },
-  {
-    name: 'Maya Sari',
-    role: 'User',
-    avatar: 'MS',
-    content: 'Rating dan review system membantu saya memilih teknisi terbaik. Setiap transaksi terasa aman dengan sistem rekber. Terima kasih IndoTeknizi!',
-    rating: 5,
-  },
-]
-
-// Duplicate testimonials for infinite scroll
-const duplicatedTestimonials = [...testimonials, ...testimonials]
+] as const
 
 export function Testimonials() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isAutoScrolling, setIsAutoScrolling] = useState(true)
-  const scrollRef = useRef<HTMLDivElement>(null)
+  const trackRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!isAutoScrolling) return
-
     const interval = setInterval(() => {
-      setCurrentIndex((prev) => {
-        const nextIndex = prev + 1
-        // Reset to 0 when reaching the end of original testimonials
-        if (nextIndex >= testimonials.length) {
-          return 0
-        }
-        return nextIndex
-      })
-    }, 4000) // Auto scroll every 4 seconds
-
+      setCurrentIndex((prev) => (prev + 1) % testimonials.length)
+    }, 4500)
     return () => clearInterval(interval)
   }, [isAutoScrolling])
 
-  const scrollLeft = () => {
+  const goLeft = () => {
     setIsAutoScrolling(false)
     setCurrentIndex((prev) => (prev - 1 + testimonials.length) % testimonials.length)
-    setTimeout(() => setIsAutoScrolling(true), 6000)
+    setTimeout(() => setIsAutoScrolling(true), 7000)
   }
 
-  const scrollRight = () => {
+  const goRight = () => {
     setIsAutoScrolling(false)
-    setCurrentIndex((prev) => {
-      const nextIndex = prev + 1
-      return nextIndex >= testimonials.length ? 0 : nextIndex
-    })
-    setTimeout(() => setIsAutoScrolling(true), 6000)
+    setCurrentIndex((prev) => (prev + 1) % testimonials.length)
+    setTimeout(() => setIsAutoScrolling(true), 7000)
   }
 
   return (
-    <section id="testimonials" className="relative py-24 lg:py-32 overflow-hidden bg-primary-800">
-      {/* Background Effects */}
-      <div className="absolute inset-0">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl" />
-      </div>
+    <section id="testimonials" className="relative overflow-hidden py-24 lg:py-32">
+      {/* Premium light backdrop */}
+      <div className="absolute inset-0 bg-gradient-to-b from-white via-surface-50/40 to-white" />
+      <div className="aurora-blob aurora-blob-emerald pointer-events-none absolute left-1/4 top-1/3 h-[460px] w-[460px] opacity-30" />
+      <div className="aurora-blob aurora-blob-cyan pointer-events-none absolute right-1/4 bottom-1/4 h-[420px] w-[420px] opacity-25" />
 
-      {/* Grid Pattern */}
-      <div 
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M0 0h40v40H0V0zm1 1v38h38V1H1z'/%3E%3C/g%3E%3C/svg%3E")`
-        }}
-      />
-
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <Badge variant="secondary" className="mb-4 bg-primary-600/20 text-primary-300 border-primary-500/30">Testimonials</Badge>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">
-            Real Stories, Real Success
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <Reveal className="mx-auto mb-14 max-w-3xl text-center">
+          <Badge variant="primary" className="mb-4">
+            <Quote className="h-3 w-3" /> Testimonials
+          </Badge>
+          <h2 className="text-balance text-[34px] font-semibold leading-[1.05] tracking-tightest text-ink sm:text-5xl">
+            Cerita nyata,{' '}
+            <span className="gradient-text-static">hasil nyata</span>
           </h2>
-          <p className="text-lg text-primary-200">
-            Authentic feedback from our valued subscribers
+          <p className="mt-4 text-pretty text-base text-surface-600 sm:text-lg">
+            Apa kata teknisi, toko, dan user kami tentang IndoTeknizi.
           </p>
-        </div>
+        </Reveal>
 
-        {/* Infinite Scrolling Testimonials */}
+        {/* Carousel */}
         <div className="relative">
-          {/* Left Arrow */}
+          {/* Side gradients to fade edges */}
+          <div className="pointer-events-none absolute left-0 top-0 z-10 h-full w-16 bg-gradient-to-r from-white to-transparent" />
+          <div className="pointer-events-none absolute right-0 top-0 z-10 h-full w-16 bg-gradient-to-l from-white to-transparent" />
+
+          {/* Arrows */}
           <button
-            onClick={scrollLeft}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white transition-all duration-300 hover:scale-110"
+            onClick={goLeft}
+            className="group/arr absolute -left-2 top-1/2 z-20 -translate-y-1/2 rounded-full glass-strong border border-surface-200/70 p-3 shadow-soft-md transition-all duration-300 hover:-translate-x-0.5 hover:shadow-soft-lg sm:left-2"
+            aria-label="Previous testimonial"
           >
-            <ChevronLeft className="w-6 h-6" />
+            <ChevronLeft className="h-5 w-5 text-surface-700 transition-transform group-hover/arr:-translate-x-0.5" />
+          </button>
+          <button
+            onClick={goRight}
+            className="group/arr absolute -right-2 top-1/2 z-20 -translate-y-1/2 rounded-full glass-strong border border-surface-200/70 p-3 shadow-soft-md transition-all duration-300 hover:translate-x-0.5 hover:shadow-soft-lg sm:right-2"
+            aria-label="Next testimonial"
+          >
+            <ChevronRight className="h-5 w-5 text-surface-700 transition-transform group-hover/arr:translate-x-0.5" />
           </button>
 
-          {/* Right Arrow */}
-          <button
-            onClick={scrollRight}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white transition-all duration-300 hover:scale-110"
-          >
-            <ChevronRight className="w-6 h-6" />
-          </button>
-
-          {/* Slider Container */}
-          <div className="overflow-hidden mx-12">
+          {/* Track */}
+          <div className="overflow-hidden mx-8 sm:mx-12">
             <motion.div
-              ref={scrollRef}
-              className="flex gap-6"
+              ref={trackRef}
+              className="flex"
               animate={{
-                x: `calc(-${currentIndex * (100 / 4)}% - ${currentIndex * 1.5}rem)`,
+                x: `calc(-${currentIndex * (100 / 3)}% - ${currentIndex * 1.25}rem)`,
               }}
-              transition={{
-                duration: 0.6,
-                ease: [0.25, 0.1, 0.25, 1],
-              }}
+              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
             >
-              {duplicatedTestimonials.map((testimonial, index) => (
+              {[...testimonials, ...testimonials].map((t, index) => (
                 <div
-                  key={`${testimonial.name}-${index}`}
-                  className="flex-shrink-0 w-full md:w-1/2 lg:w-1/4"
+                  // eslint-disable-next-line react/no-array-index-key
+                  key={`${t.name}-${index}`}
+                  className="w-full flex-shrink-0 px-2.5 sm:w-1/2 lg:w-1/3"
                 >
-                  <div className="relative bg-primary-700/50 backdrop-blur-sm rounded-2xl p-6 border border-primary-600/30 hover:border-primary-500/50 transition-all duration-300 h-full mx-3">
-                    {/* Quote Icon */}
-                    <div className="absolute top-6 right-6 opacity-20">
-                      <Quote className="w-8 h-8 text-primary-300" />
+                  <motion.article
+                    whileHover={{ y: -6 }}
+                    transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                    className="relative h-full rounded-2xl border border-surface-200/70 bg-white/90 p-6 shadow-soft-sm backdrop-blur-md transition-shadow duration-450 hover:shadow-soft-lg"
+                  >
+                    <Quote className="absolute right-5 top-5 h-7 w-7 text-primary-100" />
+
+                    <div className="mb-3 flex items-center gap-1">
+                      {Array.from({ length: t.rating }).map((_, i) => (
+                        <Star key={i} weight="fill" className="h-3.5 w-3.5 text-amber-400" />
+                      ))}
                     </div>
 
-                    {/* Avatar & Name */}
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-12 h-12 rounded-full bg-primary-500/30 flex items-center justify-center text-white font-medium text-sm border border-primary-400/30">
-                        {testimonial.avatar}
+                    <p className="text-[15px] leading-relaxed text-surface-700">
+                      &ldquo;{t.content}&rdquo;
+                    </p>
+
+                    <div className="mt-6 flex items-center gap-3 border-t border-surface-200/60 pt-4">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-accent-500 text-sm font-semibold text-white shadow-soft-xs">
+                        {t.avatar}
                       </div>
                       <div>
-                        <p className="font-semibold text-primary-300">{testimonial.name}</p>
-                        <p className="text-sm text-primary-400">{testimonial.role}</p>
+                        <p className="text-sm font-semibold text-ink">{t.name}</p>
+                        <p className="text-xs text-surface-500">{t.role}</p>
                       </div>
                     </div>
-
-                    {/* Content */}
-                    <p className="text-white leading-relaxed text-sm">
-                      &ldquo;{testimonial.content}&rdquo;
-                    </p>
-                  </div>
+                  </motion.article>
                 </div>
               ))}
             </motion.div>
           </div>
         </div>
 
-        {/* Dots Indicator */}
-        <div className="flex items-center justify-center gap-2 mt-8">
+        {/* Dots */}
+        <div className="mt-9 flex items-center justify-center gap-2">
           {testimonials.map((_, index) => (
             <button
               key={index}
-              onClick={() => setCurrentIndex(index)}
-              className={`w-2 h-2 rounded-full transition-all duration-300 ${
+              onClick={() => {
+                setIsAutoScrolling(false)
+                setCurrentIndex(index)
+                setTimeout(() => setIsAutoScrolling(true), 7000)
+              }}
+              className={cn(
+                'h-1.5 rounded-full transition-all duration-450',
                 index === currentIndex
-                  ? 'bg-primary-400 w-8'
-                  : 'bg-primary-600/50 hover:bg-primary-500/70'
-              }`}
+                  ? 'w-9 bg-gradient-to-r from-primary-600 to-accent-500'
+                  : 'w-1.5 bg-surface-300 hover:bg-surface-400',
+              )}
+              aria-label={`Go to testimonial ${index + 1}`}
             />
           ))}
         </div>

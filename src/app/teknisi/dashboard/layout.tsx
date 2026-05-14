@@ -4,6 +4,7 @@ import { TeknisiSidebar } from '@/components/dashboard/teknisi-sidebar'
 import { DashboardHeader } from '@/components/dashboard'
 import { useSidebar } from '@/contexts/sidebar-context'
 import { cn } from '@/lib/utils'
+import { DashboardBottomNav, DashboardMobileSpacer } from '@/components/mobile/dashboard-bottom-nav'
 
 export default function TeknisiDashboardLayout({
   children,
@@ -26,6 +27,8 @@ export default function TeknisiDashboardLayout({
           {children}
         </main>
       </div>
+      <DashboardMobileSpacer />
+      <DashboardBottomNav />
     </div>
   )
 }

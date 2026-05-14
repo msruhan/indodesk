@@ -15,8 +15,8 @@ export default function DashboardPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Welcome back, John!</h1>
-          <p className="text-surface-400 mt-1">Here&apos;s what&apos;s happening with your business today.</p>
+          <h1 className="text-2xl font-semibold tracking-tightest text-ink lg:text-3xl">Welcome back, John!</h1>
+          <p className="text-sm text-surface-500 mt-1">Here&apos;s what&apos;s happening with your business today.</p>
         </div>
       </div>
 

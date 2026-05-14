@@ -1,15 +1,20 @@
 'use client'
 
+import { motion } from 'framer-motion'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { 
-  MoreHorizontal, 
-  Clock, 
+import {
+  staggerContainerFast,
+  viewportRevealNoBlur,
+} from '@/components/motion'
+import {
+  MoreHorizontal,
+  Clock,
   CheckCircle2,
   AlertCircle,
-  ArrowRight
-} from 'lucide-react'
+  ArrowRight,
+} from '@/lib/icons'
 
 const projects = [
   {
@@ -20,7 +25,7 @@ const projects = [
     progress: 75,
     dueDate: 'Dec 28, 2024',
     budget: '$12,500',
-    color: 'bg-primary-500',
+    accent: 'bg-primary-500',
   },
   {
     id: 2,
@@ -30,7 +35,7 @@ const projects = [
     progress: 45,
     dueDate: 'Jan 15, 2025',
     budget: '$28,000',
-    color: 'bg-accent-500',
+    accent: 'bg-accent-500',
   },
   {
     id: 3,
@@ -40,7 +45,7 @@ const projects = [
     progress: 90,
     dueDate: 'Dec 22, 2024',
     budget: '$5,200',
-    color: 'bg-amber-500',
+    accent: 'bg-amber-500',
   },
   {
     id: 4,
@@ -50,7 +55,7 @@ const projects = [
     progress: 30,
     dueDate: 'Feb 10, 2025',
     budget: '$35,000',
-    color: 'bg-rose-500',
+    accent: 'bg-rose-500',
   },
   {
     id: 5,
@@ -60,9 +65,9 @@ const projects = [
     progress: 100,
     dueDate: 'Dec 18, 2024',
     budget: '$8,900',
-    color: 'bg-violet-500',
+    accent: 'bg-violet-500',
   },
-]
+] as const
 
 const statusConfig = {
   in_progress: { label: 'In Progress', variant: 'primary' as const, icon: Clock },
@@ -73,72 +78,83 @@ const statusConfig = {
 export function ProjectsList() {
   return (
     <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Active Projects</CardTitle>
-            <p className="text-sm text-surface-500 mt-1">Your ongoing work</p>
-          </div>
-          <Button variant="ghost" size="sm" className="text-primary-600">
-            View all
-            <ArrowRight className="w-4 h-4 ml-1" />
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {projects.map((project) => {
-              const status = statusConfig[project.status as keyof typeof statusConfig]
-              return (
-                <div
-                  key={project.id}
-                  className="flex items-center gap-4 p-4 rounded-xl border border-surface-200 hover:border-surface-300 hover:shadow-sm transition-all duration-200 cursor-pointer group"
-                >
-                  {/* Color Indicator */}
-                  <div className={`w-1 h-12 rounded-full ${project.color}`} />
-                  
-                  {/* Project Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-1">
-                      <h4 className="font-medium text-white truncate group-hover:text-primary-600 transition-colors">
-                        {project.name}
-                      </h4>
-                      <Badge variant={status.variant} className="flex-shrink-0">
-                        <status.icon className="w-3 h-3 mr-1" />
-                        {status.label}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-surface-500 truncate">{project.client}</p>
-                  </div>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle>Active Projects</CardTitle>
+          <p className="mt-1 text-sm text-surface-500">Your ongoing work</p>
+        </div>
+        <Button variant="ghost" size="sm" className="text-primary-700 hover:bg-primary-50">
+          View all
+          <ArrowRight className="h-4 w-4" />
+        </Button>
+      </CardHeader>
+      <CardContent>
+        <motion.div
+          variants={staggerContainerFast}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: '-40px' }}
+          className="space-y-3"
+        >
+          {projects.map((project) => {
+            const status = statusConfig[project.status as keyof typeof statusConfig]
+            return (
+              <motion.div
+                key={project.id}
+                variants={viewportRevealNoBlur}
+                whileHover={{ y: -2 }}
+                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                className="group/proj flex cursor-pointer items-center gap-4 rounded-2xl border border-surface-200/70 bg-white/80 p-4 backdrop-blur-md transition-all duration-300 hover:border-surface-300 hover:shadow-soft-md"
+              >
+                <div className={`h-12 w-1 rounded-full ${project.accent}`} />
 
-                  {/* Progress */}
-                  <div className="hidden sm:block w-32">
-                    <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="text-surface-500">Progress</span>
-                      <span className="font-medium text-surface-700">{project.progress}%</span>
-                    </div>
-                    <div className="h-1.5 bg-surface-100 rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full ${project.color} rounded-full transition-all duration-500`}
-                        style={{ width: `${project.progress}%` }}
-                      />
-                    </div>
+                <div className="min-w-0 flex-1">
+                  <div className="mb-1 flex items-center gap-3">
+                    <h4 className="truncate font-medium text-ink transition-colors group-hover/proj:text-primary-700">
+                      {project.name}
+                    </h4>
+                    <Badge variant={status.variant} className="flex-shrink-0">
+                      <status.icon className="h-3 w-3" />
+                      {status.label}
+                    </Badge>
                   </div>
-
-                  {/* Due Date & Budget */}
-                  <div className="hidden md:block text-right">
-                    <p className="text-sm font-medium text-white">{project.budget}</p>
-                    <p className="text-xs text-surface-500">{project.dueDate}</p>
-                  </div>
-
-                  {/* Actions */}
-                  <button className="p-2 rounded-lg hover:bg-surface-100 text-surface-400 hover:text-surface-400 transition-colors opacity-0 group-hover:opacity-100">
-                    <MoreHorizontal className="w-4 h-4" />
-                  </button>
+                  <p className="truncate text-sm text-surface-500">{project.client}</p>
                 </div>
-              )
-            })}
-          </div>
-        </CardContent>
-      </Card>
+
+                <div className="hidden w-32 sm:block">
+                  <div className="mb-1 flex items-center justify-between text-xs">
+                    <span className="text-surface-500">Progress</span>
+                    <span className="font-medium text-surface-700 tabular-nums">
+                      {project.progress}%
+                    </span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-surface-100">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      whileInView={{ width: `${project.progress}%` }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
+                      className={`h-full rounded-full ${project.accent}`}
+                    />
+                  </div>
+                </div>
+
+                <div className="hidden text-right md:block">
+                  <p className="text-sm font-medium text-ink tabular-nums">{project.budget}</p>
+                  <p className="text-xs text-surface-500">{project.dueDate}</p>
+                </div>
+
+                <button
+                  className="rounded-lg p-2 text-surface-500 opacity-0 transition-all duration-300 hover:bg-surface-100 hover:text-ink group-hover/proj:opacity-100"
+                  aria-label="More actions"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </button>
+              </motion.div>
+            )
+          })}
+        </motion.div>
+      </CardContent>
+    </Card>
   )
 }
-

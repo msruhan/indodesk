@@ -13,10 +13,10 @@ import {
   ShoppingBag,
   Award,
   CheckCircle
-} from 'lucide-react'
+} from '@/lib/icons'
 import Link from 'next/link'
 import { Navbar } from '@/components/landing'
-import { BottomNav } from '@/components/mobile'
+import { BottomNav, MobileSafeAreaSpacer } from '@/components/mobile'
 
 interface Toko {
   id: string
@@ -139,8 +139,8 @@ export default function TokoListPage() {
       {/* Header - Hidden on Mobile */}
       <div className="hidden lg:block bg-white border-b border-surface-200 lg:pt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <h1 className="text-3xl font-bold text-white mb-2">Promosi Toko Handphone</h1>
-          <p className="text-surface-400">Temukan toko handphone dan service terpercaya di kota Anda</p>
+          <h1 className="text-3xl font-semibold tracking-tightest text-ink lg:text-4xl mb-2">Promosi Toko Handphone</h1>
+          <p className="text-surface-500">Temukan toko handphone dan service terpercaya di kota Anda</p>
         </div>
       </div>
 
@@ -222,12 +222,12 @@ export default function TokoListPage() {
                       <div className="flex items-center gap-2">
                         <div className="flex items-center gap-1">
                           <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                          <span className="text-lg font-bold text-white">{toko.rating}</span>
+                          <span className="text-lg font-semibold text-ink">{toko.rating}</span>
                           <span className="text-sm text-surface-500">({toko.reviewCount})</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-4 text-sm">
-                        <div className="flex items-center gap-1.5 text-surface-400">
+                        <div className="flex items-center gap-1.5 text-surface-500">
                           <ShoppingBag className="w-4 h-4 text-primary-600" />
                           <span className="font-semibold">{toko.totalPenjualan.toLocaleString()}</span>
                           <span className="text-surface-500">penjualan</span>
@@ -321,7 +321,7 @@ export default function TokoListPage() {
                         <Clock className="w-5 h-5 text-primary-600" />
                         <div>
                           <div className="text-xs text-surface-500">Jam Operasional</div>
-                          <div className="text-sm font-semibold text-white">{toko.jamOperasional}</div>
+                          <div className="text-sm font-semibold text-ink">{toko.jamOperasional}</div>
                         </div>
                       </div>
                     </div>
@@ -350,6 +350,7 @@ export default function TokoListPage() {
           </div>
         )}
       </div>
+      <MobileSafeAreaSpacer />
       <BottomNav />
     </div>
   )

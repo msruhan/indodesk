@@ -8,7 +8,7 @@ import {
   CTA, 
   Footer 
 } from '@/components/landing'
-import { BottomNav } from '@/components/mobile'
+import { BottomNav, MobileSafeAreaSpacer } from '@/components/mobile'
 
 export default function Home() {
   return (
@@ -21,6 +21,7 @@ export default function Home() {
       <Testimonials />
       <CTA />
       <Footer />
+      <MobileSafeAreaSpacer />
       <BottomNav />
     </main>
   )

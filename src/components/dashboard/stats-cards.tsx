@@ -1,97 +1,96 @@
 'use client'
 
-import { Card, CardContent, CardTitle } from '@/components/ui/card'
-import { 
+import { motion } from 'framer-motion'
+import {
+  AnimatedNumber,
+  staggerContainerFast,
+  viewportRevealNoBlur,
+} from '@/components/motion'
+import {
   TrendingUp,
   Users,
   UserCheck,
   ShoppingBag,
   MessageCircle,
-} from 'lucide-react'
+} from '@/lib/icons'
 
 const stats = [
   {
     title: 'Total User',
-    value: '1,245',
-    change: '+12.5%',
-    trend: 'up',
+    value: 1245,
+    delta: 12.5,
     icon: Users,
-    iconBgColor: 'bg-white/20',
-    iconTextColor: 'text-white',
-    cardBg: 'bg-primary-500',
-    titleColor: 'text-white/90',
-    valueColor: 'text-white',
-    changeColor: 'text-white',
+    accent: 'from-primary-500/15 via-primary-500/5 to-transparent',
   },
   {
     title: 'Total Teknisi',
-    value: '234',
-    change: '+8.2%',
-    trend: 'up',
+    value: 234,
+    delta: 8.2,
     icon: UserCheck,
-    iconBgColor: 'bg-white/20',
-    iconTextColor: 'text-white',
-    cardBg: 'bg-black',
-    titleColor: 'text-white/90',
-    valueColor: 'text-white',
-    changeColor: 'text-white',
+    accent: 'from-accent-500/15 via-accent-500/5 to-transparent',
   },
   {
     title: 'Total Transaksi',
-    value: '5,678',
-    change: '+23.1%',
-    trend: 'up',
+    value: 5678,
+    delta: 23.1,
     icon: ShoppingBag,
-    iconBgColor: 'bg-white/20',
-    iconTextColor: 'text-white',
-    cardBg: 'bg-primary-500',
-    titleColor: 'text-white/90',
-    valueColor: 'text-white',
-    changeColor: 'text-white',
+    accent: 'from-violet-500/15 via-violet-500/5 to-transparent',
   },
   {
     title: 'Total Konsultasi',
-    value: '3,456',
-    change: '+15.7%',
-    trend: 'up',
+    value: 3456,
+    delta: 15.7,
     icon: MessageCircle,
-    iconBgColor: 'bg-white/20',
-    iconTextColor: 'text-white',
-    cardBg: 'bg-black',
-    titleColor: 'text-white/90',
-    valueColor: 'text-white',
-    changeColor: 'text-white',
+    accent: 'from-amber-500/15 via-amber-500/5 to-transparent',
   },
-]
+] as const
 
 export function StatsCards() {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-      {stats.map((stat, index) => (
-        <div
+    <motion.div
+      className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5"
+      variants={staggerContainerFast}
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once: true, margin: '-40px' }}
+    >
+      {stats.map((stat) => (
+        <motion.div
           key={stat.title}
+          variants={viewportRevealNoBlur}
+          className="group/stat relative overflow-hidden rounded-2xl border border-surface-200/70 bg-white/85 p-5 shadow-soft-xs backdrop-blur-md transition-all duration-450 ease-out-expo hover:-translate-y-1 hover:shadow-soft-md"
         >
-          <Card className={`p-5 ${stat.cardBg} border-0 shadow-sm hover:shadow-md transition-all duration-200`}>
-            <div className="flex items-start justify-between mb-4">
-              <CardTitle className={`text-sm font-medium ${stat.titleColor}`}>{stat.title}</CardTitle>
-              <div className={`w-10 h-10 rounded-lg ${stat.iconBgColor} flex items-center justify-center`}>
-                <stat.icon className={`w-5 h-5 ${stat.iconTextColor}`} />
-              </div>
+          {/* Accent halo */}
+          <div
+            aria-hidden
+            className={`pointer-events-none absolute -inset-x-6 -top-12 h-32 rounded-full blur-3xl bg-gradient-to-br ${stat.accent}`}
+          />
+
+          <div className="relative flex items-start justify-between">
+            <div>
+              <p className="text-[12px] font-medium uppercase tracking-[0.18em] text-surface-500">
+                {stat.title}
+              </p>
+              <AnimatedNumber
+                value={stat.value}
+                className="mt-2 block text-[28px] font-semibold tracking-tightest text-ink tabular-nums"
+              />
             </div>
-            <CardContent className="p-0">
-              <div className={`text-3xl font-bold ${stat.valueColor} mb-2`}>{stat.value}</div>
-              <div className="flex items-center justify-end gap-2">
-                <div className={`w-8 h-8 rounded-full ${stat.iconBgColor} flex items-center justify-center`}>
-                  <TrendingUp className={`w-4 h-4 ${stat.iconTextColor}`} />
-                </div>
-                <p className={`text-xs font-medium ${stat.changeColor}`}>
-                  {stat.change}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+
+            <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-primary-200/60 bg-gradient-to-br from-white to-primary-50 text-primary-700 shadow-soft-xs transition-transform duration-450 group-hover/stat:-translate-y-0.5">
+              <stat.icon className="h-5 w-5" />
+            </div>
+          </div>
+
+          {/* Trend pill */}
+          <div className="relative mt-4 flex items-center gap-2">
+            <span className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2 py-0.5 text-[11px] font-semibold text-primary-700 ring-1 ring-inset ring-primary-200/70">
+              <TrendingUp className="h-3 w-3" />+{stat.delta}%
+            </span>
+            <span className="text-[11px] text-surface-500">vs bulan lalu</span>
+          </div>
+        </motion.div>
       ))}
-    </div>
+    </motion.div>
   )
 }

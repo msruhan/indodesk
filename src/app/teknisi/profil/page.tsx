@@ -4,14 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Star, Award, CheckCircle, Radio } from 'lucide-react'
+import { Star, Award, CheckCircle, Radio } from '@/lib/icons'
 
 export default function TeknisiProfilPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Profil Teknisi</h1>
-        <p className="text-surface-400 mt-1">Kelola profil dan informasi teknisi Anda</p>
+        <h1 className="text-2xl font-semibold tracking-tightest text-ink lg:text-3xl">Profil Teknisi</h1>
+        <p className="text-sm text-surface-500 mt-1">Kelola profil dan informasi teknisi Anda</p>
       </div>
 
       {/* Profile Info */}
@@ -93,7 +93,7 @@ export default function TeknisiProfilPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-surface-400">Rating</span>
+              <span className="text-surface-500">Rating</span>
               <div className="flex items-center gap-1">
                 <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
                 <span className="font-bold text-lg">4.9</span>
@@ -101,11 +101,11 @@ export default function TeknisiProfilPage() {
               </div>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-surface-400">Total Konsultasi</span>
+              <span className="text-surface-500">Total Konsultasi</span>
               <span className="font-bold text-lg">567</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-surface-400">Total View Profil</span>
+              <span className="text-surface-500">Total View Profil</span>
               <span className="font-bold text-lg">1,234</span>
             </div>
           </CardContent>
@@ -120,21 +120,21 @@ export default function TeknisiProfilPage() {
               <Award className="w-8 h-8 text-yellow-600" />
               <div>
                 <div className="font-semibold">Top Teknisi</div>
-                <div className="text-sm text-surface-400">Berdasarkan rating & konsultasi</div>
+                <div className="text-sm text-surface-500">Berdasarkan rating & konsultasi</div>
               </div>
             </div>
             <div className="flex items-center gap-3 p-4 border border-green-200 rounded-lg bg-green-50">
               <CheckCircle className="w-8 h-8 text-green-600" />
               <div>
                 <div className="font-semibold">Verified</div>
-                <div className="text-sm text-surface-400">Teknisi terverifikasi</div>
+                <div className="text-sm text-surface-500">Teknisi terverifikasi</div>
               </div>
             </div>
             <div className="flex items-center gap-3 p-4 border border-blue-200 rounded-lg bg-blue-50">
               <Radio className="w-8 h-8 text-blue-600" />
               <div>
                 <div className="font-semibold">Online</div>
-                <div className="text-sm text-surface-400">Sedang online sekarang</div>
+                <div className="text-sm text-surface-500">Sedang online sekarang</div>
               </div>
             </div>
           </CardContent>
@@ -151,14 +151,14 @@ export default function TeknisiProfilPage() {
             <div className="flex items-center justify-between p-4 border border-surface-200 rounded-lg">
               <div>
                 <div className="font-semibold">Certified Mobile Technician</div>
-                <div className="text-sm text-surface-400">Indonesia Mobile Tech • 2020</div>
+                <div className="text-sm text-surface-500">Indonesia Mobile Tech • 2020</div>
               </div>
               <Button variant="outline" size="sm">Hapus</Button>
             </div>
             <div className="flex items-center justify-between p-4 border border-surface-200 rounded-lg">
               <div>
                 <div className="font-semibold">Advanced Flashing Specialist</div>
-                <div className="text-sm text-surface-400">Tech Academy • 2021</div>
+                <div className="text-sm text-surface-500">Tech Academy • 2021</div>
               </div>
               <Button variant="outline" size="sm">Hapus</Button>
             </div>

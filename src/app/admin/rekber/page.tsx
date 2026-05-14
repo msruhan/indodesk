@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Shield, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import { Shield, Clock, CheckCircle, XCircle, AlertCircle } from '@/lib/icons'
 
 const rekber = [
   { 
@@ -68,8 +68,8 @@ export default function AdminRekberPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Manajemen Rekber (Escrow)</h1>
-        <p className="text-surface-400 mt-1">Kelola semua transaksi rekening bersama</p>
+        <h1 className="text-2xl font-semibold tracking-tightest text-ink lg:text-3xl">Manajemen Rekber (Escrow)</h1>
+        <p className="text-sm text-surface-500 mt-1">Kelola semua transaksi rekening bersama</p>
       </div>
 
       {/* Stats */}

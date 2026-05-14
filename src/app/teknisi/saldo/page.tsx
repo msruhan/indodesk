@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Wallet, Plus, TrendingUp, TrendingDown, Download } from 'lucide-react'
+import { Wallet, Plus, TrendingUp, TrendingDown, Download } from '@/lib/icons'
 
 const transactions = [
   { id: '1', type: 'income', description: 'Konsultasi Unlock - ORD-2024-001', amount: 50000, date: '2024-03-20', status: 'completed' },
@@ -28,8 +28,8 @@ export default function TeknisiSaldoPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Saldo & Transaksi</h1>
-        <p className="text-surface-400 mt-1">Kelola saldo dan riwayat transaksi</p>
+        <h1 className="text-2xl font-semibold tracking-tightest text-ink lg:text-3xl">Saldo & Transaksi</h1>
+        <p className="text-sm text-surface-500 mt-1">Kelola saldo dan riwayat transaksi</p>
       </div>
 
       {/* Saldo Card */}

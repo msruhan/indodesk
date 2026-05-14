@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Search, Plus, Edit, Trash2, Eye } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, Eye } from '@/lib/icons'
 import Link from 'next/link'
 
 const produk = [
@@ -64,8 +64,8 @@ export default function AdminProdukPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Manajemen Produk</h1>
-          <p className="text-surface-400 mt-1">Kelola produk dan software yang dijual di marketplace</p>
+          <h1 className="text-2xl font-semibold tracking-tightest text-ink lg:text-3xl">Manajemen Produk</h1>
+          <p className="text-sm text-surface-500 mt-1">Kelola produk dan software yang dijual di marketplace</p>
         </div>
       </div>
 

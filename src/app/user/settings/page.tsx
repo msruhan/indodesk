@@ -8,8 +8,8 @@ export default function UserSettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Settings</h1>
-        <p className="text-surface-400 mt-1">Pengaturan akun user</p>
+        <h1 className="text-2xl font-semibold tracking-tightest text-ink lg:text-3xl">Settings</h1>
+        <p className="text-sm text-surface-500 mt-1">Pengaturan akun user</p>
       </div>
 
       <Card>

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Search, Edit, Trash2, MapPin, Star } from 'lucide-react'
+import { Search, Edit, Trash2, MapPin, Star } from '@/lib/icons'
 import Link from 'next/link'
 
 const toko = [
@@ -54,8 +54,8 @@ export default function AdminTokoPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Manajemen Toko</h1>
-          <p className="text-surface-400 mt-1">Kelola toko handphone dan service center</p>
+          <h1 className="text-2xl font-semibold tracking-tightest text-ink lg:text-3xl">Manajemen Toko</h1>
+          <p className="text-sm text-surface-500 mt-1">Kelola toko handphone dan service center</p>
         </div>
       </div>
 
@@ -115,7 +115,7 @@ export default function AdminTokoPage() {
                     {t.badge ? (
                       <Badge variant="default">{t.badge}</Badge>
                     ) : (
-                      <span className="text-surface-400">-</span>
+                      <span className="text-surface-500">-</span>
                     )}
                   </TableCell>
                   <TableCell>

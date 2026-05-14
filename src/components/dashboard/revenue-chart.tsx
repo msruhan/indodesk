@@ -1,100 +1,69 @@
 'use client'
 
+import dynamic from 'next/dynamic'
+import type { ApexOptions } from 'apexcharts'
+import { motion } from 'framer-motion'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from 'recharts'
+import { platformGrowth } from '@/data/mock-analytics'
 
-const data = [
-  { month: 'Jan', users: 1200 },
-  { month: 'Feb', users: 1900 },
-  { month: 'Mar', users: 1800 },
-  { month: 'Apr', users: 2500 },
-  { month: 'May', users: 2800 },
-  { month: 'Jun', users: 3200 },
-]
+const Chart = dynamic(() => import('react-apexcharts'), { ssr: false })
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-white rounded-lg shadow-xl border border-surface-200 p-3">
-        <p className="font-medium text-black mb-2">{label}</p>
-        {payload.map((entry: any, index: number) => (
-          <div key={index} className="flex items-center gap-2 text-sm">
-            <div 
-              className="w-2.5 h-2.5 rounded-full"
-              style={{ backgroundColor: entry.color }}
-            />
-            <span className="text-surface-600">{entry.name}:</span>
-            <span className="font-medium text-black">
-              {entry.value.toLocaleString()}
-            </span>
-          </div>
-        ))}
-      </div>
-    )
-  }
-  return null
+const options: ApexOptions = {
+  chart: {
+    toolbar: { show: false },
+    zoom: { enabled: false },
+    foreColor: '#737373',
+    animations: {
+      enabled: true,
+      speed: 750,
+      animateGradually: { enabled: true, delay: 90 },
+      dynamicAnimation: { enabled: true, speed: 450 },
+    },
+  },
+  colors: ['#16a34a', '#171717', '#22c55e'],
+  dataLabels: { enabled: false },
+  stroke: { width: [4, 3, 3], curve: 'smooth' },
+  fill: {
+    type: 'gradient',
+    gradient: { shadeIntensity: 0.6, opacityFrom: 0.28, opacityTo: 0.03, stops: [0, 90, 100] },
+  },
+  grid: { borderColor: '#f0f0f0', strokeDashArray: 4, xaxis: { lines: { show: false } } },
+  legend: { position: 'top', horizontalAlign: 'right', labels: { colors: '#525252' } },
+  xaxis: {
+    categories: platformGrowth.map((item) => item.month),
+    axisBorder: { show: false },
+    axisTicks: { show: false },
+    labels: { style: { colors: '#737373' } },
+  },
+  yaxis: { labels: { style: { colors: '#737373' } } },
+  tooltip: { theme: 'light', shared: true, intersect: false },
 }
+
+const series = [
+  { name: 'Users', data: platformGrowth.map((item) => item.users) },
+  { name: 'Revenue (jt)', data: platformGrowth.map((item) => item.revenue) },
+  { name: 'Konsultasi', data: platformGrowth.map((item) => item.consultations) },
+]
 
 export function RevenueChart() {
   return (
-    <Card className="bg-white border border-surface-200">
+    <motion.div initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.55 }}>
+      <Card className="bg-white border border-surface-200">
         <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-surface-200">
           <div>
             <CardTitle className="text-black">Users Projects Operating Status</CardTitle>
+            <p className="mt-1 text-sm text-surface-500">Mock data growth overview</p>
           </div>
-          <div className="flex items-center gap-2">
-            <select className="text-sm border border-surface-200 rounded-lg px-3 py-1.5 text-surface-600 bg-white">
-              <option>Week</option>
-              <option>Month</option>
-              <option>Year</option>
-            </select>
-          </div>
+          <select className="text-sm border border-surface-200 rounded-lg px-3 py-1.5 text-surface-600 bg-white">
+            <option>Week</option>
+            <option>Month</option>
+            <option>Year</option>
+          </select>
         </CardHeader>
         <CardContent className="pt-6">
-          <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={data}
-                margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                <XAxis 
-                  dataKey="month" 
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: '#737373', fontSize: 12, fontWeight: 500 }}
-                  dy={10}
-                />
-                <YAxis 
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: '#737373', fontSize: 12 }}
-                  dx={-10}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Line
-                  type="monotone"
-                  dataKey="users"
-                  name="Users"
-                  stroke="#a855f7"
-                  strokeWidth={3}
-                  dot={{ fill: '#a855f7', r: 5, strokeWidth: 2, stroke: '#fff' }}
-                  activeDot={{ r: 7 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+          <Chart options={options} series={series} type="area" height={320} />
         </CardContent>
       </Card>
+    </motion.div>
   )
 }

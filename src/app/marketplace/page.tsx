@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Navbar } from '@/components/landing'
-import { BottomNav } from '@/components/mobile'
+import { BottomNav, MobileSafeAreaSpacer } from '@/components/mobile'
 import { BannerSlider } from '@/components/marketplace/banner-slider'
 import { 
   Search, 
@@ -20,7 +20,7 @@ import {
   Code,
   ChevronDown,
   ShoppingCart
-} from 'lucide-react'
+} from '@/lib/icons'
 import Link from 'next/link'
 import Image from 'next/image'
 
@@ -184,10 +184,14 @@ export default function MarketplacePage() {
         <Navbar />
       </div>
       {/* Header - Hidden on Mobile */}
-      <div className="hidden lg:block bg-white border-b border-surface-200 lg:pt-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <h1 className="text-3xl font-bold text-white mb-2">Marketplace</h1>
-          <p className="text-surface-400">Temukan produk handphone, laptop, aksesoris, dan software terbaik</p>
+      <div className="hidden lg:block border-b border-surface-200/60 bg-white/70 backdrop-blur-md lg:pt-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-7">
+          <h1 className="mb-2 text-3xl font-semibold tracking-tightest text-ink lg:text-4xl">
+            Marketplace
+          </h1>
+          <p className="text-surface-600">
+            Temukan produk handphone, laptop, aksesoris, dan software terbaik.
+          </p>
         </div>
       </div>
 
@@ -406,7 +410,7 @@ export default function MarketplacePage() {
         </div>
 
         {/* Results Count */}
-        <div className="mb-4 text-sm text-surface-400">
+        <div className="mb-4 text-sm text-surface-500">
           Menampilkan {filteredProducts.length} produk
         </div>
 
@@ -422,11 +426,8 @@ export default function MarketplacePage() {
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute top-1 right-1">
-                    <Badge variant="secondary" className="bg-white/90 text-[10px] px-1.5 py-0.5">
-                      {product.category === 'handphone' && '📱'}
-                      {product.category === 'laptop' && '💻'}
-                      {product.category === 'aksesoris' && '🎧'}
-                      {product.category === 'software' && '🔧'}
+                    <Badge variant="outline" className="bg-white/90 text-[10px] px-1.5 py-0.5 capitalize">
+                      {product.category}
                     </Badge>
                   </div>
                 </div>
@@ -454,7 +455,7 @@ export default function MarketplacePage() {
                       alt={product.teknisiName}
                       className="w-4 h-4 sm:w-5 sm:h-5 rounded-full object-cover border border-surface-200 flex-shrink-0"
                     />
-                    <span className="text-[10px] sm:text-xs text-surface-400 truncate">{product.teknisiName}</span>
+                    <span className="text-[10px] sm:text-xs text-surface-500 truncate">{product.teknisiName}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -468,6 +469,7 @@ export default function MarketplacePage() {
           </div>
         )}
       </div>
+      <MobileSafeAreaSpacer />
       <BottomNav />
     </div>
   )

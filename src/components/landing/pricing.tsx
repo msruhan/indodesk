@@ -2,8 +2,10 @@
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { CheckCircle2, Sparkles } from 'lucide-react'
+import { CheckCircle2, Sparkles } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { motion } from 'framer-motion'
+import { Reveal, staggerContainer, viewportReveal } from '@/components/motion'
 
 const plans = [
   {
@@ -58,139 +60,185 @@ const plans = [
     cta: 'Hubungi sales',
     popular: false,
   },
-]
+] as const
 
 export function Pricing() {
   return (
-    <section id="pricing" className="relative py-24 lg:py-32 overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-b from-surface-50 to-white" />
+    <section id="pricing" className="relative overflow-hidden py-24 lg:py-32">
+      <div className="absolute inset-0 bg-gradient-to-b from-white via-surface-50/50 to-white" />
+      <div className="aurora-blob aurora-blob-emerald pointer-events-none absolute left-1/2 top-32 h-[480px] w-[480px] -translate-x-1/2 opacity-25" />
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <Badge variant="primary" className="mb-4">Pricing</Badge>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-black mb-4">
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <Reveal className="mx-auto mb-14 max-w-3xl text-center">
+          <Badge variant="primary" className="mb-4">
+            Pricing
+          </Badge>
+          <h2 className="text-balance text-[34px] font-semibold leading-[1.05] tracking-tightest text-ink sm:text-5xl">
             Paket pricing yang
-            <span className="text-primary-600"> transparan</span>
+            <span className="gradient-text-static"> transparan</span>
           </h2>
-          <p className="text-lg text-surface-600">
+          <p className="mt-4 text-pretty text-base text-surface-600 sm:text-lg">
             Mulai gratis dan upgrade sesuai kebutuhan. Tanpa biaya tersembunyi.
           </p>
-        </div>
+        </Reveal>
 
-        {/* Pricing Grid */}
-        <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
+        {/* Pricing grid */}
+        <motion.div
+          className="grid items-stretch gap-5 md:grid-cols-3 lg:gap-7"
+          variants={staggerContainer}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: '-80px' }}
+        >
           {plans.map((plan) => (
-            <div
+            <motion.div
               key={plan.name}
-              className={cn(
-                'relative rounded-2xl p-6 lg:p-8 transition-all duration-300',
-                plan.popular
-                  ? 'bg-black text-white scale-[1.02] shadow-2xl shadow-black/30'
-                  : 'bg-white border border-surface-200 hover:border-surface-300 hover:shadow-xl'
-              )}
+              variants={viewportReveal}
+              className="relative h-full"
             >
-              {/* Popular Badge */}
+              {/* Popular halo */}
               {plan.popular && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <Badge className="bg-primary-600 text-white border-0 shadow-lg">
-                    <Sparkles className="w-3 h-3 mr-1" />
-                    Most Popular
-                  </Badge>
-                </div>
+                <div
+                  aria-hidden
+                  className="aurora-blob aurora-blob-emerald pointer-events-none absolute -inset-2 -z-10 opacity-50"
+                />
               )}
 
-              {/* Plan Header */}
-              <div className="mb-6">
-                <h3 className={cn(
-                  'text-xl font-bold mb-2',
-                  plan.popular ? 'text-white' : 'text-surface-900'
-                )}>
-                  {plan.name}
-                </h3>
-                <p className={cn(
-                  'text-sm',
-                  plan.popular ? 'text-surface-300' : 'text-surface-500'
-                )}>
-                  {plan.description}
-                </p>
-              </div>
+              <div
+                className={cn(
+                  'relative flex h-full flex-col overflow-hidden rounded-3xl p-6 transition-all duration-450 ease-out-expo lg:p-8',
+                  plan.popular
+                    ? 'border-transparent bg-ink text-white shadow-soft-2xl lg:scale-[1.03]'
+                    : 'border border-surface-200/70 bg-white/85 text-ink shadow-soft-sm backdrop-blur-md hover:-translate-y-1 hover:shadow-soft-lg',
+                )}
+              >
+                {plan.popular && (
+                  <>
+                    {/* Animated gradient ring */}
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-0 rounded-3xl p-px"
+                      style={{
+                        background:
+                          'linear-gradient(140deg, rgba(16,185,129,0.6), rgba(6,182,212,0.55), rgba(16,185,129,0.2))',
+                        WebkitMask:
+                          'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                        WebkitMaskComposite: 'xor',
+                        maskComposite: 'exclude',
+                      }}
+                    />
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                      <Badge variant="gradient" className="border-0 shadow-soft-md">
+                        <Sparkles className="h-3 w-3" />
+                        Most popular
+                      </Badge>
+                    </div>
+                  </>
+                )}
 
-              {/* Price */}
-              <div className="mb-6">
-                <div className="flex items-baseline gap-1">
-                  {plan.price === 0 ? (
-                    <span className={cn(
-                      'text-4xl font-bold',
-                      plan.popular ? 'text-white' : 'text-surface-900'
-                    )}>
-                      Gratis
-                    </span>
-                  ) : (
-                    <>
-                      <span className={cn(
-                        'text-4xl font-bold',
-                        plan.popular ? 'text-white' : 'text-surface-900'
-                      )}>
-                        Rp {plan.price.toLocaleString('id-ID')}
+                {/* Header */}
+                <div className="mb-6">
+                  <h3
+                    className={cn(
+                      'text-lg font-semibold tracking-tight-lg',
+                      plan.popular ? 'text-white' : 'text-ink',
+                    )}
+                  >
+                    {plan.name}
+                  </h3>
+                  <p
+                    className={cn(
+                      'mt-1 text-sm',
+                      plan.popular ? 'text-surface-300' : 'text-surface-500',
+                    )}
+                  >
+                    {plan.description}
+                  </p>
+                </div>
+
+                {/* Price */}
+                <div className="mb-6">
+                  <div className="flex items-baseline gap-1">
+                    {plan.price === 0 ? (
+                      <span
+                        className={cn(
+                          'text-4xl font-semibold tracking-tightest tabular-nums',
+                          plan.popular ? 'text-white' : 'text-ink',
+                        )}
+                      >
+                        Gratis
                       </span>
-                      <span className={cn(
-                        'text-sm',
-                        plan.popular ? 'text-surface-400' : 'text-surface-500'
-                      )}>
-                        /{plan.period}
+                    ) : (
+                      <>
+                        <span
+                          className={cn(
+                            'text-4xl font-semibold tracking-tightest tabular-nums',
+                            plan.popular ? 'text-white' : 'text-ink',
+                          )}
+                        >
+                          Rp {plan.price.toLocaleString('id-ID')}
+                        </span>
+                        <span
+                          className={cn(
+                            'text-sm',
+                            plan.popular ? 'text-surface-400' : 'text-surface-500',
+                          )}
+                        >
+                          /{plan.period}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Features */}
+                <ul className="mb-8 space-y-3">
+                  {plan.features.map((feature) => (
+                    <li key={feature} className="flex items-start gap-3">
+                      <CheckCircle2
+                        className={cn(
+                          'mt-0.5 h-5 w-5 flex-shrink-0',
+                          plan.popular ? 'text-primary-300' : 'text-primary-600',
+                        )}
+                      />
+                      <span
+                        className={cn(
+                          'text-sm',
+                          plan.popular ? 'text-surface-200' : 'text-surface-600',
+                        )}
+                      >
+                        {feature}
                       </span>
-                    </>
-                  )}
+                    </li>
+                  ))}
+                </ul>
+
+                {/* CTA */}
+                <div className="mt-auto">
+                  <Button
+                    variant={plan.popular ? 'primary' : 'outline'}
+                    size="lg"
+                    className="w-full"
+                  >
+                    {plan.cta}
+                  </Button>
                 </div>
               </div>
-
-              {/* Features */}
-              <ul className="space-y-3 mb-8">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-3">
-                    <CheckCircle2 className={cn(
-                      'w-5 h-5 flex-shrink-0 mt-0.5',
-                      plan.popular ? 'text-primary-400' : 'text-primary-600'
-                    )} />
-                    <span className={cn(
-                      'text-sm',
-                      plan.popular ? 'text-surface-300' : 'text-surface-600'
-                    )}>
-                      {feature}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-
-              {/* CTA */}
-              <Button
-                variant={plan.popular ? 'primary' : 'outline'}
-                className={cn(
-                  'w-full',
-                  !plan.popular && 'border-black text-black hover:bg-black hover:text-white'
-                )}
-                size="lg"
-              >
-                {plan.cta}
-              </Button>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
 
-        {/* FAQ Teaser */}
-        <div className="mt-16 text-center">
-          <p className="text-surface-600">
-            Have questions?{' '}
-            <a href="#" className="text-primary-600 font-medium hover:underline">
-              Check our FAQ
-            </a>
-            {' '}or{' '}
-            <a href="#" className="text-primary-600 font-medium hover:underline">
-              contact us
-            </a>
-          </p>
+        <div className="mt-12 text-center text-sm text-surface-600">
+          Punya pertanyaan?{' '}
+          <a href="#" className="font-medium text-primary-700 hover:underline underline-offset-4">
+            Cek FAQ
+          </a>{' '}
+          atau{' '}
+          <a href="#" className="font-medium text-primary-700 hover:underline underline-offset-4">
+            hubungi kami
+          </a>
+          .
         </div>
       </div>
     </section>

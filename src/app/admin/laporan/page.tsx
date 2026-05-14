@@ -3,15 +3,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { TransaksiChart, KonsultasiChart } from '@/components/dashboard'
-import { Download, FileText, Calendar } from 'lucide-react'
+import { Download, FileText, Calendar } from '@/lib/icons'
 
 export default function AdminLaporanPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Laporan</h1>
-          <p className="text-surface-400 mt-1">Analitik dan laporan platform</p>
+          <h1 className="text-2xl font-semibold tracking-tightest text-ink lg:text-3xl">Laporan</h1>
+          <p className="text-sm text-surface-500 mt-1">Analitik dan laporan platform</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline">

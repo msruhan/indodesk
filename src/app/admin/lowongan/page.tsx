@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Search, Plus, Edit, Trash2, Briefcase, MapPin } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, Briefcase, MapPin } from '@/lib/icons'
 
 const lowongan = [
   { 
@@ -53,8 +53,8 @@ export default function AdminLowonganPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Manajemen Lowongan Kerja</h1>
-          <p className="text-surface-400 mt-1">Kelola lowongan kerja teknisi di platform</p>
+          <h1 className="text-2xl font-semibold tracking-tightest text-ink lg:text-3xl">Manajemen Lowongan Kerja</h1>
+          <p className="text-sm text-surface-500 mt-1">Kelola lowongan kerja teknisi di platform</p>
         </div>
         <Button>
           <Plus className="w-4 h-4 mr-2" />

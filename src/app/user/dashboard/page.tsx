@@ -9,7 +9,7 @@ import {
   MessageCircle,
   Shield,
   Package
-} from 'lucide-react'
+} from '@/lib/icons'
 
 export default function UserDashboardPage() {
   // Mock data - in production, fetch from API
@@ -48,16 +48,16 @@ export default function UserDashboardPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Dashboard User</h1>
-          <p className="text-surface-400 mt-1">Kelola order, konsultasi, dan transaksi Anda</p>
+          <h1 className="text-2xl font-semibold tracking-tightest text-ink lg:text-3xl">Dashboard User</h1>
+          <p className="mt-1 text-sm text-surface-500">Kelola order, konsultasi, dan transaksi Anda</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => window.location.href = '/marketplace'}>
+          <Button variant="outline" onClick={() => (window.location.href = '/marketplace')}>
             Marketplace
           </Button>
-          <Button variant="outline" onClick={() => window.location.href = '/teknisi'}>
+          <Button variant="outline" onClick={() => (window.location.href = '/teknisi')}>
             Cari Teknisi
           </Button>
         </div>
@@ -203,7 +203,7 @@ export default function UserDashboardPage() {
                 <div>
                   <div className="font-medium">{rekber.orderId}</div>
                   <div className="text-sm text-surface-500">{formatPrice(rekber.amount)}</div>
-                  <div className="text-xs text-surface-400 mt-1">{rekber.date}</div>
+                  <div className="text-xs text-sm text-surface-500 mt-1">{rekber.date}</div>
                 </div>
                 <div className="flex items-center gap-3">
                   <Badge 

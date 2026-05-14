@@ -4,6 +4,7 @@ import './globals.css'
 import { AuthProvider } from '@/contexts/auth-context'
 import { SidebarProvider } from '@/contexts/sidebar-context'
 import { ChatProvider } from '@/contexts/chat-context'
+import { TopupProvider } from '@/contexts/topup-context'
 import { ChatPopup } from '@/components/chat/chat-popup'
 import { ChatButton } from '@/components/chat/chat-button'
 
@@ -29,9 +30,11 @@ export default function RootLayout({
         <AuthProvider>
           <SidebarProvider>
             <ChatProvider>
-              {children}
-              <ChatPopup />
-              <ChatButton />
+              <TopupProvider>
+                {children}
+                <ChatPopup />
+                <ChatButton />
+              </TopupProvider>
             </ChatProvider>
           </SidebarProvider>
         </AuthProvider>

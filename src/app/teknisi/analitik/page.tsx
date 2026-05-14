@@ -2,14 +2,14 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TransaksiChart, KonsultasiChart } from '@/components/dashboard'
-import { TrendingUp, Eye, MessageCircle, Star } from 'lucide-react'
+import { TrendingUp, Eye, MessageCircle, Star } from '@/lib/icons'
 
 export default function TeknisiAnalitikPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Analitik</h1>
-        <p className="text-surface-400 mt-1">Analisis performa dan statistik</p>
+        <h1 className="text-2xl font-semibold tracking-tightest text-ink lg:text-3xl">Analitik</h1>
+        <p className="text-sm text-surface-500 mt-1">Analisis performa dan statistik</p>
       </div>
 
       {/* Stats */}

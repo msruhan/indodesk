@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { CheckCircle, XCircle, Clock } from 'lucide-react'
+import { CheckCircle, XCircle, Clock } from '@/lib/icons'
 
 const pendingApprovals = [
   { 
@@ -44,8 +44,8 @@ export default function AdminApprovalPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Approval</h1>
-        <p className="text-surface-400 mt-1">Review dan approve produk, teknisi, dan toko</p>
+        <h1 className="text-2xl font-semibold tracking-tightest text-ink lg:text-3xl">Approval</h1>
+        <p className="text-sm text-surface-500 mt-1">Review dan approve produk, teknisi, dan toko</p>
       </div>
 
       {/* Stats */}
@@ -96,7 +96,7 @@ export default function AdminApprovalPage() {
                     <Badge variant="secondary">{item.type}</Badge>
                     <h3 className="font-semibold text-lg">{item.name}</h3>
                   </div>
-                  <p className="text-sm text-surface-400 mb-2">{item.description}</p>
+                  <p className="text-sm text-surface-500 mb-2">{item.description}</p>
                   <div className="flex items-center gap-4 text-sm text-surface-500">
                     <span>Submitter: {item.submitter}</span>
                     <span>•</span>

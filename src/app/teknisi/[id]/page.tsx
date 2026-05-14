@@ -1,50 +1,91 @@
 'use client'
 
-import { useState } from 'react'
 import { useParams } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Navbar } from '@/components/landing'
-import { BottomNav } from '@/components/mobile'
-import { 
-  Star, 
-  MessageCircle,
-  Radio,
-  CheckCircle,
-  Award,
-  Clock,
-  TrendingUp,
-  Eye,
-  Briefcase,
-  GraduationCap,
-  MapPin,
-  Zap,
-  Shield,
-  Users,
-  ThumbsUp,
-  Calendar,
-  Phone,
-  Mail,
-  Instagram,
-  Facebook,
-  Linkedin,
-  Image as ImageIcon,
-  Unlock,
-  Smartphone,
-  Wrench,
-  Settings
-} from 'lucide-react'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Navbar } from '@/components/landing'
+import { BottomNav, MobileSafeAreaSpacer } from '@/components/mobile'
+import {
+  Award,
+  Briefcase,
+  Calendar,
+  ChevronRight,
+  CheckCircle,
+  Clock,
+  Eye,
+  Facebook,
+  GraduationCap,
+  Instagram,
+  Linkedin,
+  MapPin,
+  MessageCircle,
+  Phone,
+  Radio,
+  Settings,
+  Shield,
+  Smartphone,
+  Star,
+  Store,
+  ThumbsUp,
+  TrendingUp,
+  Unlock,
+  Users,
+  Wrench,
+  Zap,
+} from '@/lib/icons'
+
+const ease = [0.22, 1, 0.36, 1] as const
+
+const reveal = {
+  hidden: { opacity: 0, y: 22, filter: 'blur(8px)' },
+  show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.6, ease } },
+}
+
+const stagger = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.08, delayChildren: 0.06 } },
+}
+
+const hoverLift = {
+  y: -4,
+  scale: 1.01,
+  transition: { duration: 0.22, ease },
+}
+
+/** Mock: toko milik teknisi (nanti dari API: stores oleh owner) */
+const LINKED_STORE_BY_TEKNISI_ID: Record<
+  string,
+  { id: string; name: string; city: string; rating: number; reviewCount: number; verified: boolean }
+> = {
+  '1': {
+    id: '1',
+    name: 'HandPhone Center Jakarta',
+    city: 'Jakarta',
+    rating: 4.8,
+    reviewCount: 456,
+    verified: true,
+  },
+  '2': {
+    id: '2',
+    name: 'TechSolution Store',
+    city: 'Jakarta',
+    rating: 4.9,
+    reviewCount: 289,
+    verified: true,
+  },
+}
 
 export default function TeknisiDetailPage() {
   const params = useParams()
+  const teknisiId = typeof params.id === 'string' ? params.id : params.id?.[0] ?? ''
+  const linkedStore = teknisiId ? LINKED_STORE_BY_TEKNISI_ID[teknisiId] : undefined
 
-  // Mock data - in production, fetch from API
   const teknisi = {
     id: params.id,
     name: 'Ahmad Hidayat',
-    avatar: '/api/placeholder/120/120',
     isOnline: true,
     rating: 4.9,
     reviewCount: 234,
@@ -52,22 +93,23 @@ export default function TeknisiDetailPage() {
     totalView: 1234,
     badge: 'top-teknisi' as const,
     specialty: [
-      { name: 'Unlock', icon: Unlock, color: 'bg-blue-100 text-blue-700' },
-      { name: 'Flashing', icon: Smartphone, color: 'bg-purple-100 text-purple-700' },
-      { name: 'Root', icon: Settings, color: 'bg-green-100 text-green-700' },
-      { name: 'Hardware Repair', icon: Wrench, color: 'bg-orange-100 text-orange-700' },
+      { name: 'Unlock', desc: 'iCloud, FRP, operator lock', icon: Unlock, color: 'from-blue-50 to-white text-blue-700' },
+      { name: 'Flashing', desc: 'Reinstall OS dan recovery', icon: Smartphone, color: 'from-violet-50 to-white text-violet-700' },
+      { name: 'Root', desc: 'Custom ROM dan akses sistem', icon: Settings, color: 'from-primary-50 to-white text-primary-700' },
+      { name: 'Hardware', desc: 'Diagnosa komponen dan repair', icon: Wrench, color: 'from-amber-50 to-white text-amber-700' },
     ],
     experience: '8 tahun',
     location: 'Jakarta Selatan',
     price: 50000,
     responseTime: '< 5 menit',
     completionRate: 98,
-    description: 'Teknisi handphone berpengalaman dengan spesialisasi unlock, flashing, dan root berbagai brand. Sudah menangani lebih dari 500+ konsultasi dengan rating 4.9. Berpengalaman menangani berbagai masalah mulai dari software hingga hardware repair.',
+    description:
+      'Teknisi handphone berpengalaman dengan spesialisasi unlock, flashing, root, dan troubleshooting hardware berbagai brand. Sudah menangani lebih dari 500 konsultasi dengan rating 4.9 dan proses kerja yang transparan.',
     services: [
-      { name: 'Konsultasi Unlock', price: 50000, duration: '30 menit', popular: true },
-      { name: 'Remote Flashing', price: 150000, duration: '1-2 jam', popular: false },
-      { name: 'Root & Custom ROM', price: 200000, duration: '2-3 jam', popular: false },
-      { name: 'Troubleshooting Hardware', price: 100000, duration: '1 jam', popular: true },
+      { name: 'Konsultasi Unlock', price: 50000, duration: '30 menit', popular: true, scope: 'Analisa lock, estimasi risiko, dan rekomendasi langkah aman.' },
+      { name: 'Remote Flashing', price: 150000, duration: '1-2 jam', popular: false, scope: 'Install ulang OS, recovery bootloop, dan optimasi performa.' },
+      { name: 'Root & Custom ROM', price: 200000, duration: '2-3 jam', popular: false, scope: 'Unlock bootloader, root, custom ROM, dan konfigurasi awal.' },
+      { name: 'Troubleshooting HW', price: 100000, duration: '1 jam', popular: true, scope: 'Diagnosa hardware jarak jauh sebelum lanjut service fisik.' },
     ],
     certifications: [
       { name: 'Certified Mobile Technician', issuer: 'Indonesia Mobile Tech', year: 2020 },
@@ -75,511 +117,470 @@ export default function TeknisiDetailPage() {
       { name: 'Hardware Repair Expert', issuer: 'Tech Academy', year: 2022 },
     ],
     achievements: [
-      { title: 'Top Performer', description: 'Bulan ini', icon: Award, color: 'bg-yellow-100 text-yellow-700' },
-      { title: '100% Satisfaction', description: '567 konsultasi', icon: ThumbsUp, color: 'bg-green-100 text-green-700' },
-      { title: 'Fast Response', description: '< 5 menit', icon: Zap, color: 'bg-blue-100 text-blue-700' },
+      { title: 'Top Performer', desc: 'Bulan ini', icon: Award, color: 'bg-amber-50 text-amber-700' },
+      { title: '100% Satisfaction', desc: '567 konsultasi', icon: ThumbsUp, color: 'bg-primary-50 text-primary-700' },
+      { title: 'Fast Response', desc: '< 5 menit', icon: Zap, color: 'bg-blue-50 text-blue-700' },
     ],
     portfolio: [
-      { id: 1, image: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=300&h=200&fit=crop', title: 'iPhone Unlock Success' },
-      { id: 2, image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300&h=200&fit=crop', title: 'Samsung Flashing' },
-      { id: 3, image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=300&h=200&fit=crop', title: 'Custom ROM Installation' },
-      { id: 4, image: 'https://images.unsplash.com/photo-1598327105856-8c89d6b2a0b1?w=300&h=200&fit=crop', title: 'Hardware Repair' },
+      { id: 1, image: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?auto=format&fit=crop&w=520&q=85', title: 'iPhone Unlock', tag: 'Unlock' },
+      { id: 2, image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=520&q=85', title: 'Samsung Flash', tag: 'Flashing' },
+      { id: 3, image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=520&q=85', title: 'Custom ROM', tag: 'Root' },
+      { id: 4, image: 'https://images.unsplash.com/photo-1598327105856-8c89d6b2a0b1?auto=format&fit=crop&w=520&q=85', title: 'HW Repair', tag: 'Hardware' },
     ],
     socialMedia: {
       instagram: '@ahmadhidayat_tech',
       facebook: 'Ahmad Hidayat Tech',
-      linkedin: 'ahmad-hidayat-tech'
+      linkedin: 'ahmad-hidayat-tech',
     },
-    availability: {
-      weekday: '09:00 - 21:00',
-      weekend: '10:00 - 18:00'
-    }
+    availability: { weekday: '09:00 - 21:00', weekend: '10:00 - 18:00' },
   }
 
   const reviews = [
-    {
-      id: 1,
-      userName: 'Budi Santoso',
-      avatar: '/api/placeholder/40/40',
-      rating: 5,
-      comment: 'Sangat membantu! Masalah unlock iPhone saya selesai dalam waktu singkat. Recommended!',
-      date: '3 hari yang lalu',
-      service: 'Konsultasi Unlock',
-      verified: true
-    },
-    {
-      id: 2,
-      userName: 'Siti Nurhaliza',
-      avatar: '/api/placeholder/40/40',
-      rating: 5,
-      comment: 'Teknisi yang sangat profesional dan ramah. Explains everything clearly. Hasilnya sesuai ekspektasi dan prosesnya cepat.',
-      date: '1 minggu yang lalu',
-      service: 'Remote Flashing',
-      verified: true
-    },
-    {
-      id: 3,
-      userName: 'Rudi Hartono',
-      avatar: '/api/placeholder/40/40',
-      rating: 4,
-      comment: 'Hasilnya bagus, tapi agak lama responnya. Overall oke dan recommended.',
-      date: '2 minggu yang lalu',
-      service: 'Root & Custom ROM',
-      verified: false
-    },
-    {
-      id: 4,
-      userName: 'Dewi Lestari',
-      avatar: '/api/placeholder/40/40',
-      rating: 5,
-      comment: 'Pelayanan sangat memuaskan! Masalah hardware iPhone saya berhasil diperbaiki dengan sempurna. Terima kasih banyak!',
-      date: '3 minggu yang lalu',
-      service: 'Troubleshooting Hardware',
-      verified: true
-    },
-    {
-      id: 5,
-      userName: 'Eko Prasetyo',
-      avatar: '/api/placeholder/40/40',
-      rating: 5,
-      comment: 'Best teknisi yang pernah saya temui! Fast response, profesional, dan hasilnya perfect. Will definitely use again!',
-      date: '1 bulan yang lalu',
-      service: 'Konsultasi Unlock',
-      verified: true
-    },
+    { id: 1, userName: 'Budi Santoso', rating: 5, comment: 'Sangat membantu. Masalah unlock iPhone selesai cepat dan dijelaskan tahapannya.', date: '3 hari lalu', service: 'Unlock', verified: true },
+    { id: 2, userName: 'Siti Nurhaliza', rating: 5, comment: 'Profesional dan ramah. Proses flashing jelas, data penting dicek dulu.', date: '1 minggu lalu', service: 'Flashing', verified: true },
+    { id: 3, userName: 'Rudi Hartono', rating: 4, comment: 'Hasilnya bagus, overall oke dan recommended untuk custom ROM.', date: '2 minggu lalu', service: 'Root', verified: false },
+    { id: 4, userName: 'Dewi Lestari', rating: 5, comment: 'Pelayanan sangat memuaskan. Masalah hardware berhasil didiagnosa dengan rapi.', date: '3 minggu lalu', service: 'Hardware', verified: true },
   ]
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-    }).format(price)
-  }
+  const formatPrice = (n: number) =>
+    new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n)
+
+  const metrics = [
+    { label: 'Konsultasi', value: teknisi.totalKonsultasi, icon: MessageCircle },
+    { label: 'Rating', value: teknisi.rating, icon: Star },
+    { label: 'Views', value: teknisi.totalView.toLocaleString('id-ID'), icon: Eye },
+  ]
 
   return (
-    <div className="min-h-screen bg-surface-50">
+    <div className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.12),transparent_32%),linear-gradient(180deg,#ffffff_0%,#f7fbf8_44%,#f8fafc_100%)] text-black">
       <div className="hidden lg:block">
         <Navbar />
       </div>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 lg:pt-24">
-        {/* Breadcrumb */}
-        <div className="mb-6 text-sm text-surface-400">
-          <Link href="/teknisi" className="hover:text-primary-600">Daftar Teknisi</Link>
+
+      <section className="relative isolate h-36 overflow-hidden sm:h-40 lg:mt-16 lg:h-44">
+        <div className="absolute inset-0 bg-[linear-gradient(135deg,#059669_0%,#10b981_45%,#67e8f9_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_25%,rgba(255,255,255,0.36),transparent_28%),radial-gradient(circle_at_78%_12%,rgba(255,255,255,0.24),transparent_24%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.13)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.13)_50%,rgba(255,255,255,0.13)_75%,transparent_75%)] bg-[length:28px_28px] opacity-40" />
+      </section>
+
+      <main className="relative z-20 mx-auto -mt-10 max-w-7xl px-4 pb-28 sm:px-6 lg:px-8 lg:pb-14">
+        <div className="mb-5 text-xs font-medium text-white/86 lg:text-surface-500">
+          <Link href="/teknisi" className="transition-colors hover:text-primary-600">Daftar Teknisi</Link>
           <span className="mx-2">/</span>
           <span>{teknisi.name}</span>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Profile Header - Enhanced */}
-            <Card className="overflow-hidden border-0 shadow-lg">
-              <div className="bg-gradient-to-r from-primary-600 to-accent-500 h-24"></div>
-              <CardContent className="p-6 -mt-12">
-                <div className="flex flex-col sm:flex-row items-start gap-6">
-                  <div className="relative">
-                    <img
-                      src={`https://i.pravatar.cc/150?img=${parseInt(teknisi.id as string)}`}
-                      alt={teknisi.name}
-                      className="w-28 h-28 rounded-full object-cover border-4 border-white shadow-lg"
-                    />
-                    {teknisi.isOnline && (
-                      <div className="absolute bottom-2 right-2 w-6 h-6 bg-green-500 border-3 border-white rounded-full shadow-md"></div>
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex flex-wrap items-center gap-3 mb-3">
-                      <h1 className="text-2xl sm:text-3xl font-bold text-white">{teknisi.name}</h1>
-                      <Badge className="bg-yellow-100 text-yellow-700 border-yellow-300">
-                        <Award className="w-3 h-3 mr-1" />
-                        Top Teknisi
-                      </Badge>
-                      {teknisi.isOnline && (
-                        <Badge className="bg-green-100 text-green-700 border-green-300">
-                          <Radio className="w-3 h-3 mr-1" />
-                          Online
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-4 mb-3">
-                      <div className="flex items-center gap-1">
-                        <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                        <span className="font-bold text-lg">{teknisi.rating}</span>
-                        <span className="text-surface-500">({teknisi.reviewCount} ulasan)</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-surface-500">
-                        <Eye className="w-4 h-4" />
-                        <span>{teknisi.totalView.toLocaleString()} dilihat</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-surface-500">
-                        <MapPin className="w-4 h-4" />
-                        <span>{teknisi.location}</span>
-                      </div>
-                    </div>
-                    <p className="text-surface-700 leading-relaxed">{teknisi.description}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+        <motion.section
+          variants={reveal}
+          initial="hidden"
+          animate="show"
+          className="mb-6 overflow-hidden rounded-[1.75rem] border border-white/80 bg-white/92 p-4 shadow-soft-lg backdrop-blur-2xl sm:p-5"
+        >
+          <div className="grid gap-5 lg:grid-cols-[1fr_320px] lg:items-center">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+              <div className="relative mx-auto flex-shrink-0 sm:mx-0">
+                <div className="absolute -inset-2 rounded-[2rem] bg-gradient-to-br from-primary-200 to-accent-200 opacity-70 blur-lg" />
+                <img
+                  src={`https://i.pravatar.cc/220?img=${parseInt(teknisi.id as string) || 1}`}
+                  alt={teknisi.name}
+                  className="relative h-20 w-20 rounded-[1.45rem] border-4 border-white object-cover shadow-soft-lg sm:h-24 sm:w-24"
+                />
+                {teknisi.isOnline && (
+                  <span className="absolute -bottom-1 -right-1 inline-flex items-center gap-1 rounded-full border-2 border-white bg-primary-500 px-2.5 py-1 text-[10px] font-bold text-white shadow-soft-sm">
+                    <Radio className="h-3 w-3" />
+                    Online
+                  </span>
+                )}
+              </div>
 
-            {/* Specialties */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="w-5 h-5 text-primary-600" />
-                  Keahlian Spesialisasi
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {teknisi.specialty.map((spec, idx) => {
-                    const Icon = spec.icon
-                    return (
-                      <div key={idx} className={`${spec.color} p-4 rounded-lg text-center transition-transform hover:scale-105`}>
-                        <Icon className="w-6 h-6 mx-auto mb-2" />
-                        <p className="font-semibold text-sm">{spec.name}</p>
-                      </div>
-                    )
-                  })}
+              <div className="min-w-0 flex-1 text-center sm:text-left">
+                <div className="mb-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                  <Badge variant="warning">
+                    <Award className="h-3.5 w-3.5" />
+                    Top Teknisi
+                  </Badge>
+                  <Badge variant="success">
+                    <CheckCircle className="h-3.5 w-3.5" />
+                    Verified
+                  </Badge>
                 </div>
-              </CardContent>
-            </Card>
+                <h2 className="text-2xl font-bold tracking-tight text-black sm:text-3xl">{teknisi.name}</h2>
+                <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-sm text-surface-600 sm:justify-start">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-50 px-3 py-1.5">
+                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                    <strong className="text-black">{teknisi.rating}</strong> ({teknisi.reviewCount})
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-50 px-3 py-1.5">
+                    <MapPin className="h-4 w-4 text-primary-600" />
+                    {teknisi.location}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-50 px-3 py-1.5">
+                    <Briefcase className="h-4 w-4 text-primary-600" />
+                    {teknisi.experience}
+                  </span>
+                </div>
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-surface-600">
+                  {teknisi.description}
+                </p>
+              </div>
+            </div>
 
-            {/* Services - Enhanced */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Jasa Online / Remote</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {teknisi.services.map((service, idx) => (
-                    <div 
-                      key={idx} 
-                      className={`flex items-center justify-between p-4 border-2 rounded-lg transition-all hover:shadow-md ${
-                        service.popular 
-                          ? 'border-primary-500 bg-primary-50/50' 
-                          : 'border-surface-200 hover:border-primary-300'
-                      }`}
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-semibold">{service.name}</h4>
-                          {service.popular && (
-                            <Badge variant="secondary" className="bg-primary-100 text-primary-700 text-xs">
-                              Popular
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-4 text-sm text-surface-500">
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-4 h-4" />
-                            {service.duration}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-right ml-4">
-                        <div className="text-xl font-bold text-primary-600 mb-2">
-                          {formatPrice(service.price)}
-                        </div>
-                        <Button size="sm" className={service.popular ? 'bg-primary-600 hover:bg-primary-700' : ''}>
-                          Pilih
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Portfolio/Gallery */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ImageIcon className="w-5 h-5 text-primary-600" />
-                  Portfolio & Hasil Kerja
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {teknisi.portfolio.map((item) => (
-                    <div key={item.id} className="group relative overflow-hidden rounded-lg aspect-video cursor-pointer">
-                      <img
-                        src={item.image}
-                        alt={item.title}
-                        className="w-full h-full object-cover transition-transform group-hover:scale-110"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="absolute bottom-2 left-2 right-2">
-                          <p className="text-white text-xs font-medium">{item.title}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Experience & Certifications - Enhanced */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Pengalaman & Sertifikasi</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center">
-                      <Briefcase className="w-5 h-5 text-primary-600" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold">Pengalaman</h4>
-                      <p className="text-sm text-surface-500">{teknisi.experience} di bidang teknisi handphone</p>
-                    </div>
+            <div className="grid grid-cols-3 gap-2 rounded-3xl border border-surface-200/70 bg-surface-50/80 p-2">
+              {metrics.map((metric) => {
+                const Icon = metric.icon
+                return (
+                  <div key={metric.label} className="rounded-2xl bg-white px-3 py-3 text-center shadow-soft-xs">
+                    <Icon className="mx-auto mb-2 h-5 w-5 text-primary-600" />
+                    <div className="text-base font-bold tabular-nums text-black">{metric.value}</div>
+                    <div className="text-[11px] font-medium text-surface-500">{metric.label}</div>
                   </div>
-                </div>
-
-                <div>
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center">
-                      <GraduationCap className="w-5 h-5 text-primary-600" />
-                    </div>
-                    <h4 className="font-semibold">Sertifikasi</h4>
-                  </div>
-                  <div className="space-y-3">
-                    {teknisi.certifications.map((cert, idx) => (
-                      <div key={idx} className="p-4 bg-gradient-to-r from-surface-50 to-white border border-surface-200 rounded-lg hover:shadow-md transition-shadow">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <div className="font-semibold text-white mb-1">{cert.name}</div>
-                            <div className="text-sm text-surface-500">
-                              {cert.issuer} • {cert.year}
-                            </div>
-                          </div>
-                          <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Reviews - Enhanced */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Review dari User ({teknisi.reviewCount})</CardTitle>
-                  <Button variant="outline" size="sm">
-                    Lihat Semua
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  {reviews.map((review) => (
-                    <div key={review.id} className="border-b border-surface-200 pb-6 last:border-0 last:pb-0">
-                      <div className="flex items-start gap-4">
-                        <div className="relative">
-                          <img
-                            src={`https://i.pravatar.cc/150?img=${review.id + 30}`}
-                            alt={review.userName}
-                            className="w-12 h-12 rounded-full object-cover border-2 border-surface-200"
-                          />
-                          {review.verified && (
-                            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center border-2 border-white">
-                              <CheckCircle className="w-3 h-3 text-white" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold">{review.userName}</span>
-                              {review.verified && (
-                                <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs">
-                                  Verified
-                                </Badge>
-                              )}
-                              <Badge variant="secondary" className="text-xs">
-                                {review.service}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              {[...Array(5)].map((_, i) => (
-                                <Star
-                                  key={i}
-                                  className={`w-4 h-4 ${
-                                    i < review.rating
-                                      ? 'fill-yellow-400 text-yellow-400'
-                                      : 'text-surface-300'
-                                  }`}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                          <p className="text-surface-700 mb-2 leading-relaxed">{review.comment}</p>
-                          <span className="text-sm text-surface-500">{review.date}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Sidebar - Enhanced */}
-          <div className="space-y-6">
-            {/* Stats - Enhanced */}
-            <Card className="border-0 shadow-lg">
-              <CardHeader className="bg-gradient-to-r from-primary-600 to-accent-500 text-white rounded-t-xl">
-                <CardTitle className="text-white">Statistik</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 pt-6">
-                <div className="flex items-center justify-between p-3 bg-surface-50 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-5 h-5 text-primary-600" />
-                    <span className="text-surface-400">Total Konsultasi</span>
-                  </div>
-                  <span className="font-bold text-lg">{teknisi.totalKonsultasi}</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-surface-50 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                    <span className="text-surface-400">Rating</span>
-                  </div>
-                  <span className="font-bold text-lg">{teknisi.rating}</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-surface-50 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Eye className="w-5 h-5 text-primary-600" />
-                    <span className="text-surface-400">Total View</span>
-                  </div>
-                  <span className="font-bold text-lg">{teknisi.totalView.toLocaleString()}</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-surface-50 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-5 h-5 text-primary-600" />
-                    <span className="text-surface-400">Lokasi</span>
-                  </div>
-                  <span className="font-semibold">{teknisi.location}</span>
-                </div>
-                <div className="p-3 bg-surface-50 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <Zap className="w-5 h-5 text-primary-600" />
-                      <span className="text-surface-400">Response Time</span>
-                    </div>
-                    <span className="font-semibold">{teknisi.responseTime}</span>
-                  </div>
-                </div>
-                <div className="p-3 bg-surface-50 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <TrendingUp className="w-5 h-5 text-primary-600" />
-                      <span className="text-surface-400">Completion Rate</span>
-                    </div>
-                    <span className="font-semibold">{teknisi.completionRate}%</span>
-                  </div>
-                  <div className="w-full bg-surface-200 rounded-full h-2 mt-2">
-                    <div 
-                      className="bg-gradient-to-r from-primary-600 to-accent-500 h-2 rounded-full transition-all"
-                      style={{ width: `${teknisi.completionRate}%` }}
-                    ></div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Achievements */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Award className="w-5 h-5 text-primary-600" />
-                  Pencapaian
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {teknisi.achievements.map((achievement, idx) => {
-                  const Icon = achievement.icon
-                  return (
-                    <div key={idx} className={`${achievement.color} p-3 rounded-lg flex items-center gap-3`}>
-                      <div className="w-10 h-10 rounded-lg bg-white/50 flex items-center justify-center">
-                        <Icon className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-sm">{achievement.title}</p>
-                        <p className="text-xs opacity-80">{achievement.description}</p>
-                      </div>
-                    </div>
-                  )
-                })}
-              </CardContent>
-            </Card>
-
-            {/* Availability */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-primary-600" />
-                  Jam Operasional
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3 text-sm">
-                  <div className="flex justify-between items-center p-2 bg-surface-50 rounded-lg">
-                    <span className="text-surface-400">Senin - Jumat</span>
-                    <span className="font-semibold">{teknisi.availability.weekday}</span>
-                  </div>
-                  <div className="flex justify-between items-center p-2 bg-surface-50 rounded-lg">
-                    <span className="text-surface-400">Sabtu - Minggu</span>
-                    <span className="font-semibold">{teknisi.availability.weekend}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Social Media */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Media Sosial</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <a href="#" className="flex items-center gap-2 p-2 rounded-lg hover:bg-surface-50 transition-colors text-surface-700">
-                    <Instagram className="w-4 h-4" />
-                    <span className="text-sm">{teknisi.socialMedia.instagram}</span>
-                  </a>
-                  <a href="#" className="flex items-center gap-2 p-2 rounded-lg hover:bg-surface-50 transition-colors text-surface-700">
-                    <Facebook className="w-4 h-4" />
-                    <span className="text-sm">{teknisi.socialMedia.facebook}</span>
-                  </a>
-                  <a href="#" className="flex items-center gap-2 p-2 rounded-lg hover:bg-surface-50 transition-colors text-surface-700">
-                    <Linkedin className="w-4 h-4" />
-                    <span className="text-sm">{teknisi.socialMedia.linkedin}</span>
-                  </a>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Actions */}
-            <div className="space-y-3 sticky top-6">
-              <Button 
-                className="w-full bg-gradient-to-r from-primary-600 to-accent-500 hover:from-primary-700 hover:to-accent-600 shadow-lg"
-                size="lg"
-                disabled={!teknisi.isOnline}
-              >
-                {teknisi.isOnline ? 'Konsultasi Sekarang' : 'Teknisi Offline'}
-              </Button>
-              <Button variant="outline" className="w-full border-2" size="lg">
-                <MessageCircle className="w-4 h-4 mr-2" />
-                Chat
-              </Button>
+                )
+              })}
             </div>
           </div>
+        </motion.section>
+
+        {linkedStore && (
+          <motion.section variants={reveal} initial="hidden" animate="show" className="mb-6">
+            <Link
+              href={`/toko/${linkedStore.id}`}
+              className="group flex items-center gap-4 rounded-[1.75rem] border border-surface-200/70 bg-white p-4 shadow-soft-sm transition hover:border-primary-200 hover:shadow-soft-lg sm:gap-5 sm:p-5"
+            >
+              <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-primary-50 text-primary-700 shadow-soft-xs ring-1 ring-primary-100">
+                <Store className="h-7 w-7" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary-700">Toko terkait</p>
+                <h3 className="mt-0.5 truncate text-lg font-bold tracking-tight text-black transition-colors group-hover:text-primary-700">
+                  {linkedStore.name}
+                </h3>
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-surface-600">
+                  <span className="inline-flex items-center gap-1">
+                    <MapPin className="h-3.5 w-3.5 text-primary-600" />
+                    {linkedStore.city}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                    <strong className="text-black">{linkedStore.rating}</strong>
+                    <span className="text-surface-500">({linkedStore.reviewCount} ulasan)</span>
+                  </span>
+                  {linkedStore.verified && (
+                    <Badge variant="success" className="px-2 py-0 text-[10px]">
+                      <CheckCircle className="h-3 w-3" />
+                      Verified store
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              <span className="flex shrink-0 items-center gap-1 text-sm font-semibold text-primary-700">
+                <span className="hidden sm:inline">Lihat toko</span>
+                <ChevronRight className="h-5 w-5 text-surface-400 transition group-hover:translate-x-0.5 group-hover:text-primary-600" aria-hidden />
+              </span>
+            </Link>
+          </motion.section>
+        )}
+
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="min-w-0 space-y-6">
+            <motion.section variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-80px' }}>
+              <motion.div variants={reveal} className="mb-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">Spesialisasi</p>
+                <h2 className="mt-1 text-xl font-bold tracking-tight text-black sm:text-2xl">Keahlian utama yang paling sering dibutuhkan</h2>
+              </motion.div>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {teknisi.specialty.map((item) => {
+                  const Icon = item.icon
+                  return (
+                    <motion.article
+                      key={item.name}
+                      variants={reveal}
+                      whileHover={hoverLift}
+                      className="relative overflow-hidden rounded-2xl border border-surface-200/70 bg-white p-4 shadow-soft-sm hover:shadow-soft-lg"
+                    >
+                      <div className={`absolute inset-x-0 top-0 h-24 bg-gradient-to-br ${item.color} opacity-80`} />
+                      <div className="relative">
+                        <div className="mb-4 grid h-11 w-11 place-items-center rounded-2xl border border-white/80 bg-white shadow-soft-sm">
+                          <Icon className="h-5 w-5 text-primary-700" />
+                        </div>
+                        <h3 className="text-base font-bold text-black">{item.name}</h3>
+                        <p className="mt-1.5 text-sm leading-5 text-surface-600">{item.desc}</p>
+                      </div>
+                    </motion.article>
+                  )
+                })}
+              </div>
+            </motion.section>
+
+            <motion.section variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-80px' }}>
+              <motion.div variants={reveal} className="mb-4 flex items-end justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">Jasa Online / Remote</p>
+                  <h2 className="mt-1 text-xl font-bold tracking-tight text-black sm:text-2xl">Paket layanan dengan scope yang jelas</h2>
+                </div>
+                <Badge variant="gradient" className="hidden sm:inline-flex">
+                  <Clock className="h-3.5 w-3.5" />
+                  Mulai {formatPrice(teknisi.price)}
+                </Badge>
+              </motion.div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {teknisi.services.map((service) => (
+                  <motion.article
+                    key={service.name}
+                    variants={reveal}
+                    whileHover={hoverLift}
+                    className={`rounded-2xl border bg-white p-4 shadow-soft-sm transition-shadow hover:shadow-soft-lg ${
+                      service.popular ? 'border-primary-200 ring-4 ring-primary-50' : 'border-surface-200/70'
+                    }`}
+                  >
+                    <div className="mb-3 flex items-start justify-between gap-4">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-base font-bold text-black">{service.name}</h3>
+                          {service.popular && <Badge variant="success" className="px-2 py-0.5 text-[10px]">Popular</Badge>}
+                        </div>
+                        <p className="mt-1 flex items-center gap-1.5 text-xs font-medium text-surface-500">
+                          <Clock className="h-3.5 w-3.5" />
+                          {service.duration}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-base font-bold tabular-nums text-primary-700">{formatPrice(service.price)}</p>
+                        <p className="text-[11px] font-medium text-surface-500">fixed start</p>
+                      </div>
+                    </div>
+                    <p className="min-h-[44px] text-sm leading-5 text-surface-600">{service.scope}</p>
+                    <Button variant={service.popular ? 'primary' : 'outline'} className="mt-4 w-full">
+                      Pilih layanan
+                    </Button>
+                  </motion.article>
+                ))}
+              </div>
+            </motion.section>
+
+            <motion.section variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-80px' }}>
+              <motion.div variants={reveal} className="mb-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">Portfolio</p>
+                <h2 className="mt-1 text-xl font-bold tracking-tight text-black sm:text-2xl">Contoh pekerjaan dan kategori kasus</h2>
+              </motion.div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {teknisi.portfolio.map((item) => (
+                  <motion.article
+                    key={item.id}
+                    variants={reveal}
+                    whileHover={hoverLift}
+                    className="group overflow-hidden rounded-2xl border border-surface-200/70 bg-white p-2 shadow-soft-sm hover:shadow-soft-lg"
+                  >
+                    <div className="relative aspect-[4/3] overflow-hidden rounded-[1.35rem] bg-surface-100">
+                      <img src={item.image} alt={item.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3 text-white">
+                        <Badge variant="glass" className="mb-2 bg-white/18 px-2 py-0.5 text-[10px] text-white ring-1 ring-white/20">
+                          {item.tag}
+                        </Badge>
+                        <h3 className="text-sm font-bold">{item.title}</h3>
+                      </div>
+                    </div>
+                  </motion.article>
+                ))}
+              </div>
+            </motion.section>
+
+            <motion.section variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-80px' }}>
+              <motion.div variants={reveal} className="mb-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">Sertifikasi</p>
+                <h2 className="mt-1 text-xl font-bold tracking-tight text-black sm:text-2xl">Kredensial yang memperkuat kepercayaan</h2>
+              </motion.div>
+              <div className="grid gap-3 md:grid-cols-3">
+                {teknisi.certifications.map((cert) => (
+                  <motion.article key={cert.name} variants={reveal} whileHover={hoverLift} className="rounded-2xl border border-surface-200/70 bg-white p-4 shadow-soft-sm hover:shadow-soft-lg">
+                    <div className="mb-4 grid h-11 w-11 place-items-center rounded-2xl bg-primary-50 text-primary-700">
+                      <GraduationCap className="h-5 w-5" />
+                    </div>
+                    <h3 className="text-sm font-bold leading-5 text-black">{cert.name}</h3>
+                    <p className="mt-2 text-xs leading-5 text-surface-500">{cert.issuer} · {cert.year}</p>
+                    <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-primary-700">
+                      <CheckCircle className="h-4 w-4" />
+                      Verified credential
+                    </div>
+                  </motion.article>
+                ))}
+              </div>
+            </motion.section>
+
+            <motion.section variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-80px' }}>
+              <motion.div variants={reveal} className="mb-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">Review</p>
+                <h2 className="mt-1 text-xl font-bold tracking-tight text-black sm:text-2xl">Pengalaman pelanggan sebelumnya</h2>
+              </motion.div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {reviews.map((review) => (
+                  <motion.article key={review.id} variants={reveal} whileHover={hoverLift} className="rounded-2xl border border-surface-200/70 bg-white p-4 shadow-soft-sm hover:shadow-soft-lg">
+                    <div className="mb-4 flex items-center gap-3">
+                      <img
+                        src={`https://i.pravatar.cc/120?img=${review.id + 30}`}
+                        alt={review.userName}
+                        className="h-11 w-11 rounded-2xl object-cover"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="truncate text-sm font-bold text-black">{review.userName}</h3>
+                          {review.verified && <CheckCircle className="h-3.5 w-3.5 flex-shrink-0 text-primary-600" />}
+                        </div>
+                        <p className="text-xs text-surface-500">{review.date}</p>
+                      </div>
+                      <Badge variant="outline" className="px-2 py-0.5 text-[10px]">{review.service}</Badge>
+                    </div>
+                    <div className="mb-3 flex">
+                      {[...Array(5)].map((_, idx) => (
+                        <Star
+                          key={idx}
+                          className={`h-3.5 w-3.5 ${idx < review.rating ? 'fill-yellow-400 text-yellow-400' : 'text-surface-300'}`}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-sm leading-6 text-surface-600">{review.comment}</p>
+                  </motion.article>
+                ))}
+              </div>
+            </motion.section>
+          </div>
+
+          <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+            <motion.div variants={reveal} initial="hidden" animate="show">
+              <Card tone="glass" className="overflow-hidden rounded-[2rem] border-white/70 bg-white/88 shadow-soft-lg">
+                <CardContent className="p-5">
+                  <div className="rounded-3xl bg-gradient-to-br from-primary-600 to-accent-500 p-4 text-white shadow-glow-primary">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/76">Mulai dari</p>
+                    <p className="mt-1 text-2xl font-bold tabular-nums">{formatPrice(teknisi.price)}</p>
+                    <p className="mt-2 text-sm leading-5 text-white/82">Konsultasi cepat untuk menentukan langkah teknis yang paling aman.</p>
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-2 gap-2">
+                    <div className="rounded-2xl bg-surface-50 p-4">
+                      <p className="text-xs font-medium text-surface-500">Response</p>
+                      <p className="mt-1 font-bold text-black">{teknisi.responseTime}</p>
+                    </div>
+                    <div className="rounded-2xl bg-surface-50 p-4">
+                      <p className="text-xs font-medium text-surface-500">Completion</p>
+                      <p className="mt-1 font-bold text-black">{teknisi.completionRate}%</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 h-2 overflow-hidden rounded-full bg-surface-100">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      whileInView={{ width: `${teknisi.completionRate}%` }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.9, ease }}
+                      className="h-full rounded-full bg-gradient-to-r from-primary-500 to-accent-400"
+                    />
+                  </div>
+
+                  <div className="mt-5 space-y-2.5">
+                    <Button variant="primary" className="w-full">
+                      <MessageCircle className="h-4 w-4" />
+                      Konsultasi sekarang
+                    </Button>
+                    <Button variant="outline" className="w-full">
+                      <Phone className="h-4 w-4" />
+                      Hubungi teknisi
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            <motion.div variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true }}>
+              <Card className="rounded-[2rem]">
+                <CardContent className="p-5">
+                  <h3 className="mb-4 text-sm font-bold text-black">Pencapaian</h3>
+                  <div className="space-y-3">
+                    {teknisi.achievements.map((achievement) => {
+                      const Icon = achievement.icon
+                      return (
+                        <motion.div key={achievement.title} variants={reveal} className={`flex gap-3 rounded-2xl p-3 ${achievement.color}`}>
+                          <div className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-xl bg-white/80 shadow-soft-xs">
+                            <Icon className="h-4.5 w-4.5" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold">{achievement.title}</p>
+                            <p className="text-xs leading-5 opacity-75">{achievement.desc}</p>
+                          </div>
+                        </motion.div>
+                      )
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            <motion.div variants={reveal} initial="hidden" whileInView="show" viewport={{ once: true }}>
+              <Card className="rounded-[2rem]">
+                <CardContent className="p-5">
+                  <div className="mb-4 flex items-center gap-3">
+                    <div className="grid h-10 w-10 place-items-center rounded-2xl bg-primary-50 text-primary-700">
+                      <Calendar className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-black">Jam Operasional</h3>
+                      <p className="text-xs text-surface-500">Online consultation window</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="rounded-2xl bg-surface-50 p-3">
+                      <p className="text-xs font-medium text-surface-500">Sen - Jum</p>
+                      <p className="mt-1 font-bold text-black">{teknisi.availability.weekday}</p>
+                    </div>
+                    <div className="rounded-2xl bg-surface-50 p-3">
+                      <p className="text-xs font-medium text-surface-500">Sab - Min</p>
+                      <p className="mt-1 font-bold text-black">{teknisi.availability.weekend}</p>
+                    </div>
+                  </div>
+
+                  <div className="my-5 h-px bg-surface-200/80" />
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <button className="grid h-11 place-items-center rounded-2xl bg-pink-50 text-pink-600 transition hover:-translate-y-0.5 hover:bg-pink-100" aria-label="Instagram">
+                      <Instagram className="h-5 w-5" />
+                    </button>
+                    <button className="grid h-11 place-items-center rounded-2xl bg-blue-50 text-blue-600 transition hover:-translate-y-0.5 hover:bg-blue-100" aria-label="Facebook">
+                      <Facebook className="h-5 w-5" />
+                    </button>
+                    <button className="grid h-11 place-items-center rounded-2xl bg-sky-50 text-sky-600 transition hover:-translate-y-0.5 hover:bg-sky-100" aria-label="LinkedIn">
+                      <Linkedin className="h-5 w-5" />
+                    </button>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            <motion.div variants={reveal} initial="hidden" whileInView="show" viewport={{ once: true }}>
+              <Card className="rounded-[2rem]">
+                <CardContent className="p-5">
+                  <h3 className="mb-4 text-sm font-bold text-black">Trust profile</h3>
+                  <div className="space-y-3">
+                    {[
+                      { label: 'Verified identity', icon: Shield },
+                      { label: 'High repeat order', icon: TrendingUp },
+                      { label: 'Community recommended', icon: Users },
+                    ].map((item) => {
+                      const Icon = item.icon
+                      return (
+                        <div key={item.label} className="flex items-center gap-3 rounded-2xl bg-surface-50 p-3">
+                          <Icon className="h-5 w-5 text-primary-700" />
+                          <span className="text-sm font-semibold text-surface-700">{item.label}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </aside>
         </div>
-      </div>
+      </main>
+
       <BottomNav />
+      <MobileSafeAreaSpacer />
     </div>
   )
 }

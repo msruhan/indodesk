@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Shield, Clock, CheckCircle, AlertCircle, Plus } from 'lucide-react'
+import { Shield, Clock, CheckCircle, AlertCircle, Plus } from '@/lib/icons'
 
 const rekber = [
   { 
@@ -46,8 +46,8 @@ export default function UserRekberPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Rekber Saya</h1>
-          <p className="text-surface-400 mt-1">Transaksi aman dengan rekening bersama</p>
+          <h1 className="text-2xl font-semibold tracking-tightest text-ink lg:text-3xl">Rekber Saya</h1>
+          <p className="text-sm text-surface-500 mt-1">Transaksi aman dengan rekening bersama</p>
         </div>
         <Button onClick={() => window.location.href = '/rekber'}>
           <Plus className="w-4 h-4 mr-2" />
@@ -119,11 +119,11 @@ export default function UserRekberPage() {
                         {status.label}
                       </Badge>
                     </div>
-                    <p className="text-sm text-surface-400 mb-1">{r.description}</p>
+                    <p className="text-sm text-surface-500 mb-1">{r.description}</p>
                     <div className="flex items-center gap-4 text-sm text-surface-500">
                       <span>Seller: {r.seller}</span>
                       <span>•</span>
-                      <span className="font-semibold text-white">{formatPrice(r.amount)}</span>
+                      <span className="font-semibold text-ink">{formatPrice(r.amount)}</span>
                       <span>•</span>
                       <span>{r.createdAt}</span>
                     </div>

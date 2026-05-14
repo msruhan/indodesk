@@ -2,53 +2,65 @@
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { 
-  TrendingUp, 
-  Shield, 
-  Clock, 
+import { motion } from 'framer-motion'
+import {
+  AnimatedNumber,
+  Reveal,
+  SpotlightCard,
+  staggerContainer,
+  viewportReveal,
+} from '@/components/motion'
+import {
+  TrendingUp,
+  Shield,
+  Clock,
   Heart,
   ArrowRight,
-  CheckCircle2
-} from 'lucide-react'
+  CheckCircle2,
+} from '@/lib/icons'
 
 const benefits = [
   {
     icon: TrendingUp,
     title: 'Tingkatkan Penjualan',
-    description: 'Rata-rata teknisi dan toko melihat peningkatan 35% penjualan dalam 3 bulan dengan marketplace terintegrasi.',
-    stat: '+35%',
+    description:
+      'Rata-rata teknisi dan toko melihat peningkatan 35% penjualan dalam 3 bulan dengan marketplace terintegrasi.',
+    stat: 35,
+    statSuffix: '%',
+    statPrefix: '+',
     statLabel: 'peningkatan penjualan',
-    color: 'text-primary-600',
-    bgColor: 'bg-primary-50',
   },
   {
     icon: Clock,
     title: 'Konsultasi Lebih Cepat',
-    description: 'Selesaikan masalah handphone dengan lebih cepat melalui konsultasi online real-time dengan teknisi berpengalaman.',
-    stat: '3x',
+    description:
+      'Selesaikan masalah handphone dengan lebih cepat melalui konsultasi online real-time dengan teknisi berpengalaman.',
+    stat: 3,
+    statSuffix: 'x',
+    statPrefix: '',
     statLabel: 'lebih cepat',
-    color: 'text-primary-600',
-    bgColor: 'bg-primary-50',
   },
   {
     icon: Shield,
     title: 'Transaksi Aman',
-    description: 'Sistem rekber (escrow) melindungi buyer dan seller. Transaksi dilakukan dengan aman melalui mediator admin.',
-    stat: '100%',
+    description:
+      'Sistem rekber (escrow) melindungi buyer dan seller. Transaksi dilakukan dengan aman melalui mediator admin.',
+    stat: 100,
+    statSuffix: '%',
+    statPrefix: '',
     statLabel: 'transaksi aman',
-    color: 'text-primary-600',
-    bgColor: 'bg-primary-50',
   },
   {
     icon: Heart,
     title: 'Komunitas Terpercaya',
-    description: 'Bergabung dengan komunitas teknisi handphone terbesar di Indonesia. Rating & review membantu membangun kepercayaan.',
-    stat: '5,000+',
+    description:
+      'Komunitas teknisi handphone terbesar di Indonesia. Rating & review membantu membangun kepercayaan.',
+    stat: 5000,
+    statSuffix: '+',
+    statPrefix: '',
     statLabel: 'anggota aktif',
-    color: 'text-primary-600',
-    bgColor: 'bg-primary-50',
   },
-]
+] as const
 
 const checklistItems = [
   'Marketplace terintegrasi',
@@ -57,108 +69,132 @@ const checklistItems = [
   'Rating & review terpercaya',
   'Lowongan kerja teknisi',
   'Chat system real-time',
-]
+] as const
+
+const trustStats = [
+  { label: 'User aktif', value: 5000, suffix: '+' },
+  { label: 'Transaksi / bulan', value: 50, suffix: 'M+', prefix: 'Rp ' },
+  { label: 'Konsultasi selesai', value: 10000, suffix: '+' },
+  { label: 'Rating user', value: 4.8, suffix: '/5', decimals: 1 },
+] as const
 
 export function Benefits() {
   return (
-    <section id="benefits" className="relative py-24 lg:py-32 bg-surface-900 overflow-hidden">
-      {/* Background Effects */}
-      <div className="absolute inset-0">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent-500/10 rounded-full blur-3xl" />
-      </div>
+    <section id="benefits" className="relative overflow-hidden py-24 lg:py-32">
+      {/* Premium light backdrop */}
+      <div className="absolute inset-0 bg-gradient-to-b from-white via-primary-50/40 to-white" />
+      <div className="pointer-events-none absolute inset-x-0 top-1/3 mx-auto h-[460px] max-w-6xl mesh-bg-soft opacity-90" />
+      <div className="aurora-blob aurora-blob-emerald pointer-events-none absolute -left-24 top-12 h-[420px] w-[420px] opacity-40" />
+      <div className="aurora-blob aurora-blob-cyan pointer-events-none absolute -right-24 bottom-8 h-[420px] w-[420px] opacity-35" />
 
-      {/* Grid Pattern */}
-      <div 
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M0 0h40v40H0V0zm1 1v38h38V1H1z'/%3E%3C/g%3E%3C/svg%3E")`
-        }}
-      />
-
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <Badge variant="secondary" className="mb-4">Benefits</Badge>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <Reveal className="mx-auto mb-16 max-w-3xl text-center">
+          <Badge variant="gradient" className="mb-4">
+            Benefits
+          </Badge>
+          <h2 className="text-balance text-[34px] font-semibold leading-[1.05] tracking-tightest text-ink sm:text-5xl">
             Mengapa teknisi memilih
-            <span className="text-primary-400"> IndoTeknizi</span>
+            <span className="gradient-text-static"> IndoTeknizi</span>
           </h2>
-          <p className="text-lg text-surface-400">
-            Hasil nyata dari pengguna nyata. Lihat bagaimana IndoTeknizi membantu bisnis teknisi berkembang.
+          <p className="mt-4 text-pretty text-base text-surface-600 sm:text-lg">
+            Hasil nyata dari pengguna nyata. Lihat bagaimana IndoTeknizi membantu bisnis teknisi
+            berkembang.
           </p>
-        </div>
+        </Reveal>
 
-        {/* Benefits Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
-          {benefits.map((benefit) => (
-            <div
-              key={benefit.title}
-              className="relative bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-colors group"
-            >
-              {/* Icon */}
-              <div className={`w-12 h-12 rounded-xl ${benefit.bgColor} flex items-center justify-center mb-4`}>
-                <benefit.icon className={`w-6 h-6 ${benefit.color}`} />
-              </div>
+        {/* Benefits grid */}
+        <motion.div
+          className="mb-16 grid gap-5 md:grid-cols-2 lg:grid-cols-4"
+          variants={staggerContainer}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: '-80px' }}
+        >
+          {benefits.map((b) => (
+            <motion.div key={b.title} variants={viewportReveal}>
+              <SpotlightCard tone="primary" className="h-full">
+                <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-primary-200/60 bg-gradient-to-br from-white to-primary-50 text-primary-700 shadow-soft-xs">
+                  <b.icon className="h-[22px] w-[22px]" />
+                </div>
 
-              {/* Stat */}
-              <div className="mb-4">
-                <p className="text-3xl font-bold text-white">{benefit.stat}</p>
-                <p className="text-sm text-surface-400">{benefit.statLabel}</p>
-              </div>
+                <div className="mb-3">
+                  <AnimatedNumber
+                    value={b.stat}
+                    prefix={b.statPrefix}
+                    suffix={b.statSuffix}
+                    className="block text-3xl font-bold tracking-tightest text-ink tabular-nums"
+                  />
+                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-surface-500">
+                    {b.statLabel}
+                  </p>
+                </div>
 
-              {/* Content */}
-              <h3 className="text-lg font-semibold text-white mb-2">
-                {benefit.title}
-              </h3>
-              <p className="text-surface-400 text-sm leading-relaxed">
-                {benefit.description}
-              </p>
-            </div>
+                <h3 className="text-[17px] font-semibold tracking-tight-lg text-ink">{b.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-surface-600">{b.description}</p>
+              </SpotlightCard>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
 
-        {/* CTA Section */}
-        <div className="grid lg:grid-cols-2 gap-12 items-center bg-primary-600/10 rounded-3xl p-8 lg:p-12 border border-white/10">
-          <div>
-            <h3 className="text-2xl lg:text-3xl font-bold text-white mb-4">
-              Siap mengembangkan bisnis teknisi Anda?
-            </h3>
-            <p className="text-surface-300 mb-6">
-              Bergabunglah dengan ribuan teknisi dan toko yang sudah menggunakan IndoTeknizi.
-            </p>
-            <div className="grid grid-cols-2 gap-3 mb-8">
-              {checklistItems.map((item) => (
-                <div key={item} className="flex items-center gap-2 text-sm text-surface-300">
-                  <CheckCircle2 className="w-4 h-4 text-primary-400 flex-shrink-0" />
-                  <span>{item}</span>
+        {/* Premium CTA panel */}
+        <Reveal className="relative overflow-hidden rounded-[2rem] border border-surface-200/70 bg-white/85 p-8 shadow-soft-lg backdrop-blur-md lg:p-12">
+          {/* Decorative aurora inside the panel */}
+          <div className="aurora-blob aurora-blob-emerald pointer-events-none absolute -left-12 -top-12 h-72 w-72 opacity-40" />
+          <div className="aurora-blob aurora-blob-cyan pointer-events-none absolute -right-16 -bottom-16 h-72 w-72 opacity-30" />
+          <div className="dot-grid pointer-events-none absolute inset-0 opacity-30" />
+
+          <div className="relative grid items-center gap-10 lg:grid-cols-2">
+            <div>
+              <h3 className="text-balance text-[26px] font-semibold leading-[1.1] tracking-tightest text-ink lg:text-[34px]">
+                Siap mengembangkan bisnis teknisi Anda?
+              </h3>
+              <p className="mt-3 max-w-xl text-base text-surface-600">
+                Bergabunglah dengan ribuan teknisi dan toko yang sudah menggunakan IndoTeknizi.
+              </p>
+
+              <div className="mt-6 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                {checklistItems.map((item) => (
+                  <div
+                    key={item}
+                    className="flex items-center gap-2 rounded-xl border border-surface-200/60 bg-white/70 px-3 py-2 text-sm text-surface-700 backdrop-blur-md"
+                  >
+                    <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-primary-600" />
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-7">
+                <Button variant="primary" size="lg" className="group">
+                  Mulai sekarang
+                  <ArrowRight className="h-4 w-4 transition-transform duration-450 group-hover/btn:translate-x-1" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Trust stats grid */}
+            <div className="grid grid-cols-2 gap-3">
+              {trustStats.map((s) => (
+                <div
+                  key={s.label}
+                  className="rounded-2xl border border-surface-200/70 bg-white/95 p-5 text-center shadow-soft-xs"
+                >
+                  <AnimatedNumber
+                    value={s.value}
+                    suffix={s.suffix}
+                    prefix={'prefix' in s ? s.prefix : ''}
+                    decimals={'decimals' in s ? s.decimals : 0}
+                    className="block text-2xl font-semibold tracking-tightest text-ink tabular-nums lg:text-3xl"
+                  />
+                  <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-surface-500">
+                    {s.label}
+                  </p>
                 </div>
               ))}
             </div>
-            <Button variant="primary" size="lg" className="group">
-              Start free trial
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </Button>
           </div>
-
-          {/* Stats Visual */}
-          <div className="grid grid-cols-2 gap-4">
-            {[
-              { value: '5,000+', label: 'User Aktif' },
-              { value: 'Rp 50M+', label: 'Transaksi Bulanan' },
-              { value: '10,000+', label: 'Konsultasi Selesai' },
-              { value: '4.8/5', label: 'Rating User' },
-            ].map((stat) => (
-              <div
-                key={stat.label}
-                className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center border border-white/10"
-              >
-                <p className="text-2xl lg:text-3xl font-bold text-white">{stat.value}</p>
-                <p className="text-sm text-surface-400">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+        </Reveal>
       </div>
     </section>
   )

@@ -11,7 +11,7 @@ import {
   Wallet,
   TrendingUp,
   Award
-} from 'lucide-react'
+} from '@/lib/icons'
 import { TransaksiChart } from '@/components/dashboard'
 
 export default function TeknisiDashboardPage() {
@@ -41,14 +41,12 @@ export default function TeknisiDashboardPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Dashboard Teknisi</h1>
-          <p className="text-surface-400 mt-1">Kelola profil dan layanan Anda</p>
+          <h1 className="text-2xl font-semibold tracking-tightest text-ink lg:text-3xl">Dashboard Teknisi</h1>
+          <p className="mt-1 text-sm text-surface-500">Kelola profil dan layanan Anda</p>
         </div>
-        <Button className="bg-gradient-to-r from-primary-600 to-accent-500">
-          Top Up Saldo
-        </Button>
+        <Button variant="primary">Top Up Saldo</Button>
       </div>
 
       {/* Stats Cards */}
@@ -165,14 +163,14 @@ export default function TeknisiDashboardPage() {
               <Award className="w-8 h-8 text-yellow-600" />
               <div>
                 <div className="font-semibold">Top Teknisi</div>
-                <div className="text-sm text-surface-400">Berdasarkan rating & konsultasi</div>
+                <div className="text-sm text-surface-500">Berdasarkan rating & konsultasi</div>
               </div>
             </div>
             <div className="flex items-center gap-3 p-4 border border-green-200 rounded-lg bg-green-50">
               <Award className="w-8 h-8 text-green-600" />
               <div>
                 <div className="font-semibold">Verified</div>
-                <div className="text-sm text-surface-400">Teknisi terverifikasi</div>
+                <div className="text-sm text-surface-500">Teknisi terverifikasi</div>
               </div>
             </div>
           </div>

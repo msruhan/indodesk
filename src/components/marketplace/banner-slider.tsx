@@ -2,33 +2,34 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import Image from 'next/image'
+import { cn } from '@/lib/utils'
 
 const banners = [
   {
     id: 1,
     title: 'Promo Spesial Handphone',
     subtitle: 'Diskon hingga 30% untuk semua produk handphone',
-    image: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=1200&h=400&fit=crop',
+    image: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=1600&h=600&fit=crop',
     link: '/marketplace?category=handphone',
-    buttonText: 'Beli Sekarang',
+    buttonText: 'Beli sekarang',
   },
   {
     id: 2,
     title: 'Laptop Terbaru 2024',
     subtitle: 'Koleksi laptop terbaru dengan harga terbaik',
-    image: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=1200&h=400&fit=crop',
+    image: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=1600&h=600&fit=crop',
     link: '/marketplace?category=laptop',
-    buttonText: 'Lihat Koleksi',
+    buttonText: 'Lihat koleksi',
   },
   {
     id: 3,
     title: 'Aksesoris Premium',
     subtitle: 'Lengkapi perangkat Anda dengan aksesoris berkualitas',
-    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1200&h=400&fit=crop',
+    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1600&h=600&fit=crop',
     link: '/marketplace?category=aksesoris',
     buttonText: 'Jelajahi',
   },
@@ -36,57 +37,54 @@ const banners = [
     id: 4,
     title: 'Software & Tools',
     subtitle: 'Tools profesional untuk teknisi handphone',
-    image: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=1200&h=400&fit=crop',
+    image: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=1600&h=600&fit=crop',
     link: '/marketplace?category=software',
-    buttonText: 'Cek Software',
+    buttonText: 'Cek software',
   },
-]
+] as const
 
 export function BannerSlider() {
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [isAutoScrolling, setIsAutoScrolling] = useState(true)
+  const [isAuto, setIsAuto] = useState(true)
 
   useEffect(() => {
-    if (!isAutoScrolling) return
-
+    if (!isAuto) return
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % banners.length)
-    }, 5000) // Auto scroll every 5 seconds
-
+    }, 5500)
     return () => clearInterval(interval)
-  }, [isAutoScrolling])
+  }, [isAuto])
 
-  const goToSlide = (index: number) => {
-    setIsAutoScrolling(false)
-    setCurrentIndex(index)
-    setTimeout(() => setIsAutoScrolling(true), 6000)
+  const pause = () => {
+    setIsAuto(false)
+    window.setTimeout(() => setIsAuto(true), 6500)
   }
 
-  const goToPrevious = () => {
-    setIsAutoScrolling(false)
-    setCurrentIndex((prev) => (prev - 1 + banners.length) % banners.length)
-    setTimeout(() => setIsAutoScrolling(true), 6000)
+  const goTo = (i: number) => {
+    pause()
+    setCurrentIndex(i)
   }
-
-  const goToNext = () => {
-    setIsAutoScrolling(false)
-    setCurrentIndex((prev) => (prev + 1) % banners.length)
-    setTimeout(() => setIsAutoScrolling(true), 6000)
+  const prev = () => {
+    pause()
+    setCurrentIndex((p) => (p - 1 + banners.length) % banners.length)
+  }
+  const next = () => {
+    pause()
+    setCurrentIndex((p) => (p + 1) % banners.length)
   }
 
   return (
-    <div className="relative w-full h-48 sm:h-64 lg:h-80 overflow-hidden rounded-xl lg:rounded-2xl mb-6">
-      {/* Banner Images */}
+    <div className="relative mb-6 h-48 w-full overflow-hidden rounded-3xl border border-surface-200/70 shadow-soft-md sm:h-64 lg:h-80">
       <AnimatePresence mode="wait">
         <motion.div
-          key={currentIndex}
-          initial={{ opacity: 0, x: 300 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -300 }}
-          transition={{ duration: 0.5, ease: 'easeInOut' }}
+          key={banners[currentIndex].id}
+          initial={{ opacity: 0, scale: 1.04 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 1.02 }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
           className="absolute inset-0"
         >
-          <div className="relative w-full h-full">
+          <div className="relative h-full w-full">
             <Image
               src={banners[currentIndex].image}
               alt={banners[currentIndex].title}
@@ -95,39 +93,48 @@ export function BannerSlider() {
               priority={currentIndex === 0}
               sizes="100vw"
             />
-            {/* Overlay Gradient */}
-            <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-transparent" />
-            
-            {/* Content */}
+            {/* Premium gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/35 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+
             <div className="absolute inset-0 flex items-center">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-                <div className="max-w-2xl">
-                  <motion.h2
-                    initial={{ opacity: 0, y: 20 }}
+              <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div className="max-w-2xl text-white">
+                  <motion.span
+                    initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
-                    className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2 sm:mb-3"
+                    className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/90 backdrop-blur-md"
+                  >
+                    Limited time
+                  </motion.span>
+
+                  <motion.h2
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="mt-3 text-balance text-2xl font-semibold leading-tight tracking-tightest sm:text-3xl lg:text-[42px]"
                   >
                     {banners[currentIndex].title}
                   </motion.h2>
+
                   <motion.p
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="text-sm sm:text-base lg:text-lg text-white/90 mb-4 sm:mb-6"
+                    transition={{ delay: 0.4 }}
+                    className="mt-2 text-sm text-white/85 sm:text-base lg:text-lg"
                   >
                     {banners[currentIndex].subtitle}
                   </motion.p>
+
                   <motion.div
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 }}
+                    transition={{ delay: 0.5 }}
+                    className="mt-5"
                   >
                     <Link href={banners[currentIndex].link}>
-                      <Button
-                        size="lg"
-                        className="bg-primary-600 hover:bg-primary-700 text-white shadow-lg"
-                      >
+                      <Button size="lg" variant="primary">
                         {banners[currentIndex].buttonText}
                       </Button>
                     </Link>
@@ -139,33 +146,34 @@ export function BannerSlider() {
         </motion.div>
       </AnimatePresence>
 
-      {/* Navigation Arrows */}
+      {/* Arrows */}
       <button
-        onClick={goToPrevious}
-        className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-10 w-8 h-8 sm:w-10 sm:h-10 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full flex items-center justify-center text-white transition-all duration-300 hover:scale-110"
+        onClick={prev}
+        className="absolute left-3 top-1/2 z-10 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-white/15 text-white backdrop-blur-md transition-all duration-300 hover:bg-white/25 sm:left-4 sm:h-10 sm:w-10"
         aria-label="Previous slide"
       >
-        <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+        <ChevronLeft className="h-5 w-5" />
       </button>
       <button
-        onClick={goToNext}
-        className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-10 w-8 h-8 sm:w-10 sm:h-10 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full flex items-center justify-center text-white transition-all duration-300 hover:scale-110"
+        onClick={next}
+        className="absolute right-3 top-1/2 z-10 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-white/15 text-white backdrop-blur-md transition-all duration-300 hover:bg-white/25 sm:right-4 sm:h-10 sm:w-10"
         aria-label="Next slide"
       >
-        <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+        <ChevronRight className="h-5 w-5" />
       </button>
 
-      {/* Dots Indicator */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2">
+      {/* Dots */}
+      <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5">
         {banners.map((_, index) => (
           <button
             key={index}
-            onClick={() => goToSlide(index)}
-            className={`w-2 h-2 rounded-full transition-all duration-300 ${
+            onClick={() => goTo(index)}
+            className={cn(
+              'h-1.5 rounded-full transition-all duration-450',
               index === currentIndex
-                ? 'bg-white w-8'
-                : 'bg-white/50 hover:bg-white/70'
-            }`}
+                ? 'w-8 bg-white'
+                : 'w-1.5 bg-white/50 hover:bg-white/80',
+            )}
             aria-label={`Go to slide ${index + 1}`}
           />
         ))}
@@ -173,4 +181,3 @@ export function BannerSlider() {
     </div>
   )
 }
-

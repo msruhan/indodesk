@@ -1,2 +1,1 @@
-export { BottomNav } from './bottom-nav'
-
+export { BottomNav, MobileSafeAreaSpacer } from './bottom-nav'

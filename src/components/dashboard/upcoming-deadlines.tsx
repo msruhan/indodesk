@@ -2,7 +2,7 @@
 
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Calendar, Clock, AlertTriangle } from 'lucide-react'
+import { Calendar, Clock, AlertTriangle } from '@/lib/icons'
 
 const deadlines = [
   {
@@ -68,7 +68,7 @@ export function UpcomingDeadlines() {
 
                   {/* Task Info */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate">
+                    <p className="text-sm font-medium text-ink truncate">
                       {deadline.task}
                     </p>
                     <p className="text-xs text-surface-500 truncate">{deadline.project}</p>

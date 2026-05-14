@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { ShoppingBag, Eye, MessageCircle } from 'lucide-react'
+import { ShoppingBag, Eye, MessageCircle } from '@/lib/icons'
 import Link from 'next/link'
 
 const orders = [
@@ -58,8 +58,8 @@ export default function UserOrdersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Order Saya</h1>
-        <p className="text-surface-400 mt-1">Kelola semua order Anda</p>
+        <h1 className="text-2xl font-semibold tracking-tightest text-ink lg:text-3xl">Order Saya</h1>
+        <p className="text-sm text-surface-500 mt-1">Kelola semua order Anda</p>
       </div>
 
       {/* Stats */}

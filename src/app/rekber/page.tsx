@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Navbar } from '@/components/landing'
-import { BottomNav } from '@/components/mobile'
+import { BottomNav, MobileSafeAreaSpacer } from '@/components/mobile'
 import { 
   Shield,
   Clock,
@@ -13,7 +13,7 @@ import {
   XCircle,
   AlertCircle,
   Plus
-} from 'lucide-react'
+} from '@/lib/icons'
 
 type RekberStatus = 'pending' | 'in-progress' | 'completed' | 'dispute'
 
@@ -99,8 +99,8 @@ export default function RekberPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Jasa Rekber (Escrow)</h1>
-            <p className="text-surface-400">Transaksi aman dengan sistem rekening bersama</p>
+            <h1 className="text-3xl font-semibold tracking-tightest text-ink lg:text-4xl mb-2">Jasa Rekber (Escrow)</h1>
+            <p className="text-surface-500">Transaksi aman dengan sistem rekening bersama</p>
           </div>
           <Button 
             onClick={() => setShowCreateForm(!showCreateForm)}
@@ -203,23 +203,23 @@ export default function RekberPage() {
                       
                       <div className="grid md:grid-cols-2 gap-4 mb-4">
                         <div>
-                          <div className="text-sm text-surface-400">Buyer</div>
+                          <div className="text-sm text-surface-500">Buyer</div>
                           <div className="font-medium">{rekber.buyer}</div>
                         </div>
                         <div>
-                          <div className="text-sm text-surface-400">Seller</div>
+                          <div className="text-sm text-surface-500">Seller</div>
                           <div className="font-medium">{rekber.seller}</div>
                         </div>
                       </div>
 
                       <div className="mb-4">
-                        <div className="text-sm text-surface-400">Deskripsi</div>
+                        <div className="text-sm text-surface-500">Deskripsi</div>
                         <div className="font-medium">{rekber.description}</div>
                       </div>
 
                       <div className="flex items-center justify-between">
                         <div>
-                          <div className="text-sm text-surface-400">Jumlah</div>
+                          <div className="text-sm text-surface-500">Jumlah</div>
                           <div className="text-xl font-bold text-primary-600">
                             {formatPrice(rekber.amount)}
                           </div>
@@ -256,6 +256,8 @@ export default function RekberPage() {
           </Card>
         )}
       </div>
+      <MobileSafeAreaSpacer />
+      <BottomNav />
     </div>
   )
 }

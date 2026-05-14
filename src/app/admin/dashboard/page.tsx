@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Users, UserCheck, ShoppingBag, MessageCircle, X, CheckCircle, TrendingUp } from 'lucide-react'
+import { Users, UserCheck, ShoppingBag, MessageCircle, X, CheckCircle, TrendingUp } from '@/lib/icons'
 
 export default function AdminDashboardPage() {
   // Mock data - in production, fetch from API
@@ -40,10 +40,12 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Dashboard Admin</h1>
-          <p className="text-surface-400 mt-1">Overview platform ekosistem teknisi handphone</p>
+          <h1 className="text-2xl font-semibold tracking-tightest text-ink lg:text-3xl">Dashboard Admin</h1>
+          <p className="mt-1 text-sm text-surface-500">
+            Overview platform ekosistem teknisi handphone
+          </p>
         </div>
       </div>
 
@@ -169,7 +171,7 @@ export default function AdminDashboardPage() {
                     <div className="text-sm text-surface-500">
                       {item.type} • {item.submitter}
                     </div>
-                    <div className="text-xs text-surface-400 mt-1">{item.date}</div>
+                    <div className="text-xs text-sm text-surface-500 mt-1">{item.date}</div>
                   </div>
                   <div className="flex gap-2">
                     <Button size="sm" variant="outline">

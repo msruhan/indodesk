@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ShoppingBag, MessageCircle, Shield } from 'lucide-react'
+import { ShoppingBag, MessageCircle, Shield } from '@/lib/icons'
 
 const orderHistory = [
   { id: '1', orderId: 'ORD-2024-001', item: 'iPhone 13 Pro Max', teknisi: 'TechSolution Store', amount: 5000000, status: 'completed', date: '2024-03-18' },
@@ -33,8 +33,8 @@ export default function UserHistoryPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Riwayat</h1>
-        <p className="text-surface-400 mt-1">Lihat semua riwayat transaksi Anda</p>
+        <h1 className="text-2xl font-semibold tracking-tightest text-ink lg:text-3xl">Riwayat</h1>
+        <p className="text-sm text-surface-500 mt-1">Lihat semua riwayat transaksi Anda</p>
       </div>
 
       <Card>
@@ -61,7 +61,7 @@ export default function UserHistoryPage() {
                   <div key={order.id} className="flex items-center justify-between p-4 border border-surface-200 rounded-lg">
                     <div>
                       <div className="font-semibold">{order.orderId}</div>
-                      <div className="text-sm text-surface-400">{order.item}</div>
+                      <div className="text-sm text-surface-500">{order.item}</div>
                       <div className="text-xs text-surface-500 mt-1">{order.date}</div>
                     </div>
                     <div className="text-right">
@@ -79,7 +79,7 @@ export default function UserHistoryPage() {
                   <div key={k.id} className="flex items-center justify-between p-4 border border-surface-200 rounded-lg">
                     <div>
                       <div className="font-semibold">{k.teknisi}</div>
-                      <div className="text-sm text-surface-400">{k.service}</div>
+                      <div className="text-sm text-surface-500">{k.service}</div>
                       <div className="text-xs text-surface-500 mt-1">{k.date}</div>
                     </div>
                     <div className="text-right">
@@ -100,7 +100,7 @@ export default function UserHistoryPage() {
                   <div key={r.id} className="flex items-center justify-between p-4 border border-surface-200 rounded-lg">
                     <div>
                       <div className="font-semibold">{r.orderId}</div>
-                      <div className="text-sm text-surface-400">{r.seller}</div>
+                      <div className="text-sm text-surface-500">{r.seller}</div>
                       <div className="text-xs text-surface-500 mt-1">{r.date}</div>
                     </div>
                     <div className="text-right">

@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Edit, Trash2, MapPin, Clock, Star } from 'lucide-react'
+import { Plus, Edit, Trash2, MapPin, Clock, Star } from '@/lib/icons'
 import Link from 'next/link'
 
 const toko = [
@@ -28,8 +28,8 @@ export default function TeknisiTokoPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Toko HP</h1>
-          <p className="text-surface-400 mt-1">Kelola informasi toko handphone Anda</p>
+          <h1 className="text-2xl font-semibold tracking-tightest text-ink lg:text-3xl">Toko HP</h1>
+          <p className="text-sm text-surface-500 mt-1">Kelola informasi toko handphone Anda</p>
         </div>
         {toko.length === 0 && (
           <Button onClick={() => setShowAddForm(!showAddForm)}>
@@ -128,7 +128,7 @@ export default function TeknisiTokoPage() {
                           {t.status === 'approved' ? 'Approved' : 'Pending'}
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-2 text-surface-400 mb-2">
+                      <div className="flex items-center gap-2 text-surface-500 mb-2">
                         <MapPin className="w-4 h-4" />
                         <span>{t.location}</span>
                       </div>
@@ -137,7 +137,7 @@ export default function TeknisiTokoPage() {
                           <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                           <span className="font-semibold">{t.rating}</span>
                         </div>
-                        <span className="text-surface-400">{t.totalPenjualan.toLocaleString()} penjualan</span>
+                        <span className="text-surface-500">{t.totalPenjualan.toLocaleString()} penjualan</span>
                       </div>
                     </div>
                     <div className="flex gap-2">

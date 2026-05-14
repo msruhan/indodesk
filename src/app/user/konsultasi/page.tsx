@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { MessageCircle, Clock, CheckCircle, Star } from 'lucide-react'
+import { MessageCircle, Clock, CheckCircle, Star } from '@/lib/icons'
 
 const konsultasi = [
   { 
@@ -48,8 +48,8 @@ export default function UserKonsultasiPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Konsultasi</h1>
-        <p className="text-surface-400 mt-1">Riwayat konsultasi dengan teknisi</p>
+        <h1 className="text-2xl font-semibold tracking-tightest text-ink lg:text-3xl">Konsultasi</h1>
+        <p className="text-sm text-surface-500 mt-1">Riwayat konsultasi dengan teknisi</p>
       </div>
 
       {/* Stats */}
@@ -127,7 +127,7 @@ export default function UserKonsultasiPage() {
                         <span className="font-semibold">{k.rating}</span>
                       </div>
                     ) : (
-                      <span className="text-surface-400">-</span>
+                      <span className="text-surface-500">-</span>
                     )}
                   </TableCell>
                   <TableCell>{k.date}</TableCell>
