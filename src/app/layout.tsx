@@ -1,12 +1,7 @@
 import type { Metadata } from 'next'
 import { Outfit } from 'next/font/google'
 import './globals.css'
-import { AuthProvider } from '@/contexts/auth-context'
-import { SidebarProvider } from '@/contexts/sidebar-context'
-import { ChatProvider } from '@/contexts/chat-context'
-import { TopupProvider } from '@/contexts/topup-context'
-import { ChatPopup } from '@/components/chat/chat-popup'
-import { ChatButton } from '@/components/chat/chat-button'
+import { Providers } from '@/components/providers'
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -27,19 +22,10 @@ export default function RootLayout({
   return (
     <html lang="id" className={outfit.variable}>
       <body className={outfit.className}>
-        <AuthProvider>
-          <SidebarProvider>
-            <ChatProvider>
-              <TopupProvider>
-                {children}
-                <ChatPopup />
-                <ChatButton />
-              </TopupProvider>
-            </ChatProvider>
-          </SidebarProvider>
-        </AuthProvider>
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   )
 }
-

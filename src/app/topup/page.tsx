@@ -5,11 +5,16 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Navbar } from '@/components/landing'
 import { BottomNav, MobileSafeAreaSpacer } from '@/components/mobile'
+import { SectionTabs } from '@/components/mobile/section-tabs'
+import { marketplaceTabs } from '@/lib/section-tab-config'
 import { Input } from '@/components/ui/input'
+import { searchInputIconClass } from '@/components/ui/search-input'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { TrustStrip } from '@/components/topup/shared/trust-strip'
 import { FlashSaleRail } from '@/components/topup/hub/flash-sale-rail'
 import { PopularRail } from '@/components/topup/hub/popular-rail'
+import { TopupBannerSlider } from '@/components/topup/hub/topup-banner-slider'
 import { CategoryTabs } from '@/components/topup/hub/category-tabs'
 import { ProductCard } from '@/components/topup/hub/product-card'
 import { Reveal, AuroraBackground } from '@/components/motion'
@@ -37,12 +42,12 @@ export default function TopupHubPage() {
       <div className="hidden lg:block">
         <Navbar />
       </div>
-
       {/* Hero */}
-      <section className="relative overflow-hidden pb-6 pt-6 sm:pt-10 lg:pt-28">
+      <section className="relative overflow-hidden pb-6 lg:pt-28">
         <AuroraBackground intensity="subtle" />
+        <SectionTabs tabs={marketplaceTabs} layoutId="marketplace-section-tab" variant="merged" />
 
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="relative mx-auto max-w-7xl px-4 pt-4 sm:px-6 sm:pt-10 lg:px-8">
           <Reveal noBlur>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div className="max-w-2xl">
@@ -76,7 +81,7 @@ export default function TopupHubPage() {
           <Reveal noBlur delay={0.05}>
             <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center">
               <div className="relative flex-1">
-                <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400" />
+                <Search className={cn(searchInputIconClass, 'left-4')} strokeWidth={2} aria-hidden />
                 <Input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
@@ -93,6 +98,11 @@ export default function TopupHubPage() {
       </section>
 
       <main className="mx-auto max-w-7xl space-y-7 px-4 pb-6 sm:space-y-9 sm:px-6 lg:px-8">
+        {/* Banner slider */}
+        <Reveal noBlur>
+          <TopupBannerSlider />
+        </Reveal>
+
         {/* Flash sale */}
         <Reveal noBlur>
           <FlashSaleRail />
@@ -132,7 +142,7 @@ export default function TopupHubPage() {
 
           {filtered.length === 0 && (
             <div className="mt-6 rounded-2xl border border-dashed border-surface-200 bg-white px-6 py-10 text-center">
-              <Search className="mx-auto h-6 w-6 text-surface-400" />
+              <Search className="mx-auto h-6 w-6 text-ink-muted" strokeWidth={2} aria-hidden />
               <p className="mt-3 text-sm font-semibold text-ink">Produk tidak ditemukan</p>
               <p className="mt-1 text-xs text-surface-500">
                 Coba kata kunci lain atau ubah kategori.

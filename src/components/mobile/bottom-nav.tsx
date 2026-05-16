@@ -1,32 +1,98 @@
 'use client'
 
+import { useLayoutEffect, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/contexts/auth-context'
 import {
   Home,
   ShoppingBag,
   Users,
   Store,
-  MessageCircle,
+  LayoutDashboard,
 } from '@/lib/icons'
+import {
+  USER_BOTTOM_NAV_ITEMS,
+  isUserBottomNavItemActive,
+  type UserBottomNavItem,
+} from '@/lib/user-bottom-nav'
+import {
+  applyUserNavHomeSlot,
+  homePathForRole,
+  MARKETPLACE_PATH,
+} from '@/lib/role-routes'
+import {
+  getUserNavHomeModeForPath,
+  setUserNavHomeMode,
+  subscribeUserNavHome,
+  syncUserNavHomeModeFromPath,
+} from '@/lib/user-nav-home'
 
-const navItems = [
+const guestNavItems = [
   { icon: Home, label: 'Beranda', href: '/' },
   { icon: ShoppingBag, label: 'Market', href: '/marketplace' },
-  { icon: Users, label: 'Teknisi', href: '/teknisi' },
+  { icon: Users, label: 'Layanan', href: '/teknisi' },
   { icon: Store, label: 'Toko', href: '/toko' },
-  { icon: MessageCircle, label: 'Chat', href: '/chat' },
 ] as const
 
+type GuestNavItem = (typeof guestNavItems)[number]
+
+function isGuestNavItemActive(item: GuestNavItem, pathname: string | null): boolean {
+  if (item.href === '/marketplace') {
+    return (
+      pathname === '/marketplace' ||
+      pathname?.startsWith('/marketplace/') ||
+      pathname === '/cart' ||
+      pathname?.startsWith('/cart/') ||
+      pathname === '/topup' ||
+      (pathname?.startsWith('/topup/') ?? false)
+    )
+  }
+  return (
+    pathname === item.href ||
+    (item.href !== '/' && (pathname?.startsWith(item.href) ?? false))
+  )
+}
+
 /**
- * Total reserved space the dock occupies on mobile, including iOS safe-area.
- * Use the matching `MobileSafeAreaSpacer` (or add `pb-mobile-nav` utility) on any
- * page that mounts <BottomNav /> so its last content row is never hidden.
+ * Mobile bottom navigation for public pages.
+ * Logged-in USER sees one model: Market, Layanan, Toko, Riwayat (no Beranda).
  */
 export function BottomNav() {
   const pathname = usePathname()
+  const { user } = useAuth()
+  const isUser = user?.role === 'USER'
+
+  useLayoutEffect(() => {
+    if (!isUser) return
+    syncUserNavHomeModeFromPath(pathname)
+  }, [isUser, pathname])
+
+  const userHomeMode = useSyncExternalStore(
+    subscribeUserNavHome,
+    () => (isUser ? getUserNavHomeModeForPath(pathname) : 'market'),
+    () => (isUser ? getUserNavHomeModeForPath(pathname) : 'market'),
+  )
+
+  const navItems: readonly (UserBottomNavItem | GuestNavItem)[] = isUser
+    ? applyUserNavHomeSlot(USER_BOTTOM_NAV_ITEMS, userHomeMode, LayoutDashboard)
+    : guestNavItems
+
+  const onUserNavClick = (href: string) => {
+    if (href === MARKETPLACE_PATH) {
+      setUserNavHomeMode('market')
+      return
+    }
+    if (href === homePathForRole('USER')) {
+      setUserNavHomeMode('dashboard')
+      return
+    }
+    if (userHomeMode === 'dashboard') {
+      setUserNavHomeMode('dashboard')
+    }
+  }
 
   return (
     <nav
@@ -36,7 +102,6 @@ export function BottomNav() {
       }}
       aria-label="Mobile navigation"
     >
-      {/* Bottom fade for legibility */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white via-white/70 to-transparent"
@@ -44,14 +109,15 @@ export function BottomNav() {
 
       <div className="relative mx-auto flex h-[68px] max-w-md items-center justify-around rounded-3xl glass-strong border border-surface-200/70 px-2 shadow-soft-lg">
         {navItems.map((item) => {
-          const isActive =
-            pathname === item.href ||
-            (item.href !== '/' && pathname?.startsWith(item.href))
+          const isActive = isUser
+            ? isUserBottomNavItemActive(item as UserBottomNavItem, pathname)
+            : isGuestNavItemActive(item as GuestNavItem, pathname)
 
           return (
             <Link
-              key={item.href}
+              key={`${item.href}-${item.label}`}
               href={item.href}
+              onClick={() => isUser && onUserNavClick(item.href)}
               className={cn(
                 'relative flex h-14 flex-1 flex-col items-center justify-center gap-1 overflow-hidden rounded-2xl transition-colors',
                 isActive ? 'text-primary-700' : 'text-surface-500 hover:text-ink',
@@ -60,7 +126,7 @@ export function BottomNav() {
             >
               {isActive && (
                 <motion.span
-                  layoutId="mobile-bottom-active"
+                  layoutId={`mobile-bottom-active-${userHomeMode}`}
                   className="absolute inset-x-1 top-1 h-12 rounded-2xl bg-gradient-to-br from-primary-50 to-white ring-1 ring-inset ring-primary-200/60 shadow-soft-xs"
                   transition={{ type: 'spring', stiffness: 420, damping: 32 }}
                 />
@@ -90,15 +156,6 @@ export function BottomNav() {
 
 /**
  * Spacer that reserves the height of the mobile bottom nav on small screens.
- * Drop this as the LAST child inside any page wrapper that mounts <BottomNav />,
- * so the page's final content row is never tucked under the floating dock.
- *
- * The matching layout pattern:
- *   <div className="min-h-screen bg-surface-50">
- *     ... content
- *     <MobileSafeAreaSpacer />
- *     <BottomNav />
- *   </div>
  */
 export function MobileSafeAreaSpacer() {
   return (
@@ -106,7 +163,6 @@ export function MobileSafeAreaSpacer() {
       aria-hidden
       className="lg:hidden"
       style={{
-        // 68px dock + 12px top breathing + 12px bottom breathing + iOS safe area
         height: 'calc(68px + 12px + 12px + env(safe-area-inset-bottom, 0px))',
       }}
     />

@@ -5,21 +5,93 @@ import Link from 'next/link'
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Magnetic } from '@/components/motion'
-import { Menu, X, Zap } from '@/lib/icons'
+import { useAuth } from '@/contexts/auth-context'
+import {
+  Menu,
+  X,
+  Zap,
+  ChevronDown,
+  LogOut,
+  ShoppingBag,
+  Store,
+  Users,
+  Laptop,
+  Shield,
+  Briefcase,
+  ArrowRight,
+} from '@/lib/icons'
+import { cn } from '@/lib/utils'
+import { PublicHeaderActions } from '@/components/mobile/public-header-actions'
+import { publicProfileMenuItemsForRole } from '@/lib/role-routes'
 
-const navLinks = [
-  { href: '/marketplace', label: 'Marketplace' },
-  { href: '/teknisi', label: 'Teknisi' },
-  { href: '/toko', label: 'Toko' },
-  { href: '/topup', label: 'Top Up' },
-  { href: '/remote', label: 'Remote' },
-  { href: '/lowongan', label: 'Lowongan' },
-  { href: '/rekber', label: 'Rekber' },
+function getInitials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+}
+
+const navGroups = [
+  {
+    label: 'Marketplace',
+    items: [
+      { href: '/marketplace', label: 'Shop' },
+      { href: '/topup', label: 'Topup' },
+    ],
+  },
+  {
+    label: 'Layanan',
+    items: [
+      { href: '/teknisi', label: 'Teknisi' },
+      { href: '/remote', label: 'Remote' },
+      { href: '/rekber', label: 'Rekber' },
+    ],
+  },
+  {
+    label: 'Mitra',
+    items: [
+      { href: '/toko', label: 'Toko' },
+      { href: '/lowongan', label: 'Lowongan' },
+    ],
+  },
+] as const
+
+const mobileNavSections: {
+  title?: string
+  items: { href: string; label: string; icon: typeof ShoppingBag }[]
+}[] = [
+  {
+    items: [
+      { href: '/marketplace', label: 'Shop', icon: ShoppingBag },
+      { href: '/topup', label: 'Top Up', icon: Zap },
+    ],
+  },
+  {
+    title: 'Layanan',
+    items: [
+      { href: '/teknisi', label: 'Teknisi', icon: Users },
+      { href: '/remote', label: 'Remote', icon: Laptop },
+      { href: '/rekber', label: 'Rekber', icon: Shield },
+    ],
+  },
+  {
+    title: 'Mitra',
+    items: [
+      { href: '/toko', label: 'Toko', icon: Store },
+      { href: '/lowongan', label: 'Lowongan', icon: Briefcase },
+    ],
+  },
 ]
 
 export function Navbar() {
+  const { user, isLoading, logout } = useAuth()
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [openDesktopGroup, setOpenDesktopGroup] = useState<string | null>(null)
+  const [openUserMenu, setOpenUserMenu] = useState(false)
   const { scrollY } = useScroll()
   const containerWidth = useTransform(scrollY, [0, 200], ['100%', '92%'])
   const containerY = useTransform(scrollY, [0, 200], [0, 8])
@@ -31,6 +103,15 @@ export function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  useEffect(() => {
+    if (!isMobileMenuOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [isMobileMenuOpen])
+
   return (
     <motion.header
       initial={{ y: -80, opacity: 0 }}
@@ -38,7 +119,6 @@ export function Navbar() {
       transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
       className="fixed top-0 left-0 right-0 z-50 flex justify-center px-3 pt-3 sm:px-6"
     >
-      {/* Inset, floating command-bar — animates width on scroll */}
       <motion.nav
         style={{ maxWidth: containerWidth, y: containerY }}
         className={[
@@ -50,7 +130,6 @@ export function Navbar() {
         ].join(' ')}
       >
         <div className="flex items-center justify-between gap-4 px-4 sm:px-6 h-14 lg:h-16">
-          {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group/logo">
             <span className="relative inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary-500 via-primary-600 to-accent-600 shadow-glow-primary transition-transform duration-450 group-hover/logo:scale-[1.06]">
               <Zap weight="fill" className="h-4.5 w-4.5 text-white" />
@@ -61,37 +140,163 @@ export function Navbar() {
             </span>
           </Link>
 
-          {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center gap-1 rounded-full border border-surface-200/60 bg-white/60 px-2 py-1 shadow-soft-xs backdrop-blur-md">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="relative rounded-full px-3.5 py-1.5 text-[13px] font-medium text-surface-600 transition-colors duration-300 hover:text-ink"
+            {navGroups.map((group) => {
+              const open = openDesktopGroup === group.label
+              return (
+                <div
+                  key={group.label}
+                  className="relative"
+                  onMouseEnter={() => setOpenDesktopGroup(group.label)}
+                  onMouseLeave={() => setOpenDesktopGroup(null)}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setOpenDesktopGroup(open ? null : group.label)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') setOpenDesktopGroup(null)
+                    }}
+                    aria-haspopup="menu"
+                    aria-expanded={open}
+                    className="relative inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-medium text-surface-600 transition-colors duration-300 hover:text-ink"
+                  >
+                    <span className="relative z-10">{group.label}</span>
+                    <ChevronDown
+                      className={[
+                        'relative z-10 h-3.5 w-3.5 transition-transform duration-300',
+                        open ? 'rotate-180 text-ink' : 'text-surface-500',
+                      ].join(' ')}
+                    />
+                    <span className="absolute inset-0 rounded-full bg-surface-100/0 transition-colors duration-300 hover:bg-surface-100" />
+                  </button>
+
+                  <AnimatePresence>
+                    {open && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                        transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                        className="absolute left-0 top-[calc(100%+10px)] z-50 min-w-44 rounded-2xl glass-strong border border-surface-200/70 p-1.5 shadow-soft-lg"
+                        role="menu"
+                      >
+                        {group.items.map((item) => (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            role="menuitem"
+                            className="block rounded-xl px-3.5 py-2 text-[13px] font-medium text-surface-700 transition-colors hover:bg-surface-100/80 hover:text-ink"
+                            onClick={() => setOpenDesktopGroup(null)}
+                          >
+                            {item.label}
+                          </Link>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )
+            })}
+          </div>
+
+          <div className="hidden items-center gap-3 lg:flex">
+            <PublicHeaderActions />
+
+          {/* Desktop auth */}
+          <div className="flex items-center gap-2">
+            {isLoading ? (
+              <div className="h-9 w-28 animate-pulse rounded-full bg-surface-200/80" />
+            ) : user ? (
+              <div
+                className="relative"
+                onMouseEnter={() => setOpenUserMenu(true)}
+                onMouseLeave={() => setOpenUserMenu(false)}
               >
-                <span className="relative z-10">{link.label}</span>
-                <span className="absolute inset-0 rounded-full bg-surface-100/0 transition-colors duration-300 hover:bg-surface-100" />
-              </Link>
-            ))}
+                <button
+                  type="button"
+                  onClick={() => setOpenUserMenu((open) => !open)}
+                  className="flex items-center gap-2.5 rounded-full border border-surface-200/70 bg-white/70 py-1.5 pl-1.5 pr-3 shadow-soft-xs transition-colors hover:bg-white"
+                >
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-accent-600 text-xs font-bold text-white">
+                    {user.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={user.image}
+                        alt=""
+                        className="h-full w-full rounded-full object-cover"
+                      />
+                    ) : (
+                      getInitials(user.name)
+                    )}
+                  </span>
+                  <span className="max-w-[120px] truncate text-left text-[13px] font-medium text-ink">
+                    {user.name}
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      'h-3.5 w-3.5 text-surface-500 transition-transform',
+                      openUserMenu && 'rotate-180',
+                    )}
+                  />
+                </button>
+
+                <AnimatePresence>
+                  {openUserMenu && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                      transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                      className="absolute right-0 top-[calc(100%+10px)] z-50 min-w-52 rounded-2xl glass-strong border border-surface-200/70 p-1.5 shadow-soft-lg"
+                    >
+                      <div className="border-b border-surface-200/60 px-3.5 py-2.5">
+                        <p className="truncate text-sm font-semibold text-ink">{user.name}</p>
+                        <p className="truncate text-xs text-surface-500">{user.email}</p>
+                      </div>
+                      {publicProfileMenuItemsForRole(user.role).map((item) => (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          className="mt-1 block rounded-xl px-3.5 py-2 text-[13px] font-medium text-surface-700 transition-colors hover:bg-surface-100/80 hover:text-ink first:mt-1"
+                          onClick={() => setOpenUserMenu(false)}
+                        >
+                          {item.label}
+                        </Link>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenUserMenu(false)
+                          void logout()
+                        }}
+                        className="flex w-full items-center gap-2 rounded-xl px-3.5 py-2 text-left text-[13px] font-medium text-rose-600 transition-colors hover:bg-rose-50"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Keluar
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ) : (
+              <>
+                <Link href="/login">
+                  <Button variant="ghost" size="sm" className="text-surface-600 hover:text-ink">
+                    Masuk
+                  </Button>
+                </Link>
+                <Magnetic strength={6}>
+                  <Link href="/register">
+                    <Button variant="primary" size="sm">
+                      Mulai gratis
+                    </Button>
+                  </Link>
+                </Magnetic>
+              </>
+            )}
+          </div>
           </div>
 
-          {/* Desktop CTA */}
-          <div className="hidden lg:flex items-center gap-2">
-            <Link href="/login">
-              <Button variant="ghost" size="sm" className="text-surface-600 hover:text-ink">
-                Masuk
-              </Button>
-            </Link>
-            <Magnetic strength={6}>
-              <Link href="/register">
-                <Button variant="primary" size="sm">
-                  Mulai gratis
-                </Button>
-              </Link>
-            </Magnetic>
-          </div>
-
-          {/* Mobile Menu Button */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="lg:hidden -mr-1.5 inline-flex h-10 w-10 items-center justify-center rounded-full text-surface-700 transition-colors hover:bg-surface-100"
@@ -125,55 +330,109 @@ export function Navbar() {
         </div>
       </motion.nav>
 
-      {/* Mobile sheet */}
       <AnimatePresence>
         {isMobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-            className="lg:hidden absolute left-3 right-3 top-[calc(100%+8px)] glass-strong rounded-3xl border border-surface-200/70 shadow-soft-lg p-3"
-          >
-            <div className="space-y-1">
-              {navLinks.map((link, index) => (
-                <motion.div
-                  key={link.href}
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.04 * index, duration: 0.3 }}
-                >
-                  <Link
-                    href={link.href}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="block rounded-2xl px-4 py-3 text-[15px] font-medium text-surface-700 transition-colors hover:bg-surface-100/80 hover:text-ink"
-                  >
-                    {link.label}
-                  </Link>
-                </motion.div>
-              ))}
-              <div className="pt-2 mt-2 border-t border-surface-200/60 grid grid-cols-2 gap-2">
-                <Link
-                  href="/login"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="block"
-                >
-                  <Button variant="outline" size="sm" className="w-full">
-                    Masuk
-                  </Button>
-                </Link>
-                <Link
-                  href="/register"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="block"
-                >
-                  <Button variant="primary" size="sm" className="w-full">
-                    Daftar
-                  </Button>
-                </Link>
+          <>
+            <motion.button
+              type="button"
+              aria-label="Tutup menu"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40 bg-ink/25 backdrop-blur-[2px] lg:hidden"
+              onClick={() => setIsMobileMenuOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: -12, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -12, scale: 0.98 }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute left-3 right-3 top-[calc(100%+8px)] z-50 overflow-hidden rounded-2xl border border-surface-200/80 bg-white/95 shadow-soft-xl backdrop-blur-xl lg:hidden"
+            >
+              <div className="max-h-[min(70dvh,520px)] overflow-y-auto p-2">
+                <nav className="space-y-1" aria-label="Menu navigasi">
+                  {mobileNavSections.map((section, sectionIndex) => (
+                    <div key={section.title ?? `section-${sectionIndex}`}>
+                      {section.title && (
+                        <p className="px-3 pb-1 pt-2.5 text-[10px] font-semibold uppercase tracking-wider text-surface-400">
+                          {section.title}
+                        </p>
+                      )}
+                      {section.items.map((item) => {
+                        const Icon = item.icon
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-surface-50 active:bg-surface-100"
+                          >
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-100 text-surface-600">
+                              <Icon className="h-[18px] w-[18px]" />
+                            </span>
+                            <span className="flex-1">{item.label}</span>
+                            <ArrowRight className="h-4 w-4 text-surface-300" />
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  ))}
+                </nav>
+
+                <div className="mt-2 border-t border-surface-200/70 pt-2">
+                  {isLoading ? (
+                    <div className="mx-2 h-11 animate-pulse rounded-xl bg-surface-100" />
+                  ) : user ? (
+                    <div className="space-y-1 px-1">
+                      <div className="flex items-center gap-2.5 rounded-xl bg-surface-50 px-3 py-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-accent-600 text-xs font-bold text-white">
+                          {getInitials(user.name)}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-ink">{user.name}</p>
+                          <p className="truncate text-[11px] text-surface-500">{user.email}</p>
+                        </div>
+                      </div>
+                      {publicProfileMenuItemsForRole(user.role).map((item) => (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className="block rounded-xl px-3 py-2.5 text-sm font-medium text-surface-700 transition-colors hover:bg-surface-50"
+                        >
+                          {item.label}
+                        </Link>
+                      ))}
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50"
+                        onClick={() => {
+                          setIsMobileMenuOpen(false)
+                          void logout()
+                        }}
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Keluar
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2 px-1 pb-1">
+                      <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>
+                        <Button variant="outline" size="sm" className="h-10 w-full">
+                          Masuk
+                        </Button>
+                      </Link>
+                      <Link href="/register" onClick={() => setIsMobileMenuOpen(false)}>
+                        <Button variant="primary" size="sm" className="h-10 w-full">
+                          Daftar
+                        </Button>
+                      </Link>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </motion.header>

@@ -247,7 +247,7 @@ function RequestCard({
                     onClick={() => onAccept(req.id)}
                   >
                     <CheckCircle className="h-3.5 w-3.5" />
-                    Terima & Connect
+                    Terima
                   </Button>
                   <Button
                     variant="outline"

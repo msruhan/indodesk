@@ -6,8 +6,11 @@ import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { searchInputIconClass } from '@/components/ui/search-input'
 import { Navbar } from '@/components/landing'
 import { BottomNav, MobileSafeAreaSpacer } from '@/components/mobile'
+import { mitraTabs } from '@/lib/section-tab-config'
+import { PageHero } from '@/components/shared/page-hero'
 import { SpotlightCard, Reveal, staggerContainerFast, viewportRevealNoBlur } from '@/components/motion'
 import { cn } from '@/lib/utils'
 import {
@@ -147,42 +150,35 @@ export default function LowonganPage() {
       <div className="hidden lg:block">
         <Navbar />
       </div>
-
-      {/* Hero header */}
-      <header className="relative border-b border-surface-200/60 bg-white/70 backdrop-blur-md lg:pt-24">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-          <Reveal noBlur>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-primary-200/60 bg-primary-50/70 px-3 py-1 text-[11px] font-medium text-primary-700 backdrop-blur-md">
-                  <Briefcase className="h-3 w-3" />
-                  Karir & lowongan
-                </div>
-                <h1 className="text-balance text-2xl font-semibold tracking-tightest text-ink sm:text-3xl lg:text-4xl">
-                  Lowongan Kerja Teknisi
-                </h1>
-                <p className="mt-1.5 max-w-lg text-[14px] leading-relaxed text-surface-600">
-                  Temukan kesempatan karir sebagai teknisi handphone di toko dan service center terpercaya.
-                </p>
-              </div>
-              <div className="flex items-center gap-2 text-[12px] text-surface-500">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-400 opacity-70" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-primary-500" />
-                </span>
-                <span className="font-medium">{mockLowongan.length} lowongan aktif</span>
-              </div>
-            </div>
-          </Reveal>
-        </div>
-      </header>
+      <PageHero
+        sectionTabs={{ tabs: mitraTabs, layoutId: 'mitra-section-tab' }}
+        badge={{ icon: Briefcase, label: 'Karir & lowongan' }}
+        title={
+          <>
+            Lowongan kerja teknisi,
+            <span className="block">
+              <span className="gradient-text-static">pilih yang cocok</span> & apply cepat.
+            </span>
+          </>
+        }
+        description="Temukan kesempatan karir sebagai teknisi handphone di toko dan service center terpercaya."
+        right={
+          <div className="flex items-center gap-2 text-[12px] text-surface-500">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-400 opacity-70" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-primary-500" />
+            </span>
+            <span className="font-medium">{mockLowongan.length} lowongan aktif</span>
+          </div>
+        }
+      />
 
       <main className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
         {/* Search + filter */}
         <Reveal noBlur delay={0.05}>
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="relative flex-1">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400" />
+              <Search className={cn(searchInputIconClass, 'left-4')} strokeWidth={2} aria-hidden />
               <Input
                 type="text"
                 placeholder="Cari lowongan, perusahaan, atau lokasi…"

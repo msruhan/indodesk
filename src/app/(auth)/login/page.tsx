@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/contexts/auth-context'
+import { getSession } from 'next-auth/react'
+import { useAuth, type UserRole } from '@/contexts/auth-context'
 import {
   Card,
   CardHeader,
@@ -14,38 +15,44 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { authFieldIconClass } from '@/components/ui/auth-field-icon'
 import { Zap, Mail, Lock } from '@/lib/icons'
 import { AuroraBackground } from '@/components/motion'
-import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
-
-const roles = [
-  { id: 'user', label: 'User' },
-  { id: 'teknisi', label: 'Teknisi' },
-  { id: 'admin', label: 'Admin' },
-] as const
 
 export default function LoginPage() {
   const router = useRouter()
   const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState<'admin' | 'teknisi' | 'user'>('user')
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    try {
-      await login(email, password, role)
-      if (role === 'admin') router.push('/admin/dashboard')
-      else if (role === 'teknisi') router.push('/teknisi/dashboard')
-      else router.push('/user/dashboard')
-    } catch (error) {
-      console.error('Login failed:', error)
-    } finally {
+    setError(null)
+
+    const result = await login(email, password)
+
+    if (!result.success) {
+      setError(result.error || 'Login gagal')
       setIsLoading(false)
+      return
     }
+
+    const session = await getSession()
+    const role = session?.user?.role as UserRole | undefined
+    const destination =
+      role === 'ADMIN'
+        ? '/admin/dashboard'
+        : role === 'TEKNISI'
+          ? '/teknisi/dashboard'
+          : '/user/akun'
+
+    router.push(destination)
+    router.refresh()
+    setIsLoading(false)
   }
 
   return (
@@ -75,37 +82,12 @@ export default function LoginPage() {
 
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Role */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-surface-700">
-                  Masuk sebagai
-                </label>
-                <div className="relative grid grid-cols-3 gap-1 rounded-2xl border border-surface-200/70 bg-white/60 p-1 shadow-soft-xs backdrop-blur-md">
-                  {roles.map((r) => {
-                    const active = role === r.id
-                    return (
-                      <button
-                        key={r.id}
-                        type="button"
-                        onClick={() => setRole(r.id)}
-                        className={cn(
-                          'relative h-9 rounded-xl text-sm font-medium transition-colors',
-                          active ? 'text-white' : 'text-surface-600 hover:text-ink',
-                        )}
-                      >
-                        {active && (
-                          <motion.span
-                            layoutId="login-role-pill"
-                            className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 shadow-soft-md"
-                            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                          />
-                        )}
-                        <span className="relative z-10">{r.label}</span>
-                      </button>
-                    )
-                  })}
+              {/* Error message */}
+              {error && (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                  {error}
                 </div>
-              </div>
+              )}
 
               {/* Email */}
               <div className="space-y-2">
@@ -113,14 +95,14 @@ export default function LoginPage() {
                   Email
                 </label>
                 <div className="relative">
-                  <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400" />
+                  <Mail className={authFieldIconClass} strokeWidth={2} aria-hidden />
                   <Input
                     id="email"
                     type="email"
                     placeholder="nama@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10"
+                    className="pl-11"
                     required
                   />
                 </div>
@@ -132,14 +114,14 @@ export default function LoginPage() {
                   Password
                 </label>
                 <div className="relative">
-                  <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400" />
+                  <Lock className={authFieldIconClass} strokeWidth={2} aria-hidden />
                   <Input
                     id="password"
                     type="password"
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10"
+                    className="pl-11"
                     required
                   />
                 </div>

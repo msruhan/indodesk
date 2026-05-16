@@ -1,57 +1,134 @@
 'use client'
 
+import { Suspense, useLayoutEffect, useSyncExternalStore } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { USER_BOTTOM_NAV_ITEMS } from '@/lib/user-bottom-nav'
+import { applyDashboardBottomNavSwap, homePathForRole, MARKETPLACE_PATH } from '@/lib/role-routes'
+import { useAuth, type UserRole } from '@/contexts/auth-context'
+import {
+  getTeknisiNavHomeModeForPath,
+  setTeknisiNavHomeMode,
+  subscribeTeknisiNavHome,
+  syncTeknisiNavHomeModeFromPath,
+} from '@/lib/teknisi-nav-home'
 import {
   LayoutDashboard,
   ShoppingBag,
-  MessageCircle,
   Users,
-  UserCircle,
-  Shield,
-  Settings,
   Store,
   Wallet,
-  TrendingUp,
   BarChart3,
   CheckSquare,
-  History,
+  Package,
+  Laptop,
 } from '@/lib/icons'
 
-type NavItem = { icon: typeof LayoutDashboard; label: string; href: string }
+type NavItem = {
+  icon: typeof LayoutDashboard
+  label: string
+  href: string
+  /** Extra path prefixes that also highlight this item */
+  activePrefixes?: string[]
+  /** Active when ?tab= matches (management hub) */
+  matchTab?: string
+  /** Inactive on management hub when ?tab= matches */
+  excludeTab?: string
+}
 
 const adminNav: NavItem[] = [
-  { icon: LayoutDashboard, label: 'Dashboard', href: '/admin/dashboard' },
-  { icon: Users, label: 'Users', href: '/admin/users' },
+  {
+    icon: ShoppingBag,
+    label: 'Market',
+    href: '/marketplace',
+    activePrefixes: ['/marketplace', '/topup'],
+  },
+  {
+    icon: Users,
+    label: 'Management',
+    href: '/admin/management',
+    activePrefixes: ['/admin/management', '/admin/users', '/admin/teknisi', '/admin/toko'],
+  },
   { icon: CheckSquare, label: 'Approval', href: '/admin/approval' },
   { icon: BarChart3, label: 'Laporan', href: '/admin/laporan' },
-  { icon: Settings, label: 'Settings', href: '/admin/settings' },
+  {
+    icon: ShoppingBag,
+    label: 'Services',
+    href: '/admin/produk?tab=produk',
+    activePrefixes: ['/admin/produk'],
+  },
 ]
 
 const teknisiNav: NavItem[] = [
-  { icon: LayoutDashboard, label: 'Dashboard', href: '/teknisi/dashboard' },
-  { icon: ShoppingBag, label: 'Produk', href: '/teknisi/produk' },
-  { icon: MessageCircle, label: 'Konsultasi', href: '/teknisi/konsultasi' },
-  { icon: Wallet, label: 'Saldo', href: '/teknisi/saldo' },
-  { icon: TrendingUp, label: 'Analitik', href: '/teknisi/analitik' },
+  {
+    icon: ShoppingBag,
+    label: 'Market',
+    href: '/marketplace',
+    activePrefixes: ['/marketplace', '/topup'],
+  },
+  {
+    icon: Package,
+    label: 'Iklan',
+    href: '/teknisi/produk',
+    activePrefixes: ['/teknisi/produk'],
+  },
+  {
+    icon: Store,
+    label: 'Toko',
+    href: '/teknisi/toko',
+    activePrefixes: ['/teknisi/toko'],
+  },
+  {
+    icon: Laptop,
+    label: 'Remote',
+    href: '/teknisi/remote',
+    activePrefixes: ['/teknisi/remote'],
+  },
+  {
+    icon: Wallet,
+    label: 'Transaksi',
+    href: '/teknisi/saldo',
+    activePrefixes: ['/teknisi/saldo'],
+  },
 ]
 
-const userNav: NavItem[] = [
-  { icon: LayoutDashboard, label: 'Dashboard', href: '/user/dashboard' },
-  { icon: ShoppingBag, label: 'Orders', href: '/user/orders' },
-  { icon: MessageCircle, label: 'Konsultasi', href: '/user/konsultasi' },
-  { icon: Shield, label: 'Rekber', href: '/user/rekber' },
-  { icon: History, label: 'Riwayat', href: '/user/history' },
-]
+const userNav: NavItem[] = USER_BOTTOM_NAV_ITEMS.map((item) => ({
+  icon: item.icon,
+  label: item.label,
+  href: item.href,
+  activePrefixes: item.activePrefixes,
+}))
 
-function getNavItems(pathname: string | null): NavItem[] {
-  if (pathname?.startsWith('/admin')) return adminNav
-  if (pathname?.startsWith('/teknisi')) return teknisiNav
-  if (pathname?.startsWith('/user')) return userNav
-  // fallback — generic dashboard
-  return userNav
+function roleFromPath(pathname: string | null): UserRole | null {
+  if (pathname?.startsWith('/admin')) return 'ADMIN'
+  if (pathname?.startsWith('/teknisi')) return 'TEKNISI'
+  if (pathname?.startsWith('/user')) return 'USER'
+  return null
+}
+
+function getNavItems(
+  pathname: string | null,
+  role: UserRole | null,
+  teknisiNavMode: 'workspace' | 'market',
+): NavItem[] {
+  const resolvedRole = role ?? roleFromPath(pathname)
+  let items: NavItem[]
+  if (resolvedRole === 'ADMIN') items = [...adminNav]
+  else if (resolvedRole === 'TEKNISI') items = [...teknisiNav]
+  else items = [...userNav]
+
+  if (resolvedRole) {
+    items = applyDashboardBottomNavSwap(
+      items,
+      pathname,
+      resolvedRole,
+      LayoutDashboard,
+      teknisiNavMode,
+    )
+  }
+  return items
 }
 
 /**
@@ -59,9 +136,63 @@ function getNavItems(pathname: string | null): NavItem[] {
  * Shows role-appropriate items based on the current route prefix.
  * Hidden on lg+ where the sidebar is visible.
  */
-export function DashboardBottomNav() {
+function isNavItemActive(item: NavItem, pathname: string | null, tab: string | null): boolean {
+  if (item.matchTab !== undefined) {
+    if (pathname === '/admin/management' || pathname?.startsWith('/admin/management/')) {
+      return tab === item.matchTab
+    }
+    if (item.activePrefixes?.some((p) => pathname === p || pathname?.startsWith(`${p}/`))) {
+      return true
+    }
+    return false
+  }
+
+  if (
+    item.excludeTab &&
+    (pathname === '/admin/management' || pathname?.startsWith('/admin/management/')) &&
+    (tab ?? 'users') === item.excludeTab
+  ) {
+    return false
+  }
+
+  if (item.activePrefixes) {
+    const prefixMatch = item.activePrefixes.some(
+      (p) => pathname === p || pathname?.startsWith(`${p}/`),
+    )
+    if (prefixMatch) return true
+  }
+
+  return pathname === item.href.split('?')[0]
+}
+
+function DashboardBottomNavContent({ tab }: { tab: string | null }) {
   const pathname = usePathname()
-  const navItems = getNavItems(pathname)
+  const { user } = useAuth()
+  const isTeknisi = user?.role === 'TEKNISI'
+
+  useLayoutEffect(() => {
+    if (!isTeknisi) return
+    syncTeknisiNavHomeModeFromPath(pathname)
+  }, [isTeknisi, pathname])
+
+  const teknisiNavMode = useSyncExternalStore(
+    subscribeTeknisiNavHome,
+    () => (isTeknisi ? getTeknisiNavHomeModeForPath(pathname) : 'workspace'),
+    () => (isTeknisi ? getTeknisiNavHomeModeForPath(pathname) : 'workspace'),
+  )
+
+  const navItems = getNavItems(pathname, user?.role ?? null, teknisiNavMode)
+
+  const onNavClick = (href: string) => {
+    if (!isTeknisi) return
+    if (href === MARKETPLACE_PATH) {
+      setTeknisiNavHomeMode('market')
+      return
+    }
+    if (href === homePathForRole('TEKNISI')) {
+      setTeknisiNavHomeMode('workspace')
+    }
+  }
 
   return (
     <nav
@@ -79,14 +210,13 @@ export function DashboardBottomNav() {
 
       <div className="relative mx-auto flex h-[64px] max-w-md items-center justify-around rounded-3xl glass-strong border border-surface-200/70 px-1 shadow-soft-lg">
         {navItems.map((item) => {
-          const isActive =
-            pathname === item.href ||
-            (item.href !== '/' && pathname?.startsWith(item.href))
+          const isActive = isNavItemActive(item, pathname, tab)
 
           return (
             <Link
-              key={item.href}
+              key={`${item.href}-${item.label}`}
               href={item.href}
+              onClick={() => onNavClick(item.href)}
               className={cn(
                 'relative flex h-12 flex-1 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-2xl transition-colors',
                 isActive ? 'text-primary-700' : 'text-surface-500 hover:text-ink',
@@ -120,6 +250,19 @@ export function DashboardBottomNav() {
         })}
       </div>
     </nav>
+  )
+}
+
+function DashboardBottomNavWithSearchParams() {
+  const searchParams = useSearchParams()
+  return <DashboardBottomNavContent tab={searchParams.get('tab')} />
+}
+
+export function DashboardBottomNav() {
+  return (
+    <Suspense fallback={<DashboardBottomNavContent tab={null} />}>
+      <DashboardBottomNavWithSearchParams />
+    </Suspense>
   )
 }
 

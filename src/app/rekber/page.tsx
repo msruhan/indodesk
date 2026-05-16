@@ -6,11 +6,12 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Navbar } from '@/components/landing'
 import { BottomNav, MobileSafeAreaSpacer } from '@/components/mobile'
+import { serviceTabs } from '@/lib/section-tab-config'
+import { PageHero } from '@/components/shared/page-hero'
 import { 
   Shield,
   Clock,
   CheckCircle,
-  XCircle,
   AlertCircle,
   Plus
 } from '@/lib/icons'
@@ -91,25 +92,34 @@ export default function RekberPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-50 py-8">
+    <div className="min-h-screen overflow-x-hidden bg-surface-50">
       <div className="hidden lg:block">
         <Navbar />
       </div>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 lg:pt-24">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tightest text-ink lg:text-4xl mb-2">Jasa Rekber (Escrow)</h1>
-            <p className="text-surface-500">Transaksi aman dengan sistem rekening bersama</p>
-          </div>
-          <Button 
+      <PageHero
+        sectionTabs={{ tabs: serviceTabs, layoutId: 'service-section-tab' }}
+        badge={{ icon: Shield, label: 'Rekber (Escrow)' }}
+        title={
+          <>
+            Jasa rekber untuk transaksi,
+            <span className="block">
+              <span className="gradient-text-static">aman</span> & transparan.
+            </span>
+          </>
+        }
+        description="Transaksi aman dengan sistem rekening bersama. Dana ditahan sampai barang/service diterima sesuai kesepakatan."
+        right={
+          <Button
             onClick={() => setShowCreateForm(!showCreateForm)}
             className="bg-gradient-to-r from-primary-600 to-accent-500"
           >
             <Plus className="w-4 h-4 mr-2" />
             Ajukan Rekber Baru
           </Button>
-        </div>
+        }
+      />
+
+      <main className="mx-auto max-w-7xl px-4 pb-6 sm:px-6 lg:px-8">
 
         {/* Create Form */}
         {showCreateForm && (
@@ -255,10 +265,9 @@ export default function RekberPage() {
             </CardContent>
           </Card>
         )}
-      </div>
+      </main>
       <MobileSafeAreaSpacer />
       <BottomNav />
     </div>
   )
 }
-

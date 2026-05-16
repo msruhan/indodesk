@@ -1,78 +1,108 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
+import { signIn, signOut, useSession } from 'next-auth/react'
 
-export type UserRole = 'admin' | 'teknisi' | 'user'
+export type UserRole = 'ADMIN' | 'TEKNISI' | 'USER'
 
 export interface User {
   id: string
   name: string
   email: string
   role: UserRole
-  avatar?: string
+  image?: string | null
 }
 
 interface AuthContextType {
   user: User | null
   isLoading: boolean
-  login: (email: string, password: string, role?: UserRole) => Promise<void>
-  register: (name: string, email: string, password: string, role: UserRole) => Promise<void>
-  logout: () => void
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
+  register: (name: string, email: string, password: string, role: 'USER' | 'TEKNISI') => Promise<{ success: boolean; error?: string }>
+  logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const { data: session, status } = useSession()
+  const router = useRouter()
+  const isLoading = status === 'loading'
 
-  useEffect(() => {
-    // Check if user is logged in (mock - in production, check from server/cookie)
-    const storedUser = localStorage.getItem('user')
-    if (storedUser) {
-      setUser(JSON.parse(storedUser))
-    }
-    setIsLoading(false)
-  }, [])
+  const user: User | null = session?.user
+    ? {
+        id: session.user.id,
+        name: session.user.name ?? '',
+        email: session.user.email ?? '',
+        role: session.user.role as UserRole,
+        image: session.user.image,
+      }
+    : null
 
-  const login = async (email: string, password: string, role?: UserRole) => {
-    // Mock login - in production, call API
-    setIsLoading(true)
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    const mockUser: User = {
-      id: '1',
-      name: role === 'admin' ? 'Admin User' : role === 'teknisi' ? 'Teknisi Handphone' : 'User Customer',
-      email,
-      role: role || 'user',
-    }
-    
-    setUser(mockUser)
-    localStorage.setItem('user', JSON.stringify(mockUser))
-    setIsLoading(false)
-  }
+  const login = useCallback(
+    async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+      try {
+        const result = await signIn('credentials', {
+          email,
+          password,
+          redirect: false,
+        })
 
-  const register = async (name: string, email: string, password: string, role: UserRole) => {
-    // Mock register - in production, call API
-    setIsLoading(true)
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    const mockUser: User = {
-      id: Date.now().toString(),
-      name,
-      email,
-      role,
-    }
-    
-    setUser(mockUser)
-    localStorage.setItem('user', JSON.stringify(mockUser))
-    setIsLoading(false)
-  }
+        if (result?.error) {
+          return { success: false, error: 'Email atau password salah' }
+        }
 
-  const logout = () => {
-    setUser(null)
-    localStorage.removeItem('user')
-  }
+        return { success: true }
+      } catch {
+        return { success: false, error: 'Terjadi kesalahan' }
+      }
+    },
+    [],
+  )
+
+  const register = useCallback(
+    async (
+      name: string,
+      email: string,
+      password: string,
+      role: 'USER' | 'TEKNISI',
+    ): Promise<{ success: boolean; error?: string }> => {
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password, role }),
+        })
+
+        const data = await res.json()
+
+        if (!res.ok) {
+          return { success: false, error: data.error || 'Registrasi gagal' }
+        }
+
+        // Auto-login after register
+        const loginResult = await signIn('credentials', {
+          email,
+          password,
+          redirect: false,
+        })
+
+        if (loginResult?.error) {
+          return { success: false, error: 'Registrasi berhasil tapi gagal login otomatis' }
+        }
+
+        return { success: true }
+      } catch {
+        return { success: false, error: 'Terjadi kesalahan' }
+      }
+    },
+    [],
+  )
+
+  const logout = useCallback(async () => {
+    await signOut({ redirect: false })
+    router.push('/')
+  }, [router])
 
   return (
     <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
@@ -88,4 +118,3 @@ export function useAuth() {
   }
   return context
 }
-

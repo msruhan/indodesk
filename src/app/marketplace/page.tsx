@@ -2,27 +2,29 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { searchInputIconClass } from '@/components/ui/search-input'
+import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Navbar } from '@/components/landing'
 import { BottomNav, MobileSafeAreaSpacer } from '@/components/mobile'
+import { SectionTabs } from '@/components/mobile/section-tabs'
+import { marketplaceTabs } from '@/lib/section-tab-config'
 import { BannerSlider } from '@/components/marketplace/banner-slider'
+import { Reveal, AuroraBackground } from '@/components/motion'
 import { 
   Search, 
   Filter, 
   Star, 
   Eye, 
-  MapPin,
   Smartphone,
   Laptop,
   Headphones,
   Code,
   ChevronDown,
-  ShoppingCart
+  ShoppingBag
 } from '@/lib/icons'
 import Link from 'next/link'
-import Image from 'next/image'
 
 type ProductCategory = 'all' | 'handphone' | 'laptop' | 'aksesoris' | 'software'
 
@@ -122,21 +124,28 @@ const categories = [
   { id: 'software', label: 'Software', icon: Code },
 ]
 
+const filterChipClass = (active: boolean) =>
+  cn(
+    'flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors sm:gap-2 sm:px-3 sm:py-1.5 sm:text-xs',
+    active
+      ? 'bg-primary-600 text-white shadow-soft-sm'
+      : 'border border-surface-200/70 bg-white/70 text-surface-700 backdrop-blur-md hover:bg-white',
+  )
+
+const filterChipIconClass = 'h-3.5 w-3.5 flex-shrink-0 sm:h-4 sm:w-4'
+
 export default function MarketplacePage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<ProductCategory>('all')
   const [sortBy, setSortBy] = useState<'relevance' | 'price-low' | 'price-high' | 'rating'>('relevance')
   const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false)
-  const mobileDropdownRef = useRef<HTMLDivElement>(null)
-  const desktopDropdownRef = useRef<HTMLDivElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      const isMobileClick = mobileDropdownRef.current && mobileDropdownRef.current.contains(event.target as Node)
-      const isDesktopClick = desktopDropdownRef.current && desktopDropdownRef.current.contains(event.target as Node)
-      
-      if (!isMobileClick && !isDesktopClick) {
+      const isInside = dropdownRef.current && dropdownRef.current.contains(event.target as Node)
+      if (!isInside) {
         setIsSortDropdownOpen(false)
       }
     }
@@ -179,235 +188,136 @@ export default function MarketplacePage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-50">
+    <div className="min-h-screen overflow-x-hidden bg-surface-50">
       <div className="hidden lg:block">
         <Navbar />
       </div>
-      {/* Header - Hidden on Mobile */}
-      <div className="hidden lg:block border-b border-surface-200/60 bg-white/70 backdrop-blur-md lg:pt-24">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-7">
-          <h1 className="mb-2 text-3xl font-semibold tracking-tightest text-ink lg:text-4xl">
-            Marketplace
-          </h1>
-          <p className="text-surface-600">
-            Temukan produk handphone, laptop, aksesoris, dan software terbaik.
-          </p>
-        </div>
-      </div>
+      {/* Hero */}
+      <section className="relative overflow-hidden pb-6 lg:pt-28">
+        <AuroraBackground intensity="subtle" />
+        <SectionTabs tabs={marketplaceTabs} layoutId="marketplace-section-tab" variant="merged" />
 
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-        {/* Search & Filter - Above Banner on Mobile, Below on Desktop */}
-        <div className="lg:hidden mb-4 pt-4 space-y-4">
-          {/* Search Bar with Cart */}
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-surface-400" />
-              <Input
-                type="text"
-                placeholder="Cari produk atau toko..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-12 h-12 text-lg"
-              />
-            </div>
-            <Link href="/cart" className="relative">
-              <button className="w-12 h-12 flex items-center justify-center rounded-lg bg-white border border-surface-200 hover:bg-surface-50 transition-colors">
-                <ShoppingCart className="w-5 h-5 text-surface-700" />
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary-600 text-white text-xs font-semibold rounded-full flex items-center justify-center">
-                  3
+        <div className="relative mx-auto max-w-7xl px-4 pt-4 sm:px-6 sm:pt-10 lg:px-8">
+          <Reveal noBlur>
+            <div className="max-w-2xl">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-primary-200/60 bg-primary-50/70 px-3 py-1 text-[11px] font-medium text-primary-700 backdrop-blur-md">
+                  <ShoppingBag className="h-3 w-3" />
+                  Marketplace produk & software
                 </span>
-              </button>
-            </Link>
-          </div>
+                <h1 className="mt-3 text-balance text-[28px] font-semibold leading-[1.05] tracking-tightest text-ink sm:text-4xl lg:text-[44px]">
+                  Marketplace gadget & software,
+                  <span className="block">
+                    <span className="gradient-text-static">cepat checkout</span> & aman.
+                  </span>
+                </h1>
+                <p className="mt-3 max-w-xl text-pretty text-sm text-surface-600 sm:text-base">
+                  Handphone, laptop, aksesoris, sampai software. Pilih toko/teknisi terpercaya,
+                  lihat rating asli, lalu checkout tanpa ribet.
+                </p>
+            </div>
+          </Reveal>
 
-          {/* Categories - Horizontal Scrollable */}
-          <div className="relative">
-            <div className="overflow-x-auto scrollbar-hide -mx-3 px-3">
-              <div className="flex gap-2 min-w-max">
-                {/* Filter Semua with Dropdown */}
-                <div className="relative flex-shrink-0" ref={mobileDropdownRef}>
-                  <button
-                    onClick={() => {
-                      setSelectedCategory('all')
-                      setIsSortDropdownOpen(!isSortDropdownOpen)
-                    }}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
-                      selectedCategory === 'all'
-                        ? 'bg-primary-600 text-white shadow-md'
-                        : 'bg-white text-surface-700 hover:bg-surface-100 border border-surface-200'
-                    }`}
-                  >
-                    <Filter className="w-4 h-4 flex-shrink-0" />
-                    Semua
-                    <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform ${isSortDropdownOpen ? 'rotate-180' : ''}`} />
-                  </button>
-                  
-                  {/* Dropdown Menu */}
-                  {isSortDropdownOpen && (
-                    <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-surface-200 z-50 py-2">
-                      <div className="px-3 py-2 text-xs font-semibold text-surface-500 uppercase tracking-wide border-b border-surface-100">
-                        Urutkan
-                      </div>
-                      {[
-                        { value: 'relevance', label: 'Relevansi' },
-                        { value: 'price-low', label: 'Harga: Terendah' },
-                        { value: 'price-high', label: 'Harga: Tertinggi' },
-                        { value: 'rating', label: 'Rating Tertinggi' },
-                      ].map((option) => (
+          <Reveal noBlur delay={0.05}>
+            <div className="mt-5 space-y-2.5">
+              <div className="relative">
+                <Search className={cn(searchInputIconClass, 'left-4')} strokeWidth={2} aria-hidden />
+                <Input
+                  type="text"
+                  placeholder="Cari produk atau toko..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-11 pl-11"
+                />
+              </div>
+
+              <div className="relative">
+                <div className="overflow-x-auto scrollbar-hide -mx-4 px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
+                  <div className="flex gap-1.5 min-w-max sm:gap-2">
+                    <div className="relative flex-shrink-0" ref={dropdownRef}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedCategory('all')
+                          setIsSortDropdownOpen(!isSortDropdownOpen)
+                        }}
+                        className={filterChipClass(selectedCategory === 'all')}
+                      >
+                        <Filter className={filterChipIconClass} />
+                        Semua
+                        <ChevronDown
+                          className={cn(
+                            filterChipIconClass,
+                            'transition-transform',
+                            isSortDropdownOpen && 'rotate-180',
+                          )}
+                        />
+                      </button>
+
+                      {isSortDropdownOpen && (
+                        <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-surface-200 z-50 py-2">
+                          <div className="px-3 py-2 text-xs font-semibold text-surface-500 uppercase tracking-wide border-b border-surface-100">
+                            Urutkan
+                          </div>
+                          {[
+                            { value: 'relevance', label: 'Relevansi' },
+                            { value: 'price-low', label: 'Harga: Terendah' },
+                            { value: 'price-high', label: 'Harga: Tertinggi' },
+                            { value: 'rating', label: 'Rating Tertinggi' },
+                          ].map((option) => (
+                            <button
+                              key={option.value}
+                              type="button"
+                              onClick={() => {
+                                setSortBy(option.value as any)
+                                setIsSortDropdownOpen(false)
+                              }}
+                              className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                                sortBy === option.value
+                                  ? 'bg-primary-50 text-primary-600 font-medium'
+                                  : 'text-surface-700 hover:bg-surface-50'
+                              }`}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {categories.filter(cat => cat.id !== 'all').map((cat) => {
+                      const Icon = cat.icon
+                      return (
                         <button
-                          key={option.value}
+                          key={cat.id}
+                          type="button"
                           onClick={() => {
-                            setSortBy(option.value as any)
+                            setSelectedCategory(cat.id as ProductCategory)
                             setIsSortDropdownOpen(false)
                           }}
-                          className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                            sortBy === option.value
-                              ? 'bg-primary-50 text-primary-600 font-medium'
-                              : 'text-surface-700 hover:bg-surface-50'
-                          }`}
+                          className={filterChipClass(selectedCategory === cat.id)}
                         >
-                          {option.label}
+                          <Icon className={filterChipIconClass} />
+                          {cat.label}
                         </button>
-                      ))}
-                    </div>
-                  )}
+                      )
+                    })}
+                  </div>
                 </div>
-
-                {/* Other Categories */}
-                {categories.filter(cat => cat.id !== 'all').map((cat) => {
-                  const Icon = cat.icon
-                  return (
-                    <button
-                      key={cat.id}
-                      onClick={() => {
-                        setSelectedCategory(cat.id as ProductCategory)
-                        setIsSortDropdownOpen(false)
-                      }}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
-                        selectedCategory === cat.id
-                          ? 'bg-primary-600 text-white shadow-md'
-                          : 'bg-white text-surface-700 hover:bg-surface-100 border border-surface-200'
-                      }`}
-                    >
-                      <Icon className="w-4 h-4 flex-shrink-0" />
-                      {cat.label}
-                    </button>
-                  )
-                })}
               </div>
             </div>
-          </div>
+          </Reveal>
         </div>
+      </section>
 
-        {/* Banner Slider */}
-        <div className="pt-4 sm:pt-6">
-          <BannerSlider />
-        </div>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <Reveal noBlur>
+          <div className="pt-1 sm:pt-2">
+            <BannerSlider />
+          </div>
+        </Reveal>
       </div>
 
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
-        {/* Search & Filter - Desktop Only */}
-        <div className="hidden lg:block mb-6 space-y-4">
-          {/* Search Bar with Cart */}
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-surface-400" />
-              <Input
-                type="text"
-                placeholder="Cari produk atau toko..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-12 h-12 text-lg"
-              />
-            </div>
-            <Link href="/cart" className="relative">
-              <button className="w-12 h-12 flex items-center justify-center rounded-lg bg-white border border-surface-200 hover:bg-surface-50 transition-colors">
-                <ShoppingCart className="w-5 h-5 text-surface-700" />
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary-600 text-white text-xs font-semibold rounded-full flex items-center justify-center">
-                  3
-                </span>
-              </button>
-            </Link>
-          </div>
-
-          {/* Categories - Horizontal Scrollable */}
-          <div className="relative">
-            <div className="overflow-x-auto scrollbar-hide -mx-3 sm:-mx-6 px-3 sm:px-6">
-              <div className="flex gap-2 min-w-max">
-                {/* Filter Semua with Dropdown */}
-                <div className="relative flex-shrink-0" ref={mobileDropdownRef}>
-                  <button
-                    onClick={() => {
-                      setSelectedCategory('all')
-                      setIsSortDropdownOpen(!isSortDropdownOpen)
-                    }}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
-                      selectedCategory === 'all'
-                        ? 'bg-primary-600 text-white shadow-md'
-                        : 'bg-white text-surface-700 hover:bg-surface-100 border border-surface-200'
-                    }`}
-                  >
-                    <Filter className="w-4 h-4 flex-shrink-0" />
-                    Semua
-                    <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform ${isSortDropdownOpen ? 'rotate-180' : ''}`} />
-                  </button>
-                  
-                  {/* Dropdown Menu */}
-                  {isSortDropdownOpen && (
-                    <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-surface-200 z-50 py-2">
-                      <div className="px-3 py-2 text-xs font-semibold text-surface-500 uppercase tracking-wide border-b border-surface-100">
-                        Urutkan
-                      </div>
-                      {[
-                        { value: 'relevance', label: 'Relevansi' },
-                        { value: 'price-low', label: 'Harga: Terendah' },
-                        { value: 'price-high', label: 'Harga: Tertinggi' },
-                        { value: 'rating', label: 'Rating Tertinggi' },
-                      ].map((option) => (
-                        <button
-                          key={option.value}
-                          onClick={() => {
-                            setSortBy(option.value as any)
-                            setIsSortDropdownOpen(false)
-                          }}
-                          className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                            sortBy === option.value
-                              ? 'bg-primary-50 text-primary-600 font-medium'
-                              : 'text-surface-700 hover:bg-surface-50'
-                          }`}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Other Categories */}
-                {categories.filter(cat => cat.id !== 'all').map((cat) => {
-                  const Icon = cat.icon
-                  return (
-                    <button
-                      key={cat.id}
-                      onClick={() => {
-                        setSelectedCategory(cat.id as ProductCategory)
-                        setIsSortDropdownOpen(false)
-                      }}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
-                        selectedCategory === cat.id
-                          ? 'bg-primary-600 text-white shadow-md'
-                          : 'bg-white text-surface-700 hover:bg-surface-100 border border-surface-200'
-                      }`}
-                    >
-                      <Icon className="w-4 h-4 flex-shrink-0" />
-                      {cat.label}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="mx-auto max-w-7xl px-4 pb-6 pt-4 sm:px-6 sm:py-8 lg:px-8">
 
         {/* Results Count */}
         <div className="mb-4 text-sm text-surface-500">
@@ -474,4 +384,3 @@ export default function MarketplacePage() {
     </div>
   )
 }
-

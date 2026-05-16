@@ -15,18 +15,17 @@ import {
 import { RoleSidebar, type SidebarNavItem } from './role-sidebar'
 
 const teknisiNavItems: readonly SidebarNavItem[] = [
-  { icon: LayoutDashboard, label: 'Dashboard', href: '/teknisi/dashboard' },
-  { icon: ShoppingBag, label: 'Produk & Software', href: '/teknisi/produk' },
-  { icon: UserCircle, label: 'Profil Teknisi', href: '/teknisi/profil' },
-  { icon: Store, label: 'Toko HP', href: '/teknisi/toko' },
-  { icon: Wallet, label: 'Saldo & Transaksi', href: '/teknisi/saldo' },
-  { icon: MessageCircle, label: 'Konsultasi', href: '/teknisi/konsultasi' },
-  { icon: Laptop, label: 'Remote', href: '/teknisi/remote' },
-  { icon: TrendingUp, label: 'Analitik', href: '/teknisi/analitik' },
+  { icon: LayoutDashboard, label: 'Dashboard', href: '/teknisi/dashboard', section: 'Overview' },
+  { icon: UserCircle, label: 'Profil Teknisi', href: '/teknisi/profil', section: 'Profil' },
+  { icon: Store, label: 'Toko HP', href: '/teknisi/toko', section: 'Profil' },
+  { icon: ShoppingBag, label: 'Produk & Software', href: '/teknisi/produk', section: 'Katalog' },
+  { icon: MessageCircle, label: 'Konsultasi', href: '/teknisi/konsultasi', section: 'Layanan', badge: 1 },
+  { icon: Laptop, label: 'Remote', href: '/teknisi/remote', section: 'Layanan' },
+  { icon: Wallet, label: 'Saldo & Transaksi', href: '/teknisi/saldo', section: 'Keuangan' },
+  { icon: TrendingUp, label: 'Analitik', href: '/teknisi/analitik', section: 'Analitik' },
 ]
 
 const bottomNavItems: readonly SidebarNavItem[] = [
-  { icon: MessageCircle, label: 'Chat', href: '/chat' },
   { icon: Settings, label: 'Settings', href: '/teknisi/settings' },
   { icon: HelpCircle, label: 'Help & Support', href: '/teknisi/help' },
 ]

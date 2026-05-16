@@ -14,14 +14,15 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { authFieldIconClass } from '@/components/ui/auth-field-icon'
 import { Zap, Mail, Lock, User } from '@/lib/icons'
 import { AuroraBackground } from '@/components/motion'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
 const roles = [
-  { id: 'user', label: 'User' },
-  { id: 'teknisi', label: 'Teknisi' },
+  { id: 'USER' as const, label: 'User' },
+  { id: 'TEKNISI' as const, label: 'Teknisi' },
 ] as const
 
 export default function RegisterPage() {
@@ -31,25 +32,31 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [role, setRole] = useState<'teknisi' | 'user'>('user')
+  const [role, setRole] = useState<'USER' | 'TEKNISI'>('USER')
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError(null)
+
     if (password !== confirmPassword) {
-      alert('Password tidak sama!')
+      setError('Password tidak sama!')
       return
     }
+
     setIsLoading(true)
-    try {
-      await register(name, email, password, role)
-      if (role === 'teknisi') router.push('/teknisi/dashboard')
-      else router.push('/user/dashboard')
-    } catch (error) {
-      console.error('Register failed:', error)
-    } finally {
+    const result = await register(name, email, password, role)
+
+    if (!result.success) {
+      setError(result.error || 'Registrasi gagal')
       setIsLoading(false)
+      return
     }
+
+    // Redirect based on role
+    if (role === 'TEKNISI') router.push('/teknisi/dashboard')
+    else router.push('/user/akun')
   }
 
   return (
@@ -79,6 +86,13 @@ export default function RegisterPage() {
 
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Error message */}
+              {error && (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                  {error}
+                </div>
+              )}
+
               {/* Role */}
               <div className="space-y-2">
                 <label className="text-sm font-medium text-surface-700">
@@ -117,14 +131,14 @@ export default function RegisterPage() {
                   Nama Lengkap
                 </label>
                 <div className="relative">
-                  <User className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400" />
+                  <User className={authFieldIconClass} strokeWidth={2} aria-hidden />
                   <Input
                     id="name"
                     type="text"
                     placeholder="Nama lengkap"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="pl-10"
+                    className="pl-11"
                     required
                   />
                 </div>
@@ -136,14 +150,14 @@ export default function RegisterPage() {
                   Email
                 </label>
                 <div className="relative">
-                  <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400" />
+                  <Mail className={authFieldIconClass} strokeWidth={2} aria-hidden />
                   <Input
                     id="email"
                     type="email"
                     placeholder="nama@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10"
+                    className="pl-11"
                     required
                   />
                 </div>
@@ -155,14 +169,14 @@ export default function RegisterPage() {
                   Password
                 </label>
                 <div className="relative">
-                  <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400" />
+                  <Lock className={authFieldIconClass} strokeWidth={2} aria-hidden />
                   <Input
                     id="password"
                     type="password"
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10"
+                    className="pl-11"
                     required
                   />
                 </div>
@@ -177,14 +191,14 @@ export default function RegisterPage() {
                   Konfirmasi Password
                 </label>
                 <div className="relative">
-                  <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400" />
+                  <Lock className={authFieldIconClass} strokeWidth={2} aria-hidden />
                   <Input
                     id="confirmPassword"
                     type="password"
                     placeholder="••••••••"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="pl-10"
+                    className="pl-11"
                     required
                   />
                 </div>

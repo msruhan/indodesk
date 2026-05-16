@@ -5,11 +5,12 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Navbar } from '@/components/landing'
 import { BottomNav, MobileSafeAreaSpacer } from '@/components/mobile'
+import { serviceTabs } from '@/lib/section-tab-config'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
-import { Reveal } from '@/components/motion'
+import { PageHero } from '@/components/shared/page-hero'
 import { cn } from '@/lib/utils'
 import {
   ArrowRight,
@@ -76,36 +77,28 @@ export default function RemotePage() {
   return (
     <div className="min-h-screen overflow-x-hidden bg-surface-50">
       <div className="hidden lg:block"><Navbar /></div>
-
-      {/* Hero */}
-      <header className="relative border-b border-surface-200/60 bg-white/70 backdrop-blur-md lg:pt-24">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-          <Reveal noBlur>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div className="max-w-2xl">
-                <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-primary-200/60 bg-primary-50/70 px-3 py-1 text-[11px] font-medium text-primary-700 backdrop-blur-md">
-                  <Laptop className="h-3 w-3" />
-                  Remote Assistance
-                </div>
-                <h1 className="text-balance text-2xl font-semibold tracking-tightest text-ink sm:text-3xl lg:text-4xl">
-                  Remote Desktop via IndoDesk
-                </h1>
-                <p className="mt-2 max-w-xl text-[14px] leading-[1.7] text-surface-600">
-                  Biarkan teknisi profesional mengakses perangkat Anda secara remote untuk troubleshooting, 
-                  instalasi, atau perbaikan software — aman, cepat, dan terpantau.
-                </p>
-              </div>
-              <div className="flex items-center gap-2 text-[12px] text-surface-500">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-400 opacity-70" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-primary-500" />
-                </span>
-                <span className="font-medium">{onlineTeknisi.length} teknisi online</span>
-              </div>
-            </div>
-          </Reveal>
-        </div>
-      </header>
+      <PageHero
+        sectionTabs={{ tabs: serviceTabs, layoutId: 'service-section-tab' }}
+        badge={{ icon: Laptop, label: 'Remote Assistance' }}
+        title={
+          <>
+            Remote Desktop via IndoDesk,
+            <span className="block">
+              <span className="gradient-text-static">aman</span> & terpantau.
+            </span>
+          </>
+        }
+        description="Biarkan teknisi profesional mengakses perangkat Anda secara remote untuk troubleshooting, instalasi, atau perbaikan software."
+        right={
+          <div className="flex items-center gap-2 text-[12px] text-surface-500">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-400 opacity-70" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-primary-500" />
+            </span>
+            <span className="font-medium">{onlineTeknisi.length} teknisi online</span>
+          </div>
+        }
+      />
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {submitted ? (

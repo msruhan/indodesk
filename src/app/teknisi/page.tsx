@@ -6,10 +6,12 @@ import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { searchInputIconClass } from '@/components/ui/search-input'
 import { Navbar } from '@/components/landing'
 import { BottomNav, MobileSafeAreaSpacer } from '@/components/mobile'
+import { serviceTabs } from '@/lib/section-tab-config'
+import { PageHero } from '@/components/shared/page-hero'
 import {
-  AnimatedNumber,
   SpotlightCard,
   staggerContainerFast,
   viewportRevealNoBlur,
@@ -109,109 +111,106 @@ export default function TeknisiListPage() {
       <div className="hidden lg:block">
         <Navbar />
       </div>
-
-      {/* Header — desktop only (mobile gets a tighter inline header) */}
-      <div className="hidden border-b border-surface-200/60 bg-white/70 backdrop-blur-md lg:block lg:pt-24">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-7">
-          <h1 className="mb-2 text-3xl font-semibold tracking-tightest text-ink lg:text-4xl">
-            Daftar Teknisi Online
-          </h1>
-          <p className="text-surface-600">
-            Konsultasi langsung dengan teknisi handphone berpengalaman.
-          </p>
-        </div>
-      </div>
-
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8">
-        {/* Mobile heading */}
-        <div className="mb-4 lg:hidden">
-          <h1 className="text-2xl font-semibold tracking-tightest text-ink">
-            Daftar Teknisi
-          </h1>
-          <p className="mt-1 text-sm text-surface-600">
-            Konsultasi langsung dengan teknisi berpengalaman.
-          </p>
-        </div>
-
-        {/* Search + filter row */}
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400" />
-            <Input
-              type="text"
-              placeholder="Cari teknisi atau spesialisasi…"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-11 pl-11"
-            />
-          </div>
-          <button
-            onClick={() => setFilterOnline(!filterOnline)}
-            className={cn(
-              'inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-full px-4 text-sm font-medium transition-all duration-300 ease-out-expo',
-              filterOnline
-                ? 'border border-transparent bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-glow-primary hover:shadow-glow-primary-lg'
-                : 'border border-surface-200/80 bg-white/80 text-surface-700 backdrop-blur-md hover:border-surface-300 hover:text-ink',
-            )}
-          >
-            <span className="relative flex h-2 w-2">
-              <span
-                className={cn(
-                  'absolute inline-flex h-full w-full rounded-full opacity-70',
-                  filterOnline ? 'animate-ping bg-white' : 'bg-primary-400',
-                )}
-              />
-              <span
-                className={cn(
-                  'relative inline-flex h-2 w-2 rounded-full',
-                  filterOnline ? 'bg-white' : 'bg-primary-500',
-                )}
-              />
+      <PageHero
+        sectionTabs={{ tabs: serviceTabs, layoutId: 'service-section-tab' }}
+        badge={{ icon: Radio, label: 'Teknisi online' }}
+        title={
+          <>
+            Daftar teknisi handphone,
+            <span className="block">
+              <span className="gradient-text-static">konsultasi cepat</span> & terpercaya.
             </span>
-            <Radio className="h-4 w-4" />
-            Hanya Online
-          </button>
-        </div>
-
-        {/* Status + sort */}
-        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2 text-sm">
+          </>
+        }
+        description="Konsultasi langsung dengan teknisi berpengalaman. Filter teknisi online dan urutkan sesuai kebutuhan."
+        right={
+          <div className="flex items-center gap-2 text-[12px] text-surface-500">
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-400 opacity-70" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-primary-500" />
             </span>
-            <span className="font-medium text-surface-700">
-              <span className="text-ink tabular-nums">{onlineCount}</span> teknisi online sekarang
-              <span className="text-surface-400"> · {filteredTeknisi.length} hasil</span>
+            <span className="font-medium">
+              <span className="text-ink tabular-nums">{onlineCount}</span> online
             </span>
           </div>
-
-          {/* Sort segmented control */}
-          <div className="relative inline-flex h-9 items-center gap-1 rounded-full border border-surface-200/70 bg-white/80 p-1 shadow-soft-xs backdrop-blur-md">
-            {sortOptions.map((opt) => {
-              const active = sortBy === opt.value
-              return (
-                <button
-                  key={opt.value}
-                  onClick={() => setSortBy(opt.value)}
+        }
+      >
+        <div className="space-y-3">
+          {/* Search + filter row */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative flex-1">
+              <Search className={cn(searchInputIconClass, 'left-4')} strokeWidth={2} aria-hidden />
+              <Input
+                type="text"
+                placeholder="Cari teknisi atau spesialisasi…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-11 pl-11"
+              />
+            </div>
+            <button
+              onClick={() => setFilterOnline(!filterOnline)}
+              className={cn(
+                'inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-full px-4 text-sm font-medium transition-all duration-300 ease-out-expo',
+                filterOnline
+                  ? 'border border-transparent bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-glow-primary hover:shadow-glow-primary-lg'
+                  : 'border border-surface-200/80 bg-white/80 text-surface-700 backdrop-blur-md hover:border-surface-300 hover:text-ink',
+              )}
+            >
+              <span className="relative flex h-2 w-2">
+                <span
                   className={cn(
-                    'relative z-10 rounded-full px-3 py-1 text-xs font-medium transition-colors duration-300',
-                    active ? 'text-ink' : 'text-surface-500 hover:text-ink',
+                    'absolute inline-flex h-full w-full rounded-full opacity-70',
+                    filterOnline ? 'animate-ping bg-white' : 'bg-primary-400',
                   )}
-                >
-                  {active && (
-                    <motion.span
-                      layoutId="teknisi-sort-pill"
-                      className="absolute inset-0 -z-10 rounded-full bg-white shadow-soft-xs ring-1 ring-inset ring-surface-200/80"
-                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                    />
+                />
+                <span
+                  className={cn(
+                    'relative inline-flex h-2 w-2 rounded-full',
+                    filterOnline ? 'bg-white' : 'bg-primary-500',
                   )}
-                  {opt.label}
-                </button>
-              )
-            })}
+                />
+              </span>
+              <Radio className="h-4 w-4" />
+              Hanya Online
+            </button>
+          </div>
+
+          {/* Status + sort */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm font-medium text-surface-700">
+              Menampilkan <span className="text-primary-600 font-bold">{filteredTeknisi.length}</span> teknisi
+            </div>
+
+            <div className="relative inline-flex h-9 items-center gap-1 rounded-full border border-surface-200/70 bg-white/80 p-1 shadow-soft-xs backdrop-blur-md">
+              {sortOptions.map((opt) => {
+                const active = sortBy === opt.value
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => setSortBy(opt.value)}
+                    className={cn(
+                      'relative z-10 rounded-full px-3 py-1 text-xs font-medium transition-colors duration-300',
+                      active ? 'text-ink' : 'text-surface-500 hover:text-ink',
+                    )}
+                  >
+                    {active && (
+                      <motion.span
+                        layoutId="teknisi-sort-pill"
+                        className="absolute inset-0 -z-10 rounded-full bg-white shadow-soft-xs ring-1 ring-inset ring-surface-200/80"
+                        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                      />
+                    )}
+                    {opt.label}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </div>
+      </PageHero>
+
+      <div className="mx-auto w-full max-w-7xl px-4 pb-6 sm:px-6 lg:px-8">
 
         {/* Grid — 2 / 2 / 3 / 4 / 4 — 8 cards visible on lg+ as 4×2 */}
         <motion.div
@@ -231,86 +230,70 @@ export default function TeknisiListPage() {
                   href={`/teknisi/${t.id}`}
                   className="block focus:outline-none focus-visible:rounded-3xl focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2"
                 >
-                  <SpotlightCard tone="primary" className="flex h-full flex-col p-4">
-                    {/* Header: avatar + identity + badge */}
-                    <div className="mb-3 flex items-start gap-2.5">
+                  <SpotlightCard tone="primary" className="flex h-full flex-col p-3 sm:p-4">
+                    {/* Header: avatar + name + rating */}
+                    <div className="mb-2 flex items-center gap-2">
                       <div className="relative flex-shrink-0">
                         <img
                           src={`https://i.pravatar.cc/150?img=${parseInt(t.id)}`}
                           alt={t.name}
-                          className="h-12 w-12 rounded-full border-2 border-white object-cover shadow-soft-xs ring-1 ring-surface-200/70"
+                          className="h-10 w-10 rounded-full border-2 border-white object-cover shadow-soft-xs ring-1 ring-surface-200/70"
                           loading="lazy"
                         />
                         {t.isOnline && (
-                          <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-primary-500 shadow-soft-xs" />
+                          <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-[1.5px] border-white bg-primary-500" />
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h3 className="truncate text-sm font-semibold tracking-tight-lg text-ink transition-colors group-hover/spot:text-primary-700">
+                        <h3 className="text-[13px] font-semibold leading-tight text-ink line-clamp-1">
                           {t.name}
                         </h3>
-                        <div className="mt-0.5 flex items-center gap-1 text-[11px] text-surface-500">
-                          <Star
-                            weight="fill"
-                            className="h-3 w-3 flex-shrink-0 text-amber-400"
-                          />
-                          <span className="font-semibold text-ink tabular-nums">
-                            {t.rating.toFixed(1)}
-                          </span>
-                          <span className="truncate">· {t.reviewCount} ulasan</span>
+                        <div className="mt-0.5 flex items-center gap-1 text-[10px] text-surface-500">
+                          <Star weight="fill" className="h-2.5 w-2.5 flex-shrink-0 text-amber-400" />
+                          <span className="font-semibold text-ink tabular-nums">{t.rating.toFixed(1)}</span>
+                          <span>({t.reviewCount})</span>
                         </div>
                       </div>
-                      <Badge variant={cfg.tone} className="flex-shrink-0 px-1.5 py-0.5 text-[10px]">
+                    </div>
+
+                    {/* Badge */}
+                    <div className="mb-2">
+                      <Badge variant={cfg.tone} className="px-1.5 py-0.5 text-[9px]">
                         <cfg.icon className="h-2.5 w-2.5" />
                         <span className="ml-0.5">{cfg.label}</span>
                       </Badge>
                     </div>
 
                     {/* Specialty chips */}
-                    <div className="mb-3 flex flex-wrap gap-1.5">
+                    <div className="mb-2 flex flex-wrap gap-1">
                       {visibleSpecs.map((spec) => (
                         <span
                           key={spec}
-                          className="inline-flex items-center rounded-full border border-surface-200/70 bg-white/70 px-2 py-0.5 text-[10px] font-medium text-surface-700 backdrop-blur-sm"
+                          className="inline-flex items-center rounded-full border border-surface-200/70 bg-white/70 px-1.5 py-0.5 text-[9px] font-medium text-surface-700"
                         >
                           {spec}
                         </span>
                       ))}
                       {overflowSpecs > 0 && (
-                        <span className="inline-flex items-center rounded-full bg-primary-50 px-2 py-0.5 text-[10px] font-semibold text-primary-700 ring-1 ring-inset ring-primary-200/70">
+                        <span className="inline-flex items-center rounded-full bg-primary-50 px-1.5 py-0.5 text-[9px] font-semibold text-primary-700 ring-1 ring-inset ring-primary-200/70">
                           +{overflowSpecs}
                         </span>
                       )}
                     </div>
 
-                    {/* Stat strip */}
-                    <div className="mb-3 grid grid-cols-2 gap-2 rounded-xl border border-surface-200/60 bg-gradient-to-br from-surface-50/60 to-white p-2.5">
-                      <div className="text-center">
-                        <AnimatedNumber
-                          value={t.totalKonsultasi}
-                          className="block text-sm font-semibold text-ink tabular-nums"
-                        />
-                        <p className="text-[10px] uppercase tracking-[0.14em] text-surface-500">
-                          Konsultasi
-                        </p>
-                      </div>
-                      <div className="border-l border-surface-200/70 text-center">
-                        <span className="block text-sm font-semibold text-ink tabular-nums">
-                          {compactNumber(t.totalView)}
-                        </span>
-                        <p className="text-[10px] uppercase tracking-[0.14em] text-surface-500">
-                          Dilihat
-                        </p>
-                      </div>
+                    {/* Compact stats — single line */}
+                    <div className="mb-2 flex items-center gap-3 text-[10px] text-surface-500">
+                      <span className="tabular-nums"><span className="font-semibold text-ink">{compactNumber(t.totalKonsultasi)}</span> sesi</span>
+                      <span className="tabular-nums"><span className="font-semibold text-ink">{compactNumber(t.totalView)}</span> dilihat</span>
                     </div>
 
                     {/* Price + CTA pinned to bottom */}
                     <div className="mt-auto">
-                      <div className="mb-2.5 flex items-baseline justify-between">
-                        <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-surface-500">
-                          Mulai dari
+                      <div className="mb-2 flex items-baseline justify-between">
+                        <span className="text-[9px] font-medium uppercase tracking-[0.14em] text-surface-500">
+                          Mulai
                         </span>
-                        <span className="text-base font-semibold tracking-tight-lg text-primary-700 tabular-nums">
+                        <span className="text-[14px] font-bold tracking-tight text-primary-700 tabular-nums">
                           {formatPrice(t.price)}
                         </span>
                       </div>
@@ -321,7 +304,7 @@ export default function TeknisiListPage() {
                           size="sm"
                           disabled={!t.isOnline}
                           className={cn(
-                            'h-9 flex-1 px-3 text-xs',
+                            'h-8 flex-1 px-2 text-[11px]',
                             !t.isOnline && 'cursor-not-allowed text-surface-500',
                           )}
                         >
@@ -330,10 +313,10 @@ export default function TeknisiListPage() {
                         <Button
                           variant="outline"
                           size="icon-sm"
-                          className="h-9 w-9 flex-shrink-0"
+                          className="h-8 w-8 flex-shrink-0"
                           aria-label="Chat"
                         >
-                          <MessageCircle className="h-4 w-4" />
+                          <MessageCircle className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </div>
@@ -348,7 +331,7 @@ export default function TeknisiListPage() {
         {filteredTeknisi.length === 0 && (
           <div className="py-16 text-center">
             <div className="mx-auto mb-3 inline-flex h-14 w-14 items-center justify-center rounded-full bg-surface-100">
-              <Search className="h-6 w-6 text-surface-400" />
+              <Search className="h-6 w-6 text-ink-muted" strokeWidth={2} aria-hidden />
             </div>
             <p className="text-sm font-medium text-ink">Belum ada teknisi yang cocok</p>
             <p className="mt-1 text-sm text-surface-500">

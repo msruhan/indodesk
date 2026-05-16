@@ -50,7 +50,9 @@ import {
   LockOpen,
   MagnifyingGlass,
   MapPin as PhMapPin,
+  Minus as PhMinus,
   Package as PhPackage,
+  Paperclip as PhPaperclip,
   PaperPlaneTilt,
   PencilSimple,
   Phone as PhPhone,
@@ -60,9 +62,11 @@ import {
   Quotes,
   ArrowsClockwise,
   ShareNetwork,
+  SignOut as PhSignOut,
   ShieldCheck,
   ShoppingBag as PhShoppingBag,
   ShoppingCart as PhShoppingCart,
+  Smiley as PhSmiley,
   Sparkle,
   SquaresFour,
   Star as PhStar,
@@ -144,16 +148,18 @@ export const Laptop = withPremiumWeight(PhLaptop)
 export const LayoutDashboard = withPremiumWeight(SquaresFour)
 export const Linkedin = withPremiumWeight(LinkedinLogo)
 export const Lock = withPremiumWeight(PhLock)
-export const LogOut = withPremiumWeight(LockOpen)
+export const LogOut = withPremiumWeight(PhSignOut)
 export const Mail = withPremiumWeight(EnvelopeSimple)
 export const MapPin = withPremiumWeight(PhMapPin)
 export const Menu = withPremiumWeight(List, 'regular')
 export const MessageCircle = withPremiumWeight(ChatCircle)
+export const Minus = withPremiumWeight(PhMinus, 'regular')
 export const MessageSquare = withPremiumWeight(ChatText)
 export const Minimize2 = withPremiumWeight(ArrowsInSimple)
 export const MoreHorizontal = withPremiumWeight(DotsThree)
 export const MoreVertical = withPremiumWeight(DotsThreeVertical)
 export const Package = withPremiumWeight(PhPackage)
+export const Paperclip = withPremiumWeight(PhPaperclip, 'regular')
 export const Phone = withPremiumWeight(PhPhone)
 export const Play = withPremiumWeight(PhPlay)
 export const Plus = withPremiumWeight(PhPlus, 'regular')
@@ -167,6 +173,7 @@ export const Share2 = withPremiumWeight(ShareNetwork)
 export const Shield = withPremiumWeight(ShieldCheck)
 export const ShoppingBag = withPremiumWeight(PhShoppingBag)
 export const ShoppingCart = withPremiumWeight(PhShoppingCart)
+export const Smile = withPremiumWeight(PhSmiley, 'regular')
 export const Smartphone = withPremiumWeight(DeviceMobile)
 export const Sparkles = withPremiumWeight(Sparkle)
 export const Star = withPremiumWeight(PhStar)

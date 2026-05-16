@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { searchInputIconClass } from '@/components/ui/search-input'
+import { cn } from '@/lib/utils'
 import { useChat } from '@/contexts/chat-context'
 import {
   Search,
@@ -18,7 +20,6 @@ import {
   Minimize2,
 } from '@/lib/icons'
 import { motion, AnimatePresence } from 'framer-motion'
-import { cn } from '@/lib/utils'
 
 interface Message {
   id: string
@@ -159,7 +160,11 @@ export function ChatPopup() {
                 <div className="flex w-[240px] flex-shrink-0 flex-col border-r border-surface-200/60 bg-white/90">
                   <div className="border-b border-surface-200/60 p-3">
                     <div className="relative">
-                      <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-surface-400" />
+                      <Search
+                        className={cn(searchInputIconClass, 'left-3 h-3.5 w-3.5')}
+                        strokeWidth={2}
+                        aria-hidden
+                      />
                       <Input
                         type="text"
                         placeholder="Cari percakapan…"

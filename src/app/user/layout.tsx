@@ -1,35 +1,13 @@
-'use client'
+import { requireRole } from '@/lib/auth-utils'
+import { UserShell } from './user-shell'
 
-import { UserSidebar } from '@/components/dashboard/user-sidebar'
-import { DashboardHeader } from '@/components/dashboard'
-import { useSidebar } from '@/contexts/sidebar-context'
-import { cn } from '@/lib/utils'
-import { DashboardBottomNav, DashboardMobileSpacer } from '@/components/mobile/dashboard-bottom-nav'
+export const dynamic = 'force-dynamic'
 
-export default function UserLayout({
+export default async function UserLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const { isCollapsed } = useSidebar()
-
-  return (
-    <div className="min-h-screen bg-surface-50">
-      <UserSidebar />
-      <div 
-        className={cn(
-          'transition-all duration-300',
-          isCollapsed ? 'pl-0' : 'pl-0 lg:pl-64'
-        )}
-      >
-        <DashboardHeader />
-        <main className="p-4 sm:p-6">
-          {children}
-        </main>
-      </div>
-      <DashboardMobileSpacer />
-      <DashboardBottomNav />
-    </div>
-  )
+  await requireRole(['USER'])
+  return <UserShell>{children}</UserShell>
 }
-

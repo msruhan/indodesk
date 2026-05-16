@@ -2,22 +2,17 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { useSidebar } from '@/contexts/sidebar-context'
-import {
-  ChevronLeft,
-  ChevronRight,
-  LogOut,
-  Zap,
-  type IconType,
-} from '@/lib/icons-types'
+import { useAuth } from '@/contexts/auth-context'
+import { LogOut, Zap, type IconType } from '@/lib/icons-types'
 
 export interface SidebarNavItem {
   icon: IconType
   label: string
   href: string
   badge?: string | number
+  section?: string
 }
 
 interface RoleSidebarProps {
@@ -43,7 +38,6 @@ interface RoleSidebarProps {
  * Premium role-aware sidebar.
  * - Glass surface with hairline border
  * - Animated active pill (layoutId) for fluid transitions
- * - Magnet-style hover lift, subtle floating toggle
  * - Single source for Admin / Teknisi / User
  */
 export function RoleSidebar({
@@ -54,7 +48,16 @@ export function RoleSidebar({
   scope,
 }: RoleSidebarProps) {
   const pathname = usePathname()
-  const { isCollapsed, toggleSidebar } = useSidebar()
+  const { logout } = useAuth()
+  const groupedItems = items.reduce<Array<{ section?: string; items: SidebarNavItem[] }>>((groups, item) => {
+    const last = groups[groups.length - 1]
+    if (last && last.section === item.section) {
+      last.items.push(item)
+      return groups
+    }
+    groups.push({ section: item.section, items: [item] })
+    return groups
+  }, [])
 
   const renderItem = (item: SidebarNavItem) => {
     const isActive =
@@ -102,33 +105,8 @@ export function RoleSidebar({
 
   return (
     <>
-      {/* Floating toggle */}
-      <button
-        onClick={toggleSidebar}
-        aria-label={isCollapsed ? 'Open sidebar' : 'Close sidebar'}
-        className={cn(
-          'fixed top-4 z-50 inline-flex h-10 w-10 items-center justify-center rounded-full glass-strong border border-surface-200/70 shadow-soft-md backdrop-blur-md text-surface-700 transition-all duration-450 ease-out-expo hover:scale-105 hover:text-ink hover:shadow-soft-lg',
-          isCollapsed ? 'left-4' : 'left-[268px]',
-        )}
-      >
-        <motion.span
-          animate={{ rotate: isCollapsed ? 0 : 180 }}
-          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <ChevronRight className="h-4 w-4" />
-        </motion.span>
-      </button>
-
       {/* Sidebar surface */}
-      <AnimatePresence initial={false}>
-        {!isCollapsed && (
-          <motion.aside
-            initial={{ x: -288, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -288, opacity: 0 }}
-            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed left-0 top-0 z-40 hidden h-screen w-64 lg:flex flex-col"
-          >
+      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 lg:flex flex-col">
             {/* Glass background with subtle aurora */}
             <div className="absolute inset-0 -z-10 bg-white/85 backdrop-blur-xl" />
             <div
@@ -162,7 +140,18 @@ export function RoleSidebar({
 
             {/* Main nav */}
             <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-              {items.map(renderItem)}
+              {groupedItems.map((group, index) => (
+                <div key={group.section ?? `section-${index}`} className={cn(index > 0 && 'pt-3')}>
+                  {group.section && (
+                    <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-surface-400">
+                      {group.section}
+                    </div>
+                  )}
+                  <div className="space-y-1">
+                    {group.items.map(renderItem)}
+                  </div>
+                </div>
+              ))}
             </nav>
 
             {/* Bottom */}
@@ -181,16 +170,17 @@ export function RoleSidebar({
                   <p className="truncate text-xs text-surface-500">{profile.email}</p>
                 </div>
                 <button
-                  className="rounded-lg p-1.5 text-surface-500 transition-colors hover:bg-surface-100 hover:text-ink"
-                  aria-label="Logout"
+                  type="button"
+                  className="rounded-lg p-1.5 text-surface-500 transition-colors hover:bg-surface-100 hover:text-rose-600"
+                  aria-label="Keluar"
+                  title="Keluar"
+                  onClick={() => void logout()}
                 >
                   <LogOut className="h-4 w-4" />
                 </button>
               </div>
             </div>
-          </motion.aside>
-        )}
-      </AnimatePresence>
+          </aside>
     </>
   )
 }
