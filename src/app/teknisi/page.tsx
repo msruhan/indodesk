@@ -1,8 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { motion } from 'framer-motion'
+import type { UserRole } from '@prisma/client'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -17,6 +20,9 @@ import {
   viewportRevealNoBlur,
 } from '@/components/motion'
 import { cn } from '@/lib/utils'
+import { openTeknisiChat } from '@/lib/open-teknisi-chat'
+import type { PublicTeknisiDto } from '@/lib/teknisi-public'
+import { useChat } from '@/contexts/chat-context'
 import {
   Search,
   Star,
@@ -25,31 +31,6 @@ import {
   CheckCircle,
   Award,
 } from '@/lib/icons'
-
-interface Teknisi {
-  id: string
-  name: string
-  avatar: string
-  isOnline: boolean
-  rating: number
-  reviewCount: number
-  totalKonsultasi: number
-  totalView: number
-  badge: 'newbie' | 'verified' | 'top-teknisi'
-  specialty: string[]
-  price: number
-}
-
-const mockTeknisi: Teknisi[] = [
-  { id: '1', name: 'Ahmad Hidayat', avatar: '/api/placeholder/80/80', isOnline: true, rating: 4.9, reviewCount: 234, totalKonsultasi: 567, totalView: 1234, badge: 'top-teknisi', specialty: ['Unlock', 'Flashing', 'Root'], price: 50000 },
-  { id: '2', name: 'Budi Santoso', avatar: '/api/placeholder/80/80', isOnline: true, rating: 4.7, reviewCount: 189, totalKonsultasi: 342, totalView: 892, badge: 'verified', specialty: ['Hardware Repair', 'Screen Replacement'], price: 75000 },
-  { id: '3', name: 'Siti Nurhaliza', avatar: '/api/placeholder/80/80', isOnline: false, rating: 4.8, reviewCount: 156, totalKonsultasi: 289, totalView: 654, badge: 'verified', specialty: ['Software', 'Virus Removal'], price: 45000 },
-  { id: '4', name: 'Rudi Hartono', avatar: '/api/placeholder/80/80', isOnline: true, rating: 4.5, reviewCount: 98, totalKonsultasi: 145, totalView: 321, badge: 'newbie', specialty: ['Basic Repair'], price: 35000 },
-  { id: '5', name: 'Dewi Lestari', avatar: '/api/placeholder/80/80', isOnline: true, rating: 4.9, reviewCount: 312, totalKonsultasi: 678, totalView: 1890, badge: 'top-teknisi', specialty: ['Data Recovery', 'Backup'], price: 80000 },
-  { id: '6', name: 'Eko Prasetyo', avatar: '/api/placeholder/80/80', isOnline: false, rating: 4.6, reviewCount: 201, totalKonsultasi: 398, totalView: 987, badge: 'verified', specialty: ['Water Damage', 'Board Repair'], price: 95000 },
-  { id: '7', name: 'Fajar Pratama', avatar: '/api/placeholder/80/80', isOnline: true, rating: 4.8, reviewCount: 178, totalKonsultasi: 412, totalView: 1056, badge: 'verified', specialty: ['Unlock', 'Software'], price: 60000 },
-  { id: '8', name: 'Maya Sari', avatar: '/api/placeholder/80/80', isOnline: true, rating: 4.7, reviewCount: 142, totalKonsultasi: 256, totalView: 743, badge: 'verified', specialty: ['Screen Replacement'], price: 65000 },
-]
 
 const badgeConfig = {
   newbie: { label: 'Newbie', tone: 'info' as const, icon: Award },
@@ -77,11 +58,42 @@ const compactNumber = (n: number) =>
   n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : n.toString()
 
 export default function TeknisiListPage() {
+  const router = useRouter()
+  const { data: session, status } = useSession()
+  const { openChatWithPeer } = useChat()
+  const [teknisiList, setTeknisiList] = useState<PublicTeknisiDto[]>([])
+  const [loadingList, setLoadingList] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterOnline, setFilterOnline] = useState(false)
   const [sortBy, setSortBy] = useState<SortKey>('relevance')
 
-  const filteredTeknisi = mockTeknisi
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch('/api/teknisi')
+        const json = (await res.json()) as { success?: boolean; data?: PublicTeknisiDto[] }
+        if (json.success && json.data) {
+          setTeknisiList(json.data)
+        }
+      } catch {
+        /* ignore */
+      } finally {
+        setLoadingList(false)
+      }
+    })()
+  }, [])
+
+  const handleOpenChat = (teknisiUserId: string) => {
+    openTeknisiChat({
+      teknisiUserId,
+      isAuthenticated: status === 'authenticated',
+      role: (session?.user?.role as UserRole | undefined) ?? 'USER',
+      openChatWithPeer,
+      navigate: router.push,
+    })
+  }
+
+  const filteredTeknisi = teknisiList
     .filter((t) => {
       const matchesSearch =
         t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -104,7 +116,7 @@ export default function TeknisiListPage() {
       }
     })
 
-  const onlineCount = mockTeknisi.filter((t) => t.isOnline).length
+  const onlineCount = teknisiList.filter((t) => t.isOnline).length
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-surface-50">
@@ -226,16 +238,15 @@ export default function TeknisiListPage() {
 
             return (
               <motion.div key={t.id} variants={viewportRevealNoBlur} className="min-w-0">
-                <Link
-                  href={`/teknisi/${t.id}`}
-                  className="block focus:outline-none focus-visible:rounded-3xl focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2"
-                >
                   <SpotlightCard tone="primary" className="flex h-full flex-col p-3 sm:p-4">
                     {/* Header: avatar + name + rating */}
                     <div className="mb-2 flex items-center gap-2">
                       <div className="relative flex-shrink-0">
                         <img
-                          src={`https://i.pravatar.cc/150?img=${parseInt(t.id)}`}
+                          src={
+                            t.image ??
+                            `https://i.pravatar.cc/150?u=${encodeURIComponent(t.userId)}`
+                          }
                           alt={t.name}
                           className="h-10 w-10 rounded-full border-2 border-white object-cover shadow-soft-xs ring-1 ring-surface-200/70"
                           loading="lazy"
@@ -300,35 +311,37 @@ export default function TeknisiListPage() {
 
                       <div className="flex gap-1.5">
                         <Button
-                          variant={t.isOnline ? 'primary' : 'secondary'}
+                          asChild
+                          variant="primary"
                           size="sm"
-                          disabled={!t.isOnline}
-                          className={cn(
-                            'h-8 flex-1 px-2 text-[11px]',
-                            !t.isOnline && 'cursor-not-allowed text-surface-500',
-                          )}
+                          className="h-8 flex-1 px-2 text-[11px]"
                         >
-                          {t.isOnline ? 'Konsultasi' : 'Offline'}
+                          <Link href={`/teknisi/${t.userId}`}>Lihat Profil</Link>
                         </Button>
                         <Button
+                          type="button"
                           variant="outline"
                           size="icon-sm"
                           className="h-8 w-8 flex-shrink-0"
-                          aria-label="Chat"
+                          aria-label={`Chat dengan ${t.name}`}
+                          onClick={() => handleOpenChat(t.userId)}
                         >
                           <MessageCircle className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </div>
                   </SpotlightCard>
-                </Link>
               </motion.div>
             )
           })}
         </motion.div>
 
+        {loadingList && (
+          <p className="py-12 text-center text-sm text-surface-500">Memuat daftar teknisi...</p>
+        )}
+
         {/* Empty state */}
-        {filteredTeknisi.length === 0 && (
+        {!loadingList && filteredTeknisi.length === 0 && (
           <div className="py-16 text-center">
             <div className="mx-auto mb-3 inline-flex h-14 w-14 items-center justify-center rounded-full bg-surface-100">
               <Search className="h-6 w-6 text-ink-muted" strokeWidth={2} aria-hidden />

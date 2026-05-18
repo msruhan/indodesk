@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { getSession } from 'next-auth/react'
 import { useAuth, type UserRole } from '@/contexts/auth-context'
 import {
@@ -16,15 +16,22 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { authFieldIconClass } from '@/components/ui/auth-field-icon'
-import { Zap, Mail, Lock } from '@/lib/icons'
+import { Zap, Mail, Lock, Shield } from '@/lib/icons'
 import { AuroraBackground } from '@/components/motion'
 import { motion } from 'framer-motion'
 
-export default function LoginPage() {
+function isSafeCallbackUrl(url: string): boolean {
+  return url.startsWith('/') && !url.startsWith('//')
+}
+
+function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [totp, setTotp] = useState('')
+  const [needs2FA, setNeeds2FA] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -33,7 +40,14 @@ export default function LoginPage() {
     setIsLoading(true)
     setError(null)
 
-    const result = await login(email, password)
+    const result = await login(email, password, needs2FA ? totp : undefined)
+
+    if (result.requires2FA) {
+      setNeeds2FA(true)
+      setError(null)
+      setIsLoading(false)
+      return
+    }
 
     if (!result.success) {
       setError(result.error || 'Login gagal')
@@ -43,20 +57,25 @@ export default function LoginPage() {
 
     const session = await getSession()
     const role = session?.user?.role as UserRole | undefined
+    const callbackUrl = searchParams.get('callbackUrl')
     const destination =
       role === 'ADMIN'
         ? '/admin/dashboard'
         : role === 'TEKNISI'
           ? '/teknisi/dashboard'
-          : '/user/akun'
+          : '/user/dashboard'
 
-    router.push(destination)
+    if (callbackUrl && isSafeCallbackUrl(callbackUrl)) {
+      router.push(callbackUrl)
+    } else {
+      router.push(destination)
+    }
     router.refresh()
     setIsLoading(false)
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
+    <motion.div className="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
       <AuroraBackground intensity="vivid" />
 
       <motion.div
@@ -72,69 +91,97 @@ export default function LoginPage() {
             </div>
             <div>
               <CardTitle className="text-2xl font-semibold tracking-tightest">
-                Masuk ke akun Anda
+                {needs2FA ? 'Verifikasi 2FA' : 'Masuk ke akun Anda'}
               </CardTitle>
               <CardDescription className="mt-1 text-surface-600">
-                Platform ekosistem teknisi handphone Indonesia
+                {needs2FA
+                  ? 'Masukkan kode 6 digit dari Google Authenticator'
+                  : 'Platform ekosistem teknisi handphone Indonesia'}
               </CardDescription>
             </div>
           </CardHeader>
 
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Error message */}
               {error && (
                 <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                   {error}
                 </div>
               )}
 
-              {/* Email */}
-              <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium text-surface-700">
-                  Email
-                </label>
-                <div className="relative">
-                  <Mail className={authFieldIconClass} strokeWidth={2} aria-hidden />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="nama@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-11"
-                    required
-                  />
-                </div>
-              </div>
+              {!needs2FA ? (
+                <>
+                  <div className="space-y-2">
+                    <label htmlFor="email" className="text-sm font-medium text-surface-700">
+                      Email
+                    </label>
+                    <div className="relative">
+                      <Mail className={authFieldIconClass} strokeWidth={2} aria-hidden />
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="nama@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="pl-11"
+                        required
+                      />
+                    </div>
+                  </div>
 
-              {/* Password */}
-              <div className="space-y-2">
-                <label htmlFor="password" className="text-sm font-medium text-surface-700">
-                  Password
-                </label>
-                <div className="relative">
-                  <Lock className={authFieldIconClass} strokeWidth={2} aria-hidden />
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-11"
-                    required
-                  />
+                  <div className="space-y-2">
+                    <label htmlFor="password" className="text-sm font-medium text-surface-700">
+                      Password
+                    </label>
+                    <div className="relative">
+                      <Lock className={authFieldIconClass} strokeWidth={2} aria-hidden />
+                      <Input
+                        id="password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="pl-11"
+                        required
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-2">
+                  <label htmlFor="totp" className="text-sm font-medium text-surface-700">
+                    Kode Google Authenticator
+                  </label>
+                  <div className="relative">
+                    <Shield className={authFieldIconClass} strokeWidth={2} aria-hidden />
+                    <Input
+                      id="totp"
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="000000"
+                      value={totp}
+                      onChange={(e) => setTotp(e.target.value.replace(/\D/g, ''))}
+                      className="pl-11 text-center tracking-[0.3em]"
+                      required
+                      autoFocus
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="text-xs text-primary-700 hover:underline"
+                    onClick={() => {
+                      setNeeds2FA(false)
+                      setTotp('')
+                      setError(null)
+                    }}
+                  >
+                    ← Kembali ke email & password
+                  </button>
                 </div>
-              </div>
+              )}
 
-              <Button
-                type="submit"
-                variant="primary"
-                size="lg"
-                className="w-full"
-                disabled={isLoading}
-              >
-                {isLoading ? 'Memproses…' : 'Masuk'}
+              <Button type="submit" variant="primary" size="lg" className="w-full" disabled={isLoading}>
+                {isLoading ? 'Memproses…' : needs2FA ? 'Verifikasi & Masuk' : 'Masuk'}
               </Button>
             </form>
           </CardContent>
@@ -158,6 +205,21 @@ export default function LoginPage() {
           </CardFooter>
         </Card>
       </motion.div>
-    </div>
+    </motion.div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <motion.div className="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
+          <AuroraBackground intensity="vivid" />
+          <p className="text-sm text-surface-600">Memuat...</p>
+        </motion.div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   )
 }

@@ -6,10 +6,8 @@ import { MessageCircle } from '@/lib/icons'
 import { motion } from 'framer-motion'
 
 export function ChatButton() {
-  const { isOpen, toggleChat } = useChat()
-
-  // Mock unread count
-  const totalUnread = 2
+  const { isOpen, toggleChat, messenger } = useChat()
+  const totalUnread = messenger.totalUnread
 
   if (isOpen) return null
 
@@ -22,13 +20,12 @@ export function ChatButton() {
       whileTap={{ scale: 0.95 }}
       onClick={toggleChat}
       className={[
-        'group/chat fixed right-4 z-50 inline-flex h-14 w-14 items-center justify-center rounded-full',
+        'group/chat fixed bottom-6 right-5 z-50 hidden h-14 w-14 items-center justify-center rounded-full',
         'bg-gradient-to-br from-primary-500 via-primary-600 to-accent-600 text-white shadow-glow-primary',
         'transition-shadow duration-450 hover:shadow-glow-primary-lg',
-        // Sit above the floating dock on mobile (responsive utility, no inline style).
-        'bottom-mobile-fab sm:right-5',
+        'lg:inline-flex',
       ].join(' ')}
-      aria-label="Open chat"
+      aria-label="Buka chat"
     >
       {/* Pulse ring */}
       <span
@@ -46,7 +43,7 @@ export function ChatButton() {
           variant="danger"
           className="pointer-events-none absolute -top-1.5 -right-1.5 h-5 w-5 justify-center border-2 border-white p-0 text-[10px] font-bold"
         >
-          {totalUnread}
+          {totalUnread > 99 ? '99+' : totalUnread}
         </Badge>
       )}
     </motion.button>

@@ -1,6 +1,7 @@
+import { Suspense } from 'react'
 import { ChatView } from '@/components/chat/chat-view'
 
-export default function UserChatPage() {
+function ChatPageContent() {
   return (
     <div className="flex h-[calc(100dvh-7.5rem)] max-lg:h-[calc(100dvh-11rem)] min-h-0 flex-col gap-4">
       <div className="shrink-0">
@@ -9,5 +10,13 @@ export default function UserChatPage() {
       </div>
       <ChatView className="min-h-0 flex-1 !h-full max-h-none" />
     </div>
+  )
+}
+
+export default function UserChatPage() {
+  return (
+    <Suspense fallback={<p className="text-sm text-surface-500">Memuat chat...</p>}>
+      <ChatPageContent />
+    </Suspense>
   )
 }

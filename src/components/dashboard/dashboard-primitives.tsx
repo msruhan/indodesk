@@ -333,7 +333,15 @@ export function DashboardPanel({
 export function StatusBadge({
   status,
 }: {
-  status: 'completed' | 'pending' | 'in-progress' | 'failed' | 'approved' | 'rejected' | 'dispute'
+  status:
+    | 'completed'
+    | 'pending'
+    | 'in-progress'
+    | 'failed'
+    | 'approved'
+    | 'rejected'
+    | 'dispute'
+    | 'draft'
 }) {
   const config = {
     completed: { label: 'Completed', variant: 'success' as const },
@@ -343,6 +351,7 @@ export function StatusBadge({
     approved: { label: 'Approved', variant: 'success' as const },
     rejected: { label: 'Rejected', variant: 'danger' as const },
     dispute: { label: 'Dispute', variant: 'danger' as const },
+    draft: { label: 'Draft', variant: 'outline' as const },
   }[status]
 
   return <Badge variant={config.variant}>{config.label}</Badge>

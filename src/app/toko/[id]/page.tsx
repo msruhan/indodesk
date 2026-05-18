@@ -170,8 +170,9 @@ export default function TokoDetailPage() {
           alt={toko.name}
           className="absolute inset-0 h-full w-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/72 via-black/34 to-black/8" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_22%,rgba(255,255,255,0.30),transparent_26%),radial-gradient(circle_at_80%_10%,rgba(16,185,129,0.30),transparent_22%)]" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/55 to-black/25" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/20 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/80 to-transparent" />
 
         <motion.div
           variants={stagger}
@@ -180,31 +181,34 @@ export default function TokoDetailPage() {
           className="relative z-10 mx-auto flex h-full max-w-7xl flex-col justify-end px-4 pb-10 sm:px-6 lg:px-8 lg:pb-12"
         >
           <motion.div variants={reveal} className="mb-3 flex flex-wrap items-center gap-2">
-            <Badge variant="warning" className="bg-white/86 text-amber-700 backdrop-blur-xl">
-              <Award className="h-3.5 w-3.5" />
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/40 bg-amber-500/95 px-3 py-1 text-xs font-semibold text-white shadow-[0_2px_12px_rgba(0,0,0,0.35)]">
+              <Award className="h-3.5 w-3.5 shrink-0" />
               Top Seller
-            </Badge>
-            <Badge variant="glass" className="bg-white/18 text-white ring-1 ring-white/24">
-              <CheckCircle className="h-3.5 w-3.5 text-primary-200" />
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/40 bg-emerald-600/95 px-3 py-1 text-xs font-semibold text-white shadow-[0_2px_12px_rgba(0,0,0,0.35)]">
+              <CheckCircle className="h-3.5 w-3.5 shrink-0" />
               Verified Store
-            </Badge>
+            </span>
           </motion.div>
 
-          <motion.h1 variants={reveal} className="max-w-3xl text-3xl font-bold leading-[1] tracking-tight text-white drop-shadow-sm sm:text-4xl lg:text-5xl">
+          <motion.h1
+            variants={reveal}
+            className="max-w-3xl text-3xl font-bold leading-[1.05] tracking-tight text-white sm:text-4xl lg:text-5xl [text-shadow:0_2px_16px_rgba(0,0,0,0.65),0_1px_3px_rgba(0,0,0,0.5)]"
+          >
             {toko.name}
           </motion.h1>
 
-          <motion.div variants={reveal} className="mt-4 flex flex-wrap items-center gap-2 text-sm text-white/92">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/18 bg-white/14 px-3 py-1.5 backdrop-blur-xl">
-              <MapPin className="h-4 w-4" />
+          <motion.div variants={reveal} className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/50 px-3 py-1.5 font-medium text-white shadow-[0_2px_10px_rgba(0,0,0,0.35)] backdrop-blur-md">
+              <MapPin className="h-4 w-4 shrink-0 text-primary-200" />
               {toko.location}, {toko.city}
             </span>
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/18 bg-white/14 px-3 py-1.5 backdrop-blur-xl">
-              <Star className="h-4 w-4 fill-yellow-300 text-yellow-300" />
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/50 px-3 py-1.5 font-medium text-white shadow-[0_2px_10px_rgba(0,0,0,0.35)] backdrop-blur-md">
+              <Star className="h-4 w-4 shrink-0 fill-amber-300 text-amber-300" />
               {toko.rating} ({toko.reviewCount} ulasan)
             </span>
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/18 bg-white/14 px-3 py-1.5 backdrop-blur-xl">
-              <ShoppingBag className="h-4 w-4" />
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/50 px-3 py-1.5 font-medium text-white shadow-[0_2px_10px_rgba(0,0,0,0.35)] backdrop-blur-md">
+              <ShoppingBag className="h-4 w-4 shrink-0 text-primary-200" />
               {toko.totalPenjualan.toLocaleString('id-ID')} transaksi
             </span>
           </motion.div>
@@ -212,10 +216,12 @@ export default function TokoDetailPage() {
       </section>
 
       <main className="relative z-20 mx-auto -mt-8 max-w-7xl px-4 pb-28 sm:px-6 lg:px-8 lg:pb-14">
-        <div className="mb-5 text-xs font-medium text-white/86 lg:text-surface-500">
-          <Link href="/toko" className="transition-colors hover:text-primary-600">Promosi Toko</Link>
-          <span className="mx-2">/</span>
-          <span>{toko.name}</span>
+        <div className="mb-5 text-xs font-medium text-surface-500">
+          <Link href="/toko" className="transition-colors hover:text-primary-600">
+            Promosi Toko
+          </Link>
+          <span className="mx-2 text-surface-400">/</span>
+          <span className="text-surface-700">{toko.name}</span>
         </div>
 
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_330px]">

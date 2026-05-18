@@ -1,17 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Navbar } from '@/components/landing'
 import { BottomNav, MobileSafeAreaSpacer } from '@/components/mobile'
 import { serviceTabs } from '@/lib/section-tab-config'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { PageHero } from '@/components/shared/page-hero'
 import { cn } from '@/lib/utils'
+import { SupportChatButton } from '@/components/chat/support-chat-button'
 import {
   ArrowRight,
   CheckCircle,
@@ -21,10 +22,8 @@ import {
   HelpCircle,
   Laptop,
   Lock,
-  MessageCircle,
   Radio,
   Shield,
-  Smartphone,
   Star,
   Users,
   Zap,
@@ -45,16 +44,19 @@ const steps = [
   { num: 4, title: 'Tunggu teknisi connect', desc: 'Teknisi akan menerima request dan mulai sesi remote.' },
 ]
 
-const platforms = [
-  { label: 'Windows', icon: Laptop },
-  { label: 'macOS', icon: Laptop },
-  { label: 'Android', icon: Smartphone },
-  { label: 'Linux', icon: Laptop },
-]
+type DownloadItem = {
+  platform: 'windows' | 'macos'
+  platformLabel: string
+  downloadUrl: string
+  version: string
+  fileSize: string | null
+}
 
 const fadeIn = { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.3 } }
 
 export default function RemotePage() {
+  const [downloads, setDownloads] = useState<DownloadItem[]>([])
+  const [latestVersion, setLatestVersion] = useState('1.3.7')
   const [selectedTeknisi, setSelectedTeknisi] = useState<string | null>(null)
   const [remoteId, setRemoteId] = useState('')
   const [otp, setOtp] = useState('')
@@ -63,6 +65,24 @@ export default function RemotePage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const ready = !!selectedTeknisi && remoteId.trim().length >= 6 && otp.trim().length >= 4
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch('/api/indodesk/downloads')
+        const json = (await res.json()) as {
+          success?: boolean
+          data?: { version?: string; downloads?: DownloadItem[] }
+        }
+        if (json.success && json.data?.downloads) {
+          setDownloads(json.data.downloads)
+          if (json.data.version) setLatestVersion(json.data.version)
+        }
+      } catch {
+        // keep defaults in UI
+      }
+    })()
+  }, [])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -175,15 +195,39 @@ export default function RemotePage() {
                       Download sesuai platform Anda:
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      {platforms.map((p) => (
-                        <Button key={p.label} variant="outline" size="sm" className="h-9 gap-1.5">
-                          <p.icon className="h-3.5 w-3.5" />
-                          {p.label}
-                        </Button>
-                      ))}
+                      {downloads.length === 0 ? (
+                        <>
+                          <Button variant="outline" size="sm" className="h-9 gap-1.5" disabled>
+                            <Laptop className="h-3.5 w-3.5" />
+                            Windows
+                          </Button>
+                          <Button variant="outline" size="sm" className="h-9 gap-1.5" disabled>
+                            <Laptop className="h-3.5 w-3.5" />
+                            macOS
+                          </Button>
+                        </>
+                      ) : (
+                        downloads.map((p) => (
+                          <a
+                            key={p.platform}
+                            href={p.downloadUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download
+                            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'h-9')}
+                          >
+                            <span className="relative z-10 inline-flex items-center gap-1.5">
+                              <Laptop className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
+                              {p.platformLabel}
+                            </span>
+                          </a>
+                        ))
+                      )}
                     </div>
                     <p className="mt-3 text-[11px] text-surface-500">
-                      Versi terbaru: <span className="font-mono text-ink">v1.3.7</span> · Ukuran: ~15 MB · Gratis
+                      Versi terbaru:{' '}
+                      <span className="font-mono text-ink">v{latestVersion.replace(/^v/i, '')}</span>
+                      {downloads[0]?.fileSize ? ` · Ukuran: ${downloads[0].fileSize}` : ''} · Gratis
                     </p>
                   </CardContent>
                 </Card>
@@ -376,8 +420,8 @@ export default function RemotePage() {
                     <h3 className="text-xs font-bold text-ink">Tentang IndoDesk</h3>
                     <p className="text-[12px] leading-[1.7] text-surface-600">
                       IndoDesk adalah aplikasi remote desktop open-source yang dikembangkan khusus untuk
-                      ekosistem IndoTeknizi. Ringan (~15 MB), tanpa perlu konfigurasi, dan mendukung
-                      Windows, macOS, Linux, dan Android.
+                      ekosistem IndoTeknizi. Ringan, tanpa perlu konfigurasi, dan tersedia untuk
+                      Windows serta macOS.
                     </p>
                     <div className="flex flex-wrap gap-1.5 pt-1">
                       {['Open Source', 'P2P', 'Low Latency', 'File Transfer'].map((tag) => (
@@ -396,12 +440,9 @@ export default function RemotePage() {
                   <CardContent className="p-4">
                     <h3 className="mb-2 text-xs font-bold text-ink">Butuh bantuan?</h3>
                     <p className="text-[12px] text-surface-600 mb-3">
-                      Hubungi CS kami jika mengalami kendala saat proses remote.
+                      Hubungi Admin platform jika mengalami kendala saat proses remote.
                     </p>
-                    <Button variant="outline" size="sm" className="w-full">
-                      <MessageCircle className="h-3.5 w-3.5" />
-                      Chat dengan CS
-                    </Button>
+                    <SupportChatButton />
                   </CardContent>
                 </Card>
               </motion.div>

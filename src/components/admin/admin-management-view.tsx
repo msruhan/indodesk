@@ -11,8 +11,9 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Edit, Trash2, CheckCircle, XCircle, Star, MapPin, Plus, Search, Users, Eye } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { AdminWalletPanel } from '@/components/admin/admin-wallet-panel'
 
-const TAB_KEYS = ['users', 'teknisi', 'toko'] as const
+const TAB_KEYS = ['users', 'teknisi', 'toko', 'wallet'] as const
 type TabKey = (typeof TAB_KEYS)[number]
 
 const usersSeed = [
@@ -53,6 +54,7 @@ export function AdminManagementView() {
   const [qUser, setQUser] = useState('')
   const [qTek, setQTek] = useState('')
   const [qToko, setQToko] = useState('')
+  const [qWallet, setQWallet] = useState('')
 
   const filteredUsers = usersSeed.filter((u) => u.name.toLowerCase().includes(qUser.toLowerCase()) || u.email.toLowerCase().includes(qUser.toLowerCase()))
   const filteredTek = teknisiSeed.filter((t) => t.name.toLowerCase().includes(qTek.toLowerCase()) || t.email.toLowerCase().includes(qTek.toLowerCase()))
@@ -75,6 +77,7 @@ export function AdminManagementView() {
             <TabsTrigger value="users" className="shrink-0 px-3 text-xs sm:px-4">User</TabsTrigger>
             <TabsTrigger value="teknisi" className="shrink-0 px-3 text-xs sm:px-4">Teknisi</TabsTrigger>
             <TabsTrigger value="toko" className="shrink-0 px-3 text-xs sm:px-4">Toko</TabsTrigger>
+            <TabsTrigger value="wallet" className="shrink-0 px-3 text-xs sm:px-4">Wallet</TabsTrigger>
           </TabsList>
         </div>
 
@@ -183,6 +186,10 @@ export function AdminManagementView() {
               </motion.div>
             ))}
           </div>
+        {/* ===== WALLET ===== */}
+        <TabsContent value="wallet" className="mt-4">
+          <AdminWalletPanel />
+        </TabsContent>
         </TabsContent>
       </Tabs>
     </div>

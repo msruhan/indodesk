@@ -13,16 +13,15 @@ import {
   ArrowRight,
   CheckCircle,
   Clock,
-  Eye,
   Laptop,
   MessageCircle,
   Shield,
   ShoppingBag,
-  Star,
   TrendingUp,
   Wallet,
   XCircle,
 } from '@/lib/icons'
+import { UserWalletBalanceCard } from '@/components/user/user-wallet-balance-card'
 
 const Chart = dynamic(() => import('react-apexcharts'), { ssr: false })
 
@@ -144,6 +143,8 @@ export default function UserDashboardPage() {
           </div>
         </div>
       </motion.div>
+
+      <UserWalletBalanceCard />
 
       {/* Quick stats — compact horizontal */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">

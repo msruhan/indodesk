@@ -1,8 +1,11 @@
 'use client'
 
-import { useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useCallback, useEffect, useState } from 'react'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useCart } from '@/contexts/cart-context'
+import type { MarketplaceProductDto } from '@/lib/marketplace-product-serializer'
+import { MOCK_MARKETPLACE_PRODUCTS } from '@/lib/marketplace-mock-products'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -49,86 +52,116 @@ const hoverLift = {
   transition: { duration: 0.22, ease },
 }
 
-const sellerByProductId: Record<
-  string,
-  {
-    storeId: string
-    storeName: string
-    technicianName?: string
-    verified: boolean
-    rating: number
-    totalSales: number
-    responseTime: string
-    location: string
-  }
-> = {
-  '1': {
-    storeId: '1',
-    storeName: 'HandPhone Center Jakarta',
-    technicianName: 'Ahmad Hidayat',
-    verified: true,
-    rating: 4.9,
-    totalSales: 234,
-    responseTime: '< 5 menit',
-    location: 'Jakarta Selatan',
-  },
-  '2': {
-    storeId: '2',
-    storeName: 'TechSolution Store',
-    technicianName: 'Budi Santoso',
-    verified: true,
-    rating: 4.8,
-    totalSales: 189,
-    responseTime: '< 10 menit',
-    location: 'Jakarta Pusat',
-  },
-}
-
 export default function ProductDetailPage() {
   const params = useParams()
+  const router = useRouter()
+  const { addItem } = useCart()
   const routeId = typeof params.id === 'string' ? params.id : params.id?.[0] ?? '1'
   const [isFavorite, setIsFavorite] = useState(false)
   const [selectedImage, setSelectedImage] = useState(0)
+  const [product, setProduct] = useState<MarketplaceProductDto | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
-  const seller = sellerByProductId[routeId] ?? sellerByProductId['1']!
+  useEffect(() => {
+    void (async () => {
+      setLoading(true)
+      setLoadError(null)
+      try {
+        const res = await fetch(`/api/marketplace/products/${routeId}`)
+        const data = await res.json()
+        if (data.success) {
+          setProduct(data.data)
+          return
+        }
+        const fallback = MOCK_MARKETPLACE_PRODUCTS[routeId]
+        if (fallback) {
+          setProduct(fallback)
+          return
+        }
+        setLoadError(data.error || 'Produk tidak ditemukan')
+      } catch {
+        const fallback = MOCK_MARKETPLACE_PRODUCTS[routeId]
+        if (fallback) setProduct(fallback)
+        else setLoadError('Gagal memuat produk')
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }, [routeId])
 
-  const product = {
-    id: routeId,
-    storeId: seller.storeId,
-    name: 'iPhone 13 Pro Max - Second',
-    category: 'handphone',
-    price: 8500000,
-    rating: 4.8,
-    reviewCount: 124,
-    views: 2341,
-    condition: '95% like new',
-    stock: 'Ready stock',
-    location: 'Jakarta Selatan',
-    teknisi: seller,
-    description:
-      'iPhone 13 Pro Max kondisi sangat baik, 95% like new. Unit sudah melewati pengecekan layar, kamera, speaker, charging port, Face ID, dan performa baterai. Cocok untuk pengguna yang ingin flagship iPhone dengan kondisi rapi dan garansi toko.',
-    specs: [
-      { label: 'Storage', value: '256GB' },
-      { label: 'Warna', value: 'Sierra Blue' },
-      { label: 'Battery health', value: '93%' },
-      { label: 'Garansi', value: '1 bulan' },
-      { label: 'Aksesoris', value: 'Charger, cable, box' },
-      { label: 'Metode', value: 'COD / transfer' },
-    ],
-    features: [
-      'Kondisi 95% like new',
-      'Garansi toko 1 bulan',
-      'Aksesoris lengkap',
-      'Ready stock',
-      'Bisa COD',
-    ],
+  const handleBuyNow = useCallback(() => {
+    if (!product) return
+    if (product.stock <= 0) {
+      alert('Stok produk habis')
+      return
+    }
+    addItem({
+      id: product.id,
+      name: product.name,
+      category: product.category,
+      categoryValue: product.categoryValue,
+      price: product.price,
+      image: product.image,
+      description: product.description,
+      stock: product.stock,
+      seller: {
+        id: product.seller.id,
+        storeName: product.seller.storeName,
+      },
+    })
+    router.push('/cart')
+  }, [product, addItem, router])
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface-50">
+        <p className="text-sm text-surface-500">Memuat produk...</p>
+      </div>
+    )
   }
 
-  const galleryImages = [
-    product.id === '1' ? '1592750475338-74b7b21085ab' : product.id === '2' ? '1511707171634-5f897ff02aa9' : '1517336714731-489689fd1ca8',
-    '1511707171634-5f897ff02aa9',
-    '1517336714731-489689fd1ca8',
-  ]
+  if (!product || loadError) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-surface-50 px-4">
+        <p className="text-sm text-surface-600">{loadError ?? 'Produk tidak ditemukan'}</p>
+        <Link href="/marketplace">
+          <Button variant="primary">Kembali ke Marketplace</Button>
+        </Link>
+      </div>
+    )
+  }
+
+  const display = {
+    id: product.id,
+    storeId: product.seller.storeId ?? product.seller.id,
+    name: product.name,
+    category: product.categorySlug,
+    price: product.price,
+    rating: product.rating,
+    reviewCount: product.reviewCount,
+    views: product.views,
+    condition: product.stock > 0 ? '95% like new' : 'Stok habis',
+    stock: product.stock > 0 ? 'Ready stock' : 'Habis',
+    location: product.seller.location ?? '—',
+    teknisi: product.seller,
+    description: product.description ?? '',
+    specs: [
+      { label: 'Kategori', value: product.category },
+      { label: 'Stok', value: String(product.stock) },
+      { label: 'Penjual', value: product.seller.storeName },
+      { label: 'Lokasi', value: product.seller.location ?? '—' },
+    ],
+    features: ['Garansi toko', 'Pembayaran aman', 'Respon cepat'],
+  }
+
+  const galleryImages = product.image
+    ? [product.image, product.image, product.image]
+    : [
+        'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=1100&q=85',
+        'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=1100&q=85',
+        'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=1100&q=85',
+      ]
 
   const reviews = [
     {
@@ -180,7 +213,7 @@ export default function ProductDetailPage() {
         >
           <Link href="/marketplace" className="transition-colors hover:text-primary-600">Marketplace</Link>
           <span className="mx-2">/</span>
-          <span className="text-surface-700">{product.name}</span>
+          <span className="text-surface-700">{display.name}</span>
         </motion.div>
 
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
@@ -196,8 +229,8 @@ export default function ProductDetailPage() {
                 <AnimatePresence mode="wait">
                   <motion.img
                     key={selectedImage}
-                    src={`https://images.unsplash.com/photo-${galleryImages[selectedImage]}?auto=format&fit=crop&w=1100&q=85`}
-                    alt={`${product.name} image ${selectedImage + 1}`}
+                    src={galleryImages[selectedImage]}
+                    alt={`${display.name} image ${selectedImage + 1}`}
                     className="h-full w-full object-cover"
                     initial={{ opacity: 0, scale: 1.035 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -255,9 +288,9 @@ export default function ProductDetailPage() {
               </div>
 
               <div className="mt-2 grid grid-cols-3 gap-2">
-                {galleryImages.map((imageId, index) => (
+                {galleryImages.map((imageUrl, index) => (
                   <button
-                    key={`${imageId}-${index}`}
+                    key={`${imageUrl}-${index}`}
                     onClick={() => setSelectedImage(index)}
                     className={`relative h-14 overflow-hidden rounded-xl border transition-all sm:h-16 lg:h-[70px] ${
                       selectedImage === index
@@ -267,8 +300,8 @@ export default function ProductDetailPage() {
                     aria-label={`Open product image ${index + 1}`}
                   >
                     <img
-                      src={`https://images.unsplash.com/photo-${imageId}?auto=format&fit=crop&w=260&q=80`}
-                      alt={`${product.name} thumbnail ${index + 1}`}
+                      src={imageUrl}
+                      alt={`${display.name} thumbnail ${index + 1}`}
                       className="h-full w-full object-cover"
                     />
                   </button>
@@ -283,7 +316,7 @@ export default function ProductDetailPage() {
                 <h2 className="mt-1 text-xl font-bold tracking-tight text-black sm:text-2xl">Spesifikasi dan kondisi unit</h2>
               </motion.div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {product.specs.map((spec) => (
+                {display.specs.map((spec) => (
                   <motion.div
                     key={spec.label}
                     variants={reveal}
@@ -304,9 +337,9 @@ export default function ProductDetailPage() {
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">Deskripsi</p>
                     <h2 className="mt-1 text-xl font-bold tracking-tight text-black sm:text-2xl">Ringkasan kondisi produk</h2>
                   </div>
-                  <p className="text-sm leading-7 text-surface-600">{product.description}</p>
+                  <p className="text-sm leading-7 text-surface-600">{display.description}</p>
                   <div className="mt-5 grid gap-2 sm:grid-cols-2">
-                    {product.features.map((feature) => (
+                    {display.features.map((feature) => (
                       <div key={feature} className="flex items-center gap-2 rounded-2xl bg-surface-50 px-3 py-2.5 text-sm font-semibold text-surface-700">
                         <CheckCircle className="h-4 w-4 flex-shrink-0 text-primary-600" />
                         {feature}
@@ -320,7 +353,7 @@ export default function ProductDetailPage() {
             <motion.section variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-80px' }}>
               <motion.div variants={reveal} className="mb-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">Ulasan Pembeli</p>
-                <h2 className="mt-1 text-xl font-bold tracking-tight text-black sm:text-2xl">{product.reviewCount} ulasan terverifikasi</h2>
+                <h2 className="mt-1 text-xl font-bold tracking-tight text-black sm:text-2xl">{display.reviewCount} ulasan terverifikasi</h2>
               </motion.div>
               <div className="grid gap-3 md:grid-cols-2">
                 {reviews.map((review) => (
@@ -371,7 +404,7 @@ export default function ProductDetailPage() {
                 <div className="mb-2.5 flex items-start justify-between gap-3">
                   <Badge variant="primary" className="capitalize">
                     <Smartphone className="h-3.5 w-3.5" />
-                    {product.category}
+                    {display.category}
                   </Badge>
                   <div className="flex items-center gap-2 text-xs font-semibold text-primary-700">
                     <Zap className="h-4 w-4" />
@@ -394,18 +427,34 @@ export default function ProductDetailPage() {
                   </span>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-50 px-2.5 py-1.5">
                     <MapPin className="h-4 w-4 text-primary-600" />
-                    {product.location}
+                    {display.location}
                   </span>
                 </div>
 
-                <div className="mt-3.5 rounded-2xl border border-primary-100 bg-gradient-to-br from-primary-50 to-white p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-700">Harga produk</p>
-                  <p className="mt-1 text-2xl font-bold tracking-tight text-primary-700">
-                    {formatPrice(product.price)}
-                  </p>
-                  <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] font-semibold text-surface-600">
-                    <span className="rounded-xl bg-white px-2.5 py-1.5 shadow-soft-xs">{product.condition}</span>
-                    <span className="rounded-xl bg-white px-2.5 py-1.5 shadow-soft-xs">{product.stock}</span>
+                <div className="relative mt-3.5 overflow-hidden rounded-2xl border border-primary-700/20 bg-gradient-to-br from-primary-800 via-primary-700 to-primary-900 p-4 shadow-glow-primary">
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.08)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.08)_50%,rgba(255,255,255,0.08)_75%,transparent_75%)] bg-[length:18px_18px] opacity-40"
+                  />
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-accent-400/25 blur-2xl"
+                  />
+                  <div className="relative">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-100/90">
+                      Harga produk
+                    </p>
+                    <p className="mt-1.5 text-[1.65rem] font-bold leading-none tracking-tight text-white sm:text-3xl">
+                      {formatPrice(product.price)}
+                    </p>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <span className="rounded-xl border border-white/15 bg-white/12 px-2.5 py-1.5 text-center text-[11px] font-semibold text-white/95 backdrop-blur-sm">
+                        {display.condition}
+                      </span>
+                      <span className="rounded-xl border border-white/15 bg-white/12 px-2.5 py-1.5 text-center text-[11px] font-semibold text-white/95 backdrop-blur-sm">
+                        {display.stock}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
@@ -422,7 +471,7 @@ export default function ProductDetailPage() {
                 </div>
 
                 <div className="mt-3.5 flex gap-2">
-                  <Button variant="primary" className="flex-1">
+                  <Button variant="primary" className="flex-1" onClick={handleBuyNow}>
                     <ShoppingCart className="h-5 w-5" />
                     Beli sekarang
                   </Button>
@@ -439,7 +488,7 @@ export default function ProductDetailPage() {
               <CardContent className="p-4">
                 <div className="mb-3 flex items-center justify-between">
                   <h2 className="text-base font-bold text-black">Informasi penjual</h2>
-                  {product.teknisi.verified && (
+                  {display.teknisi.verified && (
                     <Badge variant="success" className="px-2 py-0.5 text-[10px]">
                       <CheckCircle className="h-3 w-3" />
                       Verified
@@ -450,33 +499,33 @@ export default function ProductDetailPage() {
                 <div className="flex items-center gap-3">
                   <img
                     src="https://i.pravatar.cc/150?img=12"
-                    alt={product.teknisi.storeName}
+                    alt={display.teknisi.storeName}
                     className="h-12 w-12 rounded-2xl border border-surface-200 object-cover"
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <h3 className="truncate text-base font-bold text-black">{product.teknisi.storeName}</h3>
+                      <h3 className="truncate text-base font-bold text-black">{display.teknisi.storeName}</h3>
                       <CheckCircle className="h-4 w-4 flex-shrink-0 text-primary-600" />
                     </div>
-                    {product.teknisi.technicianName && (
+                    {display.teknisi.technicianName && (
                       <p className="mt-0.5 truncate text-xs text-surface-500">
                         Teknisi:{' '}
-                        <span className="font-medium text-surface-700">{product.teknisi.technicianName}</span>
+                        <span className="font-medium text-surface-700">{display.teknisi.technicianName}</span>
                       </p>
                     )}
                     <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-surface-500">
                       <span className="inline-flex items-center gap-1">
                         <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-                        {product.teknisi.rating}
+                        {display.teknisi.rating}
                       </span>
-                      <span>{product.teknisi.totalSales} penjualan</span>
-                      <span>{product.teknisi.responseTime}</span>
+                      <span>{display.teknisi.totalSales} penjualan</span>
+                      <span>{display.teknisi.responseTime}</span>
                     </div>
-                    <p className="mt-1 text-xs text-surface-500">{product.teknisi.location}</p>
+                    <p className="mt-1 text-xs text-surface-500">{display.teknisi.location}</p>
                   </div>
                 </div>
 
-                <Link href={`/toko/${product.storeId}`} className="mt-4 block">
+                <Link href={`/toko/${display.storeId}`} className="mt-4 block">
                   <Button variant="outline" className="w-full">
                     <Store className="h-4 w-4" />
                     Lihat profil toko
@@ -524,7 +573,7 @@ export default function ProductDetailPage() {
             <p className="truncate text-xs font-medium text-surface-500">{product.name}</p>
             <p className="text-lg font-bold text-primary-700">{formatPrice(product.price)}</p>
           </div>
-          <Button variant="primary" size="sm">
+          <Button variant="primary" size="sm" onClick={handleBuyNow}>
             <ShoppingCart className="h-4 w-4" />
             Beli
           </Button>

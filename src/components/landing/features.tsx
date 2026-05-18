@@ -35,7 +35,7 @@ const features = [
   },
   {
     icon: Briefcase,
-    title: 'Promosi Toko HP',
+    title: 'Promosi Toko',
     description:
       'Platform untuk toko handphone promosi layanan service, jual beli, dengan sistem review dan badge terpercaya.',
     accent: 'from-violet-500/15 via-violet-400/10 to-transparent',

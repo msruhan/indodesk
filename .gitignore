@@ -38,5 +38,13 @@ next-env.d.ts
 .idea
 .vscode
 
+# User uploads (keep folder)
+/public/uploads/avatars/*
+!/public/uploads/avatars/.gitkeep
+/public/uploads/products/*
+!/public/uploads/products/.gitkeep
+/public/uploads/stores/*
+!/public/uploads/stores/.gitkeep
+
 
 /src/generated/prisma

@@ -18,7 +18,7 @@ const testimonials = [
   },
   {
     name: 'Budi Santoso',
-    role: 'Pemilik Toko HP',
+    role: 'Pemilik Toko',
     avatar: 'BS',
     content:
       'Marketplace di IndoTeknizi sangat membantu promosi. Banyak customer baru datang dari platform ini. Rating dan review membangun kepercayaan dengan cepat.',

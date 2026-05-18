@@ -67,28 +67,37 @@ model User {
   image         String?
   password      String? // hashed with bcrypt (null for OAuth-only users)
   role          UserRole  @default(USER)
-  phone         String?
-  address       String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  phone              String?
+  address            String?
+  twoFactorEnabled   Boolean   @default(false)
+  twoFactorSecret    String?   @db.Text
+  passwordChangedAt  DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   // Relations
   accounts         Account[]
   sessions         Session[]
   teknisiProfile   TeknisiProfile?
   products         Product[]
-  ordersAsBuyer    Order[]             @relation("BuyerOrders")
-  ordersAsSeller   Order[]             @relation("SellerOrders")
+  ordersAsBuyer    Order[]               @relation("BuyerOrders")
+  ordersAsSeller   Order[]               @relation("SellerOrders")
   wallet           Wallet?
-  rekberAsBuyer    RekberTransaction[] @relation("RekberBuyer")
-  rekberAsSeller   RekberTransaction[] @relation("RekberSeller")
+  rekberAsBuyer    RekberTransaction[]   @relation("RekberBuyer")
+  rekberAsSeller   RekberTransaction[]   @relation("RekberSeller")
   topupOrders      TopupOrder[]
-  konsultasiAsUser KonsultasiSession[] @relation("KonsultasiUser")
-  konsultasiAsTech KonsultasiSession[] @relation("KonsultasiTeknisi")
+  konsultasiAsUser KonsultasiSession[]   @relation("KonsultasiUser")
+  konsultasiAsTech KonsultasiSession[]   @relation("KonsultasiTeknisi")
   lowonganPosted   Lowongan[]
   applications     LowonganApplication[]
-  remoteAsUser     RemoteSession[]     @relation("RemoteUser")
-  remoteAsTech     RemoteSession[]     @relation("RemoteTeknisi")
+  remoteAsUser     RemoteSession[]       @relation("RemoteUser")
+  remoteAsTech     RemoteSession[]       @relation("RemoteTeknisi")
+  imeiOrders       ImeiOrder[]
+  serverOrders     ServerOrder[]
+  chatAsUser       ChatConversation[]    @relation("ChatAsUser")
+  chatAsTeknisi    ChatConversation[]    @relation("ChatAsTeknisi")
+  chatMessagesSent ChatMessage[]
+  teknisiStore     TeknisiStore?
 }
 
 // ============================================================
@@ -96,25 +105,54 @@ model User {
 // ============================================================
 
 model TeknisiProfile {
-  id             String   @id @default(cuid())
-  userId         String   @unique
-  specialty      String[] // e.g. ["Unlock", "Flashing", "Root"]
-  experience     String?  // e.g. "8 tahun"
-  location       String?
-  description    String?  @db.Text
-  rating         Decimal  @default(0) @db.Decimal(3, 2)
-  reviewCount    Int      @default(0)
-  totalKonsultasi Int     @default(0)
-  totalView      Int      @default(0)
-  responseTime   String?  // e.g. "< 5 menit"
-  completionRate Int      @default(0) // percentage
-  isOnline       Boolean  @default(false)
-  isVerified     Boolean  @default(false)
-  price          Decimal  @default(0) @db.Decimal(12, 0) // starting price IDR
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  specialty       String[] // e.g. ["Unlock", "Flashing", "Root"]
+  experience      String? // e.g. "8 tahun"
+  location        String?
+  description     String?  @db.Text
+  rating          Decimal  @default(0) @db.Decimal(3, 2)
+  reviewCount     Int      @default(0)
+  totalKonsultasi Int      @default(0)
+  totalView       Int      @default(0)
+  responseTime    String? // e.g. "< 5 menit"
+  completionRate  Int      @default(0) // percentage
+  isOnline        Boolean  @default(false)
+  isVerified      Boolean  @default(false)
+  price           Decimal  @default(0) @db.Decimal(12, 0) // starting price IDR
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ============================================================
+// TEKNISI STORE (Toko handphone — 1 per teknisi)
+// ============================================================
+
+model TeknisiStore {
+  id            String               @id @default(cuid())
+  userId        String               @unique
+  name          String
+  city          String?
+  address       String?
+  phone         String?
+  email         String?
+  jamWeekdays   String?
+  jamWeekend    String?
+  coverImage    String?
+  layanan       String[]             @default([])
+  badge         String?
+  listingStatus ProductListingStatus @default(APPROVED)
+  isPublished   Boolean              @default(false)
+  profileViews  Int                  @default(0)
+  totalSold     Int                  @default(0)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([isPublished, listingStatus])
 }
 
 // ============================================================
@@ -128,21 +166,31 @@ enum ProductCategory {
   SOFTWARE
 }
 
+enum ProductListingStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model Product {
-  id          String          @id @default(cuid())
-  sellerId    String
-  name        String
-  category    ProductCategory
-  price       Decimal         @db.Decimal(12, 0)
-  description String?         @db.Text
-  image       String?
-  rating      Decimal         @default(0) @db.Decimal(3, 2)
-  reviewCount Int             @default(0)
-  views       Int             @default(0)
-  stock       Int             @default(0)
-  isActive    Boolean         @default(true)
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  id             String               @id @default(cuid())
+  sellerId       String
+  name           String
+  category       ProductCategory
+  price          Decimal              @db.Decimal(12, 0)
+  description    String?              @db.Text
+  image          String?
+  rating         Decimal              @default(0) @db.Decimal(3, 2)
+  reviewCount    Int                  @default(0)
+  views          Int                  @default(0)
+  soldCount      Int                  @default(0)
+  stock          Int                  @default(1)
+  listingStatus  ProductListingStatus @default(DRAFT)
+  isPublished    Boolean              @default(false)
+  isActive       Boolean              @default(true)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
 
   seller     User        @relation(fields: [sellerId], references: [id])
   orderItems OrderItem[]
@@ -159,18 +207,18 @@ enum OrderStatus {
 }
 
 model Order {
-  id          String      @id @default(cuid())
-  orderCode   String      @unique // e.g. "ORD-2026-XXXXXX"
-  buyerId     String
-  sellerId    String
-  subtotal    Decimal     @db.Decimal(12, 0)
-  fee         Decimal     @default(0) @db.Decimal(12, 0)
-  discount    Decimal     @default(0) @db.Decimal(12, 0)
-  total       Decimal     @db.Decimal(12, 0)
-  status      OrderStatus @default(PENDING)
-  note        String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id        String      @id @default(cuid())
+  orderCode String      @unique // e.g. "ORD-2026-XXXXXX"
+  buyerId   String
+  sellerId  String
+  subtotal  Decimal     @db.Decimal(12, 0)
+  fee       Decimal     @default(0) @db.Decimal(12, 0)
+  discount  Decimal     @default(0) @db.Decimal(12, 0)
+  total     Decimal     @db.Decimal(12, 0)
+  status    OrderStatus @default(PENDING)
+  note      String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
 
   buyer  User        @relation("BuyerOrders", fields: [buyerId], references: [id])
   seller User        @relation("SellerOrders", fields: [sellerId], references: [id])
@@ -221,7 +269,7 @@ model WalletLedger {
   amount      Decimal    @db.Decimal(14, 0) // positive = credit, negative = debit
   balance     Decimal    @db.Decimal(14, 0) // balance after this entry
   description String?
-  referenceId String?    // order/rekber/topup ID
+  referenceId String? // order/rekber/topup ID
   createdAt   DateTime   @default(now())
 
   wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
@@ -278,10 +326,10 @@ enum TopupStatus {
 model TopupOrder {
   id              String      @id @default(cuid())
   orderCode       String      @unique // e.g. "TT-XXXXXX-2026"
-  userId          String?     // nullable for guest checkout
+  userId          String? // nullable for guest checkout
   productSlug     String
   denominationSku String
-  accountId       String      // target game/phone ID
+  accountId       String // target game/phone ID
   serverId        String?
   email           String?
   whatsapp        String?
@@ -312,21 +360,56 @@ enum KonsultasiStatus {
 }
 
 model KonsultasiSession {
-  id         String           @id @default(cuid())
-  userId     String
-  teknisiId  String
-  service    String           // e.g. "Konsultasi Unlock"
-  price      Decimal          @db.Decimal(12, 0)
-  status     KonsultasiStatus @default(PENDING)
-  rating     Int?             // 1-5
-  review     String?          @db.Text
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @updatedAt
-  startedAt  DateTime?
-  endedAt    DateTime?
+  id        String           @id @default(cuid())
+  userId    String
+  teknisiId String
+  service   String // e.g. "Konsultasi Unlock"
+  price     Decimal          @db.Decimal(12, 0)
+  status    KonsultasiStatus @default(PENDING)
+  rating    Int? // 1-5
+  review    String?          @db.Text
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  startedAt DateTime?
+  endedAt   DateTime?
 
   user    User @relation("KonsultasiUser", fields: [userId], references: [id])
   teknisi User @relation("KonsultasiTeknisi", fields: [teknisiId], references: [id])
+}
+
+// ============================================================
+// CHAT (User ↔ Teknisi)
+// ============================================================
+
+model ChatConversation {
+  id            String    @id @default(cuid())
+  userId        String
+  teknisiId     String
+  lastMessageAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user     User          @relation("ChatAsUser", fields: [userId], references: [id], onDelete: Cascade)
+  teknisi  User          @relation("ChatAsTeknisi", fields: [teknisiId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+
+  @@unique([userId, teknisiId])
+  @@index([userId, lastMessageAt(sort: Desc)])
+  @@index([teknisiId, lastMessageAt(sort: Desc)])
+}
+
+model ChatMessage {
+  id             String    @id @default(cuid())
+  conversationId String
+  senderId       String
+  body           String    @db.Text
+  readAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User             @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
 }
 
 // ============================================================
@@ -345,9 +428,9 @@ model RemoteSession {
   id          String       @id @default(cuid())
   userId      String
   teknisiId   String
-  remoteId    String       // IndoDesk ID
+  remoteId    String // IndoDesk ID
   description String?      @db.Text
-  platform    String?      // e.g. "Windows 11"
+  platform    String? // e.g. "Windows 11"
   status      RemoteStatus @default(WAITING)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
@@ -400,4 +483,242 @@ model LowonganApplication {
 
   lowongan  Lowongan @relation(fields: [lowonganId], references: [id], onDelete: Cascade)
   applicant User     @relation(fields: [applicantId], references: [id])
+}
+
+// ============================================================
+// IMEI SERVICE — API Manager, Service Groups, Services, Orders
+// ============================================================
+
+enum ImeiApiStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ImeiServiceStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ImeiOrderStatus {
+  PENDING
+  IN_PROCESS
+  SUCCESS
+  REJECTED
+  CANCELLED
+}
+
+/// API Provider/Supplier (e.g. DhruFusion, UnlockBase)
+model ImeiApi {
+  id        String        @id @default(cuid())
+  title     String
+  host      String
+  username  String
+  apiKey    String        @db.Text
+  apiType   String        @default("DhruFusion") // DhruFusion | UnlockBase | Custom
+  libraryId Int           @default(1)
+  status    ImeiApiStatus @default(ACTIVE)
+  notes     String?       @db.Text
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  services       ImeiService[]
+  serverServices ServerService[]
+
+  @@index([status])
+}
+
+/// Service Group (Network/Category) — e.g. "Samsung Unlock", "iPhone iCloud"
+model ImeiServiceGroup {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  services ImeiService[]
+}
+
+/// Individual IMEI Service (a "method" in DhruFusion terminology)
+model ImeiService {
+  id           String            @id @default(cuid())
+  apiId        String
+  groupId      String
+  toolId       String? // external tool/service ID from supplier
+  title        String
+  description  String?           @db.Text
+  price        Decimal           @db.Decimal(12, 0) // IDR
+  deliveryTime String? // e.g. "1-24 jam"
+  status       ImeiServiceStatus @default(ACTIVE)
+
+  // Required fields (from DhruFusion API spec)
+  requiresImei     Boolean @default(true)
+  requiresNetwork  Boolean @default(false)
+  requiresModel    Boolean @default(false)
+  requiresProvider Boolean @default(false)
+  requiresPin      Boolean @default(false)
+  requiresKbh      Boolean @default(false)
+  requiresMep      Boolean @default(false)
+  requiresPrd      Boolean @default(false)
+  requiresSn       Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  api    ImeiApi          @relation(fields: [apiId], references: [id], onDelete: Cascade)
+  group  ImeiServiceGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  orders ImeiOrder[]
+
+  @@index([groupId, status])
+  @@index([apiId])
+}
+
+/// IMEI Order placed by user
+model ImeiOrder {
+  id        String          @id @default(cuid())
+  orderCode String          @unique // e.g. "IMEI-2026-XXXXXX"
+  userId    String
+  serviceId String
+  imei      String
+  price     Decimal         @db.Decimal(12, 0)
+  status    ImeiOrderStatus @default(PENDING)
+
+  // Optional input fields
+  network      String?
+  model        String?
+  provider     String?
+  pin          String?
+  kbh          String?
+  mep          String?
+  prd          String?
+  serialNumber String?
+  note         String? @db.Text
+
+  // Result fields
+  code        String? @db.Text // unlock code / result
+  comments    String? @db.Text // admin/system comments
+  referenceId String? // external supplier reference ID
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  processedAt DateTime?
+  completedAt DateTime?
+
+  user    User        @relation(fields: [userId], references: [id])
+  service ImeiService @relation(fields: [serviceId], references: [id])
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+  @@index([imei])
+}
+
+// ============================================================
+// SERVER SERVICE — Server-based unlock/flash services
+// ============================================================
+
+enum ServerOrderStatus {
+  PENDING
+  IN_PROCESS
+  SUCCESS
+  REJECTED
+  CANCELLED
+}
+
+/// Server Box — grouping for server services (e.g. "Samsung Server", "iPhone Server")
+model ServerServiceBox {
+  id        String   @id @default(cuid())
+  title     String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  services ServerService[]
+}
+
+/// Individual Server Service
+model ServerService {
+  id             String            @id @default(cuid())
+  apiId          String
+  boxId          String
+  toolId         String? // external tool ID from supplier
+  title          String
+  description    String?           @db.Text
+  price          Decimal           @db.Decimal(12, 0)
+  deliveryTime   String?
+  quantity       Int               @default(1)
+  requiredFields String?           @db.Text // JSON schema of required input fields
+  status         ImeiServiceStatus @default(ACTIVE)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  api    ImeiApi          @relation(fields: [apiId], references: [id], onDelete: Cascade)
+  box    ServerServiceBox @relation(fields: [boxId], references: [id], onDelete: Cascade)
+  orders ServerOrder[]
+
+  @@index([boxId, status])
+  @@index([apiId])
+}
+
+/// Server Order placed by user
+model ServerOrder {
+  id             String            @id @default(cuid())
+  orderCode      String            @unique
+  userId         String
+  serviceId      String
+  price          Decimal           @db.Decimal(12, 0)
+  status         ServerOrderStatus @default(PENDING)
+  requiredFields String?           @db.Text // JSON of user-submitted field values
+  email          String?
+  notes          String?           @db.Text
+  code           String?           @db.Text // result
+  comments       String?           @db.Text
+  referenceId    String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  processedAt    DateTime?
+  completedAt    DateTime?
+
+  user    User          @relation(fields: [userId], references: [id])
+  service ServerService @relation(fields: [serviceId], references: [id])
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+}
+
+// ============================================================
+// PLATFORM NOTIFICATIONS (bell popup — shared across roles)
+// ============================================================
+
+model PlatformNotification {
+  id        String   @id @default(cuid())
+  title     String
+  body      String   @db.Text
+  audiences Json // ["USER","TEKNISI","ADMIN"]
+  tone      String   @default("primary")
+  icon      String   @default("bell")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active, createdAt(sort: Desc)])
+}
+
+// ============================================================
+// INODESK DOWNLOAD LINKS (admin-managed)
+// ============================================================
+
+enum IndodeskPlatform {
+  WINDOWS
+  MACOS
+}
+
+model IndodeskDownload {
+  id          String           @id @default(cuid())
+  platform    IndodeskPlatform @unique
+  downloadUrl String           @db.Text
+  version     String           @default("1.3.7")
+  fileSize    String?          @default("~15 MB")
+  isActive    Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 }

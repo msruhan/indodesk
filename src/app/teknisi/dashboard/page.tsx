@@ -25,6 +25,7 @@ import {
   TeknisiServiceChart,
 } from '@/components/dashboard'
 import { ChartSlider } from '@/components/dashboard/chart-slider'
+import { TeknisiWelcomeCard } from '@/components/teknisi/teknisi-welcome-card'
 
 export default function TeknisiDashboardPage() {
   // Mock data - in production, fetch from API
@@ -73,6 +74,8 @@ export default function TeknisiDashboardPage() {
 
   return (
     <div className="space-y-6">
+      <TeknisiWelcomeCard name="Teknisi" />
+
       <DashboardPageHeader
         eyebrow="Technician workspace"
         title="Dashboard Teknisi"

@@ -16,10 +16,11 @@ import type {
   PlatformNotification,
 } from '@/data/mock-platform-notifications'
 import {
-  NOTIFICATIONS_UPDATED_EVENT,
+  NOTIFICATIONS_KEY,
   loadPlatformNotifications,
-  savePlatformNotifications,
 } from '@/lib/platform-content-storage'
+import { formatNotificationTimeLabel } from '@/lib/notification-display'
+import { sortNotificationsNewestFirst } from '@/lib/platform-notifications'
 import { cn } from '@/lib/utils'
 
 type AudienceFilter = 'all' | NotificationAudience
@@ -30,10 +31,9 @@ const audienceLabels: Record<NotificationAudience, string> = {
   ADMIN: 'Admin',
 }
 
-const emptyForm = (): Omit<PlatformNotification, 'id'> => ({
+const emptyForm = (): Omit<PlatformNotification, 'id' | 'createdAt'> => ({
   title: '',
   body: '',
-  timeLabel: 'Baru saja',
   audiences: ['USER'],
   tone: 'primary',
   icon: 'bell',
@@ -42,23 +42,65 @@ const emptyForm = (): Omit<PlatformNotification, 'id'> => ({
 
 export function AdminNotificationsView() {
   const [items, setItems] = useState<PlatformNotification[]>([])
+  const [loading, setLoading] = useState(true)
   const [q, setQ] = useState('')
   const [audienceFilter, setAudienceFilter] = useState<AudienceFilter>('all')
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm())
+  const [saving, setSaving] = useState(false)
 
-  const persist = useCallback((next: PlatformNotification[]) => {
-    setItems(next)
-    savePlatformNotifications(next)
+  const fetchItems = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/admin/notifications', { cache: 'no-store' })
+      const json = (await res.json()) as { success?: boolean; data?: PlatformNotification[] }
+      if (res.ok && json.success && Array.isArray(json.data)) {
+        setItems(sortNotificationsNewestFirst(json.data))
+      }
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  const migrateLocalStorageOnce = useCallback(async () => {
+    if (typeof window === 'undefined') return
+    const local = loadPlatformNotifications()
+    if (local.length === 0) return
+
+    const res = await fetch('/api/admin/notifications')
+    const json = (await res.json()) as { success?: boolean; data?: PlatformNotification[] }
+    if (!res.ok || !json.success || !Array.isArray(json.data)) return
+
+    const existingTitles = new Set(json.data.map((n) => n.title.trim().toLowerCase()))
+    let migrated = false
+
+    for (const n of local) {
+      if (existingTitles.has(n.title.trim().toLowerCase())) continue
+      await fetch('/api/admin/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: n.title,
+          body: n.body,
+          audiences: n.audiences,
+          tone: n.tone,
+          icon: n.icon,
+          active: n.active,
+        }),
+      })
+      migrated = true
+    }
+
+    if (migrated) localStorage.removeItem(NOTIFICATIONS_KEY)
   }, [])
 
   useEffect(() => {
-    setItems(loadPlatformNotifications())
-    const sync = () => setItems(loadPlatformNotifications())
-    window.addEventListener(NOTIFICATIONS_UPDATED_EVENT, sync)
-    return () => window.removeEventListener(NOTIFICATIONS_UPDATED_EVENT, sync)
-  }, [])
+    void (async () => {
+      await migrateLocalStorageOnce()
+      await fetchItems()
+    })()
+  }, [fetchItems, migrateLocalStorageOnce])
 
   const filtered = items.filter((n) => {
     const matchQ =
@@ -89,7 +131,6 @@ export function AdminNotificationsView() {
     setForm({
       title: item.title,
       body: item.body,
-      timeLabel: item.timeLabel,
       audiences: [...item.audiences],
       tone: item.tone,
       icon: item.icon,
@@ -98,33 +139,56 @@ export function AdminNotificationsView() {
     setShowForm(true)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.title.trim() || !form.body.trim() || form.audiences.length === 0) return
 
-    if (editingId) {
-      persist(items.map((n) => (n.id === editingId ? { ...form, id: editingId } : n)))
-    } else {
-      persist([...items, { ...form, id: `n-${Date.now()}` }])
+    setSaving(true)
+    try {
+      if (editingId) {
+        const res = await fetch(`/api/admin/notifications/${editingId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(form),
+        })
+        if (!res.ok) return
+      } else {
+        const res = await fetch('/api/admin/notifications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(form),
+        })
+        if (!res.ok) return
+      }
+      setShowForm(false)
+      setEditingId(null)
+      setForm(emptyForm())
+      await fetchItems()
+    } finally {
+      setSaving(false)
     }
-    setShowForm(false)
-    setEditingId(null)
-    setForm(emptyForm())
   }
 
-  const toggleActive = (id: string) => {
-    persist(items.map((n) => (n.id === id ? { ...n, active: !n.active } : n)))
+  const toggleActive = async (item: PlatformNotification) => {
+    const res = await fetch(`/api/admin/notifications/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: !item.active }),
+    })
+    if (res.ok) await fetchItems()
   }
 
-  const remove = (id: string) => {
-    persist(items.filter((n) => n.id !== id))
+  const remove = async (id: string) => {
+    const res = await fetch(`/api/admin/notifications/${id}`, { method: 'DELETE' })
+    if (res.ok) await fetchItems()
   }
 
   return (
     <div className="space-y-6">
       <p className="text-sm text-surface-600">
-        Atur notifikasi yang muncul di ikon lonceng header untuk user, teknisi, dan admin. Setiap
-        peran hanya melihat notifikasi yang ditujukan kepadanya.
+        Atur notifikasi yang muncul di ikon lonceng header untuk user, teknisi, dan admin. Data
+        disimpan di server sehingga semua peran melihat notifikasi yang sama sesuai penerima yang
+        dipilih. Notifikasi terbaru selalu tampil paling atas.
       </p>
 
       {showForm && (
@@ -142,14 +206,6 @@ export function AdminNotificationsView() {
                     onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                     placeholder="Pesanan dikirim"
                     required
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-surface-700">Label Waktu</label>
-                  <Input
-                    value={form.timeLabel}
-                    onChange={(e) => setForm((f) => ({ ...f, timeLabel: e.target.value }))}
-                    placeholder="5 menit lalu"
                   />
                 </div>
                 <div className="md:col-span-2">
@@ -226,7 +282,9 @@ export function AdminNotificationsView() {
               </label>
 
               <div className="flex gap-2">
-                <Button type="submit">Simpan</Button>
+                <Button type="submit" disabled={saving}>
+                  {saving ? 'Menyimpan…' : 'Simpan'}
+                </Button>
                 <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
                   Batal
                 </Button>
@@ -266,55 +324,71 @@ export function AdminNotificationsView() {
               <CardTitle>Daftar Notifikasi ({filtered.length})</CardTitle>
             </CardHeader>
             <CardContent className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Judul</TableHead>
-                    <TableHead>Penerima</TableHead>
-                    <TableHead>Waktu</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Aksi</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.map((n) => (
-                    <TableRow key={n.id}>
-                      <TableCell>
-                        <div className="font-medium">{n.title}</div>
-                        <div className="max-w-xs truncate text-xs text-surface-500">{n.body}</div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {n.audiences.map((a) => (
-                            <Badge key={a} variant="secondary" className="text-[10px]">
-                              {audienceLabels[a]}
-                            </Badge>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm text-surface-600">{n.timeLabel}</TableCell>
-                      <TableCell>
-                        <Badge variant={n.active ? 'default' : 'outline'}>
-                          {n.active ? 'Aktif' : 'Nonaktif'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          <Button size="sm" variant="outline" type="button" onClick={() => openEdit(n)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button size="sm" variant="outline" type="button" onClick={() => toggleActive(n.id)}>
-                            {n.active ? 'Nonaktif' : 'Aktif'}
-                          </Button>
-                          <Button size="sm" variant="outline" type="button" onClick={() => remove(n.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+              {loading ? (
+                <p className="py-8 text-center text-sm text-surface-500">Memuat…</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Judul</TableHead>
+                      <TableHead>Penerima</TableHead>
+                      <TableHead>Waktu</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Aksi</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filtered.map((n) => (
+                      <TableRow key={n.id}>
+                        <TableCell>
+                          <div className="font-medium">{n.title}</div>
+                          <div className="max-w-xs truncate text-xs text-surface-500">{n.body}</div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {n.audiences.map((a) => (
+                              <Badge key={a} variant="secondary" className="text-[10px]">
+                                {audienceLabels[a]}
+                              </Badge>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm text-surface-600">
+                          {formatNotificationTimeLabel(n.createdAt)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={n.active ? 'default' : 'outline'}>
+                            {n.active ? 'Aktif' : 'Nonaktif'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            <Button size="sm" variant="outline" type="button" onClick={() => openEdit(n)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              type="button"
+                              onClick={() => void toggleActive(n)}
+                            >
+                              {n.active ? 'Nonaktif' : 'Aktif'}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              type="button"
+                              onClick={() => void remove(n.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

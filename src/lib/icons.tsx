@@ -2,6 +2,7 @@ import * as React from 'react'
 import type { Icon as PhosphorIcon } from '@phosphor-icons/react'
 import {
   ArrowRight as PhArrowRight,
+  ArrowSquareOut as PhArrowSquareOut,
   ArrowsInSimple,
   Bell as PhBell,
   Briefcase as PhBriefcase,
@@ -108,6 +109,7 @@ function withPremiumWeight(Icon: PhosphorIcon, defaultWeight: IconProps['weight'
 export const AlertCircle = withPremiumWeight(WarningCircle)
 export const AlertTriangle = withPremiumWeight(Warning)
 export const ArrowRight = withPremiumWeight(PhArrowRight, 'regular')
+export const ExternalLink = withPremiumWeight(PhArrowSquareOut, 'regular')
 export const Award = withPremiumWeight(Trophy)
 export const BarChart3 = withPremiumWeight(SquaresFour)
 export const Bell = withPremiumWeight(PhBell)

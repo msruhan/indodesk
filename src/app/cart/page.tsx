@@ -19,10 +19,12 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { useCart } from '@/contexts/cart-context'
+import type { CartItem } from '@/lib/cart'
+import { BackButton } from '@/components/shared/back-button'
 import {
   ArrowRight,
   CheckCircle,
-  ChevronLeft,
   Laptop,
   Minus,
   Plus,
@@ -35,54 +37,6 @@ import {
   X,
   Zap,
 } from '@/lib/icons'
-
-interface CartItem {
-  id: string
-  type: 'physical' | 'software' | 'topup'
-  name: string
-  subtitle: string
-  image: string
-  price: number
-  quantity: number
-  seller: string
-  badge?: string
-}
-
-const initialCartItems: CartItem[] = [
-  {
-    id: '1',
-    type: 'physical',
-    name: 'iPhone 13 Pro Max - Second',
-    subtitle: '256GB · Kondisi 95% · Fullset',
-    image: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=200&h=200&fit=crop',
-    price: 8500000,
-    quantity: 1,
-    seller: 'TechSolution Store',
-    badge: 'Handphone',
-  },
-  {
-    id: '2',
-    type: 'software',
-    name: 'Unlock Tool Premium License',
-    subtitle: 'Lifetime · All brand support',
-    image: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=200&h=200&fit=crop',
-    price: 500000,
-    quantity: 1,
-    seller: 'Unlock Master',
-    badge: 'Software',
-  },
-  {
-    id: '3',
-    type: 'topup',
-    name: 'Mobile Legends 518 Diamonds',
-    subtitle: '467 + 51 bonus · Proses instan',
-    image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=200&h=200&fit=crop',
-    price: 132000,
-    quantity: 1,
-    seller: 'IndoTeknizi Top Up',
-    badge: 'Top Up',
-  },
-]
 
 const formatPrice = (n: number) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n)
@@ -136,22 +90,14 @@ const typeBadgeColor = {
 }
 
 export default function CartPage() {
-  const [items, setItems] = useState(initialCartItems)
+  const { items, updateQuantity, removeItem, hydrated } = useCart()
   const [promoCode, setPromoCode] = useState('')
   const [promoApplied, setPromoApplied] = useState(false)
 
-  const updateQuantity = (id: string, delta: number) => {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? { ...item, quantity: Math.max(1, item.quantity + delta) }
-          : item,
-      ),
+  if (!hydrated) {
+    return (
+      <p className="py-16 text-center text-sm text-surface-500">Memuat keranjang...</p>
     )
-  }
-
-  const removeItem = (id: string) => {
-    setItems((prev) => prev.filter((item) => item.id !== id))
   }
 
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
@@ -174,12 +120,7 @@ export default function CartPage() {
         {/* Header */}
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link
-              href="/marketplace"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-surface-200/70 bg-white text-surface-600 transition-colors hover:text-ink"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Link>
+            <BackButton />
             <div>
               <h1 className="text-xl font-semibold tracking-tightest text-ink sm:text-2xl">
                 Keranjang

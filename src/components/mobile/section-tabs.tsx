@@ -7,7 +7,10 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { ChevronDown } from '@/lib/icons'
 import { PublicHeaderActions } from '@/components/mobile/public-header-actions'
-import { mobileHeaderBarRowClass } from '@/components/mobile/header-action-styles'
+import {
+  mobileHeaderBarRowClass,
+  mobileSectionTabsSpacerClass,
+} from '@/components/mobile/header-action-styles'
 import type { Icon as PhosphorIcon } from '@phosphor-icons/react'
 
 export interface SectionTab {
@@ -158,28 +161,46 @@ function SectionTabDropdown({
   )
 }
 
+const SCROLL_TRANSPARENT_THRESHOLD = 20
+
 export function SectionTabs({ tabs, layoutId, variant = 'merged' }: SectionTabsProps) {
   const pathname = usePathname()
   const isMerged = variant === 'merged'
   const useDropdown = tabs.length >= 3
   const isActive = (tab: SectionTab) => isTabActive(tab, pathname)
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const onScroll = () => {
+      setScrolled(window.scrollY > SCROLL_TRANSPARENT_THRESHOLD)
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   return (
-    <div
-      className={cn(
-        'sticky top-0 z-30 lg:hidden',
-        mobileHeaderBarRowClass,
-        isMerged
-          ? 'border-transparent bg-transparent'
-          : 'border-b border-surface-200/60 bg-white/85 backdrop-blur-xl',
-      )}
-    >
-      {useDropdown ? (
-        <SectionTabDropdown tabs={tabs} isMerged={isMerged} isActive={isActive} />
-      ) : (
-        <SectionTabPills tabs={tabs} layoutId={layoutId} isMerged={isMerged} isActive={isActive} />
-      )}
-      <PublicHeaderActions />
-    </div>
+    <>
+      <div
+        className={cn(
+          'fixed inset-x-0 top-0 z-50 overflow-visible pt-[env(safe-area-inset-top,0px)] lg:hidden',
+          mobileHeaderBarRowClass,
+          isMerged
+            ? cn('mobile-merged-header-bg', scrolled && 'is-scrolled')
+            : cn(
+                'border-b border-surface-200/55 bg-white/90 shadow-soft-xs backdrop-blur-xl transition-[background-color,box-shadow,border-color] duration-300',
+                scrolled && 'border-transparent bg-transparent shadow-none backdrop-blur-none',
+              ),
+        )}
+      >
+        {useDropdown ? (
+          <SectionTabDropdown tabs={tabs} isMerged={isMerged} isActive={isActive} />
+        ) : (
+          <SectionTabPills tabs={tabs} layoutId={layoutId} isMerged={isMerged} isActive={isActive} />
+        )}
+        <PublicHeaderActions />
+      </div>
+      <div className={mobileSectionTabsSpacerClass} aria-hidden />
+    </>
   )
 }

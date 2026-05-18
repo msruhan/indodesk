@@ -11,6 +11,10 @@ export const headerActionsGroupClass =
 export const mobileHeaderBarRowClass =
   'flex items-center justify-between gap-2 px-4 py-2 sm:px-6'
 
+/** Reserve space below fixed mobile section tabs (Top Up / actions bar). */
+export const mobileSectionTabsSpacerClass =
+  'h-[calc(52px+env(safe-area-inset-top,0px))] shrink-0 lg:hidden'
+
 export const mobileHeaderBarRowDesktopClass = 'lg:h-16 lg:gap-4 lg:py-0'
 
 export const mobileHeaderSearchInputClass =

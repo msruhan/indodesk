@@ -9,7 +9,7 @@ const footerLinks = {
     links: [
       { label: 'Marketplace', href: '/marketplace' },
       { label: 'Teknisi Online', href: '/teknisi' },
-      { label: 'Toko HP', href: '/toko' },
+      { label: 'Toko', href: '/toko' },
       { label: 'Lowongan Kerja', href: '/lowongan' },
       { label: 'Jasa Rekber', href: '/rekber' },
     ],

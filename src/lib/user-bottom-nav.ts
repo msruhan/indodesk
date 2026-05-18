@@ -28,7 +28,12 @@ export const USER_BOTTOM_NAV_ITEMS: readonly UserBottomNavItem[] = [
     href: '/toko',
     activePrefixes: ['/toko', '/lowongan'],
   },
-  { icon: History, label: 'Riwayat', href: '/user/riwayat' },
+  {
+    icon: History,
+    label: 'Riwayat',
+    href: '/user/riwayat',
+    activePrefixes: ['/user/riwayat', '/imei/orders'],
+  },
 ]
 
 export function isUserBottomNavItemActive(

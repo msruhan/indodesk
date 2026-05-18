@@ -8,7 +8,7 @@ import {
 } from '@/data/mock-platform-notifications'
 
 const BANNERS_KEY = 'indoteknizi_marketplace_banners'
-const NOTIFICATIONS_KEY = 'indoteknizi_platform_notifications'
+export const NOTIFICATIONS_KEY = 'indoteknizi_platform_notifications'
 
 export const BANNERS_UPDATED_EVENT = 'indoteknizi:banners-updated'
 export const NOTIFICATIONS_UPDATED_EVENT = 'indoteknizi:notifications-updated'

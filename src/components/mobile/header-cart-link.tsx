@@ -18,11 +18,10 @@ import {
   isUserMarketZone,
   setUserNavHomeMode,
 } from '@/lib/user-nav-home'
+import { saveNavReturnPath } from '@/lib/nav-return-path'
+import { useCart } from '@/contexts/cart-context'
 
 const CART_HREF = '/cart'
-
-/** Mock count until cart state is wired — matches marketplace demo. */
-const CART_ITEM_COUNT = 3
 
 type HeaderCartLinkProps = {
   onClick?: () => void
@@ -31,10 +30,12 @@ type HeaderCartLinkProps = {
 export function HeaderCartLink({ onClick }: HeaderCartLinkProps) {
   const pathname = usePathname()
   const { user } = useAuth()
-  const count = CART_ITEM_COUNT
+  const { itemCount, hydrated } = useCart()
+  const count = hydrated ? itemCount : 0
   const badgeLabel = count > 9 ? '9+' : String(count)
 
   const handleClick = () => {
+    saveNavReturnPath(pathname)
     if (pathname) {
       if (user?.role === 'USER') {
         if (isUserDashboardZone(pathname)) {

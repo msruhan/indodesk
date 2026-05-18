@@ -24,8 +24,17 @@ export function chatPathForRole(role: UserRole): string {
 
 export function accountPathForRole(role: UserRole): string {
   if (role === 'ADMIN') return '/admin/settings'
-  if (role === 'TEKNISI') return '/teknisi/profil'
+  if (role === 'TEKNISI') return '/teknisi/settings'
   return '/user/akun'
+}
+
+export function saldoPathForRole(role: UserRole): string {
+  if (role === 'TEKNISI') return '/teknisi/saldo'
+  return '/user/saldo'
+}
+
+export function showProfileSaldoForRole(role: UserRole): boolean {
+  return role === 'USER' || role === 'TEKNISI'
 }
 
 export type ProfileMenuItem = { label: string; href: string }
@@ -52,8 +61,7 @@ export function profileMenuItemsForRole(
   if (role === 'TEKNISI') {
     items = [
       dashboard,
-      { label: 'Akun', href: '/teknisi/profil' },
-      { label: 'Setting', href: '/teknisi/settings' },
+      { label: 'Akun Saya', href: '/teknisi/settings' },
       { label: 'Analitik', href: '/teknisi/analitik' },
     ]
   } else {

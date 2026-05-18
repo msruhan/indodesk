@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
-import { signIn, signOut, useSession } from 'next-auth/react'
+import { signIn, signOut, useSession, getSession } from 'next-auth/react'
 
 export type UserRole = 'ADMIN' | 'TEKNISI' | 'USER'
 
@@ -17,9 +17,14 @@ export interface User {
 interface AuthContextType {
   user: User | null
   isLoading: boolean
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
+  login: (
+    email: string,
+    password: string,
+    totp?: string,
+  ) => Promise<{ success: boolean; error?: string; requires2FA?: boolean }>
   register: (name: string, email: string, password: string, role: 'USER' | 'TEKNISI') => Promise<{ success: boolean; error?: string }>
   logout: () => Promise<void>
+  refreshSession: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -39,17 +44,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     : null
 
+  const refreshSession = useCallback(async () => {
+    await getSession()
+  }, [])
+
   const login = useCallback(
-    async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    async (
+      email: string,
+      password: string,
+      totp?: string,
+    ): Promise<{ success: boolean; error?: string; requires2FA?: boolean }> => {
       try {
+        if (!totp) {
+          const checkRes = await fetch('/api/auth/check-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password }),
+          })
+          const checkData = await checkRes.json()
+          if (!checkData.success) {
+            return { success: false, error: checkData.error || 'Email atau password salah' }
+          }
+          if (checkData.data?.requires2FA) {
+            return { success: false, requires2FA: true }
+          }
+        }
+
         const result = await signIn('credentials', {
           email,
           password,
+          totp: totp ?? '',
           redirect: false,
         })
 
         if (result?.error) {
-          return { success: false, error: 'Email atau password salah' }
+          return {
+            success: false,
+            error: totp ? 'Kode Google Authenticator tidak valid' : 'Email atau password salah',
+          }
         }
 
         return { success: true }
@@ -105,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [router])
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout, refreshSession }}>
       {children}
     </AuthContext.Provider>
   )

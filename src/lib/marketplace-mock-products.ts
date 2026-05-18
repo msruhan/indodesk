@@ -1,0 +1,58 @@
+import type { MarketplaceProductDto } from '@/lib/marketplace-product-serializer'
+
+/** Demo fallback when product id is not in DB (legacy mock marketplace links). */
+export const MOCK_MARKETPLACE_PRODUCTS: Record<string, MarketplaceProductDto> = {
+  '1': {
+    id: '1',
+    name: 'iPhone 13 Pro Max - Second',
+    category: 'Handphone',
+    categorySlug: 'handphone',
+    categoryValue: 'HANDPHONE',
+    price: 8500000,
+    description:
+      'iPhone 13 Pro Max kondisi sangat baik, 95% like new. Unit sudah melewati pengecekan layar, kamera, speaker, charging port, Face ID, dan performa baterai.',
+    image: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=1100&q=85',
+    rating: 4.8,
+    reviewCount: 124,
+    views: 2341,
+    stock: 3,
+    seller: {
+      id: 'mock-teknisi-1',
+      storeId: '1',
+      storeName: 'HandPhone Center Jakarta',
+      technicianName: 'Ahmad Hidayat',
+      verified: true,
+      rating: 4.9,
+      totalSales: 234,
+      responseTime: '< 5 menit',
+      location: 'Jakarta Selatan',
+      image: null,
+    },
+  },
+  '2': {
+    id: '2',
+    name: 'Samsung S21 Ultra - Refurbished',
+    category: 'Handphone',
+    categorySlug: 'handphone',
+    categoryValue: 'HANDPHONE',
+    price: 7200000,
+    description: 'Samsung S21 Ultra refurbished, kondisi prima, garansi toko.',
+    image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=1100&q=85',
+    rating: 4.6,
+    reviewCount: 89,
+    views: 1892,
+    stock: 2,
+    seller: {
+      id: 'mock-teknisi-2',
+      storeId: '2',
+      storeName: 'TechSolution Store',
+      technicianName: 'Budi Santoso',
+      verified: true,
+      rating: 4.8,
+      totalSales: 189,
+      responseTime: '< 10 menit',
+      location: 'Jakarta Pusat',
+      image: null,
+    },
+  },
+}

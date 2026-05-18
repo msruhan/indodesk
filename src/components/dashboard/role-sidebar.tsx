@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/auth-context'
+import { Home } from '@/lib/icons'
 import { LogOut, Zap, type IconType } from '@/lib/icons-types'
 
 export interface SidebarNavItem {
@@ -32,6 +33,8 @@ interface RoleSidebarProps {
   }
   /** Optional accent label e.g. "Admin", "Teknisi", "User" — shown next to the logo */
   scope?: string
+  /** Tampilkan ikon beranda di chip profil (kembali ke halaman depan) */
+  homeHref?: string
 }
 
 /**
@@ -46,6 +49,7 @@ export function RoleSidebar({
   bottomItems,
   profile,
   scope,
+  homeHref,
 }: RoleSidebarProps) {
   const pathname = usePathname()
   const { logout } = useAuth()
@@ -160,24 +164,47 @@ export function RoleSidebar({
 
               {/* Profile chip */}
               <div className="mt-4 flex items-center gap-3 rounded-2xl border border-surface-200/70 bg-white/80 p-2.5 shadow-soft-xs backdrop-blur-md">
-                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-accent-500 text-sm font-semibold text-white shadow-soft-xs">
-                  {profile.initials}
-                </div>
+                {homeHref ? (
+                  <Link
+                    href={homeHref}
+                    className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-accent-500 text-sm font-semibold text-white shadow-soft-xs transition-transform hover:scale-105"
+                    aria-label="Kembali ke beranda"
+                    title="Beranda"
+                  >
+                    {profile.initials}
+                  </Link>
+                ) : (
+                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-accent-500 text-sm font-semibold text-white shadow-soft-xs">
+                    {profile.initials}
+                  </div>
+                )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-ink">
                     {profile.name}
                   </p>
                   <p className="truncate text-xs text-surface-500">{profile.email}</p>
                 </div>
-                <button
-                  type="button"
-                  className="rounded-lg p-1.5 text-surface-500 transition-colors hover:bg-surface-100 hover:text-rose-600"
-                  aria-label="Keluar"
-                  title="Keluar"
-                  onClick={() => void logout()}
-                >
-                  <LogOut className="h-4 w-4" />
-                </button>
+                <div className="flex flex-shrink-0 items-center gap-0.5">
+                  {homeHref ? (
+                    <Link
+                      href={homeHref}
+                      className="rounded-lg p-1.5 text-surface-500 transition-colors hover:bg-surface-100 hover:text-primary-700"
+                      aria-label="Kembali ke beranda"
+                      title="Beranda"
+                    >
+                      <Home className="h-4 w-4" />
+                    </Link>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="rounded-lg p-1.5 text-surface-500 transition-colors hover:bg-surface-100 hover:text-rose-600"
+                    aria-label="Keluar"
+                    title="Keluar"
+                    onClick={() => void logout()}
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             </div>
           </aside>

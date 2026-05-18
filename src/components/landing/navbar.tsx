@@ -13,6 +13,7 @@ import {
   ChevronDown,
   LogOut,
   ShoppingBag,
+  Smartphone,
   Store,
   Users,
   Laptop,
@@ -22,7 +23,9 @@ import {
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { PublicHeaderActions } from '@/components/mobile/public-header-actions'
+import { ProfileMenuSaldoItem } from '@/components/shared/profile-menu-saldo-item'
 import { publicProfileMenuItemsForRole } from '@/lib/role-routes'
+import type { UserRole } from '@prisma/client'
 
 function getInitials(name: string): string {
   return name
@@ -40,6 +43,7 @@ const navGroups = [
     items: [
       { href: '/marketplace', label: 'Shop' },
       { href: '/topup', label: 'Topup' },
+      { href: '/imei', label: 'Layanan Perangkat' },
     ],
   },
   {
@@ -67,6 +71,7 @@ const mobileNavSections: {
     items: [
       { href: '/marketplace', label: 'Shop', icon: ShoppingBag },
       { href: '/topup', label: 'Top Up', icon: Zap },
+      { href: '/imei', label: 'Layanan Perangkat', icon: Smartphone },
     ],
   },
   {
@@ -129,8 +134,8 @@ export function Navbar() {
             : 'border border-transparent bg-white/40 backdrop-blur-md',
         ].join(' ')}
       >
-        <div className="flex items-center justify-between gap-4 px-4 sm:px-6 h-14 lg:h-16">
-          <Link href="/" className="flex items-center gap-2 group/logo">
+        <motion.div className="relative flex h-14 items-center justify-between gap-4 px-4 sm:px-6 lg:h-16">
+          <Link href="/" className="relative z-10 flex shrink-0 items-center gap-2 group/logo">
             <span className="relative inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary-500 via-primary-600 to-accent-600 shadow-glow-primary transition-transform duration-450 group-hover/logo:scale-[1.06]">
               <Zap weight="fill" className="h-4.5 w-4.5 text-white" />
               <span className="pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-br from-white/40 to-transparent opacity-60" />
@@ -140,7 +145,8 @@ export function Navbar() {
             </span>
           </Link>
 
-          <div className="hidden lg:flex items-center gap-1 rounded-full border border-surface-200/60 bg-white/60 px-2 py-1 shadow-soft-xs backdrop-blur-md">
+          <div className="pointer-events-none absolute inset-0 hidden items-center justify-center lg:flex">
+            <div className="pointer-events-auto flex items-center gap-1 rounded-full border border-surface-200/60 bg-white/60 px-2 py-1 shadow-soft-xs backdrop-blur-md">
             {navGroups.map((group) => {
               const open = openDesktopGroup === group.label
               return (
@@ -197,21 +203,18 @@ export function Navbar() {
                 </div>
               )
             })}
+            </div>
           </div>
 
-          <div className="hidden items-center gap-3 lg:flex">
-            <PublicHeaderActions />
+          <div className="relative z-10 ml-auto hidden items-center gap-3 lg:flex">
+            <PublicHeaderActions hideProfileIcon />
 
           {/* Desktop auth */}
           <div className="flex items-center gap-2">
             {isLoading ? (
               <div className="h-9 w-28 animate-pulse rounded-full bg-surface-200/80" />
             ) : user ? (
-              <div
-                className="relative"
-                onMouseEnter={() => setOpenUserMenu(true)}
-                onMouseLeave={() => setOpenUserMenu(false)}
-              >
+              <div className="relative">
                 <button
                   type="button"
                   onClick={() => setOpenUserMenu((open) => !open)}
@@ -247,13 +250,14 @@ export function Navbar() {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 6, scale: 0.98 }}
                       transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-                      className="absolute right-0 top-[calc(100%+10px)] z-50 min-w-52 rounded-2xl glass-strong border border-surface-200/70 p-1.5 shadow-soft-lg"
+                      className="absolute right-0 top-full z-[200] min-w-52 pt-2"
                     >
-                      <div className="border-b border-surface-200/60 px-3.5 py-2.5">
+                      <div className="rounded-2xl glass-strong border border-surface-200/70 p-1.5 shadow-soft-lg">
+                        <div className="border-b border-surface-200/60 px-3.5 py-2.5">
                         <p className="truncate text-sm font-semibold text-ink">{user.name}</p>
                         <p className="truncate text-xs text-surface-500">{user.email}</p>
                       </div>
-                      {publicProfileMenuItemsForRole(user.role).map((item) => (
+                      {publicProfileMenuItemsForRole(user.role as UserRole).map((item) => (
                         <Link
                           key={item.href}
                           href={item.href}
@@ -263,6 +267,10 @@ export function Navbar() {
                           {item.label}
                         </Link>
                       ))}
+                      <ProfileMenuSaldoItem
+                        role={user.role as UserRole}
+                        onNavigate={() => setOpenUserMenu(false)}
+                      />
                       <button
                         type="button"
                         onClick={() => {
@@ -274,6 +282,7 @@ export function Navbar() {
                         <LogOut className="h-4 w-4" />
                         Keluar
                       </button>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -299,7 +308,7 @@ export function Navbar() {
 
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="lg:hidden -mr-1.5 inline-flex h-10 w-10 items-center justify-center rounded-full text-surface-700 transition-colors hover:bg-surface-100"
+            className="relative z-10 lg:hidden -mr-1.5 inline-flex h-10 w-10 items-center justify-center rounded-full text-surface-700 transition-colors hover:bg-surface-100"
             aria-label="Toggle menu"
             aria-expanded={isMobileMenuOpen}
           >
@@ -327,7 +336,7 @@ export function Navbar() {
               )}
             </AnimatePresence>
           </button>
-        </div>
+        </motion.div>
       </motion.nav>
 
       <AnimatePresence>
@@ -393,7 +402,7 @@ export function Navbar() {
                           <p className="truncate text-[11px] text-surface-500">{user.email}</p>
                         </div>
                       </div>
-                      {publicProfileMenuItemsForRole(user.role).map((item) => (
+                      {publicProfileMenuItemsForRole(user.role as UserRole).map((item) => (
                         <Link
                           key={item.href}
                           href={item.href}
@@ -403,6 +412,12 @@ export function Navbar() {
                           {item.label}
                         </Link>
                       ))}
+                      <ProfileMenuSaldoItem
+                        role={user.role as UserRole}
+                        size="sm"
+                        className="mt-0 px-3 py-2.5 text-sm"
+                        onNavigate={() => setIsMobileMenuOpen(false)}
+                      />
                       <button
                         type="button"
                         className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50"

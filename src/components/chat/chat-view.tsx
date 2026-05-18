@@ -1,9 +1,9 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { SearchInput } from '@/components/ui/search-input'
 import {
@@ -17,88 +17,25 @@ import {
   Image,
   Smile,
   X,
+  MessageCircle,
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
-
-interface Message {
-  id: string
-  text: string
-  sender: 'me' | 'other'
-  timestamp: string
-  read: boolean
-}
-
-interface Chat {
-  id: string
-  name: string
-  avatar: string
-  lastMessage: string
-  timestamp: string
-  unread: number
-  isOnline?: boolean
-  messages: Message[]
-}
-
-type Attachment = { name: string; kind: 'file' | 'image' }
+import { peerAvatarUrl } from '@/lib/chat-serializer'
+import { useChatMessenger } from '@/hooks/use-chat-messenger'
 
 const QUICK_EMOJIS = ['😀', '😂', '😊', '🙏', '👍', '❤️', '🔥', '✅', '📱', '💬', '🎉', '👋']
-
-const chatsSeed: Chat[] = [
-  {
-    id: '1',
-    name: 'Ahmad Hidayat',
-    avatar: '/api/placeholder/40/40',
-    lastMessage: 'Baik, saya akan bantu unlock iPhone Anda',
-    timestamp: '10:30',
-    unread: 2,
-    isOnline: true,
-    messages: [
-      { id: '1', text: 'Halo, saya butuh bantuan unlock iPhone 13', sender: 'me', timestamp: '10:25', read: true },
-      { id: '2', text: 'Halo, baik. Saya bisa bantu. Bisa kirim IMEI-nya?', sender: 'other', timestamp: '10:26', read: true },
-      { id: '3', text: 'IMEI: 123456789012345', sender: 'me', timestamp: '10:27', read: true },
-      { id: '4', text: 'Baik, saya akan bantu unlock iPhone Anda', sender: 'other', timestamp: '10:30', read: false },
-    ],
-  },
-  {
-    id: '2',
-    name: 'HandPhone Center Jakarta',
-    avatar: '/api/placeholder/40/40',
-    lastMessage: 'Barang sudah ready untuk diambil',
-    timestamp: 'Kemarin',
-    unread: 0,
-    isOnline: true,
-    messages: [
-      { id: '1', text: 'Kapan barang bisa diambil?', sender: 'me', timestamp: '14:00', read: true },
-      { id: '2', text: 'Barang sudah ready untuk diambil', sender: 'other', timestamp: '14:30', read: true },
-    ],
-  },
-  {
-    id: '3',
-    name: 'Admin Support',
-    avatar: '/api/placeholder/40/40',
-    lastMessage: 'Pertanyaan Anda sudah kami proses',
-    timestamp: '2 hari lalu',
-    unread: 0,
-    isOnline: false,
-    messages: [
-      { id: '1', text: 'Saya ada pertanyaan tentang rekber', sender: 'me', timestamp: '09:00', read: true },
-      { id: '2', text: 'Pertanyaan Anda sudah kami proses', sender: 'other', timestamp: '10:00', read: true },
-    ],
-  },
-]
 
 function ChatComposer({
   message,
   onMessageChange,
   onSend,
+  disabled,
 }: {
   message: string
   onMessageChange: (value: string) => void
   onSend: () => void
+  disabled?: boolean
 }) {
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const imageInputRef = useRef<HTMLInputElement>(null)
-  const [attachment, setAttachment] = useState<Attachment | null>(null)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
 
   const appendEmoji = (emoji: string) => {
@@ -106,54 +43,14 @@ function ChatComposer({
     setShowEmojiPicker(false)
   }
 
-  const handleFilePick = (e: React.ChangeEvent<HTMLInputElement>, kind: Attachment['kind']) => {
-    const file = e.target.files?.[0]
-    if (file) setAttachment({ name: file.name, kind })
-    e.target.value = ''
-  }
-
   const handleSend = () => {
-    if (!message.trim() && !attachment) return
+    if (!message.trim() || disabled) return
     onSend()
-    setAttachment(null)
     setShowEmojiPicker(false)
   }
 
   return (
     <div className="shrink-0 border-t border-surface-200 bg-white p-3 sm:p-4">
-      <input
-        ref={fileInputRef}
-        type="file"
-        className="hidden"
-        onChange={(e) => handleFilePick(e, 'file')}
-      />
-      <input
-        ref={imageInputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => handleFilePick(e, 'image')}
-      />
-
-      {attachment && (
-        <div className="mb-2 flex items-center gap-2 rounded-lg border border-surface-200 bg-surface-50 px-3 py-2 text-sm">
-          {attachment.kind === 'image' ? (
-            <Image className="h-4 w-4 shrink-0 text-primary-600" aria-hidden />
-          ) : (
-            <Paperclip className="h-4 w-4 shrink-0 text-primary-600" aria-hidden />
-          )}
-          <span className="min-w-0 flex-1 truncate text-ink">{attachment.name}</span>
-          <button
-            type="button"
-            onClick={() => setAttachment(null)}
-            className="rounded-md p-1 text-surface-500 hover:bg-surface-200 hover:text-ink"
-            aria-label="Hapus lampiran"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      )}
-
       {showEmojiPicker && (
         <div
           className="mb-2 grid grid-cols-6 gap-1 rounded-xl border border-surface-200 bg-surface-50 p-2 sm:grid-cols-8"
@@ -164,8 +61,7 @@ function ChatComposer({
             <button
               key={emoji}
               type="button"
-              role="option"
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-xl transition-colors hover:bg-white"
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-xl hover:bg-white"
               onClick={() => appendEmoji(emoji)}
             >
               {emoji}
@@ -174,46 +70,20 @@ function ChatComposer({
         </div>
       )}
 
-      <div className="flex items-end gap-1.5 sm:gap-2">
-        <div className="flex shrink-0 items-center">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-10 w-10 p-0 text-surface-600 hover:text-ink"
-            onClick={() => fileInputRef.current?.click()}
-            aria-label="Lampirkan file"
-            title="Lampirkan file"
-          >
-            <Paperclip className="h-[18px] w-[18px]" strokeWidth={2} />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-10 w-10 p-0 text-surface-600 hover:text-ink"
-            onClick={() => imageInputRef.current?.click()}
-            aria-label="Lampirkan foto"
-            title="Lampirkan foto"
-          >
-            <Image className="h-[18px] w-[18px]" strokeWidth={2} />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className={cn(
-              'h-10 w-10 p-0',
-              showEmojiPicker ? 'bg-primary-50 text-primary-700' : 'text-surface-600 hover:text-ink',
-            )}
-            onClick={() => setShowEmojiPicker((v) => !v)}
-            aria-label="Emoji"
-            aria-expanded={showEmojiPicker}
-            title="Emoji"
-          >
-            <Smile className="h-[18px] w-[18px]" strokeWidth={2} />
-          </Button>
-        </div>
+      <div className="flex items-end gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className={cn(
+            'h-10 w-10 p-0',
+            showEmojiPicker ? 'bg-primary-50 text-primary-700' : 'text-surface-600',
+          )}
+          onClick={() => setShowEmojiPicker((v) => !v)}
+          aria-label="Emoji"
+        >
+          <Smile className="h-[18px] w-[18px]" strokeWidth={2} />
+        </Button>
 
         <Input
           type="text"
@@ -226,14 +96,15 @@ function ChatComposer({
               handleSend()
             }
           }}
+          disabled={disabled}
           className="min-h-10 flex-1"
         />
 
         <Button
           type="button"
           onClick={handleSend}
-          disabled={!message.trim() && !attachment}
-          className="h-10 w-10 shrink-0 bg-gradient-to-r from-primary-600 to-accent-500 p-0 sm:h-10 sm:w-10"
+          disabled={disabled || !message.trim()}
+          className="h-10 w-10 shrink-0 bg-gradient-to-r from-primary-600 to-accent-500 p-0"
           aria-label="Kirim pesan"
         >
           <Send className="h-4 w-4" />
@@ -244,23 +115,58 @@ function ChatComposer({
 }
 
 export function ChatView({ className }: { className?: string }) {
-  const [selectedChat, setSelectedChat] = useState<string | null>(null)
+  const searchParams = useSearchParams()
+  const peerId = searchParams.get('peer')
+
   const [message, setMessage] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const currentChat = selectedChat ? chatsSeed.find((c) => c.id === selectedChat) : null
+  const {
+    isAuthenticated,
+    isLoading,
+    loadingMessages,
+    sending,
+    error,
+    conversations,
+    messages,
+    selectedId,
+    currentConversation,
+    setSelectedId,
+    sendMessage,
+  } = useChatMessenger({ peerId, poll: true, pollMessages: true, autoConnectPeer: true })
 
-  const handleSendMessage = () => {
-    if (!message.trim()) return
-    setMessage('')
-  }
+  const showConversation = !!selectedId
 
-  const filteredChats = chatsSeed.filter((chat) =>
-    chat.name.toLowerCase().includes(searchQuery.toLowerCase()),
+  const filteredChats = conversations.filter((chat) =>
+    chat.peerName.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
-  // Mobile: show conversation full-screen when a chat is selected
-  const showConversation = !!selectedChat
+  useEffect(() => {
+    if (!selectedId || loadingMessages) return
+    const frame = requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [selectedId, loadingMessages, messages])
+
+  const handleSendMessage = async () => {
+    const text = message.trim()
+    if (!text) return
+    const ok = await sendMessage(text)
+    if (ok) {
+      setMessage('')
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
+
+  if (!isAuthenticated && !isLoading) {
+    return (
+      <div className="flex flex-1 items-center justify-center rounded-2xl border border-surface-200 bg-white p-8 text-center">
+        <p className="text-sm text-surface-500">Silakan login untuk menggunakan chat.</p>
+      </div>
+    )
+  }
 
   return (
     <div
@@ -270,7 +176,10 @@ export function ChatView({ className }: { className?: string }) {
         className,
       )}
     >
-      {/* Chat list — hidden on mobile when conversation is open */}
+      {error && (
+        <p className="mb-2 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700 lg:col-span-3">{error}</p>
+      )}
+
       <Card
         className={cn(
           'flex min-h-0 flex-col overflow-hidden lg:col-span-1 lg:rounded-r-none lg:border-r-0',
@@ -286,51 +195,56 @@ export function ChatView({ className }: { className?: string }) {
           />
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">
-          {filteredChats.map((chat) => (
-            <button
-              key={chat.id}
-              type="button"
-              onClick={() => setSelectedChat(chat.id)}
-              className={cn(
-                'group/chat relative w-full border-b border-surface-200/40 px-3 py-3 text-left transition-colors hover:bg-surface-50 sm:px-4',
-                selectedChat === chat.id && 'bg-primary-50/60',
-              )}
-            >
-              {selectedChat === chat.id && (
-                <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-gradient-to-b from-primary-500 to-accent-500" />
-              )}
-              <div className="flex items-center gap-3">
-                <div className="relative flex-shrink-0">
-                  <img
-                    src={`https://i.pravatar.cc/150?img=${parseInt(chat.id) + 10}`}
-                    alt={chat.name}
-                    className="h-11 w-11 rounded-full object-cover ring-2 ring-white shadow-soft-xs"
-                  />
-                  {chat.isOnline && (
-                    <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-primary-500" />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="truncate text-[13px] font-semibold text-ink">{chat.name}</span>
-                    <span className="flex-shrink-0 text-[10px] text-surface-500">{chat.timestamp}</span>
-                  </div>
-                  <div className="mt-0.5 flex items-center justify-between gap-2">
-                    <p className="truncate text-[12px] text-surface-500">{chat.lastMessage}</p>
-                    {chat.unread > 0 && (
-                      <span className="flex h-5 min-w-5 flex-shrink-0 items-center justify-center rounded-full bg-primary-600 px-1.5 text-[10px] font-bold text-white">
-                        {chat.unread}
-                      </span>
+          {isLoading ? (
+            <p className="p-4 text-center text-xs text-surface-500">Memuat percakapan...</p>
+          ) : filteredChats.length === 0 ? (
+            <p className="p-4 text-center text-xs text-surface-500">Belum ada percakapan.</p>
+          ) : (
+            filteredChats.map((chat) => (
+              <button
+                key={chat.id}
+                type="button"
+                onClick={() => setSelectedId(chat.id)}
+                className={cn(
+                  'group/chat relative w-full border-b border-surface-200/40 px-3 py-3 text-left transition-colors hover:bg-surface-50 sm:px-4',
+                  selectedId === chat.id && 'bg-primary-50/60',
+                )}
+              >
+                {selectedId === chat.id && (
+                  <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-gradient-to-b from-primary-500 to-accent-500" />
+                )}
+                <div className="flex items-center gap-3">
+                  <div className="relative flex-shrink-0">
+                    <img
+                      src={peerAvatarUrl(chat.peerId, chat.peerImage)}
+                      alt={chat.peerName}
+                      className="h-11 w-11 rounded-full object-cover ring-2 ring-white shadow-soft-xs"
+                    />
+                    {chat.peerIsOnline && (
+                      <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-primary-500" />
                     )}
                   </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate text-[13px] font-semibold text-ink">{chat.peerName}</span>
+                      <span className="flex-shrink-0 text-[10px] text-surface-500">{chat.timestamp}</span>
+                    </div>
+                    <div className="mt-0.5 flex items-center justify-between gap-2">
+                      <p className="truncate text-[12px] text-surface-500">{chat.lastMessage ?? '—'}</p>
+                      {chat.unread > 0 && (
+                        <span className="flex h-5 min-w-5 flex-shrink-0 items-center justify-center rounded-full bg-primary-600 px-1.5 text-[10px] font-bold text-white">
+                          {chat.unread}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </button>
-          ))}
+              </button>
+            ))
+          )}
         </div>
       </Card>
 
-      {/* Conversation panel — full-screen on mobile */}
       <Card
         className={cn(
           'flex min-h-0 flex-col overflow-hidden lg:col-span-2 lg:rounded-l-none',
@@ -338,93 +252,90 @@ export function ChatView({ className }: { className?: string }) {
           showConversation && 'absolute inset-0 z-10 lg:relative lg:inset-auto',
         )}
       >
-        {currentChat ? (
+        {currentConversation ? (
           <>
-            {/* Header with back button on mobile */}
             <div className="flex shrink-0 items-center gap-2 border-b border-surface-200/60 bg-white px-3 py-2.5 sm:px-4 sm:py-3">
               <button
                 type="button"
-                onClick={() => setSelectedChat(null)}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-surface-600 transition-colors hover:bg-surface-100 hover:text-ink lg:hidden"
-                aria-label="Kembali ke daftar chat"
+                onClick={() => setSelectedId(null)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-surface-600 hover:bg-surface-100 lg:hidden"
+                aria-label="Kembali"
               >
                 <X className="h-4 w-4" />
               </button>
               <div className="flex flex-1 items-center gap-2.5">
                 <div className="relative">
                   <img
-                    src={`https://i.pravatar.cc/150?img=${parseInt(currentChat.id) + 10}`}
-                    alt={currentChat.name}
+                    src={peerAvatarUrl(currentConversation.peerId, currentConversation.peerImage)}
+                    alt={currentConversation.peerName}
                     className="h-9 w-9 rounded-full object-cover"
                   />
-                  {currentChat.isOnline && (
+                  {currentConversation.peerIsOnline && (
                     <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-primary-500" />
                   )}
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-[13px] font-semibold text-ink">{currentChat.name}</p>
-                  {currentChat.isOnline && (
+                  <p className="truncate text-[13px] font-semibold text-ink">{currentConversation.peerName}</p>
+                  {currentConversation.peerIsOnline && (
                     <p className="text-[10px] text-primary-700">Online</p>
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-1">
-                <button type="button" className="inline-flex h-8 w-8 items-center justify-center rounded-full text-surface-500 transition-colors hover:bg-surface-100 hover:text-ink" aria-label="Telepon">
-                  <Phone className="h-4 w-4" />
-                </button>
-                <button type="button" className="inline-flex h-8 w-8 items-center justify-center rounded-full text-surface-500 transition-colors hover:bg-surface-100 hover:text-ink" aria-label="Video">
-                  <Video className="h-4 w-4" />
-                </button>
-                <button type="button" className="inline-flex h-8 w-8 items-center justify-center rounded-full text-surface-500 transition-colors hover:bg-surface-100 hover:text-ink" aria-label="Menu">
-                  <MoreVertical className="h-4 w-4" />
-                </button>
+              <div className="flex items-center gap-1 opacity-40">
+                <Phone className="h-4 w-4 text-surface-400" />
+                <Video className="h-4 w-4 text-surface-400" />
+                <MoreVertical className="h-4 w-4 text-surface-400" />
               </div>
             </div>
 
-            {/* Messages */}
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-gradient-to-b from-surface-50/30 to-white p-3 sm:p-4">
-              {currentChat.messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={cn('flex', msg.sender === 'me' ? 'justify-end' : 'justify-start')}
-                >
+              {loadingMessages ? (
+                <p className="text-center text-xs text-surface-500">Memuat pesan...</p>
+              ) : messages.length === 0 ? (
+                <p className="text-center text-xs text-surface-500">Mulai percakapan dengan mengirim pesan.</p>
+              ) : (
+                messages.map((msg) => (
                   <div
-                    className={cn(
-                      'max-w-[80%] rounded-2xl px-3.5 py-2 text-[13px] shadow-soft-xs sm:max-w-[70%]',
-                      msg.sender === 'me'
-                        ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white'
-                        : 'border border-surface-200/70 bg-white text-ink',
-                    )}
+                    key={msg.id}
+                    className={cn('flex', msg.isMine ? 'justify-end' : 'justify-start')}
                   >
-                    <p className="leading-relaxed">{msg.text}</p>
                     <div
                       className={cn(
-                        'mt-1 flex items-center justify-end gap-1 text-[10px]',
-                        msg.sender === 'me' ? 'text-white/70' : 'text-surface-400',
+                        'max-w-[80%] rounded-2xl px-3.5 py-2 text-[13px] shadow-soft-xs sm:max-w-[70%]',
+                        msg.isMine
+                          ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white'
+                          : 'border border-surface-200/70 bg-white text-ink',
                       )}
                     >
-                      <span>{msg.timestamp}</span>
-                      {msg.sender === 'me' &&
-                        (msg.read ? <CheckCheck className="h-3 w-3" /> : <Check className="h-3 w-3" />)}
+                      <p className="leading-relaxed">{msg.body}</p>
+                      <div
+                        className={cn(
+                          'mt-1 flex items-center justify-end gap-1 text-[10px]',
+                          msg.isMine ? 'text-white/70' : 'text-surface-400',
+                        )}
+                      >
+                        <span>{msg.timestamp}</span>
+                        {msg.isMine &&
+                          (msg.read ? <CheckCheck className="h-3 w-3" /> : <Check className="h-3 w-3" />)}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
+              <div ref={messagesEndRef} />
             </div>
 
-            {/* Composer */}
             <ChatComposer
               message={message}
               onMessageChange={setMessage}
-              onSend={handleSendMessage}
+              onSend={() => void handleSendMessage()}
+              disabled={sending}
             />
           </>
         ) : (
           <div className="flex flex-1 items-center justify-center">
             <div className="text-center">
-              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-surface-100">
-                <Send className="h-6 w-6 text-surface-400" />
-              </div>
+              <MessageCircle className="mx-auto mb-2 h-10 w-10 text-surface-300" />
               <p className="text-sm font-medium text-ink">Pilih percakapan</p>
               <p className="mt-1 text-xs text-surface-500">Klik chat di sebelah kiri untuk mulai</p>
             </div>
