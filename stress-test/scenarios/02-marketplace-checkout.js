@@ -53,8 +53,10 @@ export default function () {
     })
     if (check(res, { 'list 200': (r) => r.status === 200 })) {
       const body = res.json()
-      const items = body?.data?.items || body?.data || []
-      if (Array.isArray(items) && items.length > 0) {
+      // API returns { success: true, data: [...] } or { success: true, data: { items: [...] } }
+      const data = body?.data
+      const items = Array.isArray(data) ? data : (data?.items || [])
+      if (items.length > 0) {
         productId = items[Math.floor(Math.random() * items.length)].id
       }
     }
@@ -77,8 +79,7 @@ export default function () {
 
   group('Checkout', () => {
     const payload = JSON.stringify({
-      productId,
-      quantity: 1,
+      items: [{ productId, quantity: 1 }],
     })
     const res = http.post(`${BASE_URL}/api/marketplace/checkout`, payload, {
       headers: { 'Content-Type': 'application/json' },

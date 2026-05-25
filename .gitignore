@@ -53,3 +53,4 @@ next-env.d.ts
 stress-test/results/*
 !stress-test/results/.gitkeep
 !stress-test/results/REPORT_TEMPLATE.md
+!stress-test/results/*.md

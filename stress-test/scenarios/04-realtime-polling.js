@@ -40,7 +40,9 @@ export default function () {
   })
 
   group('Poll presence', () => {
-    const res = http.get(`${BASE_URL}/api/teknisi/presence`, {
+    // /api/teknisi/presence is POST-only (set online/offline)
+    const res = http.post(`${BASE_URL}/api/teknisi/presence`, JSON.stringify({ online: true }), {
+      headers: { 'Content-Type': 'application/json' },
       tags: { name: 'poll_presence' },
     })
     check(res, { 'presence ok': (r) => r.status === 200 || r.status === 204 })

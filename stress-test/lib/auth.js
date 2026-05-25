@@ -1,10 +1,9 @@
 /**
- * Auth helper untuk k6 — login dan dapatkan session cookie NextAuth.
+ * Auth helper untuk k6 — login pakai endpoint internal stress mode.
  *
- * NextAuth credentials login flow:
- * 1. GET CSRF token dari /api/auth/csrf
- * 2. POST credentials ke /api/auth/callback/credentials dengan csrf token
- * 3. Cookie session di-set di response (auto-stored di cookie jar k6)
+ * Endpoint /api/stress-internal/login bypass CSRF flow dan langsung
+ * panggil signIn server-side. Cookie session di-set di response,
+ * cookie jar k6 otomatis simpan untuk request berikutnya.
  */
 
 import http from 'k6/http'
@@ -13,27 +12,17 @@ import { check } from 'k6'
 export const BASE_URL = __ENV.BASE_URL || 'http://localhost:3000'
 
 export function login(email, password) {
-  const csrfRes = http.get(`${BASE_URL}/api/auth/csrf`)
-  const csrfToken = csrfRes.json('csrfToken')
-  if (!csrfToken) return null
-
-  const loginRes = http.post(
-    `${BASE_URL}/api/auth/callback/credentials`,
+  const res = http.post(
+    `${BASE_URL}/api/stress-internal/login`,
+    JSON.stringify({ email, password }),
     {
-      email,
-      password,
-      csrfToken,
-      callbackUrl: BASE_URL,
-      json: 'true',
-    },
-    {
-      redirects: 0,
-      tags: { name: 'auth_login' },
+      headers: { 'Content-Type': 'application/json' },
+      tags: { name: 'stress_login' },
     },
   )
 
-  const ok = check(loginRes, {
-    'login returns 200 or 302': (r) => r.status === 200 || r.status === 302,
+  const ok = check(res, {
+    'login 200': (r) => r.status === 200,
   })
 
   if (!ok) return null

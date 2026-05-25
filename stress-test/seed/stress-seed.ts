@@ -22,6 +22,9 @@ const USER_COUNT = 30
 const TEKNISI_COUNT = 20
 const TEKNISI_WITH_TELEGRAM = 5
 const STARTING_BALANCE = 5_000_000
+const STRESS_PRODUCT_COUNT = 30
+const STRESS_PRODUCT_STOCK = 9999
+const STRESS_PRODUCT_PREFIX = '[STRESS]'
 
 async function main() {
   console.log('🌱 Stress test seed starting...')
@@ -70,12 +73,14 @@ async function main() {
     await prisma.teknisiProfile.upsert({
       where: { userId: user.id },
       update: {
+        verificationStatus: 'APPROVED',
         telegramChatId: isLinkedTelegram ? `99900000${i}` : null,
         telegramUsername: isLinkedTelegram ? `stress_teknisi_${i}` : null,
         telegramLinkedAt: isLinkedTelegram ? new Date() : null,
       },
       create: {
         userId: user.id,
+        verificationStatus: 'APPROVED',
         telegramChatId: isLinkedTelegram ? `99900000${i}` : null,
         telegramUsername: isLinkedTelegram ? `stress_teknisi_${i}` : null,
         telegramLinkedAt: isLinkedTelegram ? new Date() : null,
@@ -89,9 +94,55 @@ async function main() {
     })
   }
 
+  // ---- PRODUCTS ----
+  // Buat produk dummy dengan stock besar di teknisi pertama (stress-teknisi-1)
+  // supaya checkout tidak kena OUT_OF_STOCK saat stress test S2.
+  console.log(`Creating ${STRESS_PRODUCT_COUNT} stress products...`)
+  const sellerTeknisi = await prisma.user.findFirst({
+    where: { email: 'stress-teknisi-1@indoteknizi.test' },
+    select: { id: true },
+  })
+  if (sellerTeknisi) {
+    for (let i = 1; i <= STRESS_PRODUCT_COUNT; i++) {
+      const productName = `${STRESS_PRODUCT_PREFIX} Test Product ${i}`
+      const existing = await prisma.product.findFirst({
+        where: { name: productName, sellerId: sellerTeknisi.id },
+        select: { id: true },
+      })
+      if (existing) {
+        await prisma.product.update({
+          where: { id: existing.id },
+          data: {
+            stock: STRESS_PRODUCT_STOCK,
+            isPublished: true,
+            isActive: true,
+            listingStatus: 'APPROVED',
+          },
+        })
+      } else {
+        await prisma.product.create({
+          data: {
+            sellerId: sellerTeknisi.id,
+            name: productName,
+            category: 'AKSESORIS',
+            price: 50_000 + i * 1_000,
+            description: 'Stress test product — abaikan saat browse manual.',
+            stock: STRESS_PRODUCT_STOCK,
+            isPublished: true,
+            isActive: true,
+            listingStatus: 'APPROVED',
+          },
+        })
+      }
+    }
+  } else {
+    console.warn('   ⚠️  stress-teknisi-1 not found, skipping product seed')
+  }
+
   console.log('✅ Stress test seed complete')
-  console.log(`   Users:   ${USER_COUNT}  (stress-user-1..${USER_COUNT}@indoteknizi.test)`)
-  console.log(`   Teknisi: ${TEKNISI_COUNT}  (stress-teknisi-1..${TEKNISI_COUNT}@indoteknizi.test)`)
+  console.log(`   Users:    ${USER_COUNT}  (stress-user-1..${USER_COUNT}@indoteknizi.test)`)
+  console.log(`   Teknisi:  ${TEKNISI_COUNT}  (stress-teknisi-1..${TEKNISI_COUNT}@indoteknizi.test)`)
+  console.log(`   Products: ${STRESS_PRODUCT_COUNT}  (stock ${STRESS_PRODUCT_STOCK} each, sold by stress-teknisi-1)`)
   console.log(`   With Telegram: ${TEKNISI_WITH_TELEGRAM}`)
   console.log(`   Password (semua): ${STRESS_PASSWORD}`)
   console.log(`   Wallet user: Rp ${STARTING_BALANCE.toLocaleString('id-ID')}`)
