@@ -1,6 +1,12 @@
 'use client'
 
-import { forwardRef } from 'react'
+import {
+  cloneElement,
+  forwardRef,
+  isValidElement,
+  type ButtonHTMLAttributes,
+  type ReactElement,
+} from 'react'
 import { cn } from '@/lib/utils'
 import { cva, type VariantProps } from 'class-variance-authority'
 
@@ -18,6 +24,7 @@ const buttonVariants = cva(
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/60 focus-visible:ring-offset-2',
     'disabled:pointer-events-none disabled:opacity-50',
     'active:scale-[0.97]',
+    'touch-manipulation',
   ].join(' '),
   {
     variants: {
@@ -27,7 +34,6 @@ const buttonVariants = cva(
         primary: [
           'bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700 text-white',
           'shadow-glow-primary hover:shadow-glow-primary-lg hover:-translate-y-[1px]',
-          // soft top sheen
           'before:absolute before:inset-x-0 before:top-0 before:h-1/2 before:rounded-t-full',
           'before:bg-gradient-to-b before:from-white/30 before:to-transparent before:opacity-70',
           'before:transition-opacity hover:before:opacity-90',
@@ -69,20 +75,27 @@ const buttonVariants = cva(
 )
 
 export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+  extends ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean
 }
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, children, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, children, ...props }, ref) => {
+    const classes = cn(buttonVariants({ variant, size, className }))
+
+    if (asChild && isValidElement(children)) {
+      const child = children as ReactElement<{ className?: string }>
+      return cloneElement(child, {
+        ...props,
+        ref,
+        className: cn(classes, child.props.className),
+      } as React.Attributes & { className?: string })
+    }
+
     return (
-      <button
-        ref={ref}
-        className={cn(buttonVariants({ variant, size, className }))}
-        {...props}
-      >
-        <span className="relative z-10 inline-flex items-center gap-2">{children}</span>
+      <button ref={ref} className={classes} {...props}>
+        <span className="relative z-10 inline-flex items-center justify-center gap-2">{children}</span>
       </button>
     )
   },

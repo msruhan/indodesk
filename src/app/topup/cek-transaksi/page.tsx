@@ -14,22 +14,34 @@ import { formatIDR } from '@/lib/topup-utils'
 
 export default function CekTransaksiPage() {
   const router = useRouter()
-  const { history, getOrder } = useTopup()
+  const { history } = useTopup()
   const [code, setCode] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     const trimmed = code.trim().toUpperCase()
     if (!trimmed) {
       setError('Masukkan kode order')
       return
     }
-    if (!getOrder(trimmed)) {
-      setError('Kode order tidak ditemukan di perangkat ini')
-      return
+
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/topup/orders/${encodeURIComponent(trimmed)}`)
+      const json = await res.json()
+      if (!res.ok || !json.success) {
+        setError(json.error ?? 'Kode order tidak ditemukan')
+        return
+      }
+      router.push(`/topup/order/${trimmed}`)
+    } catch {
+      setError('Gagal memeriksa order')
+    } finally {
+      setLoading(false)
     }
-    router.push(`/topup/order/${trimmed}`)
   }
 
   return (
@@ -52,10 +64,10 @@ export default function CekTransaksiPage() {
             Cek status transaksi
           </h1>
           <p className="mt-1 max-w-xl text-[13px] leading-relaxed text-surface-600">
-            Tidak login? Tidak masalah. Masukkan kode order yang kamu terima setelah checkout untuk melihat status fulfillment.
+            Masukkan kode order (contoh TT-XXXXXX-2026) untuk melihat status fulfillment dari database.
           </p>
 
-          <form onSubmit={submit} className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-start">
+          <form onSubmit={(e) => void submit(e)} className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-start">
             <div className="flex-1">
               <Input
                 value={code}
@@ -80,8 +92,14 @@ export default function CekTransaksiPage() {
                 )}
               </AnimatePresence>
             </div>
-            <Button type="submit" variant="primary" size="lg" className="h-11 sm:flex-shrink-0">
-              Cek status
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              className="h-11 sm:flex-shrink-0"
+              disabled={loading}
+            >
+              {loading ? 'Memeriksa…' : 'Cek status'}
               <ArrowRight className="h-4 w-4" />
             </Button>
           </form>
@@ -92,7 +110,6 @@ export default function CekTransaksiPage() {
           </p>
         </section>
 
-        {/* Recent orders for this device */}
         {history.length > 0 && (
           <section className="mt-5">
             <h2 className="mb-3 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-surface-600">

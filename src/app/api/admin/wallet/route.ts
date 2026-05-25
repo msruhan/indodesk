@@ -6,10 +6,10 @@ import { z } from 'zod'
 export const dynamic = 'force-dynamic'
 
 const adjustBalanceSchema = z.object({
-  userId: z.string(),
-  amount: z.number(),
+  userId: z.string().min(1),
+  amount: z.number().int('Jumlah harus bilangan bulat').positive('Jumlah harus lebih dari 0'),
   type: z.enum(['ADD', 'DEDUCT']),
-  reason: z.string(),
+  reason: z.string().min(1, 'Alasan wajib diisi'),
 })
 
 /** GET /api/admin/wallet — list all wallets */
@@ -89,53 +89,60 @@ export async function POST(req: Request) {
 
     const { userId, amount, type, reason } = parsed.data
 
-    // Get or create wallet
-    let wallet = await prisma.wallet.findUnique({
-      where: { userId },
-    })
-
-    if (!wallet) {
-      wallet = await prisma.wallet.create({
-        data: { userId, balance: 0 },
+    const result = await prisma.$transaction(async (tx) => {
+      // Get or create wallet inside transaction
+      let wallet = await tx.wallet.findUnique({
+        where: { userId },
       })
-    }
 
-    // Calculate new balance (convert to number for calculation)
-    const currentBalance = Number(wallet.balance)
-    const adjustment = type === 'ADD' ? amount : -amount
-    const newBalance = currentBalance + adjustment
+      if (!wallet) {
+        wallet = await tx.wallet.create({
+          data: { userId, balance: 0 },
+        })
+      }
 
-    if (newBalance < 0) {
-      return apiError('Saldo tidak cukup', 400)
-    }
+      // Calculate new balance
+      const currentBalance = Number(wallet.balance)
+      const adjustment = type === 'ADD' ? amount : -amount
+      const newBalance = currentBalance + adjustment
 
-    // Update wallet
-    const updated = await prisma.wallet.update({
-      where: { id: wallet.id },
-      data: { balance: newBalance },
-    })
+      if (newBalance < 0) {
+        throw new Error('INSUFFICIENT_BALANCE')
+      }
 
-    // Create ledger entry
-    await prisma.walletLedger.create({
-      data: {
-        walletId: wallet.id,
-        type: type === 'ADD' ? 'EARNING' : 'PAYMENT',
-        amount: adjustment,
-        balance: newBalance,
-        description: reason,
-      },
+      // Update wallet
+      const updated = await tx.wallet.update({
+        where: { id: wallet.id },
+        data: { balance: newBalance },
+      })
+
+      // Create ledger entry
+      await tx.walletLedger.create({
+        data: {
+          walletId: wallet.id,
+          type: type === 'ADD' ? 'EARNING' : 'PAYMENT',
+          amount: adjustment,
+          balance: newBalance,
+          description: reason,
+        },
+      })
+
+      return updated
     })
 
     return apiSuccess(
       {
-        id: updated.id,
-        userId: updated.userId,
-        balance: updated.balance.toString(),
-        updatedAt: updated.updatedAt,
+        id: result.id,
+        userId: result.userId,
+        balance: result.balance.toString(),
+        updatedAt: result.updatedAt,
       },
       201,
     )
   } catch (e) {
+    if (e instanceof Error && e.message === 'INSUFFICIENT_BALANCE') {
+      return apiError('Saldo tidak cukup', 400)
+    }
     console.error('[ADMIN_WALLET_POST]', e)
     return apiError('Gagal menyesuaikan saldo', 500)
   }

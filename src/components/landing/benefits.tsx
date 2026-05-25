@@ -55,7 +55,7 @@ const benefits = [
     title: 'Komunitas Terpercaya',
     description:
       'Komunitas teknisi handphone terbesar di Indonesia. Rating & review membantu membangun kepercayaan.',
-    stat: 5000,
+    stat: 3000,
     statSuffix: '+',
     statPrefix: '',
     statLabel: 'anggota aktif',
@@ -68,15 +68,23 @@ const checklistItems = [
   'Sistem rekber aman',
   'Rating & review terpercaya',
   'Lowongan kerja teknisi',
-  'Chat system real-time',
+  'Chat real-time',
 ] as const
 
-const trustStats = [
-  { label: 'User aktif', value: 5000, suffix: '+' },
-  { label: 'Transaksi / bulan', value: 50, suffix: 'M+', prefix: 'Rp ' },
+type TrustStat = {
+  label: string
+  value: number
+  suffix: string
+  prefix?: string
+  decimals?: number
+}
+
+const trustStats: TrustStat[] = [
+  { label: 'User aktif', value: 3000, suffix: '+' },
+  { label: 'Teknisi terverifikasi', value: 500, suffix: '+' },
   { label: 'Konsultasi selesai', value: 10000, suffix: '+' },
   { label: 'Rating user', value: 4.8, suffix: '/5', decimals: 1 },
-] as const
+]
 
 export function Benefits() {
   return (
@@ -183,8 +191,8 @@ export function Benefits() {
                   <AnimatedNumber
                     value={s.value}
                     suffix={s.suffix}
-                    prefix={'prefix' in s ? s.prefix : ''}
-                    decimals={'decimals' in s ? s.decimals : 0}
+                    prefix={s.prefix ?? ''}
+                    decimals={s.decimals ?? 0}
                     className="block text-2xl font-semibold tracking-tightest text-ink tabular-nums lg:text-3xl"
                   />
                   <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-surface-500">

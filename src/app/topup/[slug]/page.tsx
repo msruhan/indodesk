@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { notFound, useParams, useRouter, useSearchParams } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { motion } from 'framer-motion'
 import { Navbar } from '@/components/landing'
 import { BottomNav } from '@/components/mobile'
@@ -16,31 +17,25 @@ import { PromoCodeField } from '@/components/topup/detail/promo-code-field'
 import { OrderSummary } from '@/components/topup/detail/order-summary'
 import { MobileCheckoutBar } from '@/components/topup/detail/mobile-checkout-bar'
 import { useTopup } from '@/contexts/topup-context'
-import {
-  denominationsOf,
-  findDenomination,
-  findProduct,
-  paymentMethods,
-  promoCodes,
-} from '@/data/mock-topup'
-import {
-  compactNumber,
-  effectivePrice,
-  formatIDR,
-  generateOrderCode,
-} from '@/lib/topup-utils'
+import { useTopupCatalog } from '@/contexts/topup-catalog-context'
+import { calcTopupDiscount, TOPUP_PAYMENT_METHODS } from '@/lib/topup-order-config'
+import { compactNumber, effectivePrice, formatIDR } from '@/lib/topup-utils'
 import { ArrowRight, ChevronLeft, Star } from '@/lib/icons'
 
 export default function TopupDetailPage() {
   const params = useParams<{ slug: string }>()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { status: sessionStatus } = useSession()
   const { draft, setDraft, saveOrder } = useTopup()
+  const { loading, findProduct, denominationsOf, findDenomination } = useTopupCatalog()
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const product = findProduct(params.slug)
   const denominations = useMemo(
     () => (product ? denominationsOf(product.slug) : []),
-    [product],
+    [product, denominationsOf],
   )
 
   // Sync draft with current product, picking up ?d=sku for deep links from flash sale.
@@ -63,7 +58,14 @@ export default function TopupDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product?.slug])
 
-  if (!product) return notFound()
+  if (!loading && !product) return notFound()
+  if (loading || !product) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface-50 text-sm text-surface-500">
+        Memuat produk…
+      </div>
+    )
+  }
 
   const accountFilled = draft.accountId.trim().length >= 3 && (!product.serverLabel || draft.serverId.trim().length > 0)
   const denomPicked = !!draft.denominationSku
@@ -80,33 +82,69 @@ export default function TopupDetailPage() {
 
   const denom = draft.denominationSku ? findDenomination(draft.denominationSku) : null
   const method = draft.paymentMethodId
-    ? paymentMethods.find((m) => m.id === draft.paymentMethodId) ?? null
+    ? TOPUP_PAYMENT_METHODS.find((m) => m.id === draft.paymentMethodId) ?? null
     : null
   const subtotal = denom ? effectivePrice(denom) : 0
-  const promo = draft.promoCode ? promoCodes[draft.promoCode.toUpperCase()] : null
-  const discount = promo
-    ? promo.type === 'percent'
-      ? Math.round((subtotal * promo.value) / 100)
-      : Math.min(promo.value, subtotal)
-    : 0
+  const { discount } = calcTopupDiscount(subtotal, draft.promoCode)
   const fee = method?.fee ?? 0
   const total = Math.max(0, subtotal - discount + fee)
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!ready || !denom) return
-    const code = generateOrderCode()
-    saveOrder({
-      orderCode: code,
-      productSlug: product.slug,
-      productName: product.name,
-      denominationLabel: denom.label,
-      total,
-      accountId: draft.serverId ? `${draft.accountId} (${draft.serverId})` : draft.accountId,
-      status: method?.kind === 'saldo' ? 'paid' : 'pending-payment',
-      createdAt: new Date().toISOString(),
-    })
-    setDraft((prev) => ({ ...prev, submittedAt: new Date().toISOString(), orderCode: code }))
-    router.push(`/topup/order/${code}`)
+    if (draft.paymentMethodId !== 'saldo') {
+      setSubmitError('Metode pembayaran ini belum tersedia. Pilih saldo IndoTeknizi.')
+      return
+    }
+    if (sessionStatus !== 'authenticated') {
+      router.push(`/login?callbackUrl=${encodeURIComponent(`/topup/${product.slug}`)}`)
+      return
+    }
+
+    setSubmitting(true)
+    setSubmitError(null)
+    try {
+      const res = await fetch('/api/topup/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productSlug: product.slug,
+          denominationSku: denom.sku,
+          accountId: draft.accountId.trim(),
+          serverId: draft.serverId.trim() || undefined,
+          paymentMethod: 'saldo',
+          promoCode: draft.promoCode || undefined,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.success) {
+        setSubmitError(json.error ?? 'Checkout gagal')
+        return
+      }
+
+      const order = json.data.order
+      saveOrder({
+        orderCode: order.orderCode,
+        productSlug: order.productSlug,
+        productName: order.productName,
+        denominationLabel: order.denominationLabel,
+        total: order.total,
+        accountId: order.serverId
+          ? `${order.accountId} (${order.serverId})`
+          : order.accountId,
+        status: order.status,
+        createdAt: order.createdAt,
+      })
+      setDraft((prev) => ({
+        ...prev,
+        submittedAt: new Date().toISOString(),
+        orderCode: order.orderCode,
+      }))
+      router.push(`/topup/order/${order.orderCode}`)
+    } catch {
+      setSubmitError('Checkout gagal')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -259,7 +297,13 @@ export default function TopupDetailPage() {
       </main>
 
       {/* Mobile checkout */}
-      <MobileCheckoutBar product={product} draft={draft} ready={ready} onSubmit={handleSubmit} />
+      <MobileCheckoutBar
+        product={product}
+        draft={draft}
+        ready={ready}
+        submitting={submitting}
+        onSubmit={() => void handleSubmit()}
+      />
 
       <BottomNav />
     </div>

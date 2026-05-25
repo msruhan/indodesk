@@ -85,12 +85,13 @@ export function ImeiServiceCard({
 
   return (
     <motion.div
+      className="h-full"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
     >
-      <Card className="group overflow-hidden transition-all hover:border-primary-200/70 hover:shadow-soft-md">
-        <CardContent className="p-3 sm:p-4">
+      <Card className="group h-full overflow-hidden transition-all hover:border-primary-200/70 hover:shadow-soft-md">
+        <CardContent className="flex h-full flex-col p-3 sm:p-4">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary-50 to-primary-100 text-primary-700 transition-transform group-hover:scale-105">
               <Unlock className="h-4.5 w-4.5" />
@@ -98,11 +99,11 @@ export function ImeiServiceCard({
             <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <h3 className="text-[13px] font-semibold leading-tight text-ink line-clamp-2 sm:text-sm">
+                  <h3 className="min-h-[2.5rem] text-[13px] font-semibold leading-tight text-ink line-clamp-2 sm:min-h-[2.75rem] sm:text-sm">
                     {service.title}
                   </h3>
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                    <Badge variant="info" className="text-[9px] px-1.5 py-0">
+                    <Badge variant="info" className="px-1.5 py-0 text-[9px]">
                       {service.groupName}
                     </Badge>
                     <span className="flex items-center gap-0.5 text-[10px] text-surface-500">
@@ -115,21 +116,28 @@ export function ImeiServiceCard({
                   <p className="text-sm font-bold text-primary-600 sm:text-base">{formatImeiPrice(service.price)}</p>
                 </div>
               </div>
-              {service.description && (
-                <p className="mt-1.5 text-[11px] leading-relaxed text-surface-500 line-clamp-2">
-                  {service.description}
-                </p>
-              )}
-              <div className="mt-2.5 flex items-center justify-between">
-                <div className="flex flex-wrap gap-1">
-                  <FieldTags service={service} />
-                </div>
-                <Button variant="primary" size="sm" className="h-7 px-3 text-[11px]" onClick={() => onOrder(service)}>
-                  Order
-                  <ChevronRight className="h-3 w-3" />
-                </Button>
-              </div>
             </div>
+          </div>
+          <p
+            className={`mt-1.5 min-h-[2.75rem] text-[11px] leading-relaxed text-surface-500 line-clamp-2 ${
+              service.description ? '' : 'invisible'
+            }`}
+          >
+            {service.description || '—'}
+          </p>
+          <div className="mt-auto flex items-end justify-between gap-2 pt-2.5">
+            <div className="flex min-h-[2.25rem] flex-1 flex-wrap content-end gap-1 pr-1">
+              <FieldTags service={service} />
+            </div>
+            <Button
+              variant="primary"
+              size="sm"
+              className="h-7 shrink-0 px-3 text-[11px]"
+              onClick={() => onOrder(service)}
+            >
+              Order
+              <ChevronRight className="h-3 w-3" />
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -152,14 +160,19 @@ export function ImeiServiceCardSkeleton({ layout = 'grid' }: { layout?: CatalogV
   }
 
   return (
-    <Card className="overflow-hidden animate-pulse">
-      <CardContent className="p-4">
+    <Card className="h-full overflow-hidden animate-pulse">
+      <CardContent className="flex h-full flex-col p-4">
         <div className="flex gap-3">
           <div className="h-10 w-10 rounded-xl bg-surface-200" />
           <div className="flex-1 space-y-2">
-            <div className="h-4 w-3/4 rounded bg-surface-200" />
+            <div className="h-10 w-3/4 rounded bg-surface-200" />
             <div className="h-3 w-1/2 rounded bg-surface-100" />
           </div>
+        </div>
+        <div className="mt-1.5 min-h-[2.75rem] rounded bg-surface-100" />
+        <div className="mt-auto flex justify-between gap-2 pt-2.5">
+          <div className="h-7 w-24 rounded bg-surface-100" />
+          <div className="h-7 w-16 rounded-lg bg-surface-200" />
         </div>
       </CardContent>
     </Card>

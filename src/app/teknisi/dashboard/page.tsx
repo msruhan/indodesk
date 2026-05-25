@@ -1,24 +1,21 @@
 'use client'
 
-import { Badge } from '@/components/ui/badge'
+import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { 
-  CheckCircle,
-  Eye, 
-  MessageCircle, 
-  Star, 
+import {
+  Eye,
+  MessageCircle,
+  ShoppingCart,
+  Star,
   Wallet,
-  Award,
-  Clock,
-  Laptop,
-  Users,
 } from '@/lib/icons'
 import {
   DashboardPageHeader,
   DashboardPanel,
   EmptyState,
-  InsightCard,
   MetricCard,
   StatusBadge,
   TeknisiEarningsChart,
@@ -26,303 +23,228 @@ import {
 } from '@/components/dashboard'
 import { ChartSlider } from '@/components/dashboard/chart-slider'
 import { TeknisiWelcomeCard } from '@/components/teknisi/teknisi-welcome-card'
+import { TeknisiDigitalIdCard } from '@/components/teknisi/teknisi-digital-id-card'
+import { TeknisiTrustBadges } from '@/components/teknisi/teknisi-trust-badges'
+import type { TeknisiDashboardDto } from '@/lib/teknisi-dashboard-data'
+
+const formatPrice = (price: number) =>
+  new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+  }).format(price)
 
 export default function TeknisiDashboardPage() {
-  // Mock data - in production, fetch from API
-  const stats = {
-    totalView: 1234,
-    totalKonsultasi: 567,
-    rating: 4.9,
-    saldo: 2500000,
+  const [data, setData] = useState<TeknisiDashboardDto | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/teknisi/dashboard')
+      const json = await res.json()
+      if (!res.ok || !json.success) {
+        setError(json.error ?? 'Gagal memuat dashboard')
+        return
+      }
+      setData(json.data)
+    } catch {
+      setError('Gagal memuat dashboard')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  if (loading) {
+    return <p className="py-16 text-center text-sm text-surface-500">Memuat dashboard…</p>
   }
 
-  const orderHistory = [
-    { id: '1', orderId: 'ORD-2024-001', service: 'Konsultasi Unlock', user: 'Budi Santoso', amount: 50000, status: 'completed', date: '2 hari lalu' },
-    { id: '2', orderId: 'ORD-2024-002', service: 'Remote Flashing', user: 'Siti Nurhaliza', amount: 150000, status: 'completed', date: '3 hari lalu' },
-    { id: '3', orderId: 'ORD-2024-003', service: 'Root & Custom ROM', user: 'Rudi Hartono', amount: 200000, status: 'in-progress', date: '1 hari lalu' },
-    { id: '4', orderId: 'ORD-2024-004', service: 'Troubleshooting Hardware', user: 'Dewi Lestari', amount: 100000, status: 'pending', date: '5 jam lalu' },
-  ]
+  if (error || !data) {
+    return (
+      <div className="rounded-xl border border-rose-200 bg-rose-50 p-6 text-center">
+        <p className="text-sm text-rose-700">{error ?? 'Data tidak tersedia'}</p>
+        <Button variant="outline" size="sm" className="mt-3" onClick={() => void load()}>
+          Coba lagi
+        </Button>
+      </div>
+    )
+  }
 
-  const personalInsights = [
-    {
-      title: 'Response time bagus',
-      description: 'Rata-rata balasan 4 menit. Pertahankan agar ranking konsultasi tetap tinggi.',
-      icon: Clock,
-      tone: 'primary' as const,
-    },
-    {
-      title: 'Remote service berpotensi naik',
-      description: '2 dari 4 request terakhir terkait flashing dan unlock. Tambahkan paket remote cepat.',
-      icon: Laptop,
-      tone: 'warning' as const,
-    },
-    {
-      title: 'Profil dilihat 1.2k kali',
-      description: 'Foto profil, sertifikasi, dan galeri kerja akan menaikkan konversi konsultasi.',
-      icon: Users,
-      tone: 'neutral' as const,
-    },
-  ]
+  const {
+    digitalId,
+    trust,
+    profile,
+    serviceMix,
+    earningsWeekly,
+    earningsWowPercent,
+    recentOrders,
+    marketplacePending,
+  } = data
+  const conversionRate =
+    profile.totalView > 0
+      ? ((profile.totalKonsultasi / profile.totalView) * 100).toFixed(1)
+      : '0'
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-    }).format(price)
+  const earningsChartData = {
+    weeks: earningsWeekly.map((w) => w.week),
+    earnings: earningsWeekly.map((w) => Math.round(w.earnings / 1000)),
+    consultations: earningsWeekly.map((w) => w.consultations),
+    remote: earningsWeekly.map((w) => w.remote),
+    wowPercent: earningsWowPercent,
   }
 
   return (
     <div className="space-y-6">
-      <TeknisiWelcomeCard name="Teknisi" />
+      <TeknisiWelcomeCard name={profile.name} />
 
       <DashboardPageHeader
-        eyebrow="Technician workspace"
+        eyebrow="Ruang Kerja Teknisi"
         title="Dashboard Teknisi"
         description="Pantau performa profil, konsultasi, saldo, dan order yang perlu ditindaklanjuti."
-        actions={<Button variant="primary">Top Up Saldo</Button>}
+        actions={
+          <Link href="/teknisi/saldo">
+            <Button variant="primary">Kelola Saldo</Button>
+          </Link>
+        }
         meta={
           <div className="flex flex-wrap items-center gap-2 text-xs text-surface-500">
-            <span className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2.5 py-1 font-medium text-primary-700">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary-500" />
-              Online menerima konsultasi
+            <Link
+              href="/teknisi/pesanan"
+              className={cn(
+                'inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-medium transition-colors',
+                marketplacePending > 0
+                  ? 'bg-amber-50 text-amber-800 hover:bg-amber-100'
+                  : 'bg-primary-50 text-primary-700 hover:bg-primary-100',
+              )}
+            >
+              <span
+                className={cn(
+                  'h-1.5 w-1.5 rounded-full',
+                  marketplacePending > 0 ? 'bg-amber-500' : 'bg-primary-500',
+                )}
+              />
+              {marketplacePending > 0
+                ? `${marketplacePending} pesanan perlu diproses — buka Pesanan`
+                : 'Tidak ada pesanan aktif — lihat Pesanan'}
+            </Link>
+            <span>
+              Rating {profile.rating.toFixed(1)} dari {profile.reviewCount} review
             </span>
-            <span>Rating stabil 4.9 dari 234 review</span>
           </div>
         }
       />
 
-      <div className="grid gap-3 lg:grid-cols-3">
-        {personalInsights.map((item) => (
-          <InsightCard key={item.title} {...item} />
-        ))}
-      </div>
+      <div className="grid gap-6 lg:grid-cols-[1fr_minmax(280px,360px)]">
+        <aside className="order-1 lg:order-2 lg:sticky lg:top-24 lg:self-start">
+          <TeknisiDigitalIdCard teknisi={digitalId} />
+        </aside>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="order-2 space-y-6 lg:order-1">
+          <div className="grid grid-cols-2 gap-3">
         <MetricCard
-          title="Total View Profil"
-          value={stats.totalView.toLocaleString()}
-          icon={Eye}
-          trend={{ value: '+12.5%', label: 'vs bulan lalu', direction: 'up' }}
-          sparkline={[22, 29, 31, 38, 41, 48, 57]}
-          footnote="Profil dan listing layanan"
+          title="Total Terjual"
+          value={profile.totalProductSold.toLocaleString('id-ID')}
+          icon={ShoppingCart}
+          footnote="Semua produk iklan"
+          tone="primary"
+          compact
         />
         <MetricCard
-          title="Total Konsultasi"
-          value={stats.totalKonsultasi.toLocaleString()}
-          icon={MessageCircle}
-          trend={{ value: '+8.2%', label: 'vs bulan lalu', direction: 'up' }}
-          sparkline={[18, 22, 25, 28, 27, 34, 36]}
-          footnote="Chat, remote, dan follow-up"
+          title="Total Iklan Dilihat"
+          value={profile.totalProductViews.toLocaleString('id-ID')}
+          icon={Eye}
+          footnote="Semua waktu"
+          tone="primary"
+          compact
         />
         <MetricCard
           title="Rating"
-          value={`${stats.rating}`}
+          value={profile.rating > 0 ? profile.rating.toFixed(1) : '—'}
           icon={Star}
-          trend={{ value: '234 review', label: 'aktif', direction: 'neutral' }}
-          sparkline={[4.6, 4.7, 4.8, 4.85, 4.9, 4.88, 4.9]}
-          footnote="Target minimal 4.8"
+          trend={{ value: `${profile.reviewCount} review`, label: '', direction: 'neutral' }}
+          footnote="Berdasarkan ulasan terverifikasi"
           tone="warning"
+          compact
         />
         <MetricCard
           title="Saldo"
-          value={formatPrice(stats.saldo)}
+          value={formatPrice(profile.saldo)}
           icon={Wallet}
-          trend={{ value: '+Rp 450rb', label: 'minggu ini', direction: 'up' }}
-          sparkline={[18, 20, 25, 23, 28, 35, 42]}
           footnote="Saldo tersedia"
+          tone="primary"
+          compact
         />
-      </div>
-
-      <ChartSlider>
-        <TeknisiEarningsChart />
-        <TeknisiServiceChart />
-      </ChartSlider>
-
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <DashboardPanel title="Performa Bulan Ini" description="Ringkasan aktivitas & pencapaian layanan.">
-          {/* Top stats row */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="relative overflow-hidden rounded-xl border border-primary-200/60 bg-gradient-to-br from-primary-50/80 to-white p-3">
-              <div className="aurora-blob pointer-events-none absolute -right-6 -top-6 h-16 w-16 opacity-40">
-                <div className="h-full w-full rounded-full bg-primary-300 blur-xl" />
-              </div>
-              <MessageCircle className="mb-1.5 h-4 w-4 text-primary-600" />
-              <p className="text-xl font-bold text-ink tabular-nums">30</p>
-              <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-primary-700">Konsultasi</p>
-              <p className="mt-1 text-[10px] text-surface-500">+8 vs bulan lalu</p>
-            </div>
-            <div className="relative overflow-hidden rounded-xl border border-accent-200/60 bg-gradient-to-br from-accent-50/80 to-white p-3">
-              <div className="aurora-blob pointer-events-none absolute -right-6 -top-6 h-16 w-16 opacity-40">
-                <div className="h-full w-full rounded-full bg-accent-300 blur-xl" />
-              </div>
-              <Laptop className="mb-1.5 h-4 w-4 text-accent-600" />
-              <p className="text-xl font-bold text-ink tabular-nums">10</p>
-              <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-accent-700">Remote</p>
-              <p className="mt-1 text-[10px] text-surface-500">+4 vs bulan lalu</p>
-            </div>
-            <div className="relative overflow-hidden rounded-xl border border-violet-200/60 bg-gradient-to-br from-violet-50/80 to-white p-3">
-              <div className="aurora-blob pointer-events-none absolute -right-6 -top-6 h-16 w-16 opacity-40">
-                <div className="h-full w-full rounded-full bg-violet-300 blur-xl" />
-              </div>
-              <Award className="mb-1.5 h-4 w-4 text-violet-600" />
-              <p className="text-xl font-bold text-ink tabular-nums">12</p>
-              <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-violet-700">Produk Terjual</p>
-              <p className="mt-1 text-[10px] text-surface-500">+3 vs bulan lalu</p>
-            </div>
-            <div className="relative overflow-hidden rounded-xl border border-amber-200/60 bg-gradient-to-br from-amber-50/80 to-white p-3">
-              <div className="aurora-blob pointer-events-none absolute -right-6 -top-6 h-16 w-16 opacity-40">
-                <div className="h-full w-full rounded-full bg-amber-300 blur-xl" />
-              </div>
-              <Star className="mb-1.5 h-4 w-4 text-amber-600" />
-              <p className="text-xl font-bold text-ink tabular-nums">98%</p>
-              <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-amber-700">Completion</p>
-              <p className="mt-1 text-[10px] text-surface-500">Target: 95%</p>
-            </div>
           </div>
 
-          {/* Progress bars */}
-          <div className="mt-4 space-y-3">
-            <div>
-              <div className="mb-1 flex items-center justify-between text-[11px]">
-                <span className="font-medium text-surface-700">Response time rata-rata</span>
-                <span className="font-semibold text-primary-700">4.2 menit</span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-surface-100">
-                <div className="h-full w-[84%] rounded-full bg-gradient-to-r from-primary-500 to-accent-500" />
-              </div>
-              <p className="mt-0.5 text-[10px] text-surface-500">Target &lt; 5 menit · Excellent</p>
-            </div>
-            <div>
-              <div className="mb-1 flex items-center justify-between text-[11px]">
-                <span className="font-medium text-surface-700">Rating bulan ini</span>
-                <span className="font-semibold text-amber-700">4.9 / 5.0</span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-surface-100">
-                <div className="h-full w-[98%] rounded-full bg-gradient-to-r from-amber-400 to-amber-500" />
-              </div>
-              <p className="mt-0.5 text-[10px] text-surface-500">Dari 51 review · Top 5% teknisi</p>
-            </div>
-            <div>
-              <div className="mb-1 flex items-center justify-between text-[11px]">
-                <span className="font-medium text-surface-700">Pendapatan vs target</span>
-                <span className="font-semibold text-ink">Rp 1.92jt / 2.5jt</span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-surface-100">
-                <div className="h-full w-[77%] rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500" />
-              </div>
-              <p className="mt-0.5 text-[10px] text-surface-500">77% tercapai · 8 hari tersisa</p>
-            </div>
-          </div>
+          <ChartSlider>
+        <TeknisiEarningsChart data={earningsChartData} />
+        <TeknisiServiceChart data={serviceMix.length > 0 ? serviceMix : undefined} />
+          </ChartSlider>
 
-          {/* Quick achievements */}
-          <div className="mt-4 flex flex-wrap gap-2">
-            <span className="inline-flex items-center gap-1 rounded-full border border-primary-200/70 bg-primary-50/60 px-2.5 py-1 text-[10px] font-medium text-primary-700">
-              <CheckCircle className="h-3 w-3" /> Fast Responder
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-full border border-amber-200/70 bg-amber-50/60 px-2.5 py-1 text-[10px] font-medium text-amber-700">
-              <Star className="h-3 w-3" /> Top Rated
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-full border border-violet-200/70 bg-violet-50/60 px-2.5 py-1 text-[10px] font-medium text-violet-700">
-              <Award className="h-3 w-3" /> 500+ Sesi
-            </span>
-          </div>
-        </DashboardPanel>
-        <DashboardPanel
-          title="Next Best Action"
-          description="Prioritas kerja yang paling berdampak."
-        >
-          <div className="space-y-3">
-            <InsightCard
-              icon={MessageCircle}
-              title="Balas 1 konsultasi pending"
-              description="Selesaikan sebelum 10 menit untuk menjaga SLA dan ranking."
-              tone="warning"
-            />
-            <InsightCard
-              icon={CheckCircle}
-              title="Lengkapi sertifikasi"
-              description="Upload bukti skill unlock/flashing agar badge verified lebih kuat."
-              tone="primary"
-            />
-            <InsightCard
-              icon={Wallet}
-              title="Tarik saldo siap proses"
-              description="Rp 2.500.000 tersedia. Pastikan rekening payout masih aktif."
-              tone="neutral"
-            />
-          </div>
-        </DashboardPanel>
-      </div>
-
-      <DashboardPanel
-        title="Order History"
+          <DashboardPanel
+            title="Order & Sesi Terbaru"
         description="Riwayat order dan sesi yang perlu dipantau."
-        action={<Button variant="outline" size="sm">Lihat semua</Button>}
+        action={
+          <Link href="/teknisi/konsultasi">
+            <Button variant="outline" size="sm">
+              Lihat semua
+            </Button>
+          </Link>
+        }
       >
-        {orderHistory.length > 0 ? (
+        {recentOrders.length > 0 ? (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Order ID</TableHead>
-                <TableHead>Service</TableHead>
-                <TableHead>User</TableHead>
-                <TableHead>Amount</TableHead>
+                <TableHead>ID Order</TableHead>
+                <TableHead>Layanan</TableHead>
+                <TableHead>Pengguna</TableHead>
+                <TableHead>Nilai</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Date</TableHead>
+                <TableHead>Tanggal</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {orderHistory.map((order) => (
+              {recentOrders.map((order) => (
                 <TableRow key={order.id}>
-                  <TableCell className="font-medium">{order.orderId}</TableCell>
+                  <TableCell className="font-medium">{order.orderCode}</TableCell>
                   <TableCell>{order.service}</TableCell>
-                <TableCell>{order.user}</TableCell>
-                <TableCell>{formatPrice(order.amount)}</TableCell>
-                <TableCell>
-                  <StatusBadge status={order.status as 'completed' | 'pending' | 'in-progress'} />
-                </TableCell>
-                <TableCell className="text-surface-500">{order.date}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                  <TableCell>{order.user}</TableCell>
+                  <TableCell>{order.amount > 0 ? formatPrice(order.amount) : '—'}</TableCell>
+                  <TableCell>
+                    <StatusBadge status={order.status} />
+                  </TableCell>
+                  <TableCell className="text-surface-500">{order.date}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         ) : (
           <EmptyState
             icon={MessageCircle}
             title="Belum ada order"
-            description="Order konsultasi dan remote akan tampil di sini setelah pelanggan menghubungi Anda."
+            description="Order konsultasi, remote, dan marketplace akan tampil di sini."
           />
         )}
       </DashboardPanel>
 
-      <DashboardPanel
-        title="Badge & Achievements"
-        description="Status kepercayaan yang tampil ke pelanggan."
-      >
-          <div className="flex flex-wrap gap-3">
-            <div className="flex items-center gap-3 rounded-2xl border border-yellow-200 bg-yellow-50 p-4">
-              <Award className="w-8 h-8 text-yellow-600" />
-              <div>
-                <div className="flex items-center gap-2 font-semibold">
-                  Top Teknisi
-                  <Badge variant="warning">Aktif</Badge>
-                </div>
-                <div className="text-sm text-surface-500">Berdasarkan rating & konsultasi</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 rounded-2xl border border-green-200 bg-green-50 p-4">
-              <Award className="w-8 h-8 text-green-600" />
-              <div>
-                <div className="flex items-center gap-2 font-semibold">
-                  Verified
-                  <Badge variant="success">Terjaga</Badge>
-                </div>
-                <div className="text-sm text-surface-500">Teknisi terverifikasi</div>
-              </div>
-            </div>
-          </div>
+      <DashboardPanel title="Badge & Achievements" description="Status kepercayaan yang tampil ke pelanggan.">
+        <TeknisiTrustBadges
+          badge={trust.badge}
+          isVerified={trust.isVerified}
+          isOnline={trust.isOnline}
+          showOnlineStatus={false}
+          showCriteriaHint
+        />
       </DashboardPanel>
+        </div>
+      </div>
     </div>
   )
 }

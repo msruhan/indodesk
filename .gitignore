@@ -48,3 +48,8 @@ next-env.d.ts
 
 
 /src/generated/prisma
+
+# Stress test results (generated outputs, JSON reports)
+stress-test/results/*
+!stress-test/results/.gitkeep
+!stress-test/results/REPORT_TEMPLATE.md

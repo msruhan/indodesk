@@ -10,6 +10,7 @@ import {
   Buildings,
   Calendar as PhCalendar,
   CaretDown,
+  CaretUp,
   CaretLeft,
   CaretRight,
   ChatCircle,
@@ -41,6 +42,7 @@ import {
   Headphones as PhHeadphones,
   Heart as PhHeart,
   House,
+  IdentificationCard as PhIdentificationCard,
   Image as PhImage,
   InstagramLogo,
   Laptop as PhLaptop,
@@ -72,7 +74,9 @@ import {
   SquaresFour,
   Star as PhStar,
   Storefront,
+  ThreadsLogo,
   ThumbsUp as PhThumbsUp,
+  TiktokLogo,
   Trash,
   TrendDown,
   TrendUp,
@@ -122,6 +126,7 @@ export const CheckCircle = withPremiumWeight(PhCheckCircle)
 export const CheckCircle2 = CheckCircle
 export const CheckSquare = withPremiumWeight(PhCheckSquare)
 export const ChevronDown = withPremiumWeight(CaretDown, 'regular')
+export const ChevronUp = withPremiumWeight(CaretUp, 'regular')
 export const ChevronLeft = withPremiumWeight(CaretLeft, 'regular')
 export const ChevronRight = withPremiumWeight(CaretRight, 'regular')
 export const Clock = withPremiumWeight(PhClock)
@@ -144,6 +149,7 @@ export const Heart = withPremiumWeight(PhHeart)
 export const HelpCircle = withPremiumWeight(Question)
 export const History = withPremiumWeight(ClockCounterClockwise)
 export const Home = withPremiumWeight(House)
+export const IdentificationCard = withPremiumWeight(PhIdentificationCard)
 export const Image = withPremiumWeight(PhImage)
 export const Instagram = withPremiumWeight(InstagramLogo)
 export const Laptop = withPremiumWeight(PhLaptop)
@@ -180,7 +186,9 @@ export const Smartphone = withPremiumWeight(DeviceMobile)
 export const Sparkles = withPremiumWeight(Sparkle)
 export const Star = withPremiumWeight(PhStar)
 export const Store = withPremiumWeight(Storefront)
+export const Threads = withPremiumWeight(ThreadsLogo)
 export const ThumbsUp = withPremiumWeight(PhThumbsUp)
+export const Tiktok = withPremiumWeight(TiktokLogo)
 export const Trash2 = withPremiumWeight(Trash)
 export const TrendingDown = withPremiumWeight(TrendDown)
 export const TrendingUp = withPremiumWeight(TrendUp)

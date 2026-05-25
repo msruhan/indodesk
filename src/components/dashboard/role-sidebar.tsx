@@ -37,6 +37,23 @@ interface RoleSidebarProps {
   homeHref?: string
 }
 
+/** Longest matching href wins so `/user/orders` does not stay active on `/user/orders/imei`. */
+function resolveActiveNavHref(
+  pathname: string,
+  items: readonly SidebarNavItem[],
+): string | null {
+  let best: SidebarNavItem | null = null
+  for (const item of items) {
+    const matches =
+      pathname === item.href || pathname.startsWith(`${item.href}/`)
+    if (!matches) continue
+    if (!best || item.href.length > best.href.length) {
+      best = item
+    }
+  }
+  return best?.href ?? null
+}
+
 /**
  * Premium role-aware sidebar.
  * - Glass surface with hairline border
@@ -63,9 +80,11 @@ export function RoleSidebar({
     return groups
   }, [])
 
-  const renderItem = (item: SidebarNavItem) => {
-    const isActive =
-      pathname === item.href || pathname?.startsWith(item.href + '/')
+  const mainActiveHref = resolveActiveNavHref(pathname, items)
+  const bottomActiveHref = resolveActiveNavHref(pathname, bottomItems)
+
+  const renderItem = (item: SidebarNavItem, activeHref: string | null) => {
+    const isActive = item.href === activeHref
     return (
       <Link
         key={item.href}
@@ -152,7 +171,7 @@ export function RoleSidebar({
                     </div>
                   )}
                   <div className="space-y-1">
-                    {group.items.map(renderItem)}
+                    {group.items.map((item) => renderItem(item, mainActiveHref))}
                   </div>
                 </div>
               ))}
@@ -160,7 +179,7 @@ export function RoleSidebar({
 
             {/* Bottom */}
             <div className="space-y-1 border-t border-surface-200/60 px-3 py-4">
-              {bottomItems.map(renderItem)}
+              {bottomItems.map((item) => renderItem(item, bottomActiveHref))}
 
               {/* Profile chip */}
               <div className="mt-4 flex items-center gap-3 rounded-2xl border border-surface-200/70 bg-white/80 p-2.5 shadow-soft-xs backdrop-blur-md">

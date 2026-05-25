@@ -1,13 +1,6 @@
-export type MarketplaceBanner = {
-  id: string
-  title: string
-  subtitle: string
-  image: string
-  link: string
-  buttonText: string
-  active: boolean
-  sortOrder: number
-}
+import type { MarketplaceBanner } from '@/lib/marketplace-banners'
+
+export type { MarketplaceBanner } from '@/lib/marketplace-banners'
 
 export const defaultMarketplaceBanners: MarketplaceBanner[] = [
   {
@@ -19,6 +12,7 @@ export const defaultMarketplaceBanners: MarketplaceBanner[] = [
     buttonText: 'Beli sekarang',
     active: true,
     sortOrder: 1,
+    placement: 'marketplace',
   },
   {
     id: '2',
@@ -29,25 +23,28 @@ export const defaultMarketplaceBanners: MarketplaceBanner[] = [
     buttonText: 'Lihat koleksi',
     active: true,
     sortOrder: 2,
+    placement: 'marketplace',
   },
   {
     id: '3',
     title: 'Aksesoris Premium',
     subtitle: 'Lengkapi perangkat Anda dengan aksesoris berkualitas',
     image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1600&h=600&fit=crop',
-    link: '/marketplace?category=aksesoris',
+    link: '/shop?category=aksesoris',
     buttonText: 'Jelajahi',
     active: true,
     sortOrder: 3,
+    placement: 'shop',
   },
   {
     id: '4',
     title: 'Software & Tools',
     subtitle: 'Tools profesional untuk teknisi handphone',
     image: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=1600&h=600&fit=crop',
-    link: '/marketplace?category=software',
+    link: '/shop?category=software',
     buttonText: 'Cek software',
     active: true,
     sortOrder: 4,
+    placement: 'shop',
   },
 ]

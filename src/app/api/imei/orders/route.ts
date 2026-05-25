@@ -4,6 +4,7 @@ import { scheduleImeiOrderFollowUp } from '@/lib/imei-order-scheduler'
 import { normalizeSupplierCode } from '@/lib/imei-public'
 import { pollImeiOrderFromSupplier, submitImeiOrderToSupplier } from '@/lib/imei-order-worker'
 import { createImeiOrderSchema } from '@/lib/validations/imei'
+import { extractRequestContext, logOrderEvent } from '@/lib/activity-log'
 import type { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
@@ -145,11 +146,17 @@ export async function POST(req: Request) {
       return apiError('Saldo tidak cukup. Top-up dulu ya.', 402)
     }
 
-    // Create order + debit wallet in a transaction
+    // Create order + debit wallet in a transaction (re-read balance inside for atomicity)
     const order = await prisma.$transaction(async (tx) => {
-      const newBalance = wallet.balance.sub(service.price)
+      // Re-read wallet inside transaction to prevent race condition
+      const freshWallet = await tx.wallet.findUniqueOrThrow({ where: { userId } })
+      if (freshWallet.balance.lessThan(service.price)) {
+        throw new Error('INSUFFICIENT_BALANCE')
+      }
+
+      const newBalance = freshWallet.balance.sub(service.price)
       await tx.wallet.update({
-        where: { id: wallet.id },
+        where: { id: freshWallet.id },
         data: { balance: newBalance },
       })
 
@@ -179,7 +186,7 @@ export async function POST(req: Request) {
 
       await tx.walletLedger.create({
         data: {
-          walletId: wallet.id,
+          walletId: freshWallet.id,
           type: 'PAYMENT',
           amount: service.price.neg(),
           balance: newBalance,
@@ -217,8 +224,33 @@ export async function POST(req: Request) {
       },
     })
 
+    const ctx = extractRequestContext(req)
+    void logOrderEvent({
+      action: 'order.imei.created',
+      severity: 'SUCCESS',
+      summary: `Order IMEI baru: ${order.orderCode} — ${service.title}`,
+      actor: {
+        id: userId,
+        name: session.user.name ?? null,
+        email: session.user.email ?? null,
+        role: session.user.role,
+      },
+      target: { type: 'imei_order', id: order.id, label: order.orderCode },
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+      metadata: {
+        orderCode: order.orderCode,
+        serviceTitle: service.title,
+        amount: service.price.toString(),
+        imei: parsed.data.imei,
+      },
+    })
+
     return apiSuccess(refreshed ?? order, 201)
   } catch (e) {
+    if (e instanceof Error && e.message === 'INSUFFICIENT_BALANCE') {
+      return apiError('Saldo tidak cukup. Top-up dulu ya.', 402)
+    }
     console.error('[IMEI_ORDERS_POST]', e)
     return apiError('Gagal membuat order', 500)
   }

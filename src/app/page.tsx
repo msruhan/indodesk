@@ -2,6 +2,7 @@ import {
   Navbar, 
   Hero, 
   Features, 
+  ServicesShowcase,
   Benefits, 
   Pricing, 
   Testimonials, 
@@ -16,6 +17,7 @@ export default function Home() {
       <Navbar />
       <Hero />
       <Features />
+      <ServicesShowcase />
       <Benefits />
       <Pricing />
       <Testimonials />

@@ -7,33 +7,38 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
-import {
-  BANNERS_UPDATED_EVENT,
-  getActiveMarketplaceBanners,
-  loadMarketplaceBanners,
-} from '@/lib/platform-content-storage'
-import type { MarketplaceBanner } from '@/data/mock-marketplace-banners'
+import type { MarketplaceBanner } from '@/lib/marketplace-banners'
+import type { BannerPlacement } from '@/lib/marketplace-banners'
 import {
   bannerBadgeClass,
   bannerCtaButtonClass,
   bannerCtaWrapClass,
 } from '@/components/shared/banner-slide-styles'
 
-export function BannerSlider() {
+type BannerSliderProps = {
+  placement: BannerPlacement
+}
+
+export function BannerSlider({ placement }: BannerSliderProps) {
   const [banners, setBanners] = useState<MarketplaceBanner[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isAuto, setIsAuto] = useState(true)
 
-  const refreshBanners = useCallback(() => {
-    const active = getActiveMarketplaceBanners(loadMarketplaceBanners())
-    setBanners(active)
-    setCurrentIndex(0)
-  }, [])
+  const refreshBanners = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/banners?placement=${placement}`)
+      const json = await res.json()
+      if (res.ok && json.success) {
+        setBanners(json.data ?? [])
+        setCurrentIndex(0)
+      }
+    } catch {
+      setBanners([])
+    }
+  }, [placement])
 
   useEffect(() => {
-    refreshBanners()
-    window.addEventListener(BANNERS_UPDATED_EVENT, refreshBanners)
-    return () => window.removeEventListener(BANNERS_UPDATED_EVENT, refreshBanners)
+    void refreshBanners()
   }, [refreshBanners])
 
   useEffect(() => {
@@ -69,7 +74,7 @@ export function BannerSlider() {
   const current = banners[currentIndex]
 
   return (
-    <div className="relative mb-6 h-48 w-full overflow-hidden rounded-3xl border border-surface-200/70 shadow-soft-md sm:h-64 lg:h-80">
+    <motion.div className="relative mb-6 h-48 w-full overflow-hidden rounded-3xl border border-surface-200/70 shadow-soft-md sm:h-64 lg:h-80">
       <AnimatePresence mode="wait">
         <motion.div
           key={current.id}
@@ -89,7 +94,7 @@ export function BannerSlider() {
               sizes="100vw"
             />
             <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/35 to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+            <motion.div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
 
             <div className="absolute inset-0 flex items-center">
               <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -174,6 +179,6 @@ export function BannerSlider() {
           </div>
         </>
       )}
-    </div>
+    </motion.div>
   )
 }

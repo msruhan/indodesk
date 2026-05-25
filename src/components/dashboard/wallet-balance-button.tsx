@@ -62,7 +62,7 @@ export function WalletBalanceButton() {
 
               <div className="mt-4 space-y-2">
                 <Link
-                  href={user.role === 'TEKNISI' ? '/teknisi/saldo' : '/user/saldo'}
+                  href={user.role === 'TEKNISI' ? '/teknisi/saldo' : '/topup'}
                   onClick={() => setIsOpen(false)}
                   className="flex items-center gap-2 rounded-lg bg-primary-50 px-3 py-2 text-sm font-medium text-primary-700 transition-colors hover:bg-primary-100"
                 >
@@ -70,7 +70,7 @@ export function WalletBalanceButton() {
                   Topup Saldo
                 </Link>
                 <Link
-                  href={user.role === 'TEKNISI' ? '/teknisi/saldo' : '/user/saldo'}
+                  href={user.role === 'TEKNISI' ? '/teknisi/saldo' : '/user/riwayat'}
                   onClick={() => setIsOpen(false)}
                   className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-surface-600 transition-colors hover:bg-surface-100"
                 >

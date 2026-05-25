@@ -12,7 +12,8 @@ import { Input } from '@/components/ui/input'
 import { searchInputIconClass } from '@/components/ui/search-input'
 import { Navbar } from '@/components/landing'
 import { BottomNav, MobileSafeAreaSpacer } from '@/components/mobile'
-import { serviceTabs } from '@/lib/section-tab-config'
+import { buildServiceTabs } from '@/lib/section-tab-config'
+import { useFeatureFlags } from '@/contexts/feature-flags-context'
 import { PageHero } from '@/components/shared/page-hero'
 import {
   SpotlightCard,
@@ -22,6 +23,7 @@ import {
 import { cn } from '@/lib/utils'
 import { openTeknisiChat } from '@/lib/open-teknisi-chat'
 import type { PublicTeknisiDto } from '@/lib/teknisi-public'
+import { TEKNISI_BADGE_DISPLAY, type TeknisiBadgeTier } from '@/lib/teknisi-badge'
 import { useChat } from '@/contexts/chat-context'
 import {
   Search,
@@ -30,12 +32,17 @@ import {
   Radio,
   CheckCircle,
   Award,
+  Shield,
 } from '@/lib/icons'
+import { InspectionBadge } from '@/components/teknisi/inspection-badge'
 
-const badgeConfig = {
-  newbie: { label: 'Newbie', tone: 'info' as const, icon: Award },
-  verified: { label: 'Verified', tone: 'success' as const, icon: CheckCircle },
-  'top-teknisi': { label: 'Top', tone: 'warning' as const, icon: Award },
+const badgeConfig: Record<
+  TeknisiBadgeTier,
+  { label: string; tone: 'info' | 'success' | 'warning'; icon: typeof Award }
+> = {
+  newbie: { label: TEKNISI_BADGE_DISPLAY.newbie.shortLabel, tone: 'info', icon: Award },
+  verified: { label: TEKNISI_BADGE_DISPLAY.verified.shortLabel, tone: 'success', icon: CheckCircle },
+  'top-teknisi': { label: TEKNISI_BADGE_DISPLAY['top-teknisi'].shortLabel, tone: 'warning', icon: Award },
 }
 
 type SortKey = 'relevance' | 'rating' | 'price-low' | 'price-high'
@@ -61,10 +68,16 @@ export default function TeknisiListPage() {
   const router = useRouter()
   const { data: session, status } = useSession()
   const { openChatWithPeer } = useChat()
+  const { flags } = useFeatureFlags()
+  const tabs = buildServiceTabs(
+    (session?.user?.role as 'ADMIN' | 'TEKNISI' | 'USER' | undefined) ?? null,
+    flags,
+  )
   const [teknisiList, setTeknisiList] = useState<PublicTeknisiDto[]>([])
   const [loadingList, setLoadingList] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterOnline, setFilterOnline] = useState(false)
+  const [filterInspection, setFilterInspection] = useState(false)
   const [sortBy, setSortBy] = useState<SortKey>('relevance')
 
   useEffect(() => {
@@ -99,7 +112,8 @@ export default function TeknisiListPage() {
         t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         t.specialty.some((s) => s.toLowerCase().includes(searchQuery.toLowerCase()))
       const matchesOnline = !filterOnline || t.isOnline
-      return matchesSearch && matchesOnline
+      const matchesInspection = !filterInspection || t.providesInspection
+      return matchesSearch && matchesOnline && matchesInspection
     })
     .sort((a, b) => {
       switch (sortBy) {
@@ -124,7 +138,7 @@ export default function TeknisiListPage() {
         <Navbar />
       </div>
       <PageHero
-        sectionTabs={{ tabs: serviceTabs, layoutId: 'service-section-tab' }}
+        sectionTabs={{ tabs, layoutId: 'service-section-tab' }}
         badge={{ icon: Radio, label: 'Teknisi online' }}
         title={
           <>
@@ -186,6 +200,18 @@ export default function TeknisiListPage() {
               <Radio className="h-4 w-4" />
               Hanya Online
             </button>
+            <button
+              onClick={() => setFilterInspection(!filterInspection)}
+              className={cn(
+                'inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-full px-4 text-sm font-medium transition-all duration-300 ease-out-expo',
+                filterInspection
+                  ? 'border border-transparent bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-[0_8px_22px_-10px_rgba(13,148,136,0.6)] hover:shadow-[0_10px_28px_-10px_rgba(13,148,136,0.7)]'
+                  : 'border border-surface-200/80 bg-white/80 text-surface-700 backdrop-blur-md hover:border-teal-200 hover:text-teal-700',
+              )}
+            >
+              <Shield className="h-4 w-4" />
+              Bisa Inspeksi
+            </button>
           </div>
 
           {/* Status + sort */}
@@ -238,7 +264,11 @@ export default function TeknisiListPage() {
 
             return (
               <motion.div key={t.id} variants={viewportRevealNoBlur} className="min-w-0">
-                  <SpotlightCard tone="primary" className="flex h-full flex-col p-3 sm:p-4">
+                  <SpotlightCard
+                    tone="primary"
+                    disableSpotlight
+                    className="flex h-full flex-col p-3 sm:p-4 [&_[data-slot=teknisi-cta]]:relative [&_[data-slot=teknisi-cta]]:z-20"
+                  >
                     {/* Header: avatar + name + rating */}
                     <div className="mb-2 flex items-center gap-2">
                       <div className="relative flex-shrink-0">
@@ -267,12 +297,13 @@ export default function TeknisiListPage() {
                       </div>
                     </div>
 
-                    {/* Badge */}
-                    <div className="mb-2">
+                    {/* Badge row — primary status + optional inspection capability */}
+                    <div className="mb-2 flex flex-wrap items-center gap-1">
                       <Badge variant={cfg.tone} className="px-1.5 py-0.5 text-[9px]">
                         <cfg.icon className="h-2.5 w-2.5" />
                         <span className="ml-0.5">{cfg.label}</span>
                       </Badge>
+                      {t.providesInspection && <InspectionBadge size="xs" animated={false} />}
                     </div>
 
                     {/* Specialty chips */}
@@ -309,14 +340,20 @@ export default function TeknisiListPage() {
                         </span>
                       </div>
 
-                      <div className="flex gap-1.5">
+                      <div data-slot="teknisi-cta" className="relative z-20 flex gap-1.5">
                         <Button
                           asChild
                           variant="primary"
                           size="sm"
-                          className="h-8 flex-1 px-2 text-[11px]"
+                          className="h-8 min-h-8 flex-1 px-2 text-[11px]"
                         >
-                          <Link href={`/teknisi/${t.userId}`}>Lihat Profil</Link>
+                          <Link
+                            href={`/teknisi/${t.userId}`}
+                            prefetch
+                            className="inline-flex w-full items-center justify-center"
+                          >
+                            Lihat Profil
+                          </Link>
                         </Button>
                         <Button
                           type="button"

@@ -8,6 +8,7 @@ const { auth } = NextAuth(authConfig)
 const TEKNISI_PRIVATE_PREFIXES = [
   '/teknisi/dashboard',
   '/teknisi/produk',
+  '/teknisi/pesanan',
   '/teknisi/profil',
   '/teknisi/toko',
   '/teknisi/saldo',
@@ -82,6 +83,8 @@ export const config = {
     '/teknisi/dashboard/:path*',
     '/teknisi/produk',
     '/teknisi/produk/:path*',
+    '/teknisi/pesanan',
+    '/teknisi/pesanan/:path*',
     '/teknisi/profil',
     '/teknisi/profil/:path*',
     '/teknisi/toko',

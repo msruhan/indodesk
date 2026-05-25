@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { authFieldIconClass } from '@/components/ui/auth-field-icon'
 import { Zap, Mail, Lock, Shield } from '@/lib/icons'
+import { GoogleSignInButton } from '@/components/auth/google-sign-in-button'
 import { AuroraBackground } from '@/components/motion'
 import { motion } from 'framer-motion'
 
@@ -184,6 +185,23 @@ function LoginForm() {
                 {isLoading ? 'Memproses…' : needs2FA ? 'Verifikasi & Masuk' : 'Masuk'}
               </Button>
             </form>
+
+            {!needs2FA && (
+              <div className="mt-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-px flex-1 bg-surface-200" />
+                  <span className="text-[11px] font-medium text-surface-500">atau</span>
+                  <div className="h-px flex-1 bg-surface-200" />
+                </div>
+                <GoogleSignInButton
+                  callbackUrl={
+                    searchParams.get('callbackUrl') && isSafeCallbackUrl(searchParams.get('callbackUrl')!)
+                      ? searchParams.get('callbackUrl')!
+                      : undefined
+                  }
+                />
+              </div>
+            )}
           </CardContent>
 
           <CardFooter className="flex flex-col gap-3">
@@ -193,7 +211,14 @@ function LoginForm() {
                 href="/register"
                 className="font-medium text-primary-700 hover:text-primary-800 hover:underline underline-offset-4"
               >
-                Daftar sekarang
+                Daftar user
+              </Link>
+              {' · '}
+              <Link
+                href="/register/teknisi"
+                className="font-medium text-primary-700 hover:text-primary-800 hover:underline underline-offset-4"
+              >
+                Daftar teknisi
               </Link>
             </div>
             <Link

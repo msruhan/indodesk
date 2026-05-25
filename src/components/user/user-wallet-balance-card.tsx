@@ -1,10 +1,12 @@
 'use client'
 
-import Link from 'next/link'
+import { useState } from 'react'
+import { AnimatePresence } from 'framer-motion'
 import { useWallet } from '@/contexts/wallet-context'
-import { buttonVariants } from '@/components/ui/button'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Plus, TrendingUp, Wallet } from '@/lib/icons'
+import { WalletTopupModal } from '@/components/wallet/wallet-topup-modal'
+import { Plus, Wallet } from '@/lib/icons'
 import { formatIdr } from '@/lib/wallet-transactions'
 import { cn } from '@/lib/utils'
 
@@ -14,10 +16,12 @@ type UserWalletBalanceCardProps = {
 }
 
 export function UserWalletBalanceCard({ className, compact = false }: UserWalletBalanceCardProps) {
-  const { wallet, isLoading } = useWallet()
+  const { wallet, isLoading, refreshWallet } = useWallet()
+  const [depositOpen, setDepositOpen] = useState(false)
   const balance = wallet ? parseFloat(wallet.balance) : 0
 
   return (
+    <>
     <Card
       className={cn(
         'border-primary-200/50 bg-gradient-to-br from-primary-50 via-white to-primary-50/30',
@@ -49,27 +53,27 @@ export function UserWalletBalanceCard({ className, compact = false }: UserWallet
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <Link
-            href="/user/saldo"
-            className={cn(
-              buttonVariants({ variant: 'outline', size: 'sm' }),
-              'w-full border-primary-200/80 bg-white/90 text-primary-800 shadow-none',
-              'hover:border-primary-300 hover:bg-primary-50/90 hover:text-primary-900',
-            )}
-          >
-            <TrendingUp className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            <span className="truncate">Kelola saldo</span>
-          </Link>
-          <Link
-            href="/user/saldo"
-            className={cn(buttonVariants({ variant: 'primary', size: 'sm' }), 'w-full')}
-          >
-            <Plus className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            <span className="truncate">Top up</span>
-          </Link>
-        </div>
+        <Button
+          type="button"
+          variant="primary"
+          size="sm"
+          className="mt-4 w-full"
+          onClick={() => setDepositOpen(true)}
+        >
+          <Plus className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          <span className="truncate">Deposit</span>
+        </Button>
       </CardContent>
     </Card>
+
+    <AnimatePresence>
+      {depositOpen && (
+        <WalletTopupModal
+          onClose={() => setDepositOpen(false)}
+          onSuccess={() => void refreshWallet()}
+        />
+      )}
+    </AnimatePresence>
+    </>
   )
 }

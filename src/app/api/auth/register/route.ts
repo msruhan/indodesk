@@ -2,8 +2,20 @@ import { NextResponse } from 'next/server'
 import { hash } from 'bcryptjs'
 import { prisma } from '@/lib/db'
 import { registerSchema } from '@/lib/validations/auth'
+import { extractRequestContext, logAccountEvent } from '@/lib/activity-log'
+import { checkRateLimit, getClientIp, RATE_LIMITS } from '@/lib/rate-limit'
 
 export async function POST(req: Request) {
+  // Rate limit: 10 registrations per 15 minutes per IP
+  const ip = getClientIp(req)
+  const rl = checkRateLimit(`register:${ip}`, RATE_LIMITS.auth)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { success: false, error: 'Terlalu banyak percobaan. Coba lagi nanti.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } },
+    )
+  }
+
   try {
     const body = await req.json()
     const parsed = registerSchema.safeParse(body)
@@ -15,7 +27,8 @@ export async function POST(req: Request) {
       )
     }
 
-    const { name, email, password, role } = parsed.data
+    const { name, email, password } = parsed.data
+    const role = 'USER' as const
 
     // Check if email already exists
     const existing = await prisma.user.findUnique({ where: { email } })
@@ -48,6 +61,18 @@ export async function POST(req: Request) {
     // Create wallet for the new user
     await prisma.wallet.create({
       data: { userId: user.id, balance: 0 },
+    })
+
+    const ctx = extractRequestContext(req)
+    void logAccountEvent({
+      action: 'account.register',
+      severity: 'SUCCESS',
+      summary: `Akun baru terdaftar: ${user.name} (${user.role})`,
+      actor: { id: user.id, name: user.name, email: user.email, role: user.role },
+      target: { type: 'user', id: user.id, label: user.email },
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+      metadata: { role: user.role },
     })
 
     return NextResponse.json({ success: true, data: user }, { status: 201 })

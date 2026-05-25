@@ -1,6 +1,7 @@
 export { Navbar } from './navbar'
 export { Hero } from './hero'
 export { Features } from './features'
+export { ServicesShowcase } from './services-showcase'
 export { Benefits } from './benefits'
 export { Pricing } from './pricing'
 export { Testimonials } from './testimonials'

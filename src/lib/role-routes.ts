@@ -6,6 +6,7 @@ import {
   shouldTeknisiDashboardFirstSlot,
   type TeknisiNavHomeMode,
 } from '@/lib/teknisi-nav-home'
+import { isUserDashboardZone } from '@/lib/user-nav-home'
 
 export const MARKETPLACE_PATH = '/marketplace'
 
@@ -30,7 +31,7 @@ export function accountPathForRole(role: UserRole): string {
 
 export function saldoPathForRole(role: UserRole): string {
   if (role === 'TEKNISI') return '/teknisi/saldo'
-  return '/user/saldo'
+  return '/user/dashboard'
 }
 
 export function showProfileSaldoForRole(role: UserRole): boolean {
@@ -38,6 +39,59 @@ export function showProfileSaldoForRole(role: UserRole): boolean {
 }
 
 export type ProfileMenuItem = { label: string; href: string }
+
+const TEKNISI_WORKSPACE_SEGMENTS = new Set([
+  'dashboard',
+  'settings',
+  'saldo',
+  'produk',
+  'pesanan',
+  'orders',
+  'remote',
+  'konsultasi',
+  'inspeksi',
+  'toko',
+  'help',
+  'analitik',
+  'chat',
+  'profil',
+])
+
+const PUBLIC_PATH_PREFIXES = [
+  '/',
+  '/shop',
+  MARKETPLACE_PATH,
+  '/topup',
+  '/imei',
+  '/toko',
+  '/teknisi',
+  '/remote',
+  '/rekber',
+  '/inspeksi',
+  '/lowongan',
+  '/cart',
+] as const
+
+function matchesPublicPrefix(pathname: string, prefix: string): boolean {
+  if (prefix === '/') return pathname === '/'
+  return pathname === prefix || pathname.startsWith(`${prefix}/`)
+}
+
+/** Beranda, Market, Layanan, Toko, Mitra — halaman konsumen (bukan shell teknisi/admin/user). */
+export function isPublicConsumerZone(pathname: string | null): boolean {
+  if (!pathname) return false
+  if (PUBLIC_PATH_PREFIXES.some((p) => matchesPublicPrefix(pathname, p))) {
+    if (pathname === '/teknisi' || pathname.startsWith('/teknisi/')) {
+      const teknisiProfile = pathname.match(/^\/teknisi\/([^/]+)$/)
+      if (teknisiProfile) {
+        return !TEKNISI_WORKSPACE_SEGMENTS.has(teknisiProfile[1])
+      }
+      return pathname === '/teknisi'
+    }
+    return true
+  }
+  return false
+}
 
 export function isOnRoleDashboard(pathname: string | null, role: UserRole): boolean {
   if (!pathname) return false
@@ -50,37 +104,25 @@ export function isAdminWorkspaceZone(pathname: string | null): boolean {
   return pathname === '/admin' || pathname.startsWith('/admin/')
 }
 
-/** Profile dropdown links (before Keluar), ordered per role. */
+/** Profile dropdown links (before Saldo & Keluar), ordered per role. */
 export function profileMenuItemsForRole(
   role: UserRole,
-  pathname?: string | null,
+  pathname: string | null = null,
 ): ProfileMenuItem[] {
-  const dashboard = { label: 'Dashboard', href: homePathForRole(role) }
-
-  let items: ProfileMenuItem[]
   if (role === 'TEKNISI') {
-    items = [
-      dashboard,
+    return [
+      { label: 'Marketplace', href: MARKETPLACE_PATH },
       { label: 'Akun Saya', href: '/teknisi/settings' },
       { label: 'Analitik', href: '/teknisi/analitik' },
     ]
-  } else {
-    items = [dashboard, { label: 'Akun', href: accountPathForRole(role) }]
   }
-
-  if (pathname) {
-    if (role === 'TEKNISI' && isTeknisiWorkspaceZone(pathname)) {
-      return [{ label: 'Market', href: MARKETPLACE_PATH }, ...items.slice(1)]
-    }
-    if (role === 'ADMIN' && isAdminWorkspaceZone(pathname)) {
-      return [{ label: 'Market', href: MARKETPLACE_PATH }, ...items.slice(1)]
-    }
-    if (isOnRoleDashboard(pathname, role)) {
-      return [{ label: 'Market', href: MARKETPLACE_PATH }, ...items.slice(1)]
-    }
+  if (role === 'USER' && pathname && isUserDashboardZone(pathname)) {
+    return [
+      { label: 'Marketplace', href: MARKETPLACE_PATH },
+      { label: 'Akun Saya', href: accountPathForRole('USER') },
+    ]
   }
-
-  return items
+  return [{ label: 'Akun Saya', href: accountPathForRole(role) }]
 }
 
 type BottomNavItemLike = {
@@ -146,10 +188,28 @@ export function applyDashboardBottomNavSwap<T extends BottomNavItemLike>(
   return swapMarketSlotToDashboard(items, role, dashboardIcon)
 }
 
-/** Profile menu on marketplace & public pages — Dashboard + Akun only. */
-export function publicProfileMenuItemsForRole(role: UserRole): ProfileMenuItem[] {
-  return [
-    { label: 'Dashboard', href: homePathForRole(role) },
-    { label: 'Akun', href: accountPathForRole(role) },
-  ]
+/** Profile menu on marketplace & public pages. */
+export function publicProfileMenuItemsForRole(
+  role: UserRole,
+  pathname: string | null = null,
+): ProfileMenuItem[] {
+  const onPublic = isPublicConsumerZone(pathname)
+
+  if (role === 'TEKNISI') {
+    const marketOrDashboard: ProfileMenuItem = onPublic
+      ? { label: 'Dashboard', href: homePathForRole('TEKNISI') }
+      : { label: 'Market', href: MARKETPLACE_PATH }
+    return [
+      marketOrDashboard,
+      { label: 'Akun Saya', href: '/teknisi/settings' },
+      { label: 'Analitik', href: '/teknisi/analitik' },
+    ]
+  }
+
+  const items: ProfileMenuItem[] = []
+  if (onPublic) {
+    items.push({ label: 'Dashboard', href: homePathForRole(role) })
+  }
+  items.push({ label: 'Akun Saya', href: accountPathForRole(role) })
+  return items
 }

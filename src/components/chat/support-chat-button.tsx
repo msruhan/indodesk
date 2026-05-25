@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import type { UserRole } from '@prisma/client'
 import { Button } from '@/components/ui/button'
+import { useChat } from '@/contexts/chat-context'
 import { MessageCircle } from '@/lib/icons'
-import { chatPathForRole } from '@/lib/role-routes'
+import { openTeknisiChat } from '@/lib/open-teknisi-chat'
 
 type SupportAdmin = { id: string; name: string }
 
@@ -23,6 +24,7 @@ export function SupportChatButton({
 }) {
   const router = useRouter()
   const { data: session, status } = useSession()
+  const { openChatWithPeer } = useChat()
   const [supportAdmin, setSupportAdmin] = useState<SupportAdmin | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -46,17 +48,23 @@ export function SupportChatButton({
   const handleClick = useCallback(() => {
     if (!supportAdmin) return
 
-    const chatPath = `${chatPathForRole((session?.user?.role as UserRole) ?? 'USER')}?peer=${supportAdmin.id}`
-
     if (status !== 'authenticated' || !session?.user) {
       const callbackUrl = encodeURIComponent(`/user/chat?peer=${supportAdmin.id}`)
       router.push(`/login?callbackUrl=${callbackUrl}`)
       return
     }
 
-    setLoading(true)
-    router.push(chatPath)
-  }, [router, session, status, supportAdmin])
+    openTeknisiChat({
+      teknisiUserId: supportAdmin.id,
+      isAuthenticated: true,
+      role: (session.user.role as UserRole) ?? 'USER',
+      openChatWithPeer,
+      navigate: (path) => {
+        setLoading(true)
+        router.push(path)
+      },
+    })
+  }, [router, session, status, supportAdmin, openChatWithPeer])
 
   return (
     <Button

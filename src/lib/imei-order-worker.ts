@@ -4,6 +4,7 @@
 import { prisma } from '@/lib/db'
 import { DhruFusionClient } from '@/lib/dhru-fusion'
 import { normalizeSupplierCode, stripSupplierHtml } from '@/lib/imei-public'
+import { logSystemEvent } from '@/lib/activity-log'
 import type { ImeiOrder, ImeiOrderStatus, Prisma } from '@prisma/client'
 
 function extractSupplierCode(remote: { code?: string; comments?: string }): string | null {
@@ -300,6 +301,13 @@ export async function pollImeiOrderFromSupplier(orderId: string): Promise<{
         completedAt: new Date(),
       },
     })
+    void logSystemEvent({
+      action: 'order.imei.success',
+      severity: 'SUCCESS',
+      summary: `Order IMEI ${order.orderCode} berhasil`,
+      target: { type: 'imei_order', id: order.id, label: order.orderCode },
+      metadata: { orderCode: order.orderCode, code: supplierCode ?? null },
+    })
     return { ok: true, updated: true }
   }
 
@@ -340,6 +348,14 @@ export async function pollImeiOrderFromSupplier(orderId: string): Promise<{
           },
         })
       }
+    })
+    void logSystemEvent({
+      action: 'order.imei.rejected',
+      severity: 'WARNING',
+      summary: `Order IMEI ${order.orderCode} ditolak supplier`,
+      detail: remote.error ?? null,
+      target: { type: 'imei_order', id: order.id, label: order.orderCode },
+      metadata: { orderCode: order.orderCode, supplierError: remote.error ?? null },
     })
     return { ok: true, updated: true }
   }

@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import { SpotlightCard } from '@/components/motion'
 import { Star, Zap } from '@/lib/icons'
 import { compactNumber, formatIDR } from '@/lib/topup-utils'
-import { denominationsOf } from '@/data/mock-topup'
+import { useTopupCatalog } from '@/contexts/topup-catalog-context'
 import type { TopupProduct } from '@/data/topup-types'
 import { cn } from '@/lib/utils'
 
@@ -16,6 +16,7 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, size = 'default' }: ProductCardProps) {
+  const { denominationsOf } = useTopupCatalog()
   const denoms = denominationsOf(product.slug)
   const startingPrice = denoms.length
     ? denoms.reduce(

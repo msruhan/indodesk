@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiAuth } from '@/lib/api-auth'
 import { periodDateRange, type DashboardPeriod } from '@/lib/dashboard-period'
+import { buildPaginationMeta, parsePaginationParams } from '@/lib/pagination'
+import { repairUnsettledMarketplaceOrdersForSeller } from '@/lib/marketplace-wallet'
 import {
   labelForImeiStatus,
   labelForLedgerType,
@@ -42,13 +44,16 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url)
     const filterParam = (searchParams.get('category') || 'all') as TransactionFilter
     const filter: TransactionFilter = VALID_FILTERS.includes(filterParam) ? filterParam : 'all'
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '50', 10) || 50))
+    const { page, pageSize, skip } = parsePaginationParams(searchParams)
 
     const userId = session.user.id
 
+    await repairUnsettledMarketplaceOrdersForSeller(userId)
+
     const wallet = await prisma.wallet.findUnique({ where: { userId } })
 
-    const [imeiOrders, serverOrders, topupOrders, shopOrders, ledgerRows] = await Promise.all([
+    const [imeiOrders, serverOrders, topupOrders, shopOrders, sellerShopOrders, ledgerRows] =
+      await Promise.all([
         prisma.imeiOrder.findMany({
           where: { userId },
           orderBy: { createdAt: 'desc' },
@@ -80,6 +85,21 @@ export async function GET(req: Request) {
             seller: { select: { name: true } },
           },
         }),
+        prisma.order.findMany({
+          where: {
+            sellerId: userId,
+            status: { in: ['PAID', 'PROCESSING', 'SHIPPED', 'COMPLETED'] },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 80,
+          include: {
+            items: {
+              take: 1,
+              include: { product: { select: { name: true } } },
+            },
+            buyer: { select: { name: true } },
+          },
+        }),
         wallet
           ? prisma.walletLedger.findMany({
               where: { walletId: wallet.id },
@@ -94,6 +114,12 @@ export async function GET(req: Request) {
       ...serverOrders.map((o) => o.id),
     ])
 
+    const marketplaceEarningRefIds = new Set(
+      ledgerRows
+        .filter((r) => r.type === 'EARNING' && r.referenceId)
+        .map((r) => r.referenceId as string),
+    )
+
     const items: UnifiedTransaction[] = []
 
     for (const o of imeiOrders) {
@@ -107,7 +133,7 @@ export async function GET(req: Request) {
         status: o.status,
         statusLabel: labelForImeiStatus(o.status),
         createdAt: o.createdAt.toISOString(),
-        href: '/imei/orders',
+        href: '/user/orders/imei',
       })
     }
 
@@ -122,7 +148,7 @@ export async function GET(req: Request) {
         status: o.status,
         statusLabel: labelForServerStatus(o.status),
         createdAt: o.createdAt.toISOString(),
-        href: '/imei/orders?tab=server',
+        href: '/user/orders/imei?tab=server',
       })
     }
 
@@ -138,14 +164,14 @@ export async function GET(req: Request) {
         status: o.status,
         statusLabel: labelForTopupStatus(o.status),
         createdAt: o.createdAt.toISOString(),
-        href: o.id ? `/topup/order/${o.id}` : '/topup/cek-transaksi',
+        href: o.orderCode ? `/topup/order/${o.orderCode}` : '/topup/cek-transaksi',
       })
     }
 
     for (const o of shopOrders) {
       const productName = o.items[0]?.product?.name ?? 'Produk marketplace'
       items.push({
-        id: `shop-${o.id}`,
+        id: `shop-buy-${o.id}`,
         category: 'shop',
         orderCode: o.orderCode,
         title: productName,
@@ -155,6 +181,23 @@ export async function GET(req: Request) {
         statusLabel: labelForShopStatus(o.status),
         createdAt: o.createdAt.toISOString(),
         href: '/marketplace',
+      })
+    }
+
+    for (const o of sellerShopOrders) {
+      if (marketplaceEarningRefIds.has(o.id)) continue
+      const productName = o.items[0]?.product?.name ?? 'Produk marketplace'
+      items.push({
+        id: `shop-sell-${o.id}`,
+        category: 'shop',
+        orderCode: o.orderCode,
+        title: `Penjualan: ${productName}`,
+        subtitle: o.buyer?.name ? `Pembeli: ${o.buyer.name}` : null,
+        amount: decimalToNumber(o.total),
+        status: o.status,
+        statusLabel: labelForShopStatus(o.status),
+        createdAt: o.createdAt.toISOString(),
+        href: '/teknisi/pesanan',
       })
     }
 
@@ -205,13 +248,17 @@ export async function GET(req: Request) {
     const totalSpending = computeTotalSpending(periodScoped)
     const spendingCount = periodScoped.filter(isSpendingTransaction).length
 
+    const totalFiltered = filtered.length
+    const paginated = filtered.slice(skip, skip + pageSize)
+
     return apiSuccess({
       balance: wallet ? wallet.balance.toString() : '0',
-      transactions: filtered.slice(0, limit),
+      transactions: paginated,
       counts,
       totalSpending,
       spendingCount,
       period: period ? { year: period.year, month: period.month + 1 } : null,
+      pagination: buildPaginationMeta(totalFiltered, page, pageSize),
     })
   } catch (e) {
     console.error('[WALLET_TRANSACTIONS_GET]', e)

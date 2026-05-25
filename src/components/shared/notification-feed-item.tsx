@@ -8,9 +8,13 @@ import type { PlatformNotification } from '@/data/mock-platform-notifications'
 export function NotificationFeedItem({
   item,
   className,
+  unread = false,
+  onNavigate,
 }: {
   item: PlatformNotification
   className?: string
+  unread?: boolean
+  onNavigate?: () => void
 }) {
   const Icon = notificationIconMap[item.icon]
   const content = (
@@ -35,12 +39,13 @@ export function NotificationFeedItem({
 
   const rowClass = cn(
     'flex w-full items-start gap-3 rounded-xl px-3 py-2 text-left transition-colors hover:bg-surface-50',
+    unread && 'bg-primary-50/60 ring-1 ring-primary-200/50',
     className,
   )
 
   if (item.href) {
     return (
-      <Link href={item.href} className={rowClass}>
+      <Link href={item.href} className={rowClass} onClick={onNavigate}>
         {content}
       </Link>
     )

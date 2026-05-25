@@ -15,7 +15,7 @@ export type PlatformNotification = {
   createdAt: string
   /** Link saat notifikasi dari order (opsional). */
   href?: string | null
-  kind?: 'broadcast' | 'order'
+  kind?: 'broadcast' | 'order' | 'monitoring'
 }
 
 const now = Date.now()

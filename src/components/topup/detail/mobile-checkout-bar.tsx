@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { effectivePrice, formatIDR } from '@/lib/topup-utils'
-import { findDenomination, paymentMethods, promoCodes } from '@/data/mock-topup'
+import { useTopupCatalog } from '@/contexts/topup-catalog-context'
+import { calcTopupDiscount, TOPUP_PAYMENT_METHODS } from '@/lib/topup-order-config'
 import type { TopupOrderDraft, TopupProduct } from '@/data/topup-types'
 import { ChevronDown, ShoppingCart, X } from '@/lib/icons'
 import { OrderSummary } from './order-summary'
@@ -14,24 +15,21 @@ interface MobileCheckoutBarProps {
   product: TopupProduct
   draft: TopupOrderDraft
   ready: boolean
+  submitting?: boolean
   onSubmit: () => void
 }
 
-export function MobileCheckoutBar({ product, draft, ready, onSubmit }: MobileCheckoutBarProps) {
+export function MobileCheckoutBar({ product, draft, ready, submitting, onSubmit }: MobileCheckoutBarProps) {
   const [open, setOpen] = useState(false)
+  const { findDenomination } = useTopupCatalog()
 
   const denom = draft.denominationSku ? findDenomination(draft.denominationSku) : null
   const method = draft.paymentMethodId
-    ? paymentMethods.find((m) => m.id === draft.paymentMethodId) ?? null
+    ? TOPUP_PAYMENT_METHODS.find((m) => m.id === draft.paymentMethodId) ?? null
     : null
 
   const subtotal = denom ? effectivePrice(denom) : 0
-  const promo = draft.promoCode ? promoCodes[draft.promoCode.toUpperCase()] : null
-  const discount = promo
-    ? promo.type === 'percent'
-      ? Math.round((subtotal * promo.value) / 100)
-      : Math.min(promo.value, subtotal)
-    : 0
+  const { discount } = calcTopupDiscount(subtotal, draft.promoCode)
   const fee = method?.fee ?? 0
   const total = Math.max(0, subtotal - discount + fee)
 
@@ -62,8 +60,8 @@ export function MobileCheckoutBar({ product, draft, ready, onSubmit }: MobileChe
                 </p>
               </div>
             </button>
-            <Button variant="primary" size="default" className="px-5" disabled={!ready} onClick={onSubmit}>
-              Pesan
+            <Button variant="primary" size="default" className="px-5" disabled={!ready || submitting} onClick={onSubmit}>
+              {submitting ? '…' : 'Pesan'}
             </Button>
           </div>
         </div>

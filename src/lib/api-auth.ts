@@ -39,7 +39,7 @@ export async function requireApiAuth():
 
   const dbUser = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { id: true, role: true, name: true, email: true, image: true },
+    select: { id: true, role: true, name: true, email: true, image: true, isActive: true },
   })
 
   if (!dbUser) {
@@ -53,6 +53,16 @@ export async function requireApiAuth():
           code: SESSION_STALE_CODE,
         },
         { status: 401 },
+      ),
+    }
+  }
+
+  if (!dbUser.isActive) {
+    return {
+      session: null,
+      error: NextResponse.json(
+        { success: false, error: 'Akun Anda telah dinonaktifkan. Hubungi admin untuk informasi lebih lanjut.' },
+        { status: 403 },
       ),
     }
   }

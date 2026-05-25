@@ -8,6 +8,7 @@ import {
 } from '@/lib/server-order-worker'
 import { parseServerFieldDefs, validateServerOrderFields } from '@/lib/server-fields'
 import { createServerOrderSchema } from '@/lib/validations/server'
+import { extractRequestContext, logOrderEvent } from '@/lib/activity-log'
 import { ServerOrderStatus, type Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
@@ -113,8 +114,14 @@ export async function POST(req: Request) {
     if (wallet.balance.lessThan(service.price)) return apiError('Saldo tidak cukup', 402)
 
     const order = await prisma.$transaction(async (tx) => {
-      const newBalance = wallet.balance.sub(service.price)
-      await tx.wallet.update({ where: { id: wallet.id }, data: { balance: newBalance } })
+      // Re-read wallet inside transaction to prevent race condition
+      const freshWallet = await tx.wallet.findUniqueOrThrow({ where: { userId } })
+      if (freshWallet.balance.lessThan(service.price)) {
+        throw new Error('INSUFFICIENT_BALANCE')
+      }
+
+      const newBalance = freshWallet.balance.sub(service.price)
+      await tx.wallet.update({ where: { id: freshWallet.id }, data: { balance: newBalance } })
 
       const created = await tx.serverOrder.create({
         data: {
@@ -135,7 +142,7 @@ export async function POST(req: Request) {
 
       await tx.walletLedger.create({
         data: {
-          walletId: wallet.id,
+          walletId: freshWallet.id,
           type: 'PAYMENT',
           amount: service.price.neg(),
           balance: newBalance,
@@ -158,6 +165,27 @@ export async function POST(req: Request) {
       console.error('[SERVER_ORDERS_SUBMIT_SUPPLIER]', submitErr)
     }
 
+    const ctx = extractRequestContext(req)
+    void logOrderEvent({
+      action: 'order.server.created',
+      severity: 'SUCCESS',
+      summary: `Order Server baru: ${order.orderCode} — ${service.title}`,
+      actor: {
+        id: userId,
+        name: session.user.name ?? null,
+        email: session.user.email ?? null,
+        role: session.user.role,
+      },
+      target: { type: 'server_order', id: order.id, label: order.orderCode },
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+      metadata: {
+        orderCode: order.orderCode,
+        serviceTitle: service.title,
+        amount: service.price.toString(),
+      },
+    })
+
     const refreshed = await prisma.serverOrder.findUnique({
       where: { id: order.id },
       include: {
@@ -174,6 +202,9 @@ export async function POST(req: Request) {
 
     return apiSuccess(refreshed ?? order, 201)
   } catch (e) {
+    if (e instanceof Error && e.message === 'INSUFFICIENT_BALANCE') {
+      return apiError('Saldo tidak cukup', 402)
+    }
     console.error('[SERVER_ORDERS_POST]', e)
     return apiError('Gagal membuat order', 500)
   }

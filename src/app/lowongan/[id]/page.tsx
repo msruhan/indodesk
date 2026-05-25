@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
@@ -22,8 +22,14 @@ import {
   Users,
   ChevronLeft,
   Shield,
-  Star,
 } from '@/lib/icons'
+import type { JobTypeSlug, PublicLowonganDetailDto } from '@/lib/lowongan-serializer'
+
+const typeLabels: Record<JobTypeSlug, string> = {
+  'full-time': 'Full Time',
+  'part-time': 'Part Time',
+  contract: 'Contract',
+}
 
 const fadeIn = {
   initial: { opacity: 0, y: 10 },
@@ -33,6 +39,11 @@ const fadeIn = {
 
 export default function LowonganDetailPage() {
   const params = useParams()
+  const id = typeof params.id === 'string' ? params.id : ''
+  const [lowongan, setLowongan] = useState<PublicLowonganDetailDto | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [applyError, setApplyError] = useState<string | null>(null)
   const [isApplying, setIsApplying] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [formData, setFormData] = useState({
@@ -42,49 +53,74 @@ export default function LowonganDetailPage() {
     coverLetter: '',
   })
 
-  const lowongan = {
-    id: params.id,
-    title: 'Teknisi Handphone Senior',
-    company: 'HandPhone Center Jakarta',
-    location: 'Jakarta Selatan',
-    salary: 'Rp 5.000.000 - 8.000.000',
-    type: 'full-time' as const,
-    postedDate: '2 hari lalu',
-    applicants: 23,
-    description:
-      'HandPhone Center Jakarta sedang mencari Teknisi Handphone Senior yang berpengalaman dan profesional untuk bergabung dengan tim kami. Posisi ini cocok untuk teknisi yang ingin berkembang di lingkungan kerja yang dinamis.',
-    requirements: [
-      'Minimal 3 tahun pengalaman sebagai teknisi handphone',
-      'Menguasai berbagai brand (iPhone, Samsung, Xiaomi, dll)',
-      'Memahami hardware dan software troubleshooting',
-      'Bersedia bekerja shift',
-      'Memiliki kemampuan komunikasi yang baik',
-      'Sertifikat teknisi (preferred)',
-    ],
-    responsibilities: [
-      'Melakukan perbaikan hardware dan software handphone',
-      'Melayani konsultasi dengan pelanggan',
-      'Mendiagnosis masalah dan memberikan solusi',
-      'Menjaga kualitas service sesuai standar',
-      'Melakukan maintenance peralatan',
-    ],
-    benefits: [
-      'Gaji kompetitif',
-      'Bonus performance bulanan',
-      'BPJS Kesehatan & Ketenagakerjaan',
-      'Training berkala',
-      'Jenjang karir jelas',
-    ],
-    skills: ['iPhone', 'Samsung', 'Hardware', 'Soldering', 'Software'],
+  useEffect(() => {
+    if (!id) return
+    let cancelled = false
+    ;(async () => {
+      setLoading(true)
+      setLoadError(null)
+      try {
+        const res = await fetch(`/api/lowongan/${id}`)
+        const json = await res.json()
+        if (cancelled) return
+        if (!res.ok) {
+          setLoadError(json.error ?? 'Lowongan tidak ditemukan')
+          setLowongan(null)
+        } else {
+          setLowongan(json.data)
+        }
+      } catch {
+        if (!cancelled) {
+          setLoadError('Gagal memuat lowongan')
+          setLowongan(null)
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [id])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!id) return
+    setIsApplying(true)
+    setApplyError(null)
+    try {
+      const res = await fetch(`/api/lowongan/${id}/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Gagal mengirim lamaran')
+      setSubmitted(true)
+    } catch (err) {
+      setApplyError(err instanceof Error ? err.message : 'Gagal mengirim lamaran')
+    } finally {
+      setIsApplying(false)
+    }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsApplying(true)
-    setTimeout(() => {
-      setIsApplying(false)
-      setSubmitted(true)
-    }, 1200)
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface-50 text-sm text-surface-500">
+        Memuat lowongan…
+      </div>
+    )
+  }
+
+  if (!lowongan || loadError) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-surface-50 px-4">
+        <p className="text-sm text-surface-600">{loadError ?? 'Lowongan tidak ditemukan'}</p>
+        <Link href="/lowongan" className="text-sm font-medium text-primary-700 hover:underline">
+          Kembali ke daftar lowongan
+        </Link>
+      </div>
+    )
   }
 
   return (
@@ -108,7 +144,7 @@ export default function LowonganDetailPage() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 flex-1">
               <div className="mb-2 flex flex-wrap items-center gap-2">
-                <Badge variant="info" className="text-[10px]">Full Time</Badge>
+                <Badge variant="info" className="text-[10px]">{typeLabels[lowongan.type]}</Badge>
                 {lowongan.applicants > 20 && (
                   <Badge variant="warning" className="text-[10px]">Banyak pelamar</Badge>
                 )}
@@ -125,10 +161,12 @@ export default function LowonganDetailPage() {
                   <MapPin className="h-3.5 w-3.5 text-primary-600" />
                   {lowongan.location}
                 </span>
-                <span className="flex items-center gap-1.5">
-                  <DollarSign className="h-3.5 w-3.5 text-primary-600" />
-                  {lowongan.salary}
-                </span>
+                {lowongan.salary && (
+                  <span className="flex items-center gap-1.5">
+                    <DollarSign className="h-3.5 w-3.5 text-primary-600" />
+                    {lowongan.salary}
+                  </span>
+                )}
               </div>
               <div className="mt-2 flex items-center gap-3 text-[11px] text-surface-500">
                 <span className="flex items-center gap-1">
@@ -179,59 +217,24 @@ export default function LowonganDetailPage() {
               </Card>
             </motion.div>
 
-            {/* Responsibilities */}
-            <motion.div {...fadeIn} transition={{ delay: 0.1 }}>
-              <Card className="shadow-soft-xs">
-                <CardContent className="p-4 sm:p-5">
-                  <h2 className="mb-2.5 text-sm font-bold text-ink">Tanggung Jawab</h2>
-                  <ul className="space-y-2">
-                    {lowongan.responsibilities.map((item, idx) => (
-                      <li key={idx} className="flex items-start gap-2.5 text-[13px] leading-relaxed text-surface-700">
-                        <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary-500" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            </motion.div>
+            {lowongan.requirements.length > 0 && (
+              <motion.div {...fadeIn} transition={{ delay: 0.1 }}>
+                <Card className="shadow-soft-xs">
+                  <CardContent className="p-4 sm:p-5">
+                    <h2 className="mb-2.5 text-sm font-bold text-ink">Persyaratan</h2>
+                    <ul className="space-y-2">
+                      {lowongan.requirements.map((item, idx) => (
+                        <li key={idx} className="flex items-start gap-2.5 text-[13px] leading-relaxed text-surface-700">
+                          <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary-500" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
 
-            {/* Requirements */}
-            <motion.div {...fadeIn} transition={{ delay: 0.15 }}>
-              <Card className="shadow-soft-xs">
-                <CardContent className="p-4 sm:p-5">
-                  <h2 className="mb-2.5 text-sm font-bold text-ink">Persyaratan</h2>
-                  <ul className="space-y-2">
-                    {lowongan.requirements.map((item, idx) => (
-                      <li key={idx} className="flex items-start gap-2.5 text-[13px] leading-relaxed text-surface-700">
-                        <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary-500" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            {/* Benefits */}
-            <motion.div {...fadeIn} transition={{ delay: 0.2 }}>
-              <Card className="shadow-soft-xs">
-                <CardContent className="p-4 sm:p-5">
-                  <h2 className="mb-2.5 text-sm font-bold text-ink">Tunjangan & Benefit</h2>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    {lowongan.benefits.map((item, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-2 rounded-lg border border-surface-200/70 bg-surface-50/60 px-3 py-2 text-[12px] text-surface-700"
-                      >
-                        <Star className="h-3.5 w-3.5 flex-shrink-0 text-amber-500" />
-                        {item}
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
           </div>
 
           {/* Right — apply form (sticky) */}
@@ -263,6 +266,12 @@ export default function LowonganDetailPage() {
                         <Shield className="h-4 w-4 text-primary-600" />
                         <h3 className="text-sm font-bold text-ink">Lamar Pekerjaan</h3>
                       </div>
+
+                      {applyError && (
+                        <p className="mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                          {applyError}
+                        </p>
+                      )}
 
                       <form onSubmit={handleSubmit} className="space-y-3">
                         <div>

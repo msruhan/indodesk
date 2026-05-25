@@ -24,6 +24,7 @@ export function ChatPopup() {
   const [message, setMessage] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [isMinimized, setIsMinimized] = useState(false)
+  const popupRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const {
@@ -54,6 +55,17 @@ export function ChatPopup() {
     return () => cancelAnimationFrame(frame)
   }, [isOpen, selectedId, loadingMessages, isMinimized, messages])
 
+  useEffect(() => {
+    if (!isOpen) return
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node
+      if (popupRef.current?.contains(target)) return
+      closeChat()
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [isOpen, closeChat])
+
   const handleSendMessage = async () => {
     const text = message.trim()
     if (!text) return
@@ -72,6 +84,7 @@ export function ChatPopup() {
     <AnimatePresence>
       {isOpen && (
         <motion.div
+          ref={popupRef}
           initial={{ opacity: 0, y: 16, scale: 0.96 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 16, scale: 0.96 }}

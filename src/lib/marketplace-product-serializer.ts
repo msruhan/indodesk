@@ -1,12 +1,20 @@
-import type { Product, ProductCategory, TeknisiProfile, TeknisiStore, User } from '@prisma/client'
-import { categoryLabel } from '@/lib/product-catalog'
-
-const categorySlug: Record<ProductCategory, string> = {
-  HANDPHONE: 'handphone',
-  LAPTOP: 'laptop',
-  AKSESORIS: 'aksesoris',
-  SOFTWARE: 'software',
-}
+import type {
+  Product,
+  ProductCategory,
+  ProductWarranty,
+  TeknisiProfile,
+  TeknisiStore,
+  User,
+} from '@prisma/client'
+import { categoryLabel, PRODUCT_CATEGORY_SLUG } from '@/lib/product-catalog'
+import {
+  getPrimaryProductImageUrl,
+  parseProductImagesField,
+  resolveProductImagesForDisplay,
+  type ProductImageEntry,
+} from '@/lib/product-images'
+import { resolveDisplayImageUrl } from '@/lib/image-url-utils'
+import { parseCompletenessJson, type ProductCompletenessKey } from '@/lib/product-specs'
 
 export type MarketplaceProductDto = {
   id: string
@@ -17,10 +25,17 @@ export type MarketplaceProductDto = {
   price: number
   description: string | null
   image: string | null
+  images: ProductImageEntry[]
   rating: number
   reviewCount: number
   views: number
   stock: number
+  color: string
+  ram: string
+  processor: string
+  storage: string
+  warranty: ProductWarranty
+  completeness: ProductCompletenessKey[]
   seller: {
     id: string
     storeId: string | null
@@ -45,20 +60,28 @@ type ProductWithSeller = Product & {
 export function serializeMarketplaceProduct(p: ProductWithSeller): MarketplaceProductDto {
   const profile = p.seller.teknisiProfile
   const store = p.seller.teknisiStore
+  const images = resolveProductImagesForDisplay(parseProductImagesField(p))
 
   return {
     id: p.id,
     name: p.name,
     category: categoryLabel(p.category),
-    categorySlug: categorySlug[p.category],
+    categorySlug: PRODUCT_CATEGORY_SLUG[p.category],
     categoryValue: p.category,
     price: Number(p.price),
     description: p.description,
-    image: p.image,
+    images,
+    image: resolveDisplayImageUrl(getPrimaryProductImageUrl(images, p.image)),
     rating: profile ? Number(profile.rating) : 0,
     reviewCount: profile?.reviewCount ?? 0,
     views: p.views,
     stock: p.stock,
+    color: p.color,
+    ram: p.ram,
+    processor: p.processor,
+    storage: p.storage,
+    warranty: p.warranty,
+    completeness: parseCompletenessJson(p.completeness, p.category),
     seller: {
       id: p.seller.id,
       storeId: store?.id ?? null,
@@ -69,7 +92,7 @@ export function serializeMarketplaceProduct(p: ProductWithSeller): MarketplacePr
       totalSales: store?.totalSold ?? p.soldCount,
       responseTime: profile?.responseTime ?? null,
       location: store?.city ?? profile?.location ?? null,
-      image: p.seller.image,
+      image: resolveDisplayImageUrl(p.seller.image),
     },
   }
 }

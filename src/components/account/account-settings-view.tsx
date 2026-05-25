@@ -530,7 +530,11 @@ export function AccountSettingsView({
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={qrDataUrl} alt="QR Google Authenticator" className="mx-auto h-44 w-44 rounded-lg" />
                     <p className="text-center text-xs text-surface-600">
-                      Buka Google Authenticator → tambah akun → scan QR
+                      Buka Google Authenticator → tambah akun → scan QR. Setelah scan, masukkan kode yang
+                      baru muncul (bukan kode lama).
+                    </p>
+                    <p className="text-center text-[11px] text-surface-500">
+                      Jika sudah scan, jangan klik &quot;Aktifkan 2FA&quot; lagi — langsung isi kode di bawah.
                     </p>
                     <Input
                       inputMode="numeric"
@@ -541,15 +545,22 @@ export function AccountSettingsView({
                       className="text-center tracking-widest"
                     />
                     <div className="flex gap-2">
-                      <Button variant="primary" size="sm" disabled={twoFaLoading} onClick={() => void enable2fa()}>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        disabled={twoFaLoading || totpCode.length !== 6}
+                        onClick={() => void enable2fa()}
+                      >
                         Verifikasi & Aktifkan
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => {
+                          void fetch('/api/user/2fa/cancel-setup', { method: 'POST' })
                           setTwoFaStep('idle')
                           setQrDataUrl(null)
+                          setTotpCode('')
                         }}
                       >
                         Batal

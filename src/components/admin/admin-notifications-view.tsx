@@ -22,6 +22,8 @@ import {
 import { formatNotificationTimeLabel } from '@/lib/notification-display'
 import { sortNotificationsNewestFirst } from '@/lib/platform-notifications'
 import { cn } from '@/lib/utils'
+import { DataPagination } from '@/components/ui/data-pagination'
+import { useClientPagination } from '@/hooks/use-client-pagination'
 
 type AudienceFilter = 'all' | NotificationAudience
 
@@ -110,6 +112,9 @@ export function AdminNotificationsView() {
       audienceFilter === 'all' || n.audiences.includes(audienceFilter)
     return matchQ && matchAudience
   })
+
+  const { page, setPage, pageSize, setPageSize, paginatedItems, totalItems } =
+    useClientPagination(filtered, [q, audienceFilter])
 
   const toggleAudience = (audience: NotificationAudience) => {
     setForm((f) => ({
@@ -321,7 +326,7 @@ export function AdminNotificationsView() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Daftar Notifikasi ({filtered.length})</CardTitle>
+              <CardTitle>Daftar Notifikasi ({totalItems})</CardTitle>
             </CardHeader>
             <CardContent className="overflow-x-auto">
               {loading ? (
@@ -388,6 +393,16 @@ export function AdminNotificationsView() {
                     ))}
                   </TableBody>
                 </Table>
+              )}
+              {!loading && totalItems > 0 && (
+                <DataPagination
+                  page={page}
+                  pageSize={pageSize}
+                  totalItems={totalItems}
+                  onPageChange={setPage}
+                  onPageSizeChange={setPageSize}
+                  className="mt-4"
+                />
               )}
             </CardContent>
           </Card>

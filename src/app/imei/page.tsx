@@ -3,10 +3,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Navbar } from '@/components/landing'
 import { BottomNav, MobileSafeAreaSpacer } from '@/components/mobile'
 import { SectionTabs } from '@/components/mobile/section-tabs'
-import { marketplaceTabs } from '@/lib/section-tab-config'
+import { buildMarketplaceTabs } from '@/lib/section-tab-config'
+import { useAuth } from '@/contexts/auth-context'
+import { useFeatureFlags } from '@/contexts/feature-flags-context'
+import { canAccessImeiService } from '@/lib/platform-settings-shared'
 import { Input } from '@/components/ui/input'
 import { searchInputIconClass } from '@/components/ui/search-input'
 import { Button } from '@/components/ui/button'
@@ -405,6 +409,14 @@ function OrderModal({
 }
 
 export default function ImeiPage() {
+  const router = useRouter()
+  const { user, isLoading: authLoading } = useAuth()
+  const { flags, loading: flagsLoading } = useFeatureFlags()
+  const role = (user?.role as 'ADMIN' | 'TEKNISI' | 'USER' | undefined) ?? null
+  const allowed = canAccessImeiService(role, flags)
+  const guardLoading = authLoading || flagsLoading
+  const tabs = buildMarketplaceTabs(role, flags)
+
   const [catalogTab, setCatalogTab] = useState<CatalogTab>('imei')
   const [query, setQuery] = useState('')
   const [activeGroup, setActiveGroup] = useState('all')
@@ -565,6 +577,54 @@ export default function ImeiPage() {
     if (currentPage > totalPages) setCurrentPage(totalPages)
   }, [currentPage, totalPages])
 
+  // Guard: hanya ADMIN/TEKNISI yang boleh akses halaman ini, dan TEKNISI
+  // hanya bila admin mengaktifkan feature flag-nya. Saat masih loading auth
+  // atau flags, jangan render konten supaya tidak ada flicker.
+  if (guardLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface-50">
+        <p className="text-sm text-surface-500">Memeriksa akses…</p>
+      </div>
+    )
+  }
+
+  if (!allowed) {
+    return (
+      <div className="min-h-screen overflow-x-hidden bg-surface-50">
+        <div className="hidden lg:block">
+          <Navbar />
+        </div>
+        <section className="relative flex min-h-[60vh] items-center justify-center px-4 lg:pt-28">
+          <div className="max-w-md rounded-2xl border border-surface-200/70 bg-white/90 p-8 text-center shadow-soft-md backdrop-blur-md">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-50 text-primary-700">
+              <Smartphone className="h-6 w-6" />
+            </div>
+            <h2 className="text-lg font-semibold text-ink">
+              Layanan Perangkat tidak tersedia
+            </h2>
+            <p className="mt-2 text-sm text-surface-600">
+              {role === 'TEKNISI'
+                ? 'Menu Layanan Perangkat sedang dinonaktifkan oleh admin. Silakan cek kembali nanti.'
+                : 'Menu Layanan Perangkat hanya tersedia untuk teknisi terdaftar dan administrator platform.'}
+            </p>
+            <div className="mt-5 flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
+              <Button variant="primary" size="sm" onClick={() => router.push('/')}>
+                Kembali ke Beranda
+              </Button>
+              {role !== 'TEKNISI' && role !== 'ADMIN' && (
+                <Link href="/teknisi" className="text-sm font-medium text-primary-700 hover:underline">
+                  Pelajari teknisi terdaftar
+                </Link>
+              )}
+            </div>
+          </div>
+        </section>
+        <MobileSafeAreaSpacer />
+        <BottomNav />
+      </div>
+    )
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -577,7 +637,7 @@ export default function ImeiPage() {
 
       <section className="relative overflow-hidden pb-6 lg:pt-28">
         <AuroraBackground intensity="subtle" />
-        <SectionTabs tabs={marketplaceTabs} layoutId="marketplace-section-tab" variant="merged" />
+        <SectionTabs tabs={tabs} layoutId="marketplace-section-tab" variant="merged" />
 
         <div className="relative mx-auto max-w-7xl px-4 pt-4 sm:px-6 sm:pt-10 lg:px-8">
           <Reveal noBlur>
@@ -641,15 +701,25 @@ export default function ImeiPage() {
           </Reveal>
 
           <Reveal noBlur delay={0.05}>
-            <div className="mt-4 relative">
-              <Search className={cn(searchInputIconClass, 'left-4')} strokeWidth={2} aria-hidden />
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                type="text"
-                placeholder={isImeiTab ? 'Cari layanan perangkat...' : 'Cari layanan server...'}
-                className="h-11 pl-11"
-                disabled={listLoading}
+            <div className="mt-4 flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-3">
+              <div className="relative min-w-0 flex-1">
+                <Search className={cn(searchInputIconClass, 'left-4')} strokeWidth={2} aria-hidden />
+                <Input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  type="text"
+                  placeholder={isImeiTab ? 'Cari layanan perangkat...' : 'Cari layanan server...'}
+                  className="h-11 pl-11"
+                  disabled={listLoading}
+                />
+              </div>
+              <CatalogGroupFilter
+                value={activeGroup}
+                onChange={setActiveGroup}
+                options={groupFilterOptions}
+                variant={isImeiTab ? 'primary' : 'amber'}
+                loading={listLoading}
+                className="w-full shrink-0 sm:w-auto sm:min-w-[12rem]"
               />
             </div>
           </Reveal>
@@ -666,18 +736,6 @@ export default function ImeiPage() {
             </Button>
           </div>
         )}
-
-        <Reveal noBlur>
-          <div className="mb-5">
-            <CatalogGroupFilter
-              value={activeGroup}
-              onChange={setActiveGroup}
-              options={groupFilterOptions}
-              variant={isImeiTab ? 'primary' : 'amber'}
-              loading={listLoading}
-            />
-          </div>
-        </Reveal>
 
         <div className="mb-3 flex items-center justify-between gap-3">
           <p className="text-xs text-surface-500">
@@ -701,7 +759,7 @@ export default function ImeiPage() {
               'pb-4',
               viewMode === 'list'
                 ? 'flex flex-col gap-1'
-                : 'grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3',
+                : 'grid items-stretch gap-2.5 sm:grid-cols-2 xl:grid-cols-3',
             )}
           >
             {Array.from({ length: Math.min(pageSize, 6) }).map((_, i) => (
@@ -715,7 +773,7 @@ export default function ImeiPage() {
                 'pb-4',
                 viewMode === 'list'
                   ? 'flex flex-col gap-1'
-                  : 'grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3',
+                  : 'grid items-stretch gap-2.5 sm:grid-cols-2 xl:grid-cols-3',
               )}
             >
               {paginatedImei.map((service) => (
@@ -743,7 +801,7 @@ export default function ImeiPage() {
                 'pb-4',
                 viewMode === 'list'
                   ? 'flex flex-col gap-1'
-                  : 'grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3',
+                  : 'grid items-stretch gap-2.5 sm:grid-cols-2 xl:grid-cols-3',
               )}
             >
               {paginatedServer.map((service) => (

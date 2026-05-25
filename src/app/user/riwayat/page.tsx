@@ -15,10 +15,12 @@ import {
   MessageCircle,
   Package,
   Shield,
+  CheckSquare,
   ShoppingBag,
   Smartphone,
   TrendingUp,
   XCircle,
+  Zap,
 } from '@/lib/icons'
 import {
   fetchUserImeiRiwayatOrders,
@@ -28,44 +30,61 @@ import {
   type RiwayatTransaction,
   type RiwayatTransactionType,
 } from '@/lib/user-riwayat-orders'
+import {
+  fetchUserKonsultasiRiwayat,
+  konsultasiToRiwayatTransaction,
+} from '@/lib/user-riwayat-konsultasi'
+import {
+  fetchUserRekberRiwayat,
+  rekberToRiwayatTransaction,
+} from '@/lib/user-riwayat-rekber'
+import {
+  fetchUserRemoteRiwayat,
+  remoteToRiwayatTransaction,
+} from '@/lib/user-riwayat-remote'
+import {
+  fetchUserMarketplaceRiwayat,
+  marketplaceOrderToRiwayatTransaction,
+} from '@/lib/user-riwayat-marketplace'
+import {
+  fetchUserTopupRiwayat,
+  topupOrderToRiwayatTransaction,
+} from '@/lib/user-riwayat-topup'
+import {
+  fetchUserInspeksiRiwayat,
+  inspeksiToRiwayatTransaction,
+} from '@/lib/user-riwayat-inspeksi'
 import { useDashboardPeriod } from '@/contexts/dashboard-period-context'
+import { DataPagination } from '@/components/ui/data-pagination'
+import { useClientPagination } from '@/hooks/use-client-pagination'
 import { isDateInPeriod } from '@/lib/dashboard-period'
 
 const tabs: { id: RiwayatTransactionType; label: string }[] = [
   { id: 'semua', label: 'Semua' },
   { id: 'belanja', label: 'Belanja' },
+  { id: 'topup', label: 'Top Up' },
   { id: 'perangkat', label: 'Perangkat' },
   { id: 'server', label: 'Server' },
   { id: 'konsultasi', label: 'Konsultasi' },
+  { id: 'inspeksi', label: 'Inspeksi' },
   { id: 'rekber', label: 'Rekber' },
   { id: 'remote', label: 'Remote' },
 ]
 
-const mockTransactions: RiwayatTransaction[] = [
-  { id: '1', type: 'belanja', title: 'iPhone 13 Pro Max', subtitle: 'TechSolution Store', amount: 5000000, status: 'completed', date: '2024-03-18' },
-  { id: '2', type: 'belanja', title: 'Samsung S21', subtitle: 'HandPhone Center', amount: 2500000, status: 'completed', date: '2024-03-15' },
-  { id: '3', type: 'konsultasi', title: 'Konsultasi Unlock iPhone', subtitle: 'Ahmad Hidayat', amount: 50000, status: 'completed', date: '2024-03-14' },
-  { id: '4', type: 'rekber', title: 'Pembelian iPhone 13 Pro Max', subtitle: 'Buyer → TechSolution Store', amount: 5000000, status: 'in-progress', date: '2024-03-12' },
-  { id: '5', type: 'remote', title: 'Remote Flashing Samsung', subtitle: 'Budi Santoso', amount: 150000, status: 'completed', date: '2024-03-10' },
-  { id: '6', type: 'konsultasi', title: 'Troubleshooting Hardware', subtitle: 'Dewi Lestari', amount: 100000, status: 'completed', date: '2024-03-08' },
-  { id: '7', type: 'belanja', title: 'Wireless Charger', subtitle: 'Accessories Pro', amount: 250000, status: 'pending', date: '2024-03-06' },
-  { id: '8', type: 'rekber', title: 'Jual Samsung S21', subtitle: 'Seller → Rudi Hartono', amount: 2500000, status: 'completed', date: '2024-03-04' },
-  { id: '9', type: 'remote', title: 'Root & Custom ROM', subtitle: 'Fajar Pratama', amount: 200000, status: 'failed', date: '2024-03-02' },
-  { id: '10', type: 'belanja', title: 'ML Diamonds 518', subtitle: 'Top Up', amount: 132000, status: 'completed', date: '2024-02-28' },
-]
-
 const statusConfig = {
   completed: { label: 'Selesai', variant: 'success' as const, icon: CheckCircle, color: 'text-primary-600' },
-  pending: { label: 'Pending', variant: 'warning' as const, icon: Clock, color: 'text-amber-600' },
+  pending: { label: 'Menunggu', variant: 'warning' as const, icon: Clock, color: 'text-amber-600' },
   'in-progress': { label: 'Proses', variant: 'info' as const, icon: Clock, color: 'text-accent-600' },
   failed: { label: 'Gagal', variant: 'danger' as const, icon: XCircle, color: 'text-rose-600' },
 }
 
 const typeConfig = {
   belanja: { icon: ShoppingBag, bg: 'bg-primary-50', text: 'text-primary-700' },
+  topup: { icon: Zap, bg: 'bg-violet-50', text: 'text-violet-700' },
   konsultasi: { icon: MessageCircle, bg: 'bg-accent-50', text: 'text-accent-700' },
   rekber: { icon: Shield, bg: 'bg-violet-50', text: 'text-violet-700' },
   remote: { icon: Laptop, bg: 'bg-amber-50', text: 'text-amber-700' },
+  inspeksi: { icon: CheckSquare, bg: 'bg-emerald-50', text: 'text-emerald-700' },
   perangkat: { icon: Smartphone, bg: 'bg-primary-50', text: 'text-primary-700' },
   server: { icon: Package, bg: 'bg-amber-50', text: 'text-amber-700' },
 }
@@ -104,14 +123,27 @@ export default function UserRiwayatPage() {
     ;(async () => {
       setOrdersLoading(true)
       try {
-        const [imei, server] = await Promise.all([
+        const [imei, server, konsultasi, inspeksi, rekber, remote, belanja, topup] =
+          await Promise.all([
           fetchUserImeiRiwayatOrders(),
           fetchUserServerRiwayatOrders(),
+          fetchUserKonsultasiRiwayat(),
+          fetchUserInspeksiRiwayat(),
+          fetchUserRekberRiwayat(),
+          fetchUserRemoteRiwayat(),
+          fetchUserMarketplaceRiwayat(),
+          fetchUserTopupRiwayat(),
         ])
         if (cancelled) return
         const mapped = [
           ...imei.map(imeiOrderToRiwayatTransaction),
           ...server.map(serverOrderToRiwayatTransaction),
+          ...konsultasi.map(konsultasiToRiwayatTransaction),
+          ...inspeksi.map(inspeksiToRiwayatTransaction),
+          ...rekber.map(rekberToRiwayatTransaction),
+          ...remote.map(remoteToRiwayatTransaction),
+          ...belanja.map(marketplaceOrderToRiwayatTransaction),
+          ...topup.map(topupOrderToRiwayatTransaction),
         ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         setServiceOrders(mapped)
       } finally {
@@ -124,7 +156,7 @@ export default function UserRiwayatPage() {
   }, [])
 
   const allTransactions = useMemo(() => {
-    return [...mockTransactions, ...serviceOrders].sort(
+    return [...serviceOrders].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     )
   }, [serviceOrders])
@@ -156,6 +188,15 @@ export default function UserRiwayatPage() {
     return list
   }, [activeTab, periodTransactions, urlQuery])
 
+  const {
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    paginatedItems,
+    totalItems,
+  } = useClientPagination(filtered, [activeTab, period, urlQuery])
+
   const totalSpent = periodTransactions
     .filter((t) => t.status === 'completed')
     .reduce((sum, t) => sum + t.amount, 0)
@@ -174,6 +215,16 @@ export default function UserRiwayatPage() {
       color: 'primary' as const,
       amount: periodTransactions
         .filter((t) => t.type === 'belanja' && t.status === 'completed')
+        .reduce((s, t) => s + t.amount, 0),
+    },
+    {
+      tab: 'topup' as const,
+      label: 'Top Up',
+      count: periodTransactions.filter((t) => t.type === 'topup').length,
+      icon: Zap,
+      color: 'violet' as const,
+      amount: periodTransactions
+        .filter((t) => t.type === 'topup' && t.status === 'completed')
         .reduce((s, t) => s + t.amount, 0),
     },
     {
@@ -204,6 +255,16 @@ export default function UserRiwayatPage() {
       color: 'accent' as const,
       amount: periodTransactions
         .filter((t) => t.type === 'konsultasi' && t.status === 'completed')
+        .reduce((s, t) => s + t.amount, 0),
+    },
+    {
+      tab: 'inspeksi' as const,
+      label: 'Inspeksi',
+      count: periodTransactions.filter((t) => t.type === 'inspeksi').length,
+      icon: CheckSquare,
+      color: 'emerald' as const,
+      amount: periodTransactions
+        .filter((t) => t.type === 'inspeksi' && t.status === 'completed')
         .reduce((s, t) => s + t.amount, 0),
     },
     {
@@ -265,7 +326,7 @@ export default function UserRiwayatPage() {
       </motion.div>
 
       <div className="-mx-4 sm:mx-0">
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide px-4 pb-1 sm:grid sm:grid-cols-3 sm:gap-3 sm:overflow-visible sm:px-0 lg:grid-cols-6">
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide px-4 pb-1 sm:grid sm:grid-cols-4 sm:gap-3 sm:overflow-visible sm:px-0 lg:grid-cols-4 xl:grid-cols-8">
           {quickStats.map((item) => (
             <button
               key={item.label}
@@ -286,6 +347,7 @@ export default function UserRiwayatPage() {
                     item.color === 'accent' && 'text-accent-600',
                     item.color === 'violet' && 'text-violet-600',
                     item.color === 'amber' && 'text-amber-600',
+                    item.color === 'emerald' && 'text-emerald-600',
                   )}
                 />
                 <span className="text-[10px] font-bold text-ink tabular-nums">{item.count}x</span>
@@ -322,7 +384,7 @@ export default function UserRiwayatPage() {
           transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
           className="space-y-2"
         >
-          {filtered.map((tx, idx) => {
+          {paginatedItems.map((tx, idx) => {
             const cfg = statusConfig[tx.status]
             const typeCfg = typeConfig[tx.type]
             const TypeIcon = typeCfg.icon
@@ -387,6 +449,17 @@ export default function UserRiwayatPage() {
           })}
         </motion.div>
       </AnimatePresence>
+
+      {!ordersLoading && totalItems > 0 && (
+        <DataPagination
+          page={page}
+          pageSize={pageSize}
+          totalItems={totalItems}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+          className="mt-4"
+        />
+      )}
 
       {!ordersLoading && filtered.length === 0 && (
         <div className="rounded-2xl border border-dashed border-surface-200 bg-white px-6 py-10 text-center">

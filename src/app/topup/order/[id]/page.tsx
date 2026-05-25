@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -8,53 +8,79 @@ import { Navbar } from '@/components/landing'
 import { BottomNav, MobileSafeAreaSpacer } from '@/components/mobile'
 import { Button } from '@/components/ui/button'
 import { OrderStatusTimeline } from '@/components/topup/order/order-status-timeline'
-import { useTopup, type OrderHistoryEntry } from '@/contexts/topup-context'
-import { findProduct } from '@/data/mock-topup'
+import { useTopup } from '@/contexts/topup-context'
+import { useTopupCatalog } from '@/contexts/topup-catalog-context'
 import { formatIDR } from '@/lib/topup-utils'
+import type { PublicTopupOrderDto } from '@/lib/topup-order-serializer'
 import { ArrowRight, CheckCircle, Copy, Headphones, RefreshCw } from '@/lib/icons'
 import type { OrderStatus } from '@/data/topup-types'
 
-const advance: Record<OrderStatus, OrderStatus> = {
-  'pending-payment': 'paid',
-  paid: 'processing',
-  processing: 'fulfilling',
-  fulfilling: 'completed',
-  completed: 'completed',
-  failed: 'failed',
-}
-
 export default function OrderTrackingPage() {
   const params = useParams<{ id: string }>()
-  const { getOrder, saveOrder, history } = useTopup()
-  const [order, setOrder] = useState<OrderHistoryEntry | undefined>(undefined)
-  const [hydrated, setHydrated] = useState(false)
+  const { saveOrder } = useTopup()
+  const { findProduct } = useTopupCatalog()
+  const [order, setOrder] = useState<PublicTopupOrderDto | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
-  // Hydrate after mount (history comes from localStorage).
-  useEffect(() => {
-    const found = getOrder(params.id)
-    setOrder(found)
-    setHydrated(true)
-    // also re-look-up when history changes
-  }, [getOrder, params.id, history])
-
-  // Auto-advance status to simulate fulfillment.
-  useEffect(() => {
-    if (!order) return
-    if (order.status === 'completed' || order.status === 'failed') return
-
-    const id = window.setTimeout(() => {
-      const next = advance[order.status]
-      if (next !== order.status) {
-        const updated = { ...order, status: next }
-        saveOrder(updated)
-        setOrder(updated)
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/topup/orders/${encodeURIComponent(params.id)}`)
+      const json = await res.json()
+      if (!res.ok || !json.success) {
+        setError(json.error ?? 'Order tidak ditemukan')
+        setOrder(null)
+        return
       }
-    }, 3500)
-    return () => window.clearTimeout(id)
-  }, [order, saveOrder])
+      setError(null)
+      const data = json.data as PublicTopupOrderDto
+      setOrder(data)
+      saveOrder({
+        orderCode: data.orderCode,
+        productSlug: data.productSlug,
+        productName: data.productName,
+        denominationLabel: data.denominationLabel,
+        total: data.total,
+        accountId: data.serverId
+          ? `${data.accountId} (${data.serverId})`
+          : data.accountId,
+        status: data.status as OrderStatus,
+        createdAt: data.createdAt,
+      })
+    } catch {
+      setError('Gagal memuat order')
+    } finally {
+      setLoading(false)
+    }
+  }, [params.id, saveOrder])
 
-  if (hydrated && !order) {
+  useEffect(() => {
+    void load()
+    const interval = window.setInterval(() => void load(), 4_000)
+    return () => window.clearInterval(interval)
+  }, [load])
+
+  const copyCode = async () => {
+    if (!order) return
+    try {
+      await navigator.clipboard.writeText(order.orderCode)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // ignore
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface-50 text-sm text-surface-500">
+        Memuat order…
+      </div>
+    )
+  }
+
+  if (error || !order) {
     return (
       <div className="min-h-screen overflow-x-hidden bg-surface-50">
         <div className="hidden lg:block">
@@ -64,15 +90,18 @@ export default function OrderTrackingPage() {
           <div className="rounded-2xl border border-surface-200/70 bg-white p-8 shadow-soft-sm">
             <h1 className="text-lg font-semibold text-ink">Order tidak ditemukan</h1>
             <p className="mt-2 text-sm text-surface-600">
-              Kode order <span className="font-mono text-ink">{params.id}</span> tidak ada di history kamu.
-              Coba cek transaksi via halaman pencarian.
+              {error ?? 'Kode order tidak valid.'}
             </p>
             <div className="mt-5 flex justify-center gap-2">
               <Link href="/topup/cek-transaksi">
-                <Button variant="primary" size="sm">Cek transaksi</Button>
+                <Button variant="primary" size="sm">
+                  Cek transaksi
+                </Button>
               </Link>
               <Link href="/topup">
-                <Button variant="outline" size="sm">Kembali ke top up</Button>
+                <Button variant="outline" size="sm">
+                  Kembali ke top up
+                </Button>
               </Link>
             </div>
           </div>
@@ -83,20 +112,12 @@ export default function OrderTrackingPage() {
     )
   }
 
-  if (!order) return null
-
   const product = findProduct(order.productSlug)
+  const logo = order.productLogo ?? product?.logo
   const completed = order.status === 'completed'
-
-  const copyCode = async () => {
-    try {
-      await navigator.clipboard.writeText(order.orderCode)
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 1500)
-    } catch {
-      // ignore
-    }
-  }
+  const accountDisplay = order.serverId
+    ? `${order.accountId} (${order.serverId})`
+    : order.accountId
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-surface-50">
@@ -105,7 +126,6 @@ export default function OrderTrackingPage() {
       </div>
 
       <main className="mx-auto max-w-3xl px-4 pb-12 pt-5 sm:px-6 lg:pt-28">
-        {/* Status hero */}
         <motion.section
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -139,8 +159,8 @@ export default function OrderTrackingPage() {
               </h1>
               <p className="mt-1 max-w-lg text-[13px] leading-relaxed text-surface-600">
                 {completed
-                  ? `Item ${order.denominationLabel} sudah masuk ke akun ${order.accountId}. Cek inventory game kamu sekarang.`
-                  : 'Kami akan update status secara otomatis. Halaman ini akan refresh sendiri.'}
+                  ? `Item ${order.denominationLabel} sudah masuk ke akun ${accountDisplay}. Cek inventory game kamu sekarang.`
+                  : 'Status diperbarui otomatis dari server. Halaman ini refresh setiap beberapa detik.'}
               </p>
             </div>
           </div>
@@ -150,37 +170,29 @@ export default function OrderTrackingPage() {
               <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-surface-500">
                 Kode order
               </p>
-              <p className="mt-0.5 truncate font-mono text-sm font-bold text-ink">
-                {order.orderCode}
-              </p>
+              <p className="mt-0.5 truncate font-mono text-sm font-bold text-ink">{order.orderCode}</p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 flex-shrink-0"
-              onClick={copyCode}
-            >
+            <Button variant="outline" size="sm" className="h-9 flex-shrink-0" onClick={() => void copyCode()}>
               <Copy className="h-3.5 w-3.5" />
               {copied ? 'Disalin' : 'Salin'}
             </Button>
           </div>
         </motion.section>
 
-        {/* Product summary */}
         <section className="mt-4 rounded-2xl border border-surface-200/70 bg-white p-4 shadow-soft-xs sm:p-5">
           <div className="flex items-start gap-3">
-            {product && (
+            {logo ? (
               <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border-surface-200 bg-white p-1.5">
-                <img src={product.logo} alt={product.name} className="max-h-full max-w-full object-contain" />
+                <img src={logo} alt={order.productName} className="max-h-full max-w-full object-contain" />
               </div>
-            )}
+            ) : null}
             <div className="min-w-0 flex-1">
               <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-surface-500">
                 {order.productName}
               </p>
               <p className="text-sm font-semibold text-ink">{order.denominationLabel}</p>
               <p className="mt-0.5 text-[11px] text-surface-500">
-                Tujuan: <span className="text-ink">{order.accountId}</span>
+                Tujuan: <span className="text-ink">{accountDisplay}</span>
               </p>
             </div>
             <div className="flex-shrink-0 text-right">
@@ -192,17 +204,15 @@ export default function OrderTrackingPage() {
           </div>
         </section>
 
-        {/* Timeline */}
         <section className="mt-4 rounded-2xl border border-surface-200/70 bg-white p-4 shadow-soft-xs sm:p-5">
           <h2 className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-surface-600">
             Status fulfillment
           </h2>
-          <OrderStatusTimeline status={order.status} paid />
+          <OrderStatusTimeline status={order.status} paid={order.status !== 'pending-payment'} />
         </section>
 
-        {/* Actions */}
         <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-          <Link href="/topup" className="flex-1">
+          <Link href={`/topup/${order.productSlug}`} className="flex-1">
             <Button variant="primary" size="lg" className="w-full">
               Top up lagi
               <ArrowRight className="h-4 w-4" />

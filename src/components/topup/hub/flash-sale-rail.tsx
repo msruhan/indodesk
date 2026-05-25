@@ -6,9 +6,10 @@ import { Zap } from '@/lib/icons'
 import { CountdownTimer } from '@/components/topup/shared/countdown-timer'
 import { StockProgressBar } from '@/components/topup/shared/stock-progress-bar'
 import { compactNumber, formatIDR } from '@/lib/topup-utils'
-import { findProduct, flashSaleDenominations } from '@/data/mock-topup'
+import { useTopupCatalog } from '@/contexts/topup-catalog-context'
 
 export function FlashSaleRail() {
+  const { flashSaleDenominations, findProduct } = useTopupCatalog()
   if (flashSaleDenominations.length === 0) return null
 
   // Pick the soonest-ending flash sale to drive the section header timer.

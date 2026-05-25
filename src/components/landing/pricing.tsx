@@ -1,78 +1,108 @@
 'use client'
 
+import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { CheckCircle2, Sparkles } from '@/lib/icons'
-import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
-import { Reveal, staggerContainer, viewportReveal } from '@/components/motion'
+import {
+  Reveal,
+  SpotlightCard,
+  staggerContainer,
+  viewportReveal,
+} from '@/components/motion'
+import {
+  Check,
+  ArrowRight,
+  Zap,
+  Star,
+  Sparkles,
+} from '@/lib/icons'
 
-const plans = [
+const pricingTiers = [
   {
-    name: 'User',
-    description: 'Gratis untuk membeli dan konsultasi',
-    price: 0,
-    period: 'selamanya',
+    id: 'buyer',
+    name: 'Buyer',
+    description: 'Untuk pembeli yang ingin berbelanja produk dan layanan',
+    price: 'Gratis',
+    priceSubtext: 'Selamanya',
+    cta: 'Mulai berbelanja',
+    ctaHref: '/register',
+    highlight: false,
+    badge: undefined,
     features: [
-      'Akses marketplace penuh',
+      'Browse marketplace produk',
       'Konsultasi dengan teknisi',
-      'Sistem rekber (escrow)',
-      'Chat dengan teknisi/admin',
-      'Lihat lowongan kerja',
-      'Support email',
-    ],
-    cta: 'Daftar gratis',
-    popular: false,
-  },
-  {
-    name: 'Teknisi',
-    description: 'Untuk teknisi yang ingin monetisasi skill',
-    price: 50000,
-    period: 'per bulan',
-    features: [
-      'Semua fitur User',
-      'Pasang iklan produk/jasa',
-      'Profil teknisi verified',
-      'Dashboard statistik',
-      'Sistem rating & review',
+      'Remote assistance',
+      'Rekber (escrow) aman',
+      'Inspection service',
+      'Topup pulsa & data',
       'Chat real-time',
-      'Manajemen order',
-      'Top up saldo',
+      'Wallet & saldo',
     ],
-    cta: 'Mulai sekarang',
-    popular: true,
+    icon: Sparkles,
   },
   {
-    name: 'Toko',
-    description: 'Paket lengkap untuk toko handphone',
-    price: 150000,
-    period: 'per bulan',
+    id: 'teknisi-free',
+    name: 'Teknisi Free',
+    description: 'Untuk teknisi yang baru mulai tanpa komitmen finansial',
+    price: 'Rp 0',
+    priceSubtext: 'per bulan',
+    cta: 'Daftar sebagai teknisi',
+    ctaHref: '/register',
+    highlight: false,
+    badge: undefined,
     features: [
-      'Semua fitur Teknisi',
-      'Promosi toko di platform',
-      'Multiple produk listing',
-      'Analytics dashboard',
-      'Badge toko terpercaya',
-      'Priority support',
-      'Featured placement',
-      'Laporan penjualan',
+      'Profil teknisi publik',
+      'Toko handphone dasar',
+      'Maks 5 produk aktif',
+      'Terima konsultasi (15% komisi)',
+      'Terima remote service (15% komisi)',
+      'Marketplace seller (3-5% komisi)',
+      'Analytics dasar',
+      'Chat dengan user',
+      'Wallet & earning',
     ],
-    cta: 'Hubungi sales',
-    popular: false,
+    icon: Zap,
+  },
+  {
+    id: 'teknisi-pro',
+    name: 'Teknisi Pro',
+    description: 'Untuk teknisi serius yang ingin scale bisnis dengan fitur premium',
+    price: 'Rp 49.000',
+    priceSubtext: 'per bulan',
+    cta: 'Upgrade ke Pro',
+    ctaHref: '/register',
+    highlight: true,
+    badge: 'Paling populer',
+    features: [
+      'Semua fitur Teknisi Free +',
+      'Badge verified (setelah KYC)',
+      'Featured placement di listing',
+      'Unlimited produk aktif',
+      'Toko premium (cover, gallery, journey)',
+      'Komisi lebih kecil (8% konsultasi & remote)',
+      'Komisi marketplace (1-2%)',
+      'Analytics detail & export laporan',
+      'Inspection service eligible',
+      'Priority support',
+      'Featured product placement',
+    ],
+    icon: Star,
   },
 ] as const
 
 export function Pricing() {
   return (
     <section id="pricing" className="relative overflow-hidden py-24 lg:py-32">
-      <div className="absolute inset-0 bg-gradient-to-b from-white via-surface-50/50 to-white" />
-      <div className="aurora-blob aurora-blob-emerald pointer-events-none absolute left-1/2 top-32 h-[480px] w-[480px] -translate-x-1/2 opacity-25" />
+      {/* Premium backdrop */}
+      <div className="absolute inset-0 bg-gradient-to-b from-white via-surface-50/40 to-white" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 mx-auto h-[480px] max-w-5xl mesh-bg-soft opacity-80" />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <Reveal className="mx-auto mb-14 max-w-3xl text-center">
+        <Reveal className="mx-auto mb-16 max-w-3xl text-center">
           <Badge variant="primary" className="mb-4">
-            Pricing
+            <Zap className="h-3 w-3" /> Pricing
           </Badge>
           <h2 className="text-balance text-[34px] font-semibold leading-[1.05] tracking-tightest text-ink sm:text-5xl">
             Paket pricing yang
@@ -83,163 +113,91 @@ export function Pricing() {
           </p>
         </Reveal>
 
-        {/* Pricing grid */}
+        {/* Pricing cards */}
         <motion.div
-          className="grid items-stretch gap-5 md:grid-cols-3 lg:gap-7"
+          className="grid gap-6 md:grid-cols-3 lg:gap-8"
           variants={staggerContainer}
           initial="hidden"
           whileInView="show"
           viewport={{ once: true, margin: '-80px' }}
         >
-          {plans.map((plan) => (
-            <motion.div
-              key={plan.name}
-              variants={viewportReveal}
-              className="relative h-full"
-            >
-              {/* Popular halo */}
-              {plan.popular && (
-                <div
-                  aria-hidden
-                  className="aurora-blob aurora-blob-emerald pointer-events-none absolute -inset-2 -z-10 opacity-50"
-                />
-              )}
-
-              <div
-                className={cn(
-                  'relative flex h-full flex-col overflow-hidden rounded-3xl p-6 transition-all duration-450 ease-out-expo lg:p-8',
-                  plan.popular
-                    ? 'border-transparent bg-ink text-white shadow-soft-2xl lg:scale-[1.03]'
-                    : 'border border-surface-200/70 bg-white/85 text-ink shadow-soft-sm backdrop-blur-md hover:-translate-y-1 hover:shadow-soft-lg',
-                )}
+          {pricingTiers.map((tier) => {
+            const Icon = tier.icon
+            return (
+              <motion.div
+                key={tier.id}
+                variants={viewportReveal}
+                className={tier.highlight ? 'md:scale-105' : ''}
               >
-                {plan.popular && (
-                  <>
-                    {/* Animated gradient ring */}
-                    <span
-                      aria-hidden
-                      className="pointer-events-none absolute inset-0 rounded-3xl p-px"
-                      style={{
-                        background:
-                          'linear-gradient(140deg, rgba(16,185,129,0.6), rgba(6,182,212,0.55), rgba(16,185,129,0.2))',
-                        WebkitMask:
-                          'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-                        WebkitMaskComposite: 'xor',
-                        maskComposite: 'exclude',
-                      }}
-                    />
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <Badge variant="gradient" className="border-0 shadow-soft-md">
-                        <Sparkles className="h-3 w-3" />
-                        Most popular
-                      </Badge>
+                <SpotlightCard
+                  tone={tier.highlight ? 'primary' : 'neutral'}
+                  className="relative h-full overflow-hidden"
+                >
+                  {/* Badge untuk tier populer */}
+                  {tier.badge && (
+                    <div className="absolute -right-12 top-6 rotate-45 bg-gradient-to-r from-primary-500 to-primary-600 px-12 py-1 text-center text-xs font-semibold text-white shadow-lg">
+                      {tier.badge}
                     </div>
-                  </>
-                )}
+                  )}
 
-                {/* Header */}
-                <div className="mb-6">
-                  <h3
-                    className={cn(
-                      'text-lg font-semibold tracking-tight-lg',
-                      plan.popular ? 'text-white' : 'text-ink',
-                    )}
-                  >
-                    {plan.name}
-                  </h3>
-                  <p
-                    className={cn(
-                      'mt-1 text-sm',
-                      plan.popular ? 'text-surface-300' : 'text-surface-500',
-                    )}
-                  >
-                    {plan.description}
-                  </p>
-                </div>
+                  <div className="relative">
+                    {/* Icon & header */}
+                    <div className="mb-6 flex items-start justify-between">
+                      <div>
+                        <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-primary-200/60 bg-gradient-to-br from-white to-primary-50 text-primary-700 shadow-soft-xs">
+                          <Icon className="h-6 w-6" />
+                        </div>
+                        <h3 className="text-xl font-semibold tracking-tight text-ink">
+                          {tier.name}
+                        </h3>
+                        <p className="mt-1 text-sm text-surface-600">
+                          {tier.description}
+                        </p>
+                      </div>
+                    </div>
 
-                {/* Price */}
-                <div className="mb-6">
-                  <div className="flex items-baseline gap-1">
-                    {plan.price === 0 ? (
-                      <span
-                        className={cn(
-                          'text-4xl font-semibold tracking-tightest tabular-nums',
-                          plan.popular ? 'text-white' : 'text-ink',
-                        )}
+                    {/* Price */}
+                    <div className="mb-6 border-t border-surface-200/60 pt-6">
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-4xl font-bold tracking-tightest text-ink">
+                          {tier.price}
+                        </span>
+                        <span className="text-sm text-surface-600">
+                          {tier.priceSubtext}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* CTA Button */}
+                    <Link href={tier.ctaHref} className="mb-6 block">
+                      <Button
+                        variant={tier.highlight ? 'primary' : 'outline'}
+                        size="lg"
+                        className="group w-full"
                       >
-                        Gratis
-                      </span>
-                    ) : (
-                      <>
-                        <span
-                          className={cn(
-                            'text-4xl font-semibold tracking-tightest tabular-nums',
-                            plan.popular ? 'text-white' : 'text-ink',
-                          )}
+                        {tier.cta}
+                        <ArrowRight className="h-4 w-4 transition-transform duration-450 group-hover/btn:translate-x-1" />
+                      </Button>
+                    </Link>
+
+                    {/* Features list */}
+                    <div className="space-y-3 border-t border-surface-200/60 pt-6">
+                      {tier.features.map((feature) => (
+                        <div
+                          key={feature}
+                          className="flex items-start gap-3 text-sm text-surface-700"
                         >
-                          Rp {plan.price.toLocaleString('id-ID')}
-                        </span>
-                        <span
-                          className={cn(
-                            'text-sm',
-                            plan.popular ? 'text-surface-400' : 'text-surface-500',
-                          )}
-                        >
-                          /{plan.period}
-                        </span>
-                      </>
-                    )}
+                          <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary-600" />
+                          <span>{feature}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-
-                {/* Features */}
-                <ul className="mb-8 space-y-3">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-3">
-                      <CheckCircle2
-                        className={cn(
-                          'mt-0.5 h-5 w-5 flex-shrink-0',
-                          plan.popular ? 'text-primary-300' : 'text-primary-600',
-                        )}
-                      />
-                      <span
-                        className={cn(
-                          'text-sm',
-                          plan.popular ? 'text-surface-200' : 'text-surface-600',
-                        )}
-                      >
-                        {feature}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-
-                {/* CTA */}
-                <div className="mt-auto">
-                  <Button
-                    variant={plan.popular ? 'primary' : 'outline'}
-                    size="lg"
-                    className="w-full"
-                  >
-                    {plan.cta}
-                  </Button>
-                </div>
-              </div>
-            </motion.div>
-          ))}
+                </SpotlightCard>
+              </motion.div>
+            )
+          })}
         </motion.div>
-
-        <div className="mt-12 text-center text-sm text-surface-600">
-          Punya pertanyaan?{' '}
-          <a href="#" className="font-medium text-primary-700 hover:underline underline-offset-4">
-            Cek FAQ
-          </a>{' '}
-          atau{' '}
-          <a href="#" className="font-medium text-primary-700 hover:underline underline-offset-4">
-            hubungi kami
-          </a>
-          .
-        </div>
       </div>
     </section>
   )

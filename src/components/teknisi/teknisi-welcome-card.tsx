@@ -37,7 +37,7 @@ export function TeknisiWelcomeCard({ name = 'Teknisi' }: TeknisiWelcomeCardProps
         <p className="mt-1 text-[13px] text-white/80">
           Berikut ringkasan performa layanan, konsultasi, dan aktivitas Anda.
         </p>
-
+{/* 
         <div className="mt-4 flex flex-wrap gap-2">
           <Link href="/teknisi/konsultasi">
             <Button
@@ -84,7 +84,7 @@ export function TeknisiWelcomeCard({ name = 'Teknisi' }: TeknisiWelcomeCardProps
               Toko
             </Button>
           </Link>
-        </div>
+        </div> */}
       </div>
     </motion.div>
   )

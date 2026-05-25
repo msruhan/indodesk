@@ -3,9 +3,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
+import type { UserRole } from '@prisma/client'
 import { useCart } from '@/contexts/cart-context'
+import { useChat } from '@/contexts/chat-context'
+import { openTeknisiChat } from '@/lib/open-teknisi-chat'
 import type { MarketplaceProductDto } from '@/lib/marketplace-product-serializer'
 import { MOCK_MARKETPLACE_PRODUCTS } from '@/lib/marketplace-mock-products'
+import { ProductPublicSpecs } from '@/components/marketplace/product-public-specs'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -30,7 +35,7 @@ import {
   Smartphone,
   Star,
   Store,
-  Wallet,
+  X,
   Zap,
 } from '@/lib/icons'
 
@@ -55,10 +60,13 @@ const hoverLift = {
 export default function ProductDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const { data: session, status: authStatus } = useSession()
   const { addItem } = useCart()
+  const { openChatWithPeer } = useChat()
   const routeId = typeof params.id === 'string' ? params.id : params.id?.[0] ?? '1'
   const [isFavorite, setIsFavorite] = useState(false)
   const [selectedImage, setSelectedImage] = useState(0)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
   const [product, setProduct] = useState<MarketplaceProductDto | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -113,6 +121,45 @@ export default function ProductDetailPage() {
     router.push('/cart')
   }, [product, addItem, router])
 
+  const handleChatSeller = useCallback(() => {
+    if (!product) return
+    const buyerId = session?.user?.id
+    if (buyerId && buyerId === product.seller.id) {
+      alert('Anda tidak dapat chat ke diri sendiri sebagai penjual produk ini.')
+      return
+    }
+    openTeknisiChat({
+      teknisiUserId: product.seller.id,
+      isAuthenticated: authStatus === 'authenticated',
+      role: (session?.user?.role as UserRole | undefined) ?? 'USER',
+      openChatWithPeer,
+      navigate: router.push,
+    })
+  }, [product, session?.user?.id, session?.user?.role, authStatus, openChatWithPeer, router])
+
+  const galleryImageCount = product ? 3 : 1
+
+  useEffect(() => {
+    if (!lightboxOpen) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const count = Math.max(galleryImageCount, 1)
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setLightboxOpen(false)
+      if (event.key === 'ArrowLeft') {
+        setSelectedImage((prev) => (prev - 1 + count) % count)
+      }
+      if (event.key === 'ArrowRight') {
+        setSelectedImage((prev) => (prev + 1) % count)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [lightboxOpen, galleryImageCount])
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-surface-50">
@@ -141,27 +188,20 @@ export default function ProductDetailPage() {
     rating: product.rating,
     reviewCount: product.reviewCount,
     views: product.views,
-    condition: product.stock > 0 ? '95% like new' : 'Stok habis',
     stock: product.stock > 0 ? 'Ready stock' : 'Habis',
     location: product.seller.location ?? '—',
     teknisi: product.seller,
     description: product.description ?? '',
-    specs: [
-      { label: 'Kategori', value: product.category },
-      { label: 'Stok', value: String(product.stock) },
-      { label: 'Penjual', value: product.seller.storeName },
-      { label: 'Lokasi', value: product.seller.location ?? '—' },
-    ],
-    features: ['Garansi toko', 'Pembayaran aman', 'Respon cepat'],
   }
 
-  const galleryImages = product.image
-    ? [product.image, product.image, product.image]
-    : [
-        'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=1100&q=85',
-        'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=1100&q=85',
-        'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=1100&q=85',
-      ]
+  const galleryImages =
+    product.images && product.images.length > 0
+      ? product.images.map((img) => img.url)
+      : product.image
+        ? [product.image]
+        : [
+            'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=1100&q=85',
+          ]
 
   const reviews = [
     {
@@ -195,7 +235,6 @@ export default function ProductDetailPage() {
   const trustItems = [
     { label: 'Unit diverifikasi', icon: Shield },
     { label: 'Garansi toko', icon: Award },
-    { label: 'Pembayaran aman', icon: Wallet },
   ]
 
   return (
@@ -224,22 +263,29 @@ export default function ProductDetailPage() {
             className="min-w-0 space-y-6 lg:col-span-8"
           >
             <motion.div variants={reveal}>
-            <Card tone="glass" className="w-full overflow-hidden rounded-[1.35rem] border-white/80 bg-white/90 p-2 shadow-soft-md">
-              <div className="relative h-[280px] overflow-hidden rounded-[1.05rem] bg-surface-100 sm:h-[320px] lg:h-[350px] xl:h-[370px]">
-                <AnimatePresence mode="wait">
-                  <motion.img
-                    key={selectedImage}
-                    src={galleryImages[selectedImage]}
-                    alt={`${display.name} image ${selectedImage + 1}`}
-                    className="h-full w-full object-cover"
-                    initial={{ opacity: 0, scale: 1.035 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.985 }}
-                    transition={{ duration: 0.32, ease }}
-                  />
-                </AnimatePresence>
+            <Card tone="glass" className="mx-auto w-full max-w-2xl overflow-hidden rounded-[1.35rem] border-white/80 bg-white/90 p-2 shadow-soft-md lg:mx-0 lg:max-w-none">
+              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[1.05rem] bg-surface-100">
+                <button
+                  type="button"
+                  className="absolute inset-0 z-0 flex h-full w-full cursor-zoom-in items-center justify-center"
+                  onClick={() => setLightboxOpen(true)}
+                  aria-label="Lihat foto ukuran penuh"
+                >
+                  <AnimatePresence mode="wait">
+                    <motion.img
+                      key={selectedImage}
+                      src={galleryImages[selectedImage]}
+                      alt={`${display.name} image ${selectedImage + 1}`}
+                      className="max-h-full max-w-full object-contain"
+                      initial={{ opacity: 0, scale: 1.035 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.985 }}
+                      transition={{ duration: 0.32, ease }}
+                    />
+                  </AnimatePresence>
+                </button>
 
-                <div className="absolute left-2.5 top-2.5 flex gap-2">
+                <div className="pointer-events-none absolute left-2.5 top-2.5 z-10 flex gap-2">
                   <Badge variant="glass" className="bg-white/86 text-surface-800 shadow-soft-xs">
                     <Package className="h-3.5 w-3.5 text-primary-700" />
                     Ready stock
@@ -250,8 +296,9 @@ export default function ProductDetailPage() {
                   </Badge>
                 </div>
 
-                <div className="absolute right-2.5 top-2.5 flex gap-2">
+                <div className="absolute right-2.5 top-2.5 z-10 flex gap-2">
                   <button
+                    type="button"
                     onClick={() => setIsFavorite((value) => !value)}
                     className="grid h-8 w-8 place-items-center rounded-full border border-white/40 bg-white/82 text-surface-700 shadow-soft-xs backdrop-blur-xl transition hover:-translate-y-0.5 hover:bg-white"
                     aria-label="Toggle favorite"
@@ -259,6 +306,7 @@ export default function ProductDetailPage() {
                     <Heart className={`h-4.5 w-4.5 ${isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
                   </button>
                   <button
+                    type="button"
                     className="grid h-8 w-8 place-items-center rounded-full border border-white/40 bg-white/82 text-surface-700 shadow-soft-xs backdrop-blur-xl transition hover:-translate-y-0.5 hover:bg-white"
                     aria-label="Share product"
                   >
@@ -266,8 +314,9 @@ export default function ProductDetailPage() {
                   </button>
                 </div>
 
-                <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/62 to-transparent p-2.5 text-white">
+                <div className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-between bg-gradient-to-t from-black/62 to-transparent p-2.5 text-white">
                   <button
+                    type="button"
                     onClick={prevImage}
                     className="grid h-8 w-8 place-items-center rounded-full border border-white/24 bg-white/16 backdrop-blur-xl transition hover:bg-white/28"
                     aria-label="Previous product image"
@@ -278,6 +327,7 @@ export default function ProductDetailPage() {
                     {selectedImage + 1}/{galleryImages.length}
                   </span>
                   <button
+                    type="button"
                     onClick={nextImage}
                     className="grid h-8 w-8 place-items-center rounded-full border border-white/24 bg-white/16 backdrop-blur-xl transition hover:bg-white/28"
                     aria-label="Next product image"
@@ -287,12 +337,12 @@ export default function ProductDetailPage() {
                 </div>
               </div>
 
-              <div className="mt-2 grid grid-cols-3 gap-2">
+              <div className="mt-2 grid grid-cols-4 gap-2">
                 {galleryImages.map((imageUrl, index) => (
                   <button
                     key={`${imageUrl}-${index}`}
                     onClick={() => setSelectedImage(index)}
-                    className={`relative h-14 overflow-hidden rounded-xl border transition-all sm:h-16 lg:h-[70px] ${
+                    className={`relative aspect-[4/3] overflow-hidden rounded-xl border bg-surface-50 transition-all ${
                       selectedImage === index
                         ? 'border-primary-500 ring-2 ring-primary-100'
                         : 'border-surface-200 opacity-70 hover:opacity-100'
@@ -302,7 +352,7 @@ export default function ProductDetailPage() {
                     <img
                       src={imageUrl}
                       alt={`${display.name} thumbnail ${index + 1}`}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-contain p-0.5"
                     />
                   </button>
                 ))}
@@ -310,24 +360,24 @@ export default function ProductDetailPage() {
             </Card>
             </motion.div>
 
-            <motion.section variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-80px' }}>
-              <motion.div variants={reveal} className="mb-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">Detail Produk</p>
-                <h2 className="mt-1 text-xl font-bold tracking-tight text-black sm:text-2xl">Spesifikasi dan kondisi unit</h2>
-              </motion.div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {display.specs.map((spec) => (
-                  <motion.div
-                    key={spec.label}
-                    variants={reveal}
-                    whileHover={hoverLift}
-                    className="rounded-2xl border border-surface-200/70 bg-white p-4 shadow-soft-sm hover:shadow-soft-lg"
-                  >
-                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-surface-400">{spec.label}</p>
-                    <p className="mt-1 text-base font-bold text-black">{spec.value}</p>
-                  </motion.div>
-                ))}
-              </div>
+            <motion.section variants={reveal} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-80px' }}>
+              <Card className="rounded-[1.75rem]">
+                <CardContent className="p-5">
+                  <div className="mb-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">Spesifikasi</p>
+                    <h2 className="mt-1 text-xl font-bold tracking-tight text-black sm:text-2xl">Detail produk</h2>
+                  </div>
+                  <ProductPublicSpecs
+                    category={product.categoryValue}
+                    color={product.color}
+                    ram={product.ram}
+                    processor={product.processor}
+                    storage={product.storage}
+                    warranty={product.warranty}
+                    completeness={product.completeness}
+                  />
+                </CardContent>
+              </Card>
             </motion.section>
 
             <motion.section variants={reveal} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-80px' }}>
@@ -338,14 +388,6 @@ export default function ProductDetailPage() {
                     <h2 className="mt-1 text-xl font-bold tracking-tight text-black sm:text-2xl">Ringkasan kondisi produk</h2>
                   </div>
                   <p className="text-sm leading-7 text-surface-600">{display.description}</p>
-                  <div className="mt-5 grid gap-2 sm:grid-cols-2">
-                    {display.features.map((feature) => (
-                      <div key={feature} className="flex items-center gap-2 rounded-2xl bg-surface-50 px-3 py-2.5 text-sm font-semibold text-surface-700">
-                        <CheckCircle className="h-4 w-4 flex-shrink-0 text-primary-600" />
-                        {feature}
-                      </div>
-                    ))}
-                  </div>
                 </CardContent>
               </Card>
             </motion.section>
@@ -428,6 +470,13 @@ export default function ProductDetailPage() {
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-50 px-2.5 py-1.5">
                     <MapPin className="h-4 w-4 text-primary-600" />
                     {display.location}
+                    <span className="text-surface-300" aria-hidden>
+                      ·
+                    </span>
+                    <Package className="h-4 w-4 text-surface-500" />
+                    <span>
+                      Stok <strong className="text-black">{product.stock}</strong>
+                    </span>
                   </span>
                 </div>
 
@@ -447,11 +496,8 @@ export default function ProductDetailPage() {
                     <p className="mt-1.5 text-[1.65rem] font-bold leading-none tracking-tight text-white sm:text-3xl">
                       {formatPrice(product.price)}
                     </p>
-                    <div className="mt-3 grid grid-cols-2 gap-2">
-                      <span className="rounded-xl border border-white/15 bg-white/12 px-2.5 py-1.5 text-center text-[11px] font-semibold text-white/95 backdrop-blur-sm">
-                        {display.condition}
-                      </span>
-                      <span className="rounded-xl border border-white/15 bg-white/12 px-2.5 py-1.5 text-center text-[11px] font-semibold text-white/95 backdrop-blur-sm">
+                    <div className="mt-3">
+                      <span className="inline-flex rounded-xl border border-white/15 bg-white/12 px-2.5 py-1.5 text-[11px] font-semibold text-white/95 backdrop-blur-sm">
                         {display.stock}
                       </span>
                     </div>
@@ -475,7 +521,14 @@ export default function ProductDetailPage() {
                     <ShoppingCart className="h-5 w-5" />
                     Beli sekarang
                   </Button>
-                  <Button variant="outline" size="icon" aria-label="Chat seller">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    aria-label="Chat penjual"
+                    title="Chat penjual"
+                    onClick={handleChatSeller}
+                  >
                     <MessageCircle className="h-5 w-5" />
                   </Button>
                 </div>
@@ -577,7 +630,14 @@ export default function ProductDetailPage() {
             <ShoppingCart className="h-4 w-4" />
             Beli
           </Button>
-          <Button variant="outline" size="icon-sm" aria-label="Chat seller">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-sm"
+            aria-label="Chat penjual"
+            title="Chat penjual"
+            onClick={handleChatSeller}
+          >
             <MessageCircle className="h-4 w-4" />
           </Button>
         </div>
@@ -585,6 +645,80 @@ export default function ProductDetailPage() {
 
       <MobileSafeAreaSpacer />
       <BottomNav />
+
+      <AnimatePresence>
+        {lightboxOpen && (
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Foto produk ukuran penuh"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[70] flex flex-col items-center justify-center bg-black/92 p-4 sm:p-8"
+            onClick={() => setLightboxOpen(false)}
+          >
+            <button
+              type="button"
+              className="absolute right-4 top-4 z-10 grid h-10 w-10 place-items-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-sm transition hover:bg-white/20"
+              onClick={(event) => {
+                event.stopPropagation()
+                setLightboxOpen(false)
+              }}
+              aria-label="Tutup foto"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            {galleryImages.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  className="absolute left-3 top-1/2 z-10 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-sm transition hover:bg-white/20 sm:left-6"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    prevImage()
+                  }}
+                  aria-label="Foto sebelumnya"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 z-10 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-sm transition hover:bg-white/20 sm:right-6"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    nextImage()
+                  }}
+                  aria-label="Foto berikutnya"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </>
+            )}
+
+            <AnimatePresence mode="wait">
+              <motion.img
+                key={selectedImage}
+                src={galleryImages[selectedImage]}
+                alt={`${display.name} — foto ${selectedImage + 1} ukuran penuh`}
+                className="max-h-[min(90dvh,100%)] max-w-[min(92vw,100%)] h-auto w-auto object-contain"
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.96 }}
+                transition={{ duration: 0.25, ease }}
+                onClick={(event) => event.stopPropagation()}
+              />
+            </AnimatePresence>
+
+            {galleryImages.length > 1 && (
+              <p className="pointer-events-none mt-4 text-sm font-medium text-white/75">
+                {selectedImage + 1} / {galleryImages.length}
+              </p>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

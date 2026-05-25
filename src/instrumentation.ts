@@ -7,6 +7,8 @@ export async function register() {
 
   const { startImeiOrderScheduler } = await import('@/lib/imei-order-scheduler')
   const { startServerOrderScheduler } = await import('@/lib/server-order-scheduler')
+  const { startOrderTrackingScheduler } = await import('@/lib/order-tracking-scheduler')
   startImeiOrderScheduler()
   startServerOrderScheduler()
+  startOrderTrackingScheduler()
 }

@@ -3,14 +3,22 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth, type UserRole } from '@/contexts/auth-context'
 import { ProfileMenuSaldoItem } from '@/components/shared/profile-menu-saldo-item'
-import { chatPathForRole, publicProfileMenuItemsForRole } from '@/lib/role-routes'
+import {
+  chatPathForRole,
+  homePathForRole,
+  publicProfileMenuItemsForRole,
+} from '@/lib/role-routes'
+import { setTeknisiNavHomeMode } from '@/lib/teknisi-nav-home'
+import { setUserNavHomeMode } from '@/lib/user-nav-home'
 import { setChatBottomNavMode } from '@/lib/chat-bottom-nav'
 import { usePlatformNotifications } from '@/hooks/use-platform-notifications'
 import { NotificationFeedItem } from '@/components/shared/notification-feed-item'
 import { Bell, LogOut, MessageCircle, UserCircle } from '@/lib/icons'
+import { HeaderProfileTriggerIcon } from '@/components/mobile/header-profile-trigger-icon'
 import { cn } from '@/lib/utils'
 import {
   headerActionsGroupClass,
@@ -35,9 +43,14 @@ type PublicHeaderActionsProps = {
 }
 
 export function PublicHeaderActions({ hideProfileIcon = false }: PublicHeaderActionsProps) {
+  const pathname = usePathname()
   const { user, isLoading, logout } = useAuth()
-  const notificationsPopover = useHeaderPopover()
-  const profilePopover = useHeaderPopover()
+  const notificationsPopover = useHeaderPopover<HTMLButtonElement>({
+    estimatedWidth: 320,
+  })
+  const profilePopover = useHeaderPopover<HTMLButtonElement>({
+    estimatedWidth: 208,
+  })
   const [mounted, setMounted] = useState(false)
   const {
     notifications: visibleNotifications,
@@ -129,18 +142,7 @@ export function PublicHeaderActions({ hideProfileIcon = false }: PublicHeaderAct
           aria-expanded={profilePopover.open}
           onClick={toggleProfile}
         >
-          {isLoading ? (
-            <span className="h-4 w-4 animate-pulse rounded-full bg-surface-300" />
-          ) : user ? (
-            user.image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={user.image} alt="" className="h-full w-full rounded-full object-cover" />
-            ) : (
-              <span className="text-[10px] font-bold text-primary-700">{getInitials(user.name)}</span>
-            )
-          ) : (
-            <UserCircle className={headerIconClass} />
-          )}
+          <HeaderProfileTriggerIcon isLoading={isLoading} isLoggedIn={Boolean(user)} />
         </button>
       )}
 
@@ -210,19 +212,27 @@ export function PublicHeaderActions({ hideProfileIcon = false }: PublicHeaderAct
                         <p className="truncate text-[10px] text-surface-500">{user.email}</p>
                       </motion.div>
                     </motion.div>
-                    {publicProfileMenuItemsForRole(user.role as UserRole).map((item, index) => (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={cn(
-                          'block rounded-lg px-2.5 py-2 text-xs font-medium text-surface-700 transition-colors hover:bg-surface-50',
-                          index === 0 && 'mt-1',
-                        )}
-                        onClick={() => profilePopover.closePopover()}
-                      >
-                        {item.label}
-                      </Link>
-                    ))}
+                    {publicProfileMenuItemsForRole(user.role as UserRole, pathname).map(
+                      (item, index) => (
+                        <Link
+                          key={`${item.href}-${item.label}`}
+                          href={item.href}
+                          className={cn(
+                            'block rounded-lg px-2.5 py-2 text-xs font-medium text-surface-700 transition-colors hover:bg-surface-50',
+                            index === 0 && 'mt-1',
+                          )}
+                          onClick={() => {
+                            if (item.href === homePathForRole(user.role as UserRole)) {
+                              if (user.role === 'TEKNISI') setTeknisiNavHomeMode('workspace')
+                              if (user.role === 'USER') setUserNavHomeMode('dashboard')
+                            }
+                            profilePopover.closePopover()
+                          }}
+                        >
+                          {item.label}
+                        </Link>
+                      ),
+                    )}
                     <ProfileMenuSaldoItem
                       role={user.role as UserRole}
                       size="sm"

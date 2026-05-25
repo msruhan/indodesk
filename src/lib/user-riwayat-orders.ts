@@ -5,15 +5,18 @@ import {
   type PublicImeiOrder,
   type PublicServerOrder,
 } from '@/lib/imei-public'
+import { getUserActivityHref } from '@/lib/user-activity-href'
 
 export type RiwayatTxStatus = 'completed' | 'pending' | 'in-progress' | 'failed'
 
 export type RiwayatTransactionType =
   | 'semua'
   | 'belanja'
+  | 'topup'
   | 'konsultasi'
   | 'rekber'
   | 'remote'
+  | 'inspeksi'
   | 'perangkat'
   | 'server'
 
@@ -50,7 +53,7 @@ export function imeiOrderToRiwayatTransaction(order: PublicImeiOrder): RiwayatTr
     amount: order.price,
     status: mapOrderStatus(order.status),
     date: order.createdAt,
-    href: '/imei/orders',
+    href: getUserActivityHref('perangkat'),
   }
 }
 
@@ -63,7 +66,7 @@ export function serverOrderToRiwayatTransaction(order: PublicServerOrder): Riway
     amount: order.price,
     status: mapOrderStatus(order.status),
     date: order.createdAt,
-    href: '/imei/orders?tab=server',
+    href: getUserActivityHref('server'),
   }
 }
 

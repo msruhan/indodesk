@@ -1,0 +1,61 @@
+'use client'
+
+import { DashboardPageHeader, DashboardPanel } from '@/components/dashboard'
+import { AdminFeatureFlagsForm } from '@/components/admin/admin-feature-flags-form'
+
+export default function AdminVisibilityPage() {
+  return (
+    <div className="space-y-6">
+      <DashboardPageHeader
+        eyebrow="Kontrol Admin"
+        title="Visibilitas Menu"
+        description="Atur menu fitur tertentu agar hanya tampil ke role yang sesuai. Perubahan langsung berlaku untuk seluruh pengguna platform."
+      />
+
+      <DashboardPanel
+        title="Pengaturan Visibilitas"
+        description="Aktifkan atau sembunyikan menu fitur tertentu untuk teknisi dan pengguna."
+      >
+        <AdminFeatureFlagsForm />
+      </DashboardPanel>
+
+      <DashboardPanel
+        title="Catatan Aturan Akses"
+        description="Beberapa role memiliki akses tetap yang tidak terpengaruh oleh toggle ini."
+      >
+        <ul className="space-y-2 text-sm leading-relaxed text-surface-700">
+          <li className="flex items-start gap-2">
+            <span className="mt-1 inline-flex h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary-500" />
+            <span>
+              <strong>Admin</strong> selalu memiliki akses ke seluruh panel admin (mis. IMEI &amp;
+              Server, Inspeksi, Monitoring) untuk keperluan operasional, terlepas dari status
+              toggle.
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="mt-1 inline-flex h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary-500" />
+            <span>
+              <strong>Layanan Perangkat</strong> hanya tampil untuk teknisi terdaftar saat toggle
+              aktif. User biasa &amp; pengunjung tidak pernah melihat menu ini.
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="mt-1 inline-flex h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary-500" />
+            <span>
+              <strong>Remote &amp; Inspeksi</strong> tampil untuk semua role (pengunjung, user,
+              teknisi) saat toggle aktif. Bila dimatikan, halaman publik akan menolak akses dan
+              link di navigasi disembunyikan.
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="mt-1 inline-flex h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary-500" />
+            <span>
+              Perubahan toggle berlaku setelah pengguna me-refresh halaman; data feature flags
+              di-cache di sisi client agar tidak menambah latensi navigasi.
+            </span>
+          </li>
+        </ul>
+      </DashboardPanel>
+    </div>
+  )
+}

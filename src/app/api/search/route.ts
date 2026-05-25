@@ -91,7 +91,7 @@ async function searchForUser(userId: string, q: string, limit: number): Promise<
       kind: 'order',
       label: o.orderCode,
       hint: `IMEI · ${o.service.title} · ${o.status}`,
-      href: `/imei/orders?q=${encodeURIComponent(o.orderCode)}`,
+      href: `/user/orders/imei?q=${encodeURIComponent(o.orderCode)}`,
     })
   }
   for (const o of server) {
@@ -100,7 +100,7 @@ async function searchForUser(userId: string, q: string, limit: number): Promise<
       kind: 'order',
       label: o.orderCode,
       hint: `Server · ${o.service.title} · ${o.status}`,
-      href: `/imei/orders?tab=server&q=${encodeURIComponent(o.orderCode)}`,
+      href: `/user/orders/imei?tab=server&q=${encodeURIComponent(o.orderCode)}`,
     })
   }
   for (const o of topup) {
@@ -221,7 +221,7 @@ async function searchForTeknisi(userId: string, q: string, limit: number): Promi
       kind: 'order',
       label: o.orderCode,
       hint: `IMEI · ${o.service.title} · ${o.status}`,
-      href: `/imei/orders?q=${encodeURIComponent(o.orderCode)}`,
+      href: `/user/orders/imei?q=${encodeURIComponent(o.orderCode)}`,
     })
   }
   for (const o of server) {
@@ -230,7 +230,7 @@ async function searchForTeknisi(userId: string, q: string, limit: number): Promi
       kind: 'order',
       label: o.orderCode,
       hint: `Server · ${o.service.title} · ${o.status}`,
-      href: `/imei/orders?tab=server&q=${encodeURIComponent(o.orderCode)}`,
+      href: `/user/orders/imei?tab=server&q=${encodeURIComponent(o.orderCode)}`,
     })
   }
 

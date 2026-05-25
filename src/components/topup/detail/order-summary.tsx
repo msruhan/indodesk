@@ -4,7 +4,8 @@ import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { CheckCircle, ShoppingCart, Wallet } from '@/lib/icons'
 import { effectivePrice, formatIDR } from '@/lib/topup-utils'
-import { findDenomination, paymentMethods, promoCodes } from '@/data/mock-topup'
+import { useTopupCatalog } from '@/contexts/topup-catalog-context'
+import { calcTopupDiscount, TOPUP_PAYMENT_METHODS } from '@/lib/topup-order-config'
 import type { TopupOrderDraft, TopupProduct } from '@/data/topup-types'
 import { cn } from '@/lib/utils'
 
@@ -14,22 +15,19 @@ interface OrderSummaryProps {
   onSubmit: () => void
   /** Truthy when basic info is filled (account + denom + payment method) */
   ready: boolean
+  submitting?: boolean
   className?: string
 }
 
-export function OrderSummary({ product, draft, onSubmit, ready, className }: OrderSummaryProps) {
+export function OrderSummary({ product, draft, onSubmit, ready, submitting, className }: OrderSummaryProps) {
+  const { findDenomination } = useTopupCatalog()
   const denom = draft.denominationSku ? findDenomination(draft.denominationSku) : null
   const method = draft.paymentMethodId
-    ? paymentMethods.find((m) => m.id === draft.paymentMethodId) ?? null
+    ? TOPUP_PAYMENT_METHODS.find((m) => m.id === draft.paymentMethodId) ?? null
     : null
 
   const subtotal = denom ? effectivePrice(denom) : 0
-  const promo = draft.promoCode ? promoCodes[draft.promoCode.toUpperCase()] : null
-  const discount = promo
-    ? promo.type === 'percent'
-      ? Math.round((subtotal * promo.value) / 100)
-      : Math.min(promo.value, subtotal)
-    : 0
+  const { discount } = calcTopupDiscount(subtotal, draft.promoCode)
   const fee = method?.fee ?? 0
   const total = Math.max(0, subtotal - discount + fee)
 
@@ -127,10 +125,10 @@ export function OrderSummary({ product, draft, onSubmit, ready, className }: Ord
           variant="primary"
           size="lg"
           className="w-full"
-          disabled={!ready}
+          disabled={!ready || submitting}
           onClick={onSubmit}
         >
-          {ready ? 'Pesan sekarang' : 'Lengkapi data dulu'}
+          {submitting ? 'Memproses…' : ready ? 'Pesan sekarang' : 'Lengkapi data dulu'}
         </Button>
         <p className="mt-2 text-center text-[10px] text-surface-500">
           Dengan menekan tombol ini Anda menyetujui{' '}

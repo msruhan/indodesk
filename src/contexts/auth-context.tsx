@@ -22,7 +22,8 @@ interface AuthContextType {
     password: string,
     totp?: string,
   ) => Promise<{ success: boolean; error?: string; requires2FA?: boolean }>
-  register: (name: string, email: string, password: string, role: 'USER' | 'TEKNISI') => Promise<{ success: boolean; error?: string }>
+  register: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>
+  registerTeknisi: (payload: Record<string, unknown>) => Promise<{ success: boolean; error?: string; message?: string }>
   logout: () => Promise<void>
   refreshSession: () => Promise<void>
 }
@@ -97,13 +98,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       name: string,
       email: string,
       password: string,
-      role: 'USER' | 'TEKNISI',
     ): Promise<{ success: boolean; error?: string }> => {
       try {
         const res = await fetch('/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email, password, role }),
+          body: JSON.stringify({ name, email, password, role: 'USER' }),
         })
 
         const data = await res.json()
@@ -112,7 +112,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return { success: false, error: data.error || 'Registrasi gagal' }
         }
 
-        // Auto-login after register
         const loginResult = await signIn('credentials', {
           email,
           password,
@@ -131,13 +130,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   )
 
+  const registerTeknisi = useCallback(
+    async (
+      payload: Record<string, unknown>,
+    ): Promise<{ success: boolean; error?: string; message?: string }> => {
+      try {
+        const res = await fetch('/api/auth/register/teknisi', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+
+        const data = await res.json()
+
+        if (!res.ok) {
+          return { success: false, error: data.error || 'Registrasi gagal' }
+        }
+
+        return {
+          success: true,
+          message: data.data?.message as string | undefined,
+        }
+      } catch {
+        return { success: false, error: 'Terjadi kesalahan' }
+      }
+    },
+    [],
+  )
+
   const logout = useCallback(async () => {
+    if (user?.role === 'TEKNISI') {
+      try {
+        await fetch('/api/teknisi/presence', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ online: false }),
+          keepalive: true,
+        })
+      } catch {
+        /* ignore */
+      }
+    }
     await signOut({ redirect: false })
     router.push('/')
-  }, [router])
+  }, [router, user?.role])
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, refreshSession }}>
+    <AuthContext.Provider
+      value={{ user, isLoading, login, register, registerTeknisi, logout, refreshSession }}
+    >
       {children}
     </AuthContext.Provider>
   )

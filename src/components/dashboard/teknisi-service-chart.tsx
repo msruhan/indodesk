@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import type { ApexOptions } from 'apexcharts'
 import { motion } from 'framer-motion'
@@ -8,14 +9,24 @@ import { teknisiServiceMix } from '@/data/mock-analytics'
 
 const Chart = dynamic(() => import('react-apexcharts'), { ssr: false })
 
-const options: ApexOptions = {
+export type TeknisiServiceChartData = Array<{ name: string; value: number; color: string }>
+
+type Props = {
+  data?: TeknisiServiceChartData
+}
+
+export function TeknisiServiceChart({ data }: Props) {
+  const mix = data?.length ? data : teknisiServiceMix
+
+  const options: ApexOptions = useMemo(
+    () => ({
   chart: {
     toolbar: { show: false },
     foreColor: '#71717a',
     animations: { enabled: true, speed: 800 },
   },
-  colors: teknisiServiceMix.map((d) => d.color),
-  labels: teknisiServiceMix.map((d) => d.name),
+  colors: mix.map((d) => d.color),
+  labels: mix.map((d) => d.name),
   dataLabels: {
     enabled: true,
     formatter: (val) => `${(val as number).toFixed(0)}%`,
@@ -43,9 +54,10 @@ const options: ApexOptions = {
     itemMargin: { horizontal: 8, vertical: 4 },
   },
   tooltip: { theme: 'light', y: { formatter: (v) => `${v}%` } },
-}
+    }),
+    [mix],
+  )
 
-export function TeknisiServiceChart() {
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -63,7 +75,7 @@ export function TeknisiServiceChart() {
         <CardContent className="pt-4">
           <Chart
             options={options}
-            series={teknisiServiceMix.map((d) => d.value)}
+            series={mix.map((d) => d.value)}
             type="donut"
             height={260}
           />

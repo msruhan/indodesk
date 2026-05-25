@@ -95,12 +95,13 @@ export function ServerServiceCard({
 
   return (
     <motion.div
+      className="h-full"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
     >
-      <Card className="group overflow-hidden transition-all hover:border-amber-200/70 hover:shadow-soft-md">
-        <CardContent className="p-3 sm:p-4">
+      <Card className="group h-full overflow-hidden transition-all hover:border-amber-200/70 hover:shadow-soft-md">
+        <CardContent className="flex h-full flex-col p-3 sm:p-4">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-50 to-amber-100 text-amber-700 transition-transform group-hover:scale-105">
               <Package className="h-4.5 w-4.5" />
@@ -108,9 +109,11 @@ export function ServerServiceCard({
             <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <h3 className="text-[13px] font-semibold leading-tight text-ink line-clamp-2 sm:text-sm">{service.title}</h3>
+                  <h3 className="min-h-[2.5rem] text-[13px] font-semibold leading-tight text-ink line-clamp-2 sm:min-h-[2.75rem] sm:text-sm">
+                    {service.title}
+                  </h3>
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                    <Badge variant="warning" className="text-[9px] px-1.5 py-0">{service.boxName}</Badge>
+                    <Badge variant="warning" className="px-1.5 py-0 text-[9px]">{service.boxName}</Badge>
                     <span className="flex items-center gap-0.5 text-[10px] text-surface-500">
                       <Clock className="h-2.5 w-2.5" />
                       {service.deliveryTime}
@@ -121,25 +124,29 @@ export function ServerServiceCard({
                   <p className="text-sm font-bold text-amber-700 sm:text-base">{formatImeiPrice(service.price)}</p>
                 </div>
               </div>
-              {service.description && (
-                <p className="mt-1.5 text-[11px] leading-relaxed text-surface-500 line-clamp-2">{service.description}</p>
-              )}
-              <div className="mt-2.5 flex items-center justify-between">
-                <div className="flex flex-wrap gap-1">
-                  <ServerFieldTags service={service} />
-                </div>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  className="h-7 bg-amber-600 px-3 text-[11px] hover:bg-amber-700"
-                  onClick={() => onOrder(service)}
-                  disabled={orderDisabled}
-                >
-                  Order
-                  <ChevronRight className="h-3 w-3" />
-                </Button>
-              </div>
             </div>
+          </div>
+          <p
+            className={`mt-1.5 min-h-[2.75rem] text-[11px] leading-relaxed text-surface-500 line-clamp-2 ${
+              service.description ? '' : 'invisible'
+            }`}
+          >
+            {service.description || '—'}
+          </p>
+          <div className="mt-auto flex items-end justify-between gap-2 pt-2.5">
+            <div className="flex min-h-[2.25rem] flex-1 flex-wrap content-end gap-1 pr-1">
+              <ServerFieldTags service={service} />
+            </div>
+            <Button
+              variant="primary"
+              size="sm"
+              className="h-7 shrink-0 bg-amber-600 px-3 text-[11px] hover:bg-amber-700"
+              onClick={() => onOrder(service)}
+              disabled={orderDisabled}
+            >
+              Order
+              <ChevronRight className="h-3 w-3" />
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -161,7 +168,7 @@ export function ServerOrderModal({
   const [success, setSuccess] = useState(false)
   const [orderCode, setOrderCode] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const ordersHref = '/imei/orders?tab=server'
+  const ordersHref = '/user/orders/imei?tab=server'
 
   const canSubmit = useMemo(() => {
     if (service.fieldDefs.length === 0) return false

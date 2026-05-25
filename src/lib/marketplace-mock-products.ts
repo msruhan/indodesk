@@ -1,3 +1,4 @@
+import { ProductWarranty } from '@prisma/client'
 import type { MarketplaceProductDto } from '@/lib/marketplace-product-serializer'
 
 /** Demo fallback when product id is not in DB (legacy mock marketplace links). */
@@ -12,10 +13,22 @@ export const MOCK_MARKETPLACE_PRODUCTS: Record<string, MarketplaceProductDto> = 
     description:
       'iPhone 13 Pro Max kondisi sangat baik, 95% like new. Unit sudah melewati pengecekan layar, kamera, speaker, charging port, Face ID, dan performa baterai.',
     image: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=1100&q=85',
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=1100&q=85',
+        isPrimary: true,
+      },
+    ],
     rating: 4.8,
     reviewCount: 124,
     views: 2341,
     stock: 3,
+    color: 'Graphite',
+    ram: '',
+    processor: '',
+    storage: '256GB',
+    warranty: ProductWarranty.STORE,
+    completeness: ['HANDPHONE', 'CHARGER', 'BOX'],
     seller: {
       id: 'mock-teknisi-1',
       storeId: '1',
@@ -38,10 +51,22 @@ export const MOCK_MARKETPLACE_PRODUCTS: Record<string, MarketplaceProductDto> = 
     price: 7200000,
     description: 'Samsung S21 Ultra refurbished, kondisi prima, garansi toko.',
     image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=1100&q=85',
+    images: [
+      {
+        url: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=1100&q=85',
+        isPrimary: true,
+      },
+    ],
     rating: 4.6,
     reviewCount: 89,
     views: 1892,
     stock: 2,
+    color: 'Phantom Black',
+    ram: '',
+    processor: '',
+    storage: '128GB',
+    warranty: ProductWarranty.OFFICIAL,
+    completeness: ['FULLSET'],
     seller: {
       id: 'mock-teknisi-2',
       storeId: '2',

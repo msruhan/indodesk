@@ -4,8 +4,8 @@ import {
   accountPathForRole,
   chatPathForRole,
   homePathForRole,
-  saldoPathForRole,
 } from '@/lib/role-routes'
+import { USER_IMEI_ORDERS_PATH, userImeiOrdersHref } from '@/lib/user-imei-orders-path'
 
 export type SmartSearchResultKind = 'quick' | 'order' | 'user' | 'product' | 'page'
 
@@ -65,7 +65,7 @@ export function quickActionsForRole(role: UserRole): SmartSearchItem[] {
       ]),
       quick('rekber', 'Rekber / escrow', 'Transaksi ditahan', '/admin/rekber', ['escrow']),
       quick('notif', 'Notifikasi', 'Broadcast dan alert', '/admin/notifications', ['bell']),
-      quick('settings', 'Pengaturan', 'Konfigurasi platform', '/admin/settings', ['security']),
+      quick('akun', 'Akun Saya', 'Profil, keamanan, dan 2FA', '/admin/settings', ['settings', 'security']),
       quick('market', 'Marketplace', 'Halaman depan publik', MARKETPLACE_PATH, ['beranda']),
     ]
   }
@@ -81,13 +81,18 @@ export function quickActionsForRole(role: UserRole): SmartSearchItem[] {
         'marketplace',
         'jual',
       ]),
+      quick('pesanan', 'Pesanan masuk', 'Order marketplace dari pembeli', '/teknisi/pesanan', [
+        'order',
+        'pesanan',
+        'resi',
+      ]),
       quick('konsultasi', 'Konsultasi', 'Request dari pelanggan', '/teknisi/konsultasi', ['chat']),
       quick('remote', 'Remote', 'Sesi remote aktif', '/teknisi/remote', ['rustdesk']),
-      quick('imei', 'Order perangkat (IMEI)', 'Status order unlock', '/imei/orders', [
+      quick('imei', 'Order perangkat (IMEI)', 'Status order unlock', '/imei', [
         'imei',
         'unlock',
       ]),
-      quick('server', 'Order server', 'Layanan server supplier', '/imei/orders?tab=server', [
+      quick('server', 'Order server', 'Layanan server supplier', '/imei', [
         'server',
       ]),
       quick('akun', 'Akun Saya', 'Profil teknisi dan pengaturan akun', '/teknisi/settings', ['profil', 'akun', 'setting']),
@@ -101,9 +106,9 @@ export function quickActionsForRole(role: UserRole): SmartSearchItem[] {
       'order',
       'history',
     ]),
-    quick('saldo', 'Kelola saldo', 'Top up wallet', saldoPathForRole('USER'), ['wallet', 'topup']),
-    quick('imei', 'Order perangkat (IMEI)', 'Cek status unlock', '/imei/orders', ['imei']),
-    quick('server', 'Order server', 'Layanan server', '/imei/orders?tab=server', ['server']),
+    quick('saldo', 'Saldo & riwayat', 'Dashboard dan top up', '/user/dashboard', ['wallet', 'topup', 'saldo']),
+    quick('imei', 'Order perangkat (IMEI)', 'Cek status unlock', USER_IMEI_ORDERS_PATH, ['imei']),
+    quick('server', 'Order server', 'Layanan server', userImeiOrdersHref('server'), ['server']),
     quick('topup', 'Top up game', 'Beli voucher & diamond', '/topup', ['game', 'voucher']),
     quick('market', 'Marketplace', 'Belanja produk teknisi', MARKETPLACE_PATH, ['belanja', 'toko']),
     quick('akun', 'Akun saya', 'Profil dan keamanan', accountPathForRole('USER'), ['profile']),

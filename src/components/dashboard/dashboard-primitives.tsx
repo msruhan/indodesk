@@ -5,6 +5,8 @@ import { motion } from 'framer-motion'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { SearchInput } from '@/components/ui/search-input'
+import { FilterDropdown } from '@/components/ui/filter-dropdown'
+import type { FilterDropdownTone } from '@/components/ui/filter-dropdown'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import {
@@ -304,12 +306,14 @@ export function EmptyState({
 }
 
 export function DashboardPanel({
+  id,
   title,
   description,
   action,
   children,
   className,
 }: {
+  id?: string
   title: string
   description?: string
   action?: ReactNode
@@ -317,7 +321,7 @@ export function DashboardPanel({
   className?: string
 }) {
   return (
-    <Card className={className}>
+    <Card id={id} className={className}>
       <CardHeader className="flex flex-row items-start justify-between gap-3 border-b border-surface-200/70 pb-4">
         <div>
           <CardTitle>{title}</CardTitle>
@@ -355,4 +359,154 @@ export function StatusBadge({
   }[status]
 
   return <Badge variant={config.variant}>{config.label}</Badge>
+}
+
+/**
+ * Unified pill tabs — used to switch between sub-views (e.g. "Shop" / "Top Up").
+ * Single visual standard across all dashboard pages.
+ */
+export type TabPillItem<T extends string = string> = {
+  id: T
+  label: string
+  count?: number
+}
+
+export function TabPills<T extends string>({
+  options,
+  value,
+  onChange,
+  className,
+}: {
+  options: TabPillItem<T>[]
+  value: T
+  onChange: (value: T) => void
+  className?: string
+}) {
+  return (
+    <div className={cn('flex flex-wrap gap-2', className)}>
+      {options.map((opt) => {
+        const active = value === opt.id
+        return (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={() => onChange(opt.id)}
+            aria-pressed={active}
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition-colors',
+              active
+                ? 'bg-primary-600 text-white shadow-soft-xs'
+                : 'border border-surface-200/70 bg-white text-surface-700 hover:border-primary-300 hover:bg-primary-50/40 hover:text-primary-700',
+            )}
+          >
+            {opt.label}
+            {opt.count !== undefined && (
+              <span
+                className={cn(
+                  'min-w-[1.25rem] rounded-full px-1.5 py-px text-center text-[9px] font-bold tabular-nums',
+                  active ? 'bg-white/25 text-white' : 'bg-surface-100 text-surface-600',
+                )}
+              >
+                {opt.count}
+              </span>
+            )}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/**
+ * Unified filter pill row — for status filters (e.g. "Semua / Pending / Berhasil").
+ * Smaller and more compact than TabPills.
+ */
+export type FilterPillItem<T extends string = string> = {
+  id: T
+  label: string
+}
+
+export function FilterPills<T extends string>({
+  options,
+  value,
+  onChange,
+  className,
+  ariaLabel,
+}: {
+  options: FilterPillItem<T>[]
+  value: T
+  onChange: (value: T) => void
+  className?: string
+  ariaLabel?: string
+}) {
+  return (
+    <div
+      role="group"
+      aria-label={ariaLabel}
+      className={cn('flex flex-wrap items-center gap-1.5', className)}
+    >
+      {options.map((opt) => {
+        const active = value === opt.id
+        return (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={() => onChange(opt.id)}
+            aria-pressed={active}
+            className={cn(
+              'inline-flex items-center rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors',
+              active
+                ? 'bg-primary-600 text-white shadow-soft-xs'
+                : 'border border-surface-200/70 bg-white text-surface-600 hover:border-primary-300 hover:text-primary-700',
+            )}
+          >
+            {opt.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+export type FilterSelectItem<T extends string = string> = {
+  id: T
+  label: string
+  count?: number
+  icon?: import('react').ComponentType<{ className?: string }>
+  tone?: FilterDropdownTone
+}
+
+/** Modern animated dropdown for filters (search bars, toolbars). */
+export function FilterSelect<T extends string>({
+  options,
+  value,
+  onChange,
+  className,
+  ariaLabel,
+  disabled,
+  label,
+  triggerIcon,
+}: {
+  options: FilterSelectItem<T>[]
+  value: T
+  onChange: (value: T) => void
+  className?: string
+  ariaLabel?: string
+  disabled?: boolean
+  label?: string
+  triggerIcon?: import('react').ComponentType<{ className?: string }>
+}) {
+  return (
+    <FilterDropdown
+      options={options}
+      value={value}
+      onChange={onChange}
+      className={className}
+      ariaLabel={ariaLabel}
+      disabled={disabled}
+      placeholder="Pilih filter"
+      label={label}
+      triggerIcon={triggerIcon}
+    />
+  )
 }

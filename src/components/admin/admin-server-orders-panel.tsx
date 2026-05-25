@@ -32,11 +32,11 @@ function formatPrice(price: number | string) {
 }
 
 const statusConfig: Record<OrderStatus, { label: string; variant: 'warning' | 'info' | 'success' | 'danger' | 'default' }> = {
-  PENDING: { label: 'Pending', variant: 'warning' },
-  IN_PROCESS: { label: 'In Process', variant: 'info' },
-  SUCCESS: { label: 'Success', variant: 'success' },
-  REJECTED: { label: 'Rejected', variant: 'danger' },
-  CANCELLED: { label: 'Cancelled', variant: 'default' },
+  PENDING: { label: 'Menunggu', variant: 'warning' },
+  IN_PROCESS: { label: 'Diproses', variant: 'info' },
+  SUCCESS: { label: 'Berhasil', variant: 'success' },
+  REJECTED: { label: 'Ditolak', variant: 'danger' },
+  CANCELLED: { label: 'Dibatalkan', variant: 'default' },
 }
 
 function OrderDetailModal({ order, onClose, onUpdate }: { order: ServerOrderItem; onClose: () => void; onUpdate: () => void }) {
@@ -136,13 +136,13 @@ function OrderDetailModal({ order, onClose, onUpdate }: { order: ServerOrderItem
             {order.status === 'PENDING' && (
               <>
                 <Button variant="primary" size="sm" className="flex-1" disabled={updating} onClick={() => handleStatusChange('IN_PROCESS')}><RefreshCw className="h-3.5 w-3.5" />Proses</Button>
-                <Button variant="destructive" size="sm" className="flex-1" disabled={updating} onClick={() => handleStatusChange('REJECTED')}><X className="h-3.5 w-3.5" />Reject</Button>
+                <Button variant="destructive" size="sm" className="flex-1" disabled={updating} onClick={() => handleStatusChange('REJECTED')}><X className="h-3.5 w-3.5" />Tolak</Button>
               </>
             )}
             {order.status === 'IN_PROCESS' && (
               <>
                 <Button variant="primary" size="sm" className="flex-1" disabled={updating} onClick={() => handleStatusChange('SUCCESS')}><Check className="h-3.5 w-3.5" />Selesaikan</Button>
-                <Button variant="destructive" size="sm" className="flex-1" disabled={updating} onClick={() => handleStatusChange('REJECTED')}><X className="h-3.5 w-3.5" />Reject</Button>
+                <Button variant="destructive" size="sm" className="flex-1" disabled={updating} onClick={() => handleStatusChange('REJECTED')}><X className="h-3.5 w-3.5" />Tolak</Button>
               </>
             )}
             <Button variant="outline" size="sm" onClick={onClose}>Tutup</Button>
@@ -180,10 +180,10 @@ export function AdminServerOrdersPanel() {
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         {[
           { label: 'Total', value: stats.total, color: 'bg-surface-100 text-ink' },
-          { label: 'Pending', value: stats.pending, color: 'bg-amber-50 text-amber-700' },
-          { label: 'In Process', value: stats.inProcess, color: 'bg-blue-50 text-blue-700' },
-          { label: 'Success', value: stats.success, color: 'bg-primary-50 text-primary-700' },
-          { label: 'Rejected', value: stats.rejected, color: 'bg-red-50 text-red-700' },
+          { label: 'Menunggu', value: stats.pending, color: 'bg-amber-50 text-amber-700' },
+          { label: 'Diproses', value: stats.inProcess, color: 'bg-blue-50 text-blue-700' },
+          { label: 'Berhasil', value: stats.success, color: 'bg-primary-50 text-primary-700' },
+          { label: 'Ditolak', value: stats.rejected, color: 'bg-red-50 text-red-700' },
         ].map((stat) => (
           <div key={stat.label} className={cn('rounded-xl p-3 text-center', stat.color)}>
             <p className="text-lg font-bold tabular-nums">{stat.value}</p>
@@ -195,10 +195,10 @@ export function AdminServerOrdersPanel() {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as OrderStatus | 'all')} className="h-9 rounded-xl border border-surface-200/80 bg-white px-3 text-xs text-surface-700">
           <option value="all">Semua Status</option>
-          <option value="PENDING">Pending</option>
-          <option value="IN_PROCESS">In Process</option>
-          <option value="SUCCESS">Success</option>
-          <option value="REJECTED">Rejected</option>
+          <option value="PENDING">Menunggu</option>
+          <option value="IN_PROCESS">Diproses</option>
+          <option value="SUCCESS">Berhasil</option>
+          <option value="REJECTED">Ditolak</option>
         </select>
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-surface-400" />

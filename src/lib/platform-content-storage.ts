@@ -3,6 +3,10 @@ import {
   type MarketplaceBanner,
 } from '@/data/mock-marketplace-banners'
 import {
+  normalizeBannerPlacement,
+  type BannerPlacement,
+} from '@/lib/marketplace-banners'
+import {
   defaultPlatformNotifications,
   type PlatformNotification,
 } from '@/data/mock-platform-notifications'
@@ -32,16 +36,21 @@ function writeJson<T>(key: string, value: T, eventName: string) {
 
 export function loadMarketplaceBanners(): MarketplaceBanner[] {
   const stored = readJson<MarketplaceBanner[] | null>(BANNERS_KEY, null)
-  return stored ?? defaultMarketplaceBanners
+  const list = stored ?? defaultMarketplaceBanners
+  return list.map(normalizeBannerPlacement)
 }
 
 export function saveMarketplaceBanners(banners: MarketplaceBanner[]) {
   writeJson(BANNERS_KEY, banners, BANNERS_UPDATED_EVENT)
 }
 
-export function getActiveMarketplaceBanners(banners: MarketplaceBanner[]): MarketplaceBanner[] {
+export function getActiveMarketplaceBanners(
+  banners: MarketplaceBanner[],
+  placement: BannerPlacement,
+): MarketplaceBanner[] {
   return [...banners]
-    .filter((b) => b.active)
+    .map(normalizeBannerPlacement)
+    .filter((b) => b.active && b.placement === placement)
     .sort((a, b) => a.sortOrder - b.sortOrder)
 }
 

@@ -84,7 +84,7 @@ export function ProjectsList() {
           <p className="mt-1 text-sm text-surface-500">Your ongoing work</p>
         </div>
         <Button variant="ghost" size="sm" className="text-primary-700 hover:bg-primary-50">
-          View all
+          Lihat semua
           <ArrowRight className="h-4 w-4" />
         </Button>
       </CardHeader>

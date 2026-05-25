@@ -90,8 +90,8 @@ export function SpotlightCard({
         />
       )}
 
-      {/* Content */}
-      <div className="relative">{children}</div>
+      {/* Content — flex column so h-full + mt-auto layouts work in grids */}
+      <div className="relative flex h-full min-h-0 flex-col">{children}</div>
     </div>
   )
 }

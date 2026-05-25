@@ -72,7 +72,7 @@ const teknisiNav: NavItem[] = [
     icon: Package,
     label: 'Iklan',
     href: '/teknisi/produk',
-    activePrefixes: ['/teknisi/produk'],
+    activePrefixes: ['/teknisi/produk', '/teknisi/pesanan'],
   },
   {
     icon: Store,

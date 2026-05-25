@@ -1,11 +1,18 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { Fragment, useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Magnetic } from '@/components/motion'
 import { useAuth } from '@/contexts/auth-context'
+import { useFeatureFlags } from '@/contexts/feature-flags-context'
+import {
+  canAccessImeiService,
+  canAccessRemoteService,
+  canAccessInspectionService,
+} from '@/lib/platform-settings-shared'
 import {
   Menu,
   X,
@@ -18,13 +25,16 @@ import {
   Users,
   Laptop,
   Shield,
+  CheckSquare,
   Briefcase,
   ArrowRight,
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { PublicHeaderActions } from '@/components/mobile/public-header-actions'
 import { ProfileMenuSaldoItem } from '@/components/shared/profile-menu-saldo-item'
-import { publicProfileMenuItemsForRole } from '@/lib/role-routes'
+import { homePathForRole, publicProfileMenuItemsForRole } from '@/lib/role-routes'
+import { setTeknisiNavHomeMode } from '@/lib/teknisi-nav-home'
+import { setUserNavHomeMode } from '@/lib/user-nav-home'
 import type { UserRole } from '@prisma/client'
 
 function getInitials(name: string): string {
@@ -37,21 +47,21 @@ function getInitials(name: string): string {
     .toUpperCase()
 }
 
-const navGroups = [
+const ALL_NAV_GROUPS = [
   {
     label: 'Marketplace',
     items: [
       { href: '/marketplace', label: 'Shop' },
       { href: '/topup', label: 'Topup' },
-      { href: '/imei', label: 'Layanan Perangkat' },
+      { href: '/imei', label: 'Layanan Perangkat', requireImei: true },
     ],
   },
   {
     label: 'Layanan',
     items: [
       { href: '/teknisi', label: 'Teknisi' },
-      { href: '/remote', label: 'Remote' },
-      { href: '/rekber', label: 'Rekber' },
+      { href: '/remote', label: 'Remote', requireRemote: true },
+      { href: '/inspeksi', label: 'Inspeksi', requireInspection: true },
     ],
   },
   {
@@ -63,24 +73,41 @@ const navGroups = [
   },
 ] as const
 
-const mobileNavSections: {
+const STANDALONE_NAV_LINK = { href: '/rekber', label: 'Rekber' } as const
+
+const ALL_MOBILE_NAV_SECTIONS: {
   title?: string
-  items: { href: string; label: string; icon: typeof ShoppingBag }[]
+  items: {
+    href: string
+    label: string
+    icon: typeof ShoppingBag
+    requireImei?: boolean
+    requireRemote?: boolean
+    requireInspection?: boolean
+  }[]
 }[] = [
   {
     items: [
       { href: '/marketplace', label: 'Shop', icon: ShoppingBag },
       { href: '/topup', label: 'Top Up', icon: Zap },
-      { href: '/imei', label: 'Layanan Perangkat', icon: Smartphone },
+      { href: '/imei', label: 'Layanan Perangkat', icon: Smartphone, requireImei: true },
     ],
   },
   {
     title: 'Layanan',
     items: [
       { href: '/teknisi', label: 'Teknisi', icon: Users },
-      { href: '/remote', label: 'Remote', icon: Laptop },
-      { href: '/rekber', label: 'Rekber', icon: Shield },
+      { href: '/remote', label: 'Remote', icon: Laptop, requireRemote: true },
+      {
+        href: '/inspeksi',
+        label: 'Inspeksi',
+        icon: CheckSquare,
+        requireInspection: true,
+      },
     ],
+  },
+  {
+    items: [{ href: '/rekber', label: 'Rekber', icon: Shield }],
   },
   {
     title: 'Mitra',
@@ -92,7 +119,9 @@ const mobileNavSections: {
 ]
 
 export function Navbar() {
+  const pathname = usePathname()
   const { user, isLoading, logout } = useAuth()
+  const { flags } = useFeatureFlags()
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [openDesktopGroup, setOpenDesktopGroup] = useState<string | null>(null)
@@ -100,6 +129,44 @@ export function Navbar() {
   const { scrollY } = useScroll()
   const containerWidth = useTransform(scrollY, [0, 200], ['100%', '92%'])
   const containerY = useTransform(scrollY, [0, 200], [0, 8])
+
+  // Gate menu "Layanan Perangkat" / "Remote" / "Inspeksi" berdasarkan role
+  // dan toggle admin (feature flag).
+  const role =
+    (user?.role as 'ADMIN' | 'TEKNISI' | 'USER' | undefined) ?? null
+  const canSeeImei = canAccessImeiService(role, flags)
+  const canSeeRemote = canAccessRemoteService(role, flags)
+  const canSeeInspection = canAccessInspectionService(role, flags)
+
+  const navGroups = useMemo(
+    () =>
+      ALL_NAV_GROUPS.map((g) => ({
+        ...g,
+        items: g.items.filter((i) => {
+          if ('requireImei' in i && i.requireImei && !canSeeImei) return false
+          if ('requireRemote' in i && i.requireRemote && !canSeeRemote) return false
+          if ('requireInspection' in i && i.requireInspection && !canSeeInspection) {
+            return false
+          }
+          return true
+        }),
+      })).filter((g) => g.items.length > 0),
+    [canSeeImei, canSeeRemote, canSeeInspection],
+  )
+
+  const mobileNavSections = useMemo(
+    () =>
+      ALL_MOBILE_NAV_SECTIONS.map((s) => ({
+        ...s,
+        items: s.items.filter((i) => {
+          if (i.requireImei && !canSeeImei) return false
+          if (i.requireRemote && !canSeeRemote) return false
+          if (i.requireInspection && !canSeeInspection) return false
+          return true
+        }),
+      })).filter((s) => s.items.length > 0),
+    [canSeeImei, canSeeRemote, canSeeInspection],
+  )
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 16)
@@ -147,11 +214,11 @@ export function Navbar() {
 
           <div className="pointer-events-none absolute inset-0 hidden items-center justify-center lg:flex">
             <div className="pointer-events-auto flex items-center gap-1 rounded-full border border-surface-200/60 bg-white/60 px-2 py-1 shadow-soft-xs backdrop-blur-md">
-            {navGroups.map((group) => {
+            {navGroups.map((group, index) => {
               const open = openDesktopGroup === group.label
               return (
+                <Fragment key={group.label}>
                 <div
-                  key={group.label}
                   className="relative"
                   onMouseEnter={() => setOpenDesktopGroup(group.label)}
                   onMouseLeave={() => setOpenDesktopGroup(null)}
@@ -201,6 +268,21 @@ export function Navbar() {
                     )}
                   </AnimatePresence>
                 </div>
+                {index === 1 && (
+                  <Link
+                    href={STANDALONE_NAV_LINK.href}
+                    className={cn(
+                      'relative inline-flex items-center rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors duration-300 hover:text-ink',
+                      pathname === STANDALONE_NAV_LINK.href ||
+                        pathname?.startsWith(`${STANDALONE_NAV_LINK.href}/`)
+                        ? 'text-ink'
+                        : 'text-surface-600',
+                    )}
+                  >
+                    {STANDALONE_NAV_LINK.label}
+                  </Link>
+                )}
+                </Fragment>
               )
             })}
             </div>
@@ -257,12 +339,18 @@ export function Navbar() {
                         <p className="truncate text-sm font-semibold text-ink">{user.name}</p>
                         <p className="truncate text-xs text-surface-500">{user.email}</p>
                       </div>
-                      {publicProfileMenuItemsForRole(user.role as UserRole).map((item) => (
+                      {publicProfileMenuItemsForRole(user.role as UserRole, pathname).map((item) => (
                         <Link
-                          key={item.href}
+                          key={`${item.href}-${item.label}`}
                           href={item.href}
                           className="mt-1 block rounded-xl px-3.5 py-2 text-[13px] font-medium text-surface-700 transition-colors hover:bg-surface-100/80 hover:text-ink first:mt-1"
-                          onClick={() => setOpenUserMenu(false)}
+                          onClick={() => {
+                            if (item.href === homePathForRole(user.role as UserRole)) {
+                              if (user.role === 'TEKNISI') setTeknisiNavHomeMode('workspace')
+                              if (user.role === 'USER') setUserNavHomeMode('dashboard')
+                            }
+                            setOpenUserMenu(false)
+                          }}
                         >
                           {item.label}
                         </Link>
@@ -402,11 +490,17 @@ export function Navbar() {
                           <p className="truncate text-[11px] text-surface-500">{user.email}</p>
                         </div>
                       </div>
-                      {publicProfileMenuItemsForRole(user.role as UserRole).map((item) => (
+                      {publicProfileMenuItemsForRole(user.role as UserRole, pathname).map((item) => (
                         <Link
-                          key={item.href}
+                          key={`${item.href}-${item.label}`}
                           href={item.href}
-                          onClick={() => setIsMobileMenuOpen(false)}
+                          onClick={() => {
+                            if (item.href === homePathForRole(user.role as UserRole)) {
+                              if (user.role === 'TEKNISI') setTeknisiNavHomeMode('workspace')
+                              if (user.role === 'USER') setUserNavHomeMode('dashboard')
+                            }
+                            setIsMobileMenuOpen(false)
+                          }}
                           className="block rounded-xl px-3 py-2.5 text-sm font-medium text-surface-700 transition-colors hover:bg-surface-50"
                         >
                           {item.label}

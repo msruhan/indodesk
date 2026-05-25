@@ -49,6 +49,19 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+model TelegramVerification {
+  id        String   @id @default(cuid())
+  userId    String
+  code      String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([code, expiresAt])
+}
+
 // ============================================================
 // USER & ROLES
 // ============================================================
@@ -59,6 +72,12 @@ enum UserRole {
   USER
 }
 
+enum TeknisiVerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String
@@ -67,11 +86,16 @@ model User {
   image         String?
   password      String? // hashed with bcrypt (null for OAuth-only users)
   role          UserRole  @default(USER)
+  isActive           Boolean   @default(true)
   phone              String?
   address            String?
   twoFactorEnabled   Boolean   @default(false)
   twoFactorSecret    String?   @db.Text
   passwordChangedAt  DateTime?
+  telegramUserId     String?   @unique // Telegram user ID for notifications
+  telegramUsername   String?   // Telegram username (optional)
+  telegramChatId     String?   // Telegram chat ID for sending messages
+  telegramLinkedAt   DateTime? // When Telegram was linked
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
@@ -97,7 +121,14 @@ model User {
   chatAsUser       ChatConversation[]    @relation("ChatAsUser")
   chatAsTeknisi    ChatConversation[]    @relation("ChatAsTeknisi")
   chatMessagesSent ChatMessage[]
-  teknisiStore     TeknisiStore?
+  teknisiStore              TeknisiStore?
+  activityLogs              ActivityLog[]
+  teknisiReviewsReceived    TeknisiReview[] @relation("TeknisiReviewsReceived")
+  teknisiReviewsAuthored    TeknisiReview[] @relation("TeknisiReviewsAuthored")
+  teknisiPortfolioCases     TeknisiPortfolioCase[] @relation("TeknisiPortfolioCases")
+  inspectionOrdersAsUser  InspectionOrder[]      @relation("InspectionUser")
+  inspectionOrdersAsTech  InspectionOrder[]      @relation("InspectionTeknisi")
+  telegramVerifications   TelegramVerification[]
 }
 
 // ============================================================
@@ -109,21 +140,84 @@ model TeknisiProfile {
   userId          String   @unique
   specialty       String[] // e.g. ["Unlock", "Flashing", "Root"]
   experience      String? // e.g. "8 tahun"
+  coverImage      String? // banner profil publik
   location        String?
   description     String?  @db.Text
+  tagline         String?  @db.Text
+  issuesHandled   String?  @db.Text
+  brandFocus      String?  @db.Text
+  workApproach    String?  @db.Text
+  serviceScope    String[]             @default([])
+  languages       String[]             @default([])
+  secondarySkills String[]             @default([])
+  operatingHours  Json                 @default("{}")
+  consultationServices Json            @default("[]")
   rating          Decimal  @default(0) @db.Decimal(3, 2)
   reviewCount     Int      @default(0)
   totalKonsultasi Int      @default(0)
   totalView       Int      @default(0)
   responseTime    String? // e.g. "< 5 menit"
   completionRate  Int      @default(0) // percentage
-  isOnline        Boolean  @default(false)
-  isVerified      Boolean  @default(false)
-  price           Decimal  @default(0) @db.Decimal(12, 0) // starting price IDR
+  isOnline            Boolean                   @default(false)
+  isVerified          Boolean                   @default(false)
+  providesInspection  Boolean                   @default(false) // Teknisi menyediakan layanan inspeksi HP/Laptop
+  inspectionPriceOnline  Decimal? @db.Decimal(12, 0) // tarif inspeksi online (video call) IDR
+  inspectionPriceOffline Decimal? @db.Decimal(12, 0) // tarif inspeksi offline (on-site) IDR
+  verificationStatus  TeknisiVerificationStatus @default(PENDING)
+  rejectionReason     String?                   @db.Text
+  applicationData     Json                      @default("{}")
+  price               Decimal                   @default(0) @db.Decimal(12, 0) // starting price IDR
+  telegramChatId      String?                   @unique // Telegram chat ID untuk notifikasi
+  telegramUsername    String? // Telegram username (tanpa @)
+  telegramLinkedAt    DateTime? // Waktu sinkronisasi Telegram
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ============================================================
+// TEKNISI REVIEWS (ulasan profil teknisi dari user terdaftar / Google)
+// ============================================================
+
+model TeknisiReview {
+  id        String   @id @default(cuid())
+  teknisiId String
+  authorId  String
+  rating    Int // 1–5
+  tag       String?
+  comment   String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teknisi User @relation("TeknisiReviewsReceived", fields: [teknisiId], references: [id], onDelete: Cascade)
+  author  User @relation("TeknisiReviewsAuthored", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@unique([teknisiId, authorId])
+  @@index([teknisiId, createdAt(sort: Desc)])
+}
+
+// ============================================================
+// TEKNISI PORTFOLIO (case highlights di profil publik)
+// ============================================================
+
+model TeknisiPortfolioCase {
+  id        String   @id @default(cuid())
+  teknisiId String
+  title     String
+  meta      String
+  result    String
+  imageUrl  String? // foto aktivitas servis
+  icon      String // smartphone | wrench | laptop
+  tone      String // tailwind gradient e.g. from-primary-500 to-emerald-600
+  glow      String // rgba glow for hover effects
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teknisi User @relation("TeknisiPortfolioCases", fields: [teknisiId], references: [id], onDelete: Cascade)
+
+  @@index([teknisiId, sortOrder])
 }
 
 // ============================================================
@@ -138,10 +232,17 @@ model TeknisiStore {
   address       String?
   phone         String?
   email         String?
+  instagram     String?
+  threads       String?
+  tiktok        String?
   jamWeekdays   String?
   jamWeekend    String?
+  operatingHours Json                 @default("{}")
   coverImage    String?
+  gallery       String[]             @default([])
   layanan       String[]             @default([])
+  journeyIntro  String?
+  journey       Json                 @default("[]")
   badge         String?
   listingStatus ProductListingStatus @default(APPROVED)
   isPublished   Boolean              @default(false)
@@ -164,6 +265,7 @@ enum ProductCategory {
   LAPTOP
   AKSESORIS
   SOFTWARE
+  LAINNYA
 }
 
 enum ProductListingStatus {
@@ -173,6 +275,12 @@ enum ProductListingStatus {
   REJECTED
 }
 
+enum ProductWarranty {
+  NONE
+  OFFICIAL
+  STORE
+}
+
 model Product {
   id             String               @id @default(cuid())
   sellerId       String
@@ -180,7 +288,14 @@ model Product {
   category       ProductCategory
   price          Decimal              @db.Decimal(12, 0)
   description    String?              @db.Text
+  color          String               @default("")
+  ram            String               @default("")
+  processor      String               @default("")
+  storage        String               @default("")
+  warranty       ProductWarranty      @default(NONE)
+  completeness   Json                 @default("[]")
   image          String?
+  images         Json                 @default("[]")
   rating         Decimal              @default(0) @db.Decimal(3, 2)
   reviewCount    Int                  @default(0)
   views          Int                  @default(0)
@@ -206,6 +321,19 @@ enum OrderStatus {
   REFUNDED
 }
 
+/// Kode kurir — dipetakan ke BinderByte (`jne`, `jnt`, …)
+enum ShippingCourier {
+  JNE
+  POS
+  JNT
+  SICEPAT
+  TIKI
+  ANTERAJA
+  WAHANA
+  NINJA
+  LION
+}
+
 model Order {
   id        String      @id @default(cuid())
   orderCode String      @unique // e.g. "ORD-2026-XXXXXX"
@@ -217,12 +345,41 @@ model Order {
   total     Decimal     @db.Decimal(12, 0)
   status    OrderStatus @default(PENDING)
   note      String?
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
 
-  buyer  User        @relation("BuyerOrders", fields: [buyerId], references: [id])
-  seller User        @relation("SellerOrders", fields: [sellerId], references: [id])
-  items  OrderItem[]
+  shippingCourier       ShippingCourier?
+  trackingNumber        String?
+  trackingSummaryStatus String?
+  trackingSummaryDesc   String?          @db.Text
+  trackingLastEventAt   DateTime?
+  trackingLastSyncedAt  DateTime?
+  trackingNextSyncAt    DateTime?
+  trackingActive        Boolean          @default(false)
+  trackingSyncFailures  Int              @default(0)
+  shippedAt             DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  buyer          User                 @relation("BuyerOrders", fields: [buyerId], references: [id])
+  seller         User                 @relation("SellerOrders", fields: [sellerId], references: [id])
+  items          OrderItem[]
+  trackingEvents OrderTrackingEvent[]
+
+  @@index([trackingActive, trackingNextSyncAt])
+  @@index([status, trackingActive])
+}
+
+model OrderTrackingEvent {
+  id          String   @id @default(cuid())
+  orderId     String
+  occurredAt  DateTime
+  description String   @db.Text
+  location    String?
+  createdAt   DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, occurredAt(sort: Desc)])
 }
 
 model OrderItem {
@@ -306,6 +463,9 @@ model RekberTransaction {
   disputedAt  DateTime?
   refundedAt  DateTime?
 
+  inspectionOrderId String? @unique
+  inspectionOrder   InspectionOrder? @relation(fields: [inspectionOrderId], references: [id], onDelete: SetNull)
+
   buyer  User @relation("RekberBuyer", fields: [buyerId], references: [id])
   seller User @relation("RekberSeller", fields: [sellerId], references: [id])
 }
@@ -313,6 +473,52 @@ model RekberTransaction {
 // ============================================================
 // TOP UP
 // ============================================================
+
+model TopupCatalogProduct {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  category     String
+  name         String
+  publisher    String
+  logo         String
+  cover        String
+  accent       String   @default("")
+  description  String   @db.Text
+  rating       Decimal  @default(4.8) @db.Decimal(2, 1)
+  ratingCount  Int      @default(0)
+  ordersToday  Int      @default(0)
+  isHot        Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  idLabel      String   @default("User ID")
+  serverLabel  String?
+  idHelp       String   @db.Text
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  denominations TopupDenomination[]
+}
+
+model TopupDenomination {
+  id              String    @id @default(cuid())
+  productId       String
+  sku             String    @unique
+  group           String
+  label           String
+  note            String?
+  basePrice       Decimal   @db.Decimal(12, 0)
+  salePrice       Decimal?  @db.Decimal(12, 0)
+  badge           String?
+  flashSaleSold   Int?
+  flashSaleQuota  Int?
+  flashSaleEndsAt DateTime?
+  isActive        Boolean   @default(true)
+  sortOrder       Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  product TopupCatalogProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
 
 enum TopupStatus {
   PENDING_PAYMENT
@@ -429,6 +635,7 @@ model RemoteSession {
   userId      String
   teknisiId   String
   remoteId    String // IndoDesk ID
+  remoteOtp   String? // One-time password IndoDesk (cleared after session ends)
   description String?      @db.Text
   platform    String? // e.g. "Windows 11"
   status      RemoteStatus @default(WAITING)
@@ -439,6 +646,113 @@ model RemoteSession {
 
   user    User @relation("RemoteUser", fields: [userId], references: [id])
   teknisi User @relation("RemoteTeknisi", fields: [teknisiId], references: [id])
+}
+
+// ============================================================
+// INSPECTION (pra-beli HP / Laptop)
+// ============================================================
+
+enum InspectionMode {
+  ONLINE
+  OFFLINE
+}
+
+enum InspectionDeviceCategory {
+  HANDPHONE
+  LAPTOP
+}
+
+enum InspectionProductSource {
+  INDOTEKNIZII
+  TOKOPEDIA
+  SHOPEE
+  OLX
+  FACEBOOK_MARKETPLACE
+  PRIVATE
+  OTHER
+}
+
+enum InspectionOrderStatus {
+  PAID
+  ACCEPTED
+  REJECTED
+  IN_PROGRESS
+  REPORT_SUBMITTED
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+enum InspectionOverallCondition {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+}
+
+enum InspectionRecommendation {
+  RECOMMENDED
+  NEGOTIATE
+  NOT_RECOMMENDED
+}
+
+model InspectionOrder {
+  id              String                   @id @default(cuid())
+  orderCode       String                   @unique
+  userId          String
+  teknisiId       String
+  mode            InspectionMode
+  category        InspectionDeviceCategory
+  status          InspectionOrderStatus    @default(PAID)
+  productId       String?
+  productName     String
+  productBrand    String                   @default("")
+  productModel    String                   @default("")
+  productSource   InspectionProductSource  @default(OTHER)
+  productSourceUrl String?
+  sellerContact   String?
+  notes           String?                  @db.Text
+  location        String?
+  city            String?
+  scheduledAt     DateTime?
+  price           Decimal                  @db.Decimal(12, 0)
+  platformFee     Decimal                  @db.Decimal(12, 0)
+  teknisiEarning  Decimal                  @db.Decimal(12, 0)
+  paidAt          DateTime                 @default(now())
+  acceptedAt      DateTime?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  ratingByUser    Int?
+  reviewByUser    String?                  @db.Text
+  cancelReason    String?                  @db.Text
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  user    User              @relation("InspectionUser", fields: [userId], references: [id])
+  teknisi User              @relation("InspectionTeknisi", fields: [teknisiId], references: [id])
+  report  InspectionReport?
+  rekber  RekberTransaction?
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([teknisiId, status])
+  @@index([status])
+}
+
+model InspectionReport {
+  id               String                     @id @default(cuid())
+  inspectionOrderId String                    @unique
+  overallCondition InspectionOverallCondition
+  recommendation   InspectionRecommendation
+  checklistData    Json
+  findings         String                     @db.Text
+  suggestions      String?                    @db.Text
+  photoUrls        String[]                   @default([])
+  certificateNumber String                  @unique
+  submittedAt      DateTime                   @default(now())
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
+
+  order InspectionOrder @relation(fields: [inspectionOrderId], references: [id], onDelete: Cascade)
 }
 
 // ============================================================
@@ -704,9 +1018,57 @@ model PlatformNotification {
 }
 
 // ============================================================
-// INODESK DOWNLOAD LINKS (admin-managed)
+// MARKETPLACE BANNERS (admin-managed slides)
 // ============================================================
 
+model MarketplaceBanner {
+  id         String   @id @default(cuid())
+  title      String
+  subtitle   String   @default("")
+  image      String   @db.Text
+  link       String   @db.Text
+  buttonText String   @default("Lihat")
+  active     Boolean  @default(true)
+  sortOrder  Int      @default(0)
+  /// marketplace | shop | topup
+  placement  String   @default("marketplace")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([placement, active, sortOrder])
+}
+
+// ============================================================
+// PLATFORM SETTINGS (key-value)
+// ============================================================
+
+model PlatformSetting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================================
+// HELP / FAQ
+// ============================================================
+
+model HelpArticle {
+  id        String   @id @default(cuid())
+  /// user | teknisi | admin
+  audience  String
+  question  String   @db.Text
+  answer    String   @db.Text
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([audience, isActive, sortOrder])
+}
+
+// ============================================================
+// INODESK DOWNLOAD LINKS (admin-managed)
+// ============================================================
 enum IndodeskPlatform {
   WINDOWS
   MACOS
@@ -721,4 +1083,66 @@ model IndodeskDownload {
   isActive    Boolean          @default(true)
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
+}
+
+
+// ============================================================
+// ACTIVITY LOG (audit trail across all roles)
+// ============================================================
+
+enum ActivityCategory {
+  AUTH        // login / logout / register / password / 2FA
+  ACCOUNT     // user / teknisi / store profile changes
+  ORDER       // imei, server, marketplace, topup orders
+  PAYMENT     // wallet deposit, refund, escrow, withdrawal
+  COMMUNICATION // chat / konsultasi / remote
+  ADMIN       // admin action: approve / deposit / config
+  SECURITY    // suspicious activity, blocked attempts
+  SYSTEM      // background workers, automated state changes
+}
+
+enum ActivitySeverity {
+  INFO
+  SUCCESS
+  WARNING
+  CRITICAL
+}
+
+model ActivityLog {
+  id         String           @id @default(cuid())
+  /// Stable code — e.g. "auth.login", "order.imei.created", "payment.deposit.manual"
+  action     String
+  category   ActivityCategory @default(SYSTEM)
+  severity   ActivitySeverity @default(INFO)
+  /// Human-friendly summary (Indonesian) shown in the table.
+  summary    String           @db.Text
+  /// Optional richer description (multi-line ok).
+  detail     String?          @db.Text
+
+  // Actor (who did the action) — nullable so anonymous events still log.
+  actorId    String?
+  actorName  String?
+  actorEmail String?
+  actorRole  UserRole?
+
+  // Target (what / who was affected). Generic to support orders, users, conversations, …
+  targetType String?
+  targetId   String?
+  targetLabel String?
+
+  // Request context
+  ip         String?
+  userAgent  String?          @db.Text
+
+  /// Free-form structured payload (e.g. amount, orderCode, fromStatus → toStatus).
+  metadata   Json?
+
+  createdAt  DateTime         @default(now())
+
+  actor      User?            @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([category, createdAt(sort: Desc)])
+  @@index([severity, createdAt(sort: Desc)])
+  @@index([actorId, createdAt(sort: Desc)])
+  @@index([action, createdAt(sort: Desc)])
 }

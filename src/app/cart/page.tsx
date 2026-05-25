@@ -2,7 +2,8 @@
 
 import { useLayoutEffect, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Navbar } from '@/components/landing'
 import { useAuth } from '@/contexts/auth-context'
@@ -90,9 +91,72 @@ const typeBadgeColor = {
 }
 
 export default function CartPage() {
+  const router = useRouter()
+  const { status: sessionStatus } = useSession()
   const { items, updateQuantity, removeItem, hydrated } = useCart()
+  const [walletBalance, setWalletBalance] = useState<number | null>(null)
+  const [checkoutLoading, setCheckoutLoading] = useState(false)
+  const [checkoutError, setCheckoutError] = useState<string | null>(null)
+  const [checkoutSuccess, setCheckoutSuccess] = useState<string[] | null>(null)
   const [promoCode, setPromoCode] = useState('')
   const [promoApplied, setPromoApplied] = useState(false)
+
+  const marketplaceItems = items.filter((i) => i.type !== 'topup')
+  const hasTopupOnly = items.length > 0 && marketplaceItems.length === 0
+
+  useLayoutEffect(() => {
+    if (sessionStatus !== 'authenticated') return
+    void (async () => {
+      try {
+        const res = await fetch('/api/wallet')
+        const json = await res.json()
+        if (res.ok && json.success) {
+          setWalletBalance(Number(json.data?.balance ?? 0))
+        }
+      } catch {
+        /* ignore */
+      }
+    })()
+  }, [sessionStatus])
+
+  const handleCheckout = async () => {
+    if (marketplaceItems.length === 0) {
+      setCheckoutError('Tidak ada produk marketplace di keranjang')
+      return
+    }
+
+    if (sessionStatus !== 'authenticated') {
+      router.push(`/login?callbackUrl=${encodeURIComponent('/cart')}`)
+      return
+    }
+
+    setCheckoutLoading(true)
+    setCheckoutError(null)
+    try {
+      const res = await fetch('/api/marketplace/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: marketplaceItems.map((i) => ({
+            productId: i.id,
+            quantity: i.quantity,
+          })),
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.success) {
+        setCheckoutError(json.error ?? 'Checkout gagal')
+        return
+      }
+      const codes: string[] = json.data?.orderCodes ?? []
+      setCheckoutSuccess(codes)
+      marketplaceItems.forEach((i) => removeItem(i.id))
+    } catch {
+      setCheckoutError('Checkout gagal')
+    } finally {
+      setCheckoutLoading(false)
+    }
+  }
 
   if (!hydrated) {
     return (
@@ -100,8 +164,8 @@ export default function CartPage() {
     )
   }
 
-  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const discount = promoApplied ? Math.round(subtotal * 0.1) : 0
+  const subtotal = marketplaceItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const discount = 0
   const total = subtotal - discount
 
   const applyPromo = () => {
@@ -117,6 +181,45 @@ export default function CartPage() {
       </div>
 
       <main className="mx-auto max-w-5xl px-4 pb-32 pt-4 sm:px-6 lg:px-8 lg:pb-12 lg:pt-28">
+        {checkoutSuccess && (
+          <Card className="mb-6 border-primary-200 bg-primary-50/50">
+            <CardContent className="p-5">
+              <div className="flex items-start gap-3">
+                <CheckCircle className="mt-0.5 h-6 w-6 shrink-0 text-primary-600" />
+                <div>
+                  <h2 className="font-semibold text-ink">Checkout berhasil!</h2>
+                  <p className="mt-1 text-sm text-surface-600">
+                    Pembayaran dipotong dari saldo wallet Anda.
+                  </p>
+                  <p className="mt-2 font-mono text-xs text-surface-700">
+                    {checkoutSuccess.join(' · ')}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Link href="/user/orders">
+                      <Button variant="primary" size="sm">
+                        Lihat pesanan
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCheckoutSuccess(null)}
+                    >
+                      Tutup
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {hasTopupOnly && (
+          <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+            Item top-up tidak bisa checkout dari keranjang ini. Gunakan halaman Top Up.
+          </p>
+        )}
+
         {/* Header */}
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -299,12 +402,31 @@ export default function CartPage() {
                         </Button>
                       </div>
                     )}
-                    {!promoApplied && (
-                      <p className="mt-1.5 text-[10px] text-surface-400">
-                        Coba: <span className="font-mono text-surface-600">TEKNIZI10</span>
-                      </p>
-                    )}
+                    <p className="mt-1.5 text-[10px] text-surface-400">
+                      Promo akan tersedia setelah integrasi payment gateway.
+                    </p>
                   </div>
+
+                  {sessionStatus === 'authenticated' && walletBalance != null && (
+                    <div className="flex items-center gap-2 rounded-xl border border-surface-200/70 bg-surface-50 px-3 py-2 text-xs">
+                      <Wallet className="h-4 w-4 text-primary-600" />
+                      <span className="text-surface-600">Saldo wallet:</span>
+                      <span
+                        className={cn(
+                          'font-semibold tabular-nums',
+                          walletBalance < total ? 'text-rose-600' : 'text-ink',
+                        )}
+                      >
+                        {formatPrice(walletBalance)}
+                      </span>
+                    </div>
+                  )}
+
+                  {checkoutError && (
+                    <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                      {checkoutError}
+                    </p>
+                  )}
 
                   {/* Calculation */}
                   <div className="space-y-2 border-t border-surface-100 pt-3 text-[12px]">
@@ -336,10 +458,28 @@ export default function CartPage() {
                   </div>
 
                   {/* CTA */}
-                  <Button variant="primary" size="lg" className="mt-4 w-full">
-                    Checkout
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    className="mt-4 w-full"
+                    disabled={
+                      checkoutLoading ||
+                      marketplaceItems.length === 0 ||
+                      (walletBalance != null && walletBalance < total)
+                    }
+                    onClick={() => void handleCheckout()}
+                  >
+                    {checkoutLoading ? 'Memproses…' : 'Bayar dari saldo'}
                     <ArrowRight className="h-4 w-4" />
                   </Button>
+                  {walletBalance != null && walletBalance < total && (
+                    <p className="mt-2 text-center text-[11px] text-rose-600">
+                      Saldo tidak cukup.{' '}
+                      <Link href="/topup" className="underline">
+                        Top-up saldo
+                      </Link>
+                    </p>
+                  )}
 
                   {/* Trust */}
                   <div className="mt-3 flex items-center justify-center gap-3 text-[10px] text-surface-500">
@@ -375,8 +515,18 @@ export default function CartPage() {
                   {formatPrice(total)}
                 </p>
               </div>
-              <Button variant="primary" size="default" className="px-5">
-                Checkout
+              <Button
+                variant="primary"
+                size="default"
+                className="px-5"
+                disabled={
+                  checkoutLoading ||
+                  marketplaceItems.length === 0 ||
+                  (walletBalance != null && walletBalance < total)
+                }
+                onClick={() => void handleCheckout()}
+              >
+                {checkoutLoading ? '…' : 'Bayar'}
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </div>

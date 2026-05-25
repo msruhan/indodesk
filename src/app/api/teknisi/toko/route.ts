@@ -1,30 +1,14 @@
-import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { saveStoreCover, deleteStoreCover } from '@/lib/store-image'
 import { serializeTeknisiStore } from '@/lib/teknisi-store-serializer'
+import {
+  parseStoreFormPayload,
+  readStoreFieldsFromFormData,
+  storeFieldsSchema,
+} from '@/lib/teknisi-store-api'
 
 export const dynamic = 'force-dynamic'
-
-const storeSchema = z.object({
-  name: z.string().min(3, 'Nama toko minimal 3 karakter').max(120),
-  city: z.string().max(80).optional(),
-  address: z.string().max(300).optional(),
-  phone: z.string().max(30).optional(),
-  email: z.string().email('Email tidak valid').optional().or(z.literal('')),
-  jamWeekdays: z.string().max(50).optional(),
-  jamWeekend: z.string().max(50).optional(),
-  layanan: z.string().optional(),
-})
-
-function parseLayanan(raw: string | undefined | null): string[] {
-  if (!raw?.trim()) return []
-  return raw
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .slice(0, 20)
-}
 
 async function getStoreWithProfile(userId: string) {
   const store = await prisma.teknisiStore.findUnique({
@@ -38,6 +22,25 @@ async function getStoreWithProfile(userId: string) {
   })
 
   return serializeTeknisiStore(store, profile)
+}
+
+function hasContentFieldUpdate(data: Record<string, unknown>) {
+  return [
+    'name',
+    'city',
+    'address',
+    'phone',
+    'email',
+    'instagram',
+    'tiktok',
+    'operatingHours',
+    'jamWeekdays',
+    'jamWeekend',
+    'layanan',
+    'journey',
+    'journeyIntro',
+    'coverImage',
+  ].some((k) => data[k] !== undefined)
 }
 
 export async function GET() {
@@ -66,72 +69,35 @@ export async function POST(req: Request) {
     }
 
     const contentType = req.headers.get('content-type') ?? ''
+    let parsedPayload: ReturnType<typeof parseStoreFormPayload>
+    let coverImage: string | null = null
 
     if (contentType.includes('multipart/form-data')) {
       const form = await req.formData()
-      const parsed = storeSchema.safeParse({
-        name: String(form.get('name') ?? '').trim(),
-        city: String(form.get('city') ?? '').trim() || undefined,
-        address: String(form.get('address') ?? '').trim() || undefined,
-        phone: String(form.get('phone') ?? '').trim() || undefined,
-        email: String(form.get('email') ?? '').trim() || undefined,
-        jamWeekdays: String(form.get('jamWeekdays') ?? '').trim() || undefined,
-        jamWeekend: String(form.get('jamWeekend') ?? '').trim() || undefined,
-        layanan: String(form.get('layanan') ?? ''),
-      })
+      const parsed = storeFieldsSchema.safeParse(readStoreFieldsFromFormData(form))
       if (!parsed.success) {
         return apiError(parsed.error.issues[0]?.message ?? 'Data tidak valid')
       }
-
-      let coverImage: string | null = null
+      parsedPayload = parseStoreFormPayload(parsed.data)
       const file = form.get('cover')
       if (file instanceof File && file.size > 0) {
         coverImage = await saveStoreCover(file, session.user.id)
       }
-
-      const store = await prisma.teknisiStore.create({
-        data: {
-          userId: session.user.id,
-          name: parsed.data.name,
-          city: parsed.data.city ?? null,
-          address: parsed.data.address ?? null,
-          phone: parsed.data.phone ?? null,
-          email: parsed.data.email || null,
-          jamWeekdays: parsed.data.jamWeekdays ?? null,
-          jamWeekend: parsed.data.jamWeekend ?? null,
-          layanan: parseLayanan(parsed.data.layanan),
-          coverImage,
-          listingStatus: 'APPROVED',
-          isPublished: false,
-        },
-      })
-
-      const profile = await prisma.teknisiProfile.findUnique({
-        where: { userId: session.user.id },
-        select: { rating: true, reviewCount: true },
-      })
-
-      return apiSuccess(serializeTeknisiStore(store, profile), 201)
-    }
-
-    const body = await req.json()
-    const parsed = storeSchema.safeParse(body)
-    if (!parsed.success) {
-      return apiError(parsed.error.issues[0]?.message ?? 'Data tidak valid')
+    } else {
+      const body = await req.json()
+      const parsed = storeFieldsSchema.safeParse(body)
+      if (!parsed.success) {
+        return apiError(parsed.error.issues[0]?.message ?? 'Data tidak valid')
+      }
+      parsedPayload = parseStoreFormPayload(parsed.data)
     }
 
     const store = await prisma.teknisiStore.create({
       data: {
         userId: session.user.id,
-        name: parsed.data.name,
-        city: parsed.data.city ?? null,
-        address: parsed.data.address ?? null,
-        phone: parsed.data.phone ?? null,
-        email: parsed.data.email || null,
-        jamWeekdays: parsed.data.jamWeekdays ?? null,
-        jamWeekend: parsed.data.jamWeekend ?? null,
-        layanan: parseLayanan(parsed.data.layanan),
-        listingStatus: 'APPROVED',
+        ...parsedPayload,
+        coverImage,
+        listingStatus: 'PENDING',
         isPublished: false,
       },
     })
@@ -164,30 +130,29 @@ export async function PATCH(req: Request) {
 
     if (contentType.includes('multipart/form-data')) {
       const form = await req.formData()
-      const name = form.get('name')
-      const city = form.get('city')
-      const address = form.get('address')
-      const phone = form.get('phone')
-      const email = form.get('email')
-      const jamWeekdays = form.get('jamWeekdays')
-      const jamWeekend = form.get('jamWeekend')
-      const layanan = form.get('layanan')
       const togglePublish = form.get('togglePublish')
-      const file = form.get('cover')
-
-      if (typeof name === 'string' && name.trim()) data.name = name.trim()
-      if (typeof city === 'string') data.city = city.trim() || null
-      if (typeof address === 'string') data.address = address.trim() || null
-      if (typeof phone === 'string') data.phone = phone.trim() || null
-      if (typeof email === 'string') data.email = email.trim() || null
-      if (typeof jamWeekdays === 'string') data.jamWeekdays = jamWeekdays.trim() || null
-      if (typeof jamWeekend === 'string') data.jamWeekend = jamWeekend.trim() || null
-      if (typeof layanan === 'string') data.layanan = parseLayanan(layanan)
 
       if (togglePublish === 'true') {
+        if (existing.listingStatus === 'REJECTED') {
+          return apiError('Toko ditolak. Edit dan kirim ulang untuk review admin.')
+        }
+        if (existing.listingStatus === 'PENDING') {
+          return apiError('Toko masih menunggu review admin.')
+        }
+        if (existing.listingStatus !== 'APPROVED') {
+          return apiError('Toko harus disetujui admin sebelum dipublikasikan.')
+        }
         data.isPublished = !existing.isPublished
+      } else {
+        const parsed = storeFieldsSchema.safeParse(readStoreFieldsFromFormData(form))
+        if (!parsed.success) {
+          return apiError(parsed.error.issues[0]?.message ?? 'Data tidak valid')
+        }
+        const payload = parseStoreFormPayload(parsed.data)
+        Object.assign(data, payload)
       }
 
+      const file = form.get('cover')
       if (file instanceof File && file.size > 0) {
         const coverImage = await saveStoreCover(file, session.user.id)
         await deleteStoreCover(existing.coverImage)
@@ -195,19 +160,30 @@ export async function PATCH(req: Request) {
       }
     } else {
       const body = await req.json()
-      const parsed = storeSchema.partial().safeParse(body)
-      if (!parsed.success) {
-        return apiError(parsed.error.issues[0]?.message ?? 'Data tidak valid')
+      if (body.togglePublish === true) {
+        if (existing.listingStatus === 'REJECTED') {
+          return apiError('Toko ditolak. Edit dan kirim ulang untuk review admin.')
+        }
+        if (existing.listingStatus === 'PENDING') {
+          return apiError('Toko masih menunggu review admin.')
+        }
+        if (existing.listingStatus !== 'APPROVED') {
+          return apiError('Toko harus disetujui admin sebelum dipublikasikan.')
+        }
+        data.isPublished = !existing.isPublished
+      } else {
+        const parsed = storeFieldsSchema.partial().safeParse(body)
+        if (!parsed.success) {
+          return apiError(parsed.error.issues[0]?.message ?? 'Data tidak valid')
+        }
+        const payload = parseStoreFormPayload(parsed.data as Parameters<typeof parseStoreFormPayload>[0])
+        Object.assign(data, payload)
       }
-      if (parsed.data.name) data.name = parsed.data.name
-      if (parsed.data.city !== undefined) data.city = parsed.data.city || null
-      if (parsed.data.address !== undefined) data.address = parsed.data.address || null
-      if (parsed.data.phone !== undefined) data.phone = parsed.data.phone || null
-      if (parsed.data.email !== undefined) data.email = parsed.data.email || null
-      if (parsed.data.jamWeekdays !== undefined) data.jamWeekdays = parsed.data.jamWeekdays || null
-      if (parsed.data.jamWeekend !== undefined) data.jamWeekend = parsed.data.jamWeekend || null
-      if (parsed.data.layanan !== undefined) data.layanan = parseLayanan(parsed.data.layanan)
-      if (body.togglePublish === true) data.isPublished = !existing.isPublished
+    }
+
+    if (hasContentFieldUpdate(data) && existing.listingStatus === 'REJECTED') {
+      data.listingStatus = 'PENDING'
+      data.isPublished = false
     }
 
     const store = await prisma.teknisiStore.update({

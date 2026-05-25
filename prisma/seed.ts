@@ -3,6 +3,17 @@ import { PrismaPg } from '@prisma/adapter-pg'
 import { Pool } from 'pg'
 import { hash } from 'bcryptjs'
 import 'dotenv/config'
+import { seedTopupCatalog } from './seed-topup-catalog'
+import { seedPlatformContent } from './seed-platform-content'
+import { ensureMarketplaceOrderSettlement } from '../src/lib/marketplace-wallet'
+import {
+  DEFAULT_BRAND_FOCUS,
+  DEFAULT_ISSUES_HANDLED,
+  DEFAULT_SERVICE_SCOPE,
+  DEFAULT_WORK_APPROACH,
+  buildDefaultTagline,
+  defaultConsultationServices,
+} from '../src/lib/teknisi-profile-content'
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL })
 const adapter = new PrismaPg(pool)
@@ -12,6 +23,8 @@ async function main() {
   console.log('🌱 Seeding database...')
 
   // Clean existing data (child tables first — respect FK order)
+  await prisma.activityLog.deleteMany()
+  await prisma.orderTrackingEvent.deleteMany()
   await prisma.serverOrder.deleteMany()
   await prisma.imeiOrder.deleteMany()
   await prisma.serverService.deleteMany()
@@ -25,6 +38,8 @@ async function main() {
   await prisma.order.deleteMany()
   await prisma.rekberTransaction.deleteMany()
   await prisma.topupOrder.deleteMany()
+  await prisma.topupDenomination.deleteMany()
+  await prisma.topupCatalogProduct.deleteMany()
   await prisma.indodeskDownload.deleteMany()
   await prisma.chatMessage.deleteMany()
   await prisma.chatConversation.deleteMany()
@@ -34,9 +49,14 @@ async function main() {
   await prisma.lowonganApplication.deleteMany()
   await prisma.lowongan.deleteMany()
   await prisma.product.deleteMany()
+  await prisma.teknisiReview.deleteMany()
+  await prisma.teknisiPortfolioCase.deleteMany()
   await prisma.teknisiProfile.deleteMany()
   await prisma.session.deleteMany()
   await prisma.account.deleteMany()
+  await prisma.helpArticle.deleteMany()
+  await prisma.platformSetting.deleteMany()
+  await prisma.marketplaceBanner.deleteMany()
   await prisma.user.deleteMany()
 
   const passwordHash = await hash('password123', 12)
@@ -52,6 +72,15 @@ async function main() {
     },
   })
 
+  const TEKNISI_AVATAR_AHMAD =
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face'
+  const TEKNISI_AVATAR_BUDI =
+    'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face'
+  const TEKNISI_COVER_AHMAD =
+    'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=1400&h=500&fit=crop'
+  const TEKNISI_COVER_BUDI =
+    'https://images.unsplash.com/photo-1581092160562-40aa08e78837a?w=1400&h=500&fit=crop'
+
   const teknisi1 = await prisma.user.create({
     data: {
       name: 'Ahmad Hidayat',
@@ -59,6 +88,7 @@ async function main() {
       password: passwordHash,
       role: UserRole.TEKNISI,
       phone: '+62 812-1111-1111',
+      image: TEKNISI_AVATAR_AHMAD,
     },
   })
 
@@ -69,6 +99,7 @@ async function main() {
       password: passwordHash,
       role: UserRole.TEKNISI,
       phone: '+62 812-2222-2222',
+      image: TEKNISI_AVATAR_BUDI,
     },
   })
 
@@ -103,22 +134,50 @@ async function main() {
   })
 
   // ---- TEKNISI PROFILES ----
+  const teknisi1Specialty = ['Unlock', 'Flashing', 'Root', 'Hardware Repair']
+  const teknisi1Price = 50000
+
   await prisma.teknisiProfile.create({
     data: {
       userId: teknisi1.id,
-      specialty: ['Unlock', 'Flashing', 'Root', 'Hardware Repair'],
+      specialty: teknisi1Specialty,
       experience: '8 tahun',
+      coverImage: TEKNISI_COVER_AHMAD,
       location: 'Jakarta Selatan',
       description: 'Teknisi handphone berpengalaman dengan spesialisasi unlock, flashing, dan root berbagai brand.',
+      tagline: buildDefaultTagline(teknisi1Specialty),
+      issuesHandled: DEFAULT_ISSUES_HANDLED,
+      brandFocus: DEFAULT_BRAND_FOCUS,
+      workApproach: DEFAULT_WORK_APPROACH,
+      serviceScope: DEFAULT_SERVICE_SCOPE,
+      languages: ['Indonesia'],
+      secondarySkills: [
+        'Screen Replacement',
+        'Water Damage',
+        'Remote Troubleshooting',
+        'Software Installation',
+        'Device Optimization',
+        'Data Recovery',
+      ],
+      operatingHours: {
+        senin: { open: '09:00', close: '21:00', closed: false },
+        selasa: { open: '09:00', close: '21:00', closed: false },
+        rabu: { open: '09:00', close: '21:00', closed: false },
+        kamis: { open: '09:00', close: '21:00', closed: false },
+        jumat: { open: '09:00', close: '21:00', closed: false },
+        sabtu: { open: '10:00', close: '18:00', closed: false },
+        minggu: { open: '', close: '', closed: true },
+      },
+      consultationServices: defaultConsultationServices(teknisi1Specialty, teknisi1Price),
       rating: 4.9,
       reviewCount: 234,
       totalKonsultasi: 567,
       totalView: 1234,
       responseTime: '< 5 menit',
       completionRate: 98,
-      isOnline: true,
+      isOnline: false,
       isVerified: true,
-      price: 50000,
+      price: teknisi1Price,
     },
   })
 
@@ -127,6 +186,7 @@ async function main() {
       userId: teknisi2.id,
       specialty: ['Hardware Repair', 'Screen Replacement', 'Water Damage'],
       experience: '5 tahun',
+      coverImage: TEKNISI_COVER_BUDI,
       location: 'Jakarta Pusat',
       description: 'Spesialis perbaikan hardware handphone, screen replacement, dan water damage recovery.',
       rating: 4.7,
@@ -135,10 +195,140 @@ async function main() {
       totalView: 892,
       responseTime: '< 10 menit',
       completionRate: 95,
-      isOnline: true,
+      isOnline: false,
       isVerified: true,
       price: 75000,
     },
+  })
+
+  // ---- TEKNISI REVIEWS (ulasan profil) ----
+  await prisma.teknisiReview.createMany({
+    data: [
+      {
+        teknisiId: teknisi1.id,
+        authorId: user1.id,
+        rating: 5,
+        tag: 'Problem solved',
+        comment:
+          'Diagnosisnya jelas, estimasi biaya transparan, dan perangkat kembali normal di hari yang sama.',
+      },
+      {
+        teknisiId: teknisi1.id,
+        authorId: user2.id,
+        rating: 5,
+        tag: 'Fast response',
+        comment:
+          'Respons chat cepat dan penjelasannya mudah dipahami. Cocok untuk konsultasi sebelum datang ke toko.',
+      },
+      {
+        teknisiId: teknisi1.id,
+        authorId: user3.id,
+        rating: 4,
+        tag: 'Professional',
+        comment:
+          'Pengerjaan rapi, update progres rutin, dan ada garansi setelah servis selesai.',
+      },
+    ],
+  })
+
+  for (const tid of [teknisi1.id, teknisi2.id]) {
+    const reviews = await prisma.teknisiReview.findMany({
+      where: { teknisiId: tid },
+      select: { rating: true },
+    })
+    const count = reviews.length
+    const avg = count > 0 ? reviews.reduce((s, r) => s + r.rating, 0) / count : 0
+    await prisma.teknisiProfile.update({
+      where: { userId: tid },
+      data: { reviewCount: count, rating: Math.round(avg * 10) / 10 },
+    })
+  }
+
+  // ---- TEKNISI PORTFOLIO (case highlights + foto servis) ----
+  const PORTFOLIO_IMG = {
+    phoneRepair:
+      'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=800&h=600&fit=crop',
+    screenService:
+      'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&h=600&fit=crop',
+    laptopService:
+      'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=800&h=600&fit=crop',
+    waterDamage:
+      'https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=800&h=600&fit=crop',
+    batteryService:
+      'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&h=600&fit=crop',
+    boardRepair:
+      'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=800&h=600&fit=crop',
+  }
+
+  await prisma.teknisiPortfolioCase.createMany({
+    data: [
+      {
+        teknisiId: teknisi1.id,
+        title: 'Recovery perangkat mati total',
+        meta: 'Android flagship · 48 jam',
+        result: 'Data aman, board kembali stabil',
+        imageUrl: PORTFOLIO_IMG.boardRepair,
+        icon: 'smartphone',
+        tone: 'from-primary-500 to-emerald-600',
+        glow: 'rgba(16,185,129,0.4)',
+        sortOrder: 0,
+      },
+      {
+        teknisiId: teknisi1.id,
+        title: 'Screen replacement presisi',
+        meta: 'OLED display · 90 menit',
+        result: 'Touch, True Tone, dan seal diuji ulang',
+        imageUrl: PORTFOLIO_IMG.screenService,
+        icon: 'wrench',
+        tone: 'from-cyan-500 to-blue-600',
+        glow: 'rgba(6,182,212,0.4)',
+        sortOrder: 1,
+      },
+      {
+        teknisiId: teknisi1.id,
+        title: 'Remote software cleanup',
+        meta: 'Laptop & mobile · 35 menit',
+        result: 'Boot lebih cepat, aplikasi error selesai',
+        imageUrl: PORTFOLIO_IMG.laptopService,
+        icon: 'laptop',
+        tone: 'from-violet-500 to-fuchsia-600',
+        glow: 'rgba(139,92,246,0.4)',
+        sortOrder: 2,
+      },
+      {
+        teknisiId: teknisi2.id,
+        title: 'Water damage recovery',
+        meta: 'iPhone 14 Pro · 24 jam',
+        result: 'Korosi dibersihkan, power rail kembali normal',
+        imageUrl: PORTFOLIO_IMG.waterDamage,
+        icon: 'smartphone',
+        tone: 'from-primary-500 to-emerald-600',
+        glow: 'rgba(16,185,129,0.4)',
+        sortOrder: 0,
+      },
+      {
+        teknisiId: teknisi2.id,
+        title: 'Screen replacement presisi',
+        meta: 'OLED display · 90 menit',
+        result: 'Touch, True Tone, dan seal diuji ulang',
+        imageUrl: PORTFOLIO_IMG.phoneRepair,
+        icon: 'wrench',
+        tone: 'from-cyan-500 to-blue-600',
+        glow: 'rgba(6,182,212,0.4)',
+        sortOrder: 1,
+      },
+      {
+        teknisiId: teknisi2.id,
+        title: 'Battery health restore',
+        meta: 'Samsung Galaxy · 45 menit',
+        result: 'Kapasitas kembali stabil, tidak shutdown mendadak',
+        imageUrl: PORTFOLIO_IMG.batteryService,
+        icon: 'laptop',
+        tone: 'from-violet-500 to-fuchsia-600',
+        glow: 'rgba(139,92,246,0.4)',
+        sortOrder: 2,
+      },
+    ],
   })
 
   // ---- TEKNISI STORES ----
@@ -147,11 +337,65 @@ async function main() {
       userId: teknisi1.id,
       name: 'HandPhone Center Jakarta',
       city: 'Jakarta',
-      address: 'Jl. Thamrin No. 123, Jakarta',
+      address: 'Jl. Thamrin No. 123, Jakarta Pusat',
       phone: '0812-3456-7890',
       email: 'info@handphonecenter.id',
+      instagram: 'handphonecenter.jkt',
+      threads: 'handphonecenter.jkt',
+      tiktok: 'handphonecenter.jkt',
       jamWeekdays: '09:00 – 21:00',
       jamWeekend: '10:00 – 20:00',
+      operatingHours: {
+        senin: { open: '09:00', close: '21:00', closed: false },
+        selasa: { open: '09:00', close: '21:00', closed: false },
+        rabu: { open: '09:00', close: '21:00', closed: false },
+        kamis: { open: '09:00', close: '21:00', closed: false },
+        jumat: { open: '09:00', close: '21:00', closed: false },
+        sabtu: { open: '10:00', close: '20:00', closed: false },
+        minggu: { open: '10:00', close: '20:00', closed: false },
+      },
+      gallery: [
+        'https://images.unsplash.com/photo-1556742502-ec7c0e9f34b1?w=1200&h=900&fit=crop',
+        'https://images.unsplash.com/photo-1581993192873-bf60d213b08e?w=900&h=1200&fit=crop',
+        'https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=1200&h=900&fit=crop',
+        'https://images.unsplash.com/photo-1512054502232-10a0a035d672?w=900&h=1200&fit=crop',
+        'https://images.unsplash.com/photo-1601972602288-3be527b4f18d?w=1200&h=900&fit=crop',
+        'https://images.unsplash.com/photo-1593305841991-05c297ba4575?w=900&h=1200&fit=crop',
+        'https://images.unsplash.com/photo-1607799279861-4dd421887fb3?w=1200&h=900&fit=crop',
+        'https://images.unsplash.com/photo-1603899122634-f086ca5f5ddd?w=900&h=1200&fit=crop',
+      ],
+      journeyIntro:
+        'Dari servis online hingga toko fisik — perjalanan membangun kepercayaan pelanggan satu per satu.',
+      journey: [
+        {
+          year: '2020',
+          title: 'Servis Online',
+          description:
+            'Memulai dari konsultasi & troubleshooting jarak jauh via chat dan remote desktop.',
+          icon: 'message',
+        },
+        {
+          year: '2021',
+          title: 'Servis Rumahan',
+          description:
+            'Menerima perangkat dari pelanggan sekitar untuk diperbaiki di rumah. Mulai bangun reputasi.',
+          icon: 'wrench',
+        },
+        {
+          year: '2023',
+          title: 'Workshop Kecil',
+          description:
+            'Menyewa tempat kecil, melengkapi peralatan profesional, dan menerima lebih banyak unit.',
+          icon: 'store',
+        },
+        {
+          year: '2024',
+          title: 'Toko Resmi',
+          description:
+            'Membuka toko fisik lengkap dengan etalase produk, layanan walk-in, dan tim teknisi.',
+          icon: 'award',
+        },
+      ],
       layanan: ['Service HP', 'Jual Beli', 'Unlock', 'Flashing'],
       badge: 'Top Seller',
       coverImage:
@@ -167,7 +411,7 @@ async function main() {
   await prisma.wallet.create({ data: { userId: admin.id, balance: 0 } })
   await prisma.wallet.create({ data: { userId: teknisi1.id, balance: 2500000 } })
   await prisma.wallet.create({ data: { userId: teknisi2.id, balance: 1800000 } })
-  await prisma.wallet.create({ data: { userId: user1.id, balance: 500000 } })
+  await prisma.wallet.create({ data: { userId: user1.id, balance: 9000000 } })
   await prisma.wallet.create({ data: { userId: user2.id, balance: 250000 } })
   await prisma.wallet.create({ data: { userId: user3.id, balance: 100000 } })
 
@@ -227,7 +471,7 @@ async function main() {
   })
 
   // ---- SAMPLE ORDER ----
-  await prisma.order.create({
+  const sampleOrder = await prisma.order.create({
     data: {
       orderCode: 'ORD-2026-000001',
       buyerId: user1.id,
@@ -235,6 +479,15 @@ async function main() {
       subtotal: 8500000,
       total: 8500000,
       status: 'COMPLETED',
+      createdAt: new Date('2026-05-16T14:30:00+07:00'),
+      shippingCourier: 'JNE',
+      trackingNumber: 'JNE1234567890',
+      trackingSummaryStatus: 'DELIVERED',
+      trackingSummaryDesc: 'Paket telah diterima oleh penerima',
+      trackingLastEventAt: new Date('2026-05-18T14:30:00+07:00'),
+      trackingLastSyncedAt: new Date('2026-05-18T15:00:00+07:00'),
+      trackingActive: false,
+      shippedAt: new Date('2026-05-15T10:00:00+07:00'),
       items: {
         create: {
           productId: product1.id,
@@ -243,6 +496,60 @@ async function main() {
         },
       },
     },
+  })
+
+  // ---- TRACKING EVENTS for ORD-2026-000001 ----
+  await prisma.orderTrackingEvent.createMany({
+    data: [
+      {
+        orderId: sampleOrder.id,
+        occurredAt: new Date('2026-05-15T10:00:00+07:00'),
+        description: 'Paket telah diambil oleh kurir dari alamat pengirim',
+        location: 'Jakarta Selatan',
+      },
+      {
+        orderId: sampleOrder.id,
+        occurredAt: new Date('2026-05-15T14:30:00+07:00'),
+        description: 'Paket tiba di gudang sortir JNE Jakarta',
+        location: 'JNE Hub Jakarta Pusat',
+      },
+      {
+        orderId: sampleOrder.id,
+        occurredAt: new Date('2026-05-15T22:00:00+07:00'),
+        description: 'Paket dalam proses pengiriman antar kota',
+        location: 'JNE Gateway Jakarta',
+      },
+      {
+        orderId: sampleOrder.id,
+        occurredAt: new Date('2026-05-16T06:15:00+07:00'),
+        description: 'Paket tiba di kota tujuan',
+        location: 'JNE Hub Bandung',
+      },
+      {
+        orderId: sampleOrder.id,
+        occurredAt: new Date('2026-05-16T09:00:00+07:00'),
+        description: 'Paket sedang dalam proses sortir di cabang tujuan',
+        location: 'JNE Cabang Bandung Kota',
+      },
+      {
+        orderId: sampleOrder.id,
+        occurredAt: new Date('2026-05-16T11:30:00+07:00'),
+        description: 'Paket sedang diantar oleh kurir ke alamat penerima',
+        location: 'Bandung Kota',
+      },
+      {
+        orderId: sampleOrder.id,
+        occurredAt: new Date('2026-05-16T14:30:00+07:00'),
+        description: 'Paket telah diterima oleh penerima (Siti Nurhaliza)',
+        location: 'Bandung, Jl. Merdeka No. 45',
+      },
+    ],
+  })
+
+  await ensureMarketplaceOrderSettlement(sampleOrder.id)
+  await prisma.walletLedger.updateMany({
+    where: { referenceId: sampleOrder.id },
+    data: { createdAt: new Date('2026-05-16T14:30:00+07:00') },
   })
 
   // ---- SAMPLE REKBER ----
@@ -260,23 +567,63 @@ async function main() {
   })
 
   // ---- SAMPLE LOWONGAN ----
-  await prisma.lowongan.create({
-    data: {
-      posterId: admin.id,
-      title: 'Teknisi Handphone Senior',
-      company: 'HandPhone Center Jakarta',
-      location: 'Jakarta Selatan',
-      salary: 'Rp 5.000.000 - 8.000.000',
-      type: JobType.FULL_TIME,
-      description: 'Mencari teknisi handphone berpengalaman minimal 3 tahun.',
-      requirements: [
-        'Minimal 3 tahun pengalaman',
-        'Menguasai berbagai brand',
-        'Memahami hardware dan software',
-      ],
-      skills: ['iPhone', 'Samsung', 'Hardware', 'Soldering'],
-    },
+  await prisma.lowongan.createMany({
+    data: [
+      {
+        posterId: admin.id,
+        title: 'Teknisi Handphone Senior',
+        company: 'HandPhone Center Jakarta',
+        location: 'Jakarta Selatan',
+        salary: 'Rp 5 - 8 jt/bln',
+        type: JobType.FULL_TIME,
+        description:
+          'Mencari teknisi handphone berpengalaman minimal 3 tahun untuk bergabung dengan tim service center kami.',
+        requirements: [
+          'Minimal 3 tahun pengalaman',
+          'Menguasai berbagai brand',
+          'Memahami hardware dan software',
+        ],
+        skills: ['iPhone', 'Samsung', 'Hardware'],
+      },
+      {
+        posterId: admin.id,
+        title: 'Teknisi Remote Support',
+        company: 'TechSolution Store',
+        location: 'Remote',
+        salary: 'Rp 3 - 5 jt/bln',
+        type: JobType.PART_TIME,
+        description:
+          'Diperlukan teknisi untuk memberikan konsultasi online dan remote troubleshooting.',
+        requirements: ['Pengalaman remote support', 'Komunikasi baik'],
+        skills: ['Software', 'Flashing', 'Unlock'],
+      },
+      {
+        posterId: admin.id,
+        title: 'Teknisi Laptop & Handphone',
+        company: 'TechSolution Store',
+        location: 'Bandung',
+        salary: 'Rp 4 - 7 jt/bln',
+        type: JobType.FULL_TIME,
+        description: 'Teknisi laptop dan handphone untuk perbaikan hardware dan software.',
+        requirements: ['Minimal 2 tahun pengalaman'],
+        skills: ['Laptop', 'PC', 'Hardware'],
+      },
+      {
+        posterId: admin.id,
+        title: 'Freelance Teknisi Remote',
+        company: 'Mobile Repair Online',
+        location: 'Remote',
+        salary: 'Per project',
+        type: JobType.CONTRACT,
+        description: 'Kesempatan kerja freelance dengan jadwal fleksibel.',
+        requirements: ['Portfolio perbaikan'],
+        skills: ['Root', 'Data Recovery'],
+      },
+    ],
   })
+
+  await seedTopupCatalog(prisma)
+  await seedPlatformContent(prisma)
 
   // ---- IMEI SERVICE ----
   // API Providers
@@ -562,6 +909,256 @@ async function main() {
         body: 'Barang sudah ready untuk diambil',
         createdAt: new Date('2026-05-17T14:30:00+07:00'),
         readAt: new Date('2026-05-17T14:31:00+07:00'),
+      },
+    ],
+  })
+
+  // ---- KONSULTASI SESSIONS (untuk Monitoring Admin) ----
+  const konsultasiCompleted = await prisma.konsultasiSession.create({
+    data: {
+      userId: user1.id,
+      teknisiId: teknisi1.id,
+      service: 'Konsultasi Unlock',
+      price: 50000,
+      status: 'COMPLETED',
+      rating: 5,
+      review: 'Teknisi sangat membantu, unlock berhasil dalam waktu singkat. Penjelasannya juga jelas.',
+      createdAt: new Date('2026-05-17T07:52:00+07:00'),
+      startedAt: new Date('2026-05-17T08:00:00+07:00'),
+      endedAt: new Date('2026-05-17T08:35:00+07:00'),
+    },
+  })
+
+  const teknisi1Wallet = await prisma.wallet.findUnique({ where: { userId: teknisi1.id } })
+  if (teknisi1Wallet) {
+    await prisma.walletLedger.create({
+      data: {
+        walletId: teknisi1Wallet.id,
+        type: 'EARNING',
+        amount: 50000,
+        balance: teknisi1Wallet.balance,
+        description: 'Pendapatan konsultasi: Konsultasi Unlock',
+        referenceId: konsultasiCompleted.id,
+        createdAt: new Date('2026-05-17T08:35:00+07:00'),
+      },
+    })
+  }
+
+  await prisma.konsultasiSession.create({
+    data: {
+      userId: user2.id,
+      teknisiId: teknisi2.id,
+      service: 'Remote Flashing',
+      price: 150000,
+      status: 'ACTIVE',
+      startedAt: new Date('2026-05-19T10:15:00+07:00'),
+    },
+  })
+
+  await prisma.konsultasiSession.create({
+    data: {
+      userId: user3.id,
+      teknisiId: teknisi1.id,
+      service: 'Root & Custom ROM',
+      price: 200000,
+      status: 'PENDING',
+    },
+  })
+
+  // ---- REMOTE SESSIONS (untuk Monitoring Admin) ----
+  await prisma.remoteSession.create({
+    data: {
+      userId: user1.id,
+      teknisiId: teknisi1.id,
+      remoteId: '987 654 321',
+      description: 'iPhone stuck di logo Apple setelah update iOS. Butuh bantuan restore via remote.',
+      platform: 'Windows 11',
+      status: 'WAITING',
+    },
+  })
+
+  await prisma.remoteSession.create({
+    data: {
+      userId: user2.id,
+      teknisiId: teknisi2.id,
+      remoteId: '111 222 333',
+      description: 'Unlock bootloader Samsung A54.',
+      platform: 'macOS',
+      status: 'IN_PROGRESS',
+      acceptedAt: new Date('2026-05-19T09:00:00+07:00'),
+    },
+  })
+
+  await prisma.remoteSession.create({
+    data: {
+      userId: user3.id,
+      teknisiId: teknisi1.id,
+      remoteId: '444 555 666',
+      description: 'Backup data sebelum factory reset.',
+      platform: 'Windows 11',
+      status: 'COMPLETED',
+      createdAt: new Date('2026-05-18T12:48:00+07:00'),
+      acceptedAt: new Date('2026-05-18T13:00:00+07:00'),
+      completedAt: new Date('2026-05-18T14:25:00+07:00'),
+    },
+  })
+
+  // ---- ACTIVITY LOG (sample entries for admin Log Aktivitas page) ----
+  const now = new Date()
+  const ago = (minutes: number) => new Date(now.getTime() - minutes * 60_000)
+
+  await prisma.activityLog.createMany({
+    data: [
+      {
+        action: 'auth.login.success',
+        category: 'AUTH',
+        severity: 'SUCCESS',
+        summary: 'Admin IndoTeknizi login',
+        actorId: admin.id,
+        actorName: 'Admin IndoTeknizi',
+        actorEmail: 'admin@indoteknizi.com',
+        actorRole: 'ADMIN',
+        ip: '127.0.0.1',
+        createdAt: ago(5),
+      },
+      {
+        action: 'auth.login.success',
+        category: 'AUTH',
+        severity: 'SUCCESS',
+        summary: 'Ahmad Hidayat login',
+        actorId: teknisi1.id,
+        actorName: 'Ahmad Hidayat',
+        actorEmail: 'ahmad@indoteknizi.com',
+        actorRole: 'TEKNISI',
+        ip: '192.168.1.10',
+        createdAt: ago(15),
+      },
+      {
+        action: 'auth.login.success',
+        category: 'AUTH',
+        severity: 'SUCCESS',
+        summary: 'Siti Nurhaliza login',
+        actorId: user1.id,
+        actorName: 'Siti Nurhaliza',
+        actorEmail: 'siti@gmail.com',
+        actorRole: 'USER',
+        ip: '10.0.0.5',
+        createdAt: ago(30),
+      },
+      {
+        action: 'account.register',
+        category: 'ACCOUNT',
+        severity: 'SUCCESS',
+        summary: 'Akun baru terdaftar: Dewi Lestari (USER)',
+        actorId: user3.id,
+        actorName: 'Dewi Lestari',
+        actorEmail: 'dewi@gmail.com',
+        actorRole: 'USER',
+        targetType: 'user',
+        targetId: user3.id,
+        targetLabel: 'dewi@gmail.com',
+        createdAt: ago(60),
+      },
+      {
+        action: 'order.imei.created',
+        category: 'ORDER',
+        severity: 'SUCCESS',
+        summary: 'Order IMEI baru: IMEI-2026-A1B2C3 — Samsung Galaxy S24 Ultra Unlock',
+        actorId: user1.id,
+        actorName: 'Siti Nurhaliza',
+        actorEmail: 'siti@gmail.com',
+        actorRole: 'USER',
+        targetType: 'imei_order',
+        targetLabel: 'IMEI-2026-A1B2C3',
+        metadata: { orderCode: 'IMEI-2026-A1B2C3', amount: '150000' },
+        createdAt: ago(90),
+      },
+      {
+        action: 'order.imei.success',
+        category: 'ORDER',
+        severity: 'SUCCESS',
+        summary: 'Order IMEI IMEI-2026-A1B2C3 berhasil',
+        targetType: 'imei_order',
+        targetLabel: 'IMEI-2026-A1B2C3',
+        metadata: { orderCode: 'IMEI-2026-A1B2C3' },
+        createdAt: ago(45),
+      },
+      {
+        action: 'payment.deposit.manual',
+        category: 'PAYMENT',
+        severity: 'SUCCESS',
+        summary: 'Admin deposit Rp 500.000 ke Siti Nurhaliza',
+        actorId: admin.id,
+        actorName: 'Admin IndoTeknizi',
+        actorEmail: 'admin@indoteknizi.com',
+        actorRole: 'ADMIN',
+        targetType: 'user',
+        targetId: user1.id,
+        targetLabel: 'Siti Nurhaliza',
+        metadata: { amount: 500000, method: 'manual' },
+        createdAt: ago(120),
+      },
+      {
+        action: 'account.password.changed',
+        category: 'ACCOUNT',
+        severity: 'SUCCESS',
+        summary: 'Rudi Hartono mengganti password',
+        actorId: user2.id,
+        actorName: 'Rudi Hartono',
+        actorEmail: 'rudi@gmail.com',
+        actorRole: 'USER',
+        targetType: 'user',
+        targetId: user2.id,
+        targetLabel: 'rudi@gmail.com',
+        createdAt: ago(180),
+      },
+      {
+        action: 'auth.login.failed',
+        category: 'SECURITY',
+        severity: 'WARNING',
+        summary: 'Percobaan login gagal untuk hacker@test.com',
+        actorEmail: 'hacker@test.com',
+        ip: '45.33.32.156',
+        userAgent: 'Mozilla/5.0 (compatible; bot)',
+        metadata: { email: 'hacker@test.com' },
+        createdAt: ago(10),
+      },
+      {
+        action: 'auth.suspicious.brute_force',
+        category: 'SECURITY',
+        severity: 'CRITICAL',
+        summary: 'Aktivitas mencurigakan: 6 percobaan login gagal dari hacker@test.com',
+        detail: 'Threshold 5 percobaan dalam 15 menit terlampaui.\nEmail: hacker@test.com\nIP: 45.33.32.156',
+        actorEmail: 'hacker@test.com',
+        ip: '45.33.32.156',
+        userAgent: 'Mozilla/5.0 (compatible; bot)',
+        metadata: { email: 'hacker@test.com', attempts: 6, windowMinutes: 15 },
+        createdAt: ago(8),
+      },
+      {
+        action: 'auth.logout',
+        category: 'AUTH',
+        severity: 'INFO',
+        summary: 'Budi Santoso logout',
+        actorId: teknisi2.id,
+        actorName: 'Budi Santoso',
+        actorEmail: 'budi@indoteknizi.com',
+        actorRole: 'TEKNISI',
+        createdAt: ago(200),
+      },
+      {
+        action: 'order.server.created',
+        category: 'ORDER',
+        severity: 'SUCCESS',
+        summary: 'Order Server baru: SRV-2026-XYZ123 — Samsung FRP Remove',
+        actorId: user2.id,
+        actorName: 'Rudi Hartono',
+        actorEmail: 'rudi@gmail.com',
+        actorRole: 'USER',
+        targetType: 'server_order',
+        targetLabel: 'SRV-2026-XYZ123',
+        metadata: { orderCode: 'SRV-2026-XYZ123', amount: '75000' },
+        createdAt: ago(240),
       },
     ],
   })

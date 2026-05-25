@@ -7,9 +7,9 @@ import { Reveal, Magnetic } from '@/components/motion'
 import { motion } from 'framer-motion'
 
 const trustItems = [
-  'Daftar gratis selamanya',
-  'Tanpa kartu kredit',
-  'Batal kapan saja',
+  'Komunitas solid',
+  'Bisnis berkembang',
+  'Rekber aman',
 ] as const
 
 export function CTA() {

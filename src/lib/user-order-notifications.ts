@@ -223,7 +223,7 @@ function mapTopup(order: TopupOrder): PlatformNotification | null {
     tone: msg.tone,
     icon: msg.icon,
     createdAt: (order.updatedAt ?? order.createdAt).toISOString(),
-    href: order.id ? `/topup/order/${order.id}` : '/topup/cek-transaksi',
+    href: order.orderCode ? `/topup/order/${order.orderCode}` : '/topup/cek-transaksi',
   })
 }
 
@@ -263,7 +263,7 @@ function mapImei(
     tone: msg.tone,
     icon: msg.icon,
     createdAt: order.updatedAt.toISOString(),
-    href: '/imei/orders',
+    href: '/user/orders/imei',
   })
 }
 
@@ -285,7 +285,7 @@ function mapServer(
     tone: msg.tone,
     icon: msg.icon,
     createdAt: order.updatedAt.toISOString(),
-    href: '/imei/orders?tab=server',
+    href: '/user/orders/imei?tab=server',
   })
 }
 

@@ -15,15 +15,9 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { authFieldIconClass } from '@/components/ui/auth-field-icon'
-import { Zap, Mail, Lock, User } from '@/lib/icons'
+import { Zap, Mail, Lock, User, Wrench } from '@/lib/icons'
 import { AuroraBackground } from '@/components/motion'
 import { motion } from 'framer-motion'
-import { cn } from '@/lib/utils'
-
-const roles = [
-  { id: 'USER' as const, label: 'User' },
-  { id: 'TEKNISI' as const, label: 'Teknisi' },
-] as const
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -32,7 +26,6 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [role, setRole] = useState<'USER' | 'TEKNISI'>('USER')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -46,7 +39,7 @@ export default function RegisterPage() {
     }
 
     setIsLoading(true)
-    const result = await register(name, email, password, role)
+    const result = await register(name, email, password)
 
     if (!result.success) {
       setError(result.error || 'Registrasi gagal')
@@ -54,9 +47,7 @@ export default function RegisterPage() {
       return
     }
 
-    // Redirect based on role
-    if (role === 'TEKNISI') router.push('/teknisi/dashboard')
-    else router.push('/user/akun')
+    router.push('/user/akun')
   }
 
   return (
@@ -76,56 +67,22 @@ export default function RegisterPage() {
             </div>
             <div>
               <CardTitle className="text-2xl font-semibold tracking-tightest">
-                Daftar akun baru
+                Daftar sebagai User
               </CardTitle>
               <CardDescription className="mt-1 text-surface-600">
-                Bergabung dengan ekosistem teknisi handphone
+                Buat akun pelanggan untuk belanja, konsultasi, dan layanan
               </CardDescription>
             </div>
           </CardHeader>
 
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Error message */}
               {error && (
                 <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                   {error}
                 </div>
               )}
 
-              {/* Role */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-surface-700">
-                  Daftar sebagai
-                </label>
-                <div className="relative grid grid-cols-2 gap-1 rounded-2xl border border-surface-200/70 bg-white/60 p-1 shadow-soft-xs backdrop-blur-md">
-                  {roles.map((r) => {
-                    const active = role === r.id
-                    return (
-                      <button
-                        key={r.id}
-                        type="button"
-                        onClick={() => setRole(r.id)}
-                        className={cn(
-                          'relative h-9 rounded-xl text-sm font-medium transition-colors',
-                          active ? 'text-white' : 'text-surface-600 hover:text-ink',
-                        )}
-                      >
-                        {active && (
-                          <motion.span
-                            layoutId="register-role-pill"
-                            className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 shadow-soft-md"
-                            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                          />
-                        )}
-                        <span className="relative z-10">{r.label}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Name */}
               <div className="space-y-2">
                 <label htmlFor="name" className="text-sm font-medium text-surface-700">
                   Nama Lengkap
@@ -144,7 +101,6 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* Email */}
               <div className="space-y-2">
                 <label htmlFor="email" className="text-sm font-medium text-surface-700">
                   Email
@@ -163,7 +119,6 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* Password */}
               <div className="space-y-2">
                 <label htmlFor="password" className="text-sm font-medium text-surface-700">
                   Password
@@ -182,7 +137,6 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* Confirm Password */}
               <div className="space-y-2">
                 <label
                   htmlFor="confirmPassword"
@@ -214,6 +168,24 @@ export default function RegisterPage() {
                 {isLoading ? 'Memproses…' : 'Daftar'}
               </Button>
             </form>
+
+            <div className="mt-5 rounded-xl border border-primary-100 bg-primary-50/60 p-4">
+              <div className="flex items-start gap-3">
+                <Wrench className="mt-0.5 h-5 w-5 shrink-0 text-primary-600" />
+                <div>
+                  <p className="text-sm font-medium text-ink">Anda teknisi handphone?</p>
+                  <p className="mt-1 text-xs text-surface-600">
+                    Daftar melalui formulir khusus teknisi. Akun akan aktif setelah disetujui admin.
+                  </p>
+                  <Link
+                    href="/register/teknisi"
+                    className="mt-2 inline-block text-sm font-medium text-primary-700 hover:underline"
+                  >
+                    Daftar sebagai Teknisi →
+                  </Link>
+                </div>
+              </div>
+            </div>
           </CardContent>
 
           <CardFooter className="flex flex-col gap-3">

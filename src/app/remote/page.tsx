@@ -1,11 +1,16 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Navbar } from '@/components/landing'
 import { BottomNav, MobileSafeAreaSpacer } from '@/components/mobile'
-import { serviceTabs } from '@/lib/section-tab-config'
+import { buildServiceTabs } from '@/lib/section-tab-config'
+import { useAuth } from '@/contexts/auth-context'
+import { useFeatureFlags } from '@/contexts/feature-flags-context'
+import { canAccessRemoteService } from '@/lib/platform-settings-shared'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -13,6 +18,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { PageHero } from '@/components/shared/page-hero'
 import { cn } from '@/lib/utils'
 import { SupportChatButton } from '@/components/chat/support-chat-button'
+import type { PublicTeknisiDto } from '@/lib/teknisi-public'
 import {
   ArrowRight,
   CheckCircle,
@@ -28,14 +34,6 @@ import {
   Users,
   Zap,
 } from '@/lib/icons'
-
-/* ---------- Mock data ---------- */
-const onlineTeknisi = [
-  { id: '1', name: 'Ahmad Hidayat', rating: 4.9, reviews: 234, specialty: 'Unlock & Flashing', avatar: 1, sessions: 567 },
-  { id: '2', name: 'Budi Santoso', rating: 4.7, reviews: 189, specialty: 'Hardware Repair', avatar: 2, sessions: 342 },
-  { id: '5', name: 'Dewi Lestari', rating: 4.9, reviews: 312, specialty: 'Data Recovery', avatar: 5, sessions: 678 },
-  { id: '7', name: 'Fajar Pratama', rating: 4.8, reviews: 178, specialty: 'Software & Root', avatar: 7, sessions: 412 },
-]
 
 const steps = [
   { num: 1, title: 'Download IndoDesk', desc: 'Install aplikasi remote IndoDesk di perangkat Anda.' },
@@ -54,15 +52,42 @@ type DownloadItem = {
 
 const fadeIn = { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.3 } }
 
+function detectPlatform(): string | undefined {
+  if (typeof navigator === 'undefined') return undefined
+  const ua = navigator.userAgent
+  if (/Windows/i.test(ua)) return 'Windows'
+  if (/Mac/i.test(ua)) return 'macOS'
+  if (/Android/i.test(ua)) return 'Android'
+  if (/iPhone|iPad/i.test(ua)) return 'iOS'
+  return undefined
+}
+
 export default function RemotePage() {
+  const router = useRouter()
+  const { status: sessionStatus } = useSession()
+  const { user, isLoading: authLoading } = useAuth()
+  const { flags, loading: flagsLoading } = useFeatureFlags()
+  const role = (user?.role as 'ADMIN' | 'TEKNISI' | 'USER' | undefined) ?? null
+  const allowed = canAccessRemoteService(role, flags)
+  const guardLoading = authLoading || flagsLoading
+  const tabs = buildServiceTabs(role, flags)
   const [downloads, setDownloads] = useState<DownloadItem[]>([])
   const [latestVersion, setLatestVersion] = useState('1.3.7')
+  const [teknisiList, setTeknisiList] = useState<PublicTeknisiDto[]>([])
+  const [teknisiLoading, setTeknisiLoading] = useState(true)
   const [selectedTeknisi, setSelectedTeknisi] = useState<string | null>(null)
   const [remoteId, setRemoteId] = useState('')
   const [otp, setOtp] = useState('')
   const [description, setDescription] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const [submittedCode, setSubmittedCode] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
+  const onlineTeknisi = useMemo(
+    () => teknisiList.filter((t) => t.isOnline),
+    [teknisiList],
+  )
 
   const ready = !!selectedTeknisi && remoteId.trim().length >= 6 && otp.trim().length >= 4
 
@@ -84,21 +109,103 @@ export default function RemotePage() {
     })()
   }, [])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    void (async () => {
+      setTeknisiLoading(true)
+      try {
+        const res = await fetch('/api/teknisi')
+        const json = await res.json()
+        if (res.ok && json.success) setTeknisiList(json.data ?? [])
+      } catch {
+        /* ignore */
+      } finally {
+        setTeknisiLoading(false)
+      }
+    })()
+  }, [])
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!ready) return
+    if (!ready || !selectedTeknisi) return
+
+    if (sessionStatus !== 'authenticated') {
+      router.push(`/login?callbackUrl=${encodeURIComponent('/remote')}`)
+      return
+    }
+
     setIsSubmitting(true)
-    setTimeout(() => {
-      setIsSubmitting(false)
+    setSubmitError(null)
+    try {
+      const res = await fetch('/api/remote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          teknisiId: selectedTeknisi,
+          remoteId: remoteId.trim(),
+          otp: otp.trim(),
+          description: description.trim() || undefined,
+          platform: detectPlatform(),
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.success) {
+        setSubmitError(json.error ?? 'Gagal mengajukan remote')
+        return
+      }
+      setSubmittedCode(json.data?.sessionCode ?? null)
       setSubmitted(true)
-    }, 1500)
+    } catch {
+      setSubmitError('Gagal mengajukan remote')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // Guard: bila admin menonaktifkan menu Remote, tampilkan pesan ramah.
+  // ADMIN selalu lewat (canAccessRemoteService me-return true untuk ADMIN).
+  if (guardLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface-50">
+        <p className="text-sm text-surface-500">Memeriksa akses…</p>
+      </div>
+    )
+  }
+
+  if (!allowed) {
+    return (
+      <div className="min-h-screen overflow-x-hidden bg-surface-50">
+        <div className="hidden lg:block">
+          <Navbar />
+        </div>
+        <section className="relative flex min-h-[60vh] items-center justify-center px-4 lg:pt-28">
+          <div className="max-w-md rounded-2xl border border-surface-200/70 bg-white/90 p-8 text-center shadow-soft-md backdrop-blur-md">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-50 text-primary-700">
+              <Laptop className="h-6 w-6" />
+            </div>
+            <h2 className="text-lg font-semibold text-ink">
+              Layanan Remote tidak tersedia
+            </h2>
+            <p className="mt-2 text-sm text-surface-600">
+              Menu Remote Assistance sedang dinonaktifkan oleh admin. Silakan cek kembali nanti.
+            </p>
+            <div className="mt-5 flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
+              <Button variant="primary" size="sm" onClick={() => router.push('/')}>
+                Kembali ke Beranda
+              </Button>
+            </div>
+          </div>
+        </section>
+        <MobileSafeAreaSpacer />
+        <BottomNav />
+      </div>
+    )
   }
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-surface-50">
       <div className="hidden lg:block"><Navbar /></div>
       <PageHero
-        sectionTabs={{ tabs: serviceTabs, layoutId: 'service-section-tab' }}
+        sectionTabs={{ tabs, layoutId: 'service-section-tab' }}
         badge={{ icon: Laptop, label: 'Remote Assistance' }}
         title={
           <>
@@ -115,7 +222,9 @@ export default function RemotePage() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-400 opacity-70" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-primary-500" />
             </span>
-            <span className="font-medium">{onlineTeknisi.length} teknisi online</span>
+            <span className="font-medium">
+              {teknisiLoading ? '…' : `${onlineTeknisi.length} teknisi online`}
+            </span>
           </div>
         }
       />
@@ -137,12 +246,25 @@ export default function RemotePage() {
                   <Clock className="mr-1 h-3.5 w-3.5" />
                   Menunggu teknisi menerima
                 </Badge>
+                {submittedCode && (
+                  <p className="mt-3 font-mono text-xs text-surface-600">Kode: {submittedCode}</p>
+                )}
                 <p className="mt-4 text-[13px] text-surface-500">
                   Teknisi akan menerima notifikasi dan bisa langsung connect ke perangkat Anda.
                   Pastikan IndoDesk tetap terbuka.
                 </p>
                 <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
-                  <Button variant="primary" onClick={() => setSubmitted(false)}>
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      setSubmitted(false)
+                      setSubmittedCode(null)
+                      setSelectedTeknisi(null)
+                      setRemoteId('')
+                      setOtp('')
+                      setDescription('')
+                    }}
+                  >
                     Ajukan lagi
                   </Button>
                   <Link href="/teknisi">
@@ -243,14 +365,25 @@ export default function RemotePage() {
                     </h2>
                     <p className="mb-3 text-[12px] text-surface-500">Pilih teknisi yang tersedia untuk sesi remote Anda.</p>
 
+                    {teknisiLoading ? (
+                      <p className="text-sm text-surface-500">Memuat teknisi online…</p>
+                    ) : onlineTeknisi.length === 0 ? (
+                      <p className="text-sm text-surface-500">
+                        Belum ada teknisi online. Coba lagi nanti atau{' '}
+                        <Link href="/teknisi" className="text-primary-600 underline">
+                          lihat semua teknisi
+                        </Link>
+                        .
+                      </p>
+                    ) : (
                     <div className="grid gap-2 sm:grid-cols-2">
                       {onlineTeknisi.map((t) => {
-                        const selected = selectedTeknisi === t.id
+                        const selected = selectedTeknisi === t.userId
                         return (
                           <button
-                            key={t.id}
+                            key={t.userId}
                             type="button"
-                            onClick={() => setSelectedTeknisi(t.id)}
+                            onClick={() => setSelectedTeknisi(t.userId)}
                             className={cn(
                               'relative flex items-center gap-3 rounded-xl border p-3 text-left transition-all duration-300 ease-out-expo',
                               'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60',
@@ -271,11 +404,22 @@ export default function RemotePage() {
                                 </motion.span>
                               )}
                             </AnimatePresence>
-                            <img
-                              src={`https://i.pravatar.cc/150?img=${t.avatar}`}
-                              alt={t.name}
-                              className="h-10 w-10 flex-shrink-0 rounded-full border-2 border-white object-cover shadow-soft-xs"
-                            />
+                            {t.image ? (
+                              <img
+                                src={t.image}
+                                alt={t.name}
+                                className="h-10 w-10 flex-shrink-0 rounded-full border-2 border-white object-cover shadow-soft-xs"
+                              />
+                            ) : (
+                              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-2 border-white bg-primary-100 text-xs font-bold text-primary-700 shadow-soft-xs">
+                                {t.name
+                                  .split(' ')
+                                  .map((p) => p[0])
+                                  .join('')
+                                  .slice(0, 2)
+                                  .toUpperCase()}
+                              </div>
+                            )}
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-1.5">
                                 <span className="truncate text-xs font-semibold text-ink">{t.name}</span>
@@ -284,17 +428,20 @@ export default function RemotePage() {
                                   <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary-500" />
                                 </span>
                               </div>
-                              <p className="truncate text-[10px] text-surface-500">{t.specialty}</p>
-                              <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-surface-500">
+                              <p className="truncate text-[10px] text-surface-500">
+                                {t.specialty[0] ?? 'Teknisi'}
+                              </p>
+                              <motion.div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-surface-500">
                                 <Star weight="fill" className="h-2.5 w-2.5 text-amber-400" />
-                                <span className="font-semibold text-ink">{t.rating}</span>
-                                <span>· {t.sessions} sesi</span>
-                              </div>
+                                <span className="font-semibold text-ink">{t.rating.toFixed(1)}</span>
+                                <span>· {t.totalKonsultasi} konsultasi</span>
+                              </motion.div>
                             </div>
                           </button>
                         )
                       })}
                     </div>
+                    )}
                   </CardContent>
                 </Card>
               </motion.div>
@@ -311,7 +458,7 @@ export default function RemotePage() {
                       Buka IndoDesk di perangkat Anda, lalu salin ID dan One-Time Password yang tampil.
                     </p>
 
-                    <form onSubmit={handleSubmit} id="remote-form" className="space-y-3">
+                    <form onSubmit={(e) => void handleSubmit(e)} id="remote-form" className="space-y-3">
                       <div className="grid gap-3 sm:grid-cols-2">
                         <div>
                           <label className="mb-1 block text-[11px] font-medium uppercase tracking-[0.14em] text-surface-500">
@@ -372,6 +519,12 @@ export default function RemotePage() {
                   </CardContent>
                 </Card>
               </motion.div>
+
+              {submitError && (
+                <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+                  {submitError}
+                </p>
+              )}
 
               {/* Submit */}
               <motion.div {...fadeIn} transition={{ delay: 0.2 }}>

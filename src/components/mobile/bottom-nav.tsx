@@ -1,34 +1,19 @@
 'use client'
 
-import { useLayoutEffect, useSyncExternalStore } from 'react'
+import { useLayoutEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/auth-context'
-import {
-  Home,
-  ShoppingBag,
-  Users,
-  Store,
-  LayoutDashboard,
-} from '@/lib/icons'
+import { Home, ShoppingBag, Users, Store } from '@/lib/icons'
 import {
   USER_BOTTOM_NAV_ITEMS,
   isUserBottomNavItemActive,
   type UserBottomNavItem,
 } from '@/lib/user-bottom-nav'
-import {
-  applyUserNavHomeSlot,
-  homePathForRole,
-  MARKETPLACE_PATH,
-} from '@/lib/role-routes'
-import {
-  getUserNavHomeModeForPath,
-  setUserNavHomeMode,
-  subscribeUserNavHome,
-  syncUserNavHomeModeFromPath,
-} from '@/lib/user-nav-home'
+import { MARKETPLACE_PATH } from '@/lib/role-routes'
+import { setUserNavHomeMode, syncUserNavHomeModeFromPath } from '@/lib/user-nav-home'
 
 const guestNavItems = [
   { icon: Home, label: 'Beranda', href: '/' },
@@ -58,7 +43,7 @@ function isGuestNavItemActive(item: GuestNavItem, pathname: string | null): bool
 
 /**
  * Mobile bottom navigation for public pages.
- * Logged-in USER sees one model: Market, Layanan, Toko, Riwayat (no Beranda).
+ * Logged-in USER: Dashboard, Market, Layanan, Toko, Riwayat.
  */
 export function BottomNav() {
   const pathname = usePathname()
@@ -70,14 +55,8 @@ export function BottomNav() {
     syncUserNavHomeModeFromPath(pathname)
   }, [isUser, pathname])
 
-  const userHomeMode = useSyncExternalStore(
-    subscribeUserNavHome,
-    () => (isUser ? getUserNavHomeModeForPath(pathname) : 'market'),
-    () => (isUser ? getUserNavHomeModeForPath(pathname) : 'market'),
-  )
-
   const navItems: readonly (UserBottomNavItem | GuestNavItem)[] = isUser
-    ? applyUserNavHomeSlot(USER_BOTTOM_NAV_ITEMS, userHomeMode, LayoutDashboard)
+    ? USER_BOTTOM_NAV_ITEMS
     : guestNavItems
 
   const onUserNavClick = (href: string) => {
@@ -85,11 +64,7 @@ export function BottomNav() {
       setUserNavHomeMode('market')
       return
     }
-    if (href === homePathForRole('USER')) {
-      setUserNavHomeMode('dashboard')
-      return
-    }
-    if (userHomeMode === 'dashboard') {
+    if (href === '/user/dashboard') {
       setUserNavHomeMode('dashboard')
     }
   }
@@ -107,7 +82,7 @@ export function BottomNav() {
         className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white via-white/70 to-transparent"
       />
 
-      <div className="relative mx-auto flex h-[68px] max-w-md items-center justify-around rounded-3xl glass-strong border border-surface-200/70 px-2 shadow-soft-lg">
+      <div className="relative mx-auto flex h-[68px] max-w-lg items-center justify-around rounded-3xl glass-strong border border-surface-200/70 px-1 shadow-soft-lg">
         {navItems.map((item) => {
           const isActive = isUser
             ? isUserBottomNavItemActive(item as UserBottomNavItem, pathname)
@@ -119,14 +94,14 @@ export function BottomNav() {
               href={item.href}
               onClick={() => isUser && onUserNavClick(item.href)}
               className={cn(
-                'relative flex h-14 flex-1 flex-col items-center justify-center gap-1 overflow-hidden rounded-2xl transition-colors',
+                'relative flex h-14 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-2xl px-0.5 transition-colors',
                 isActive ? 'text-primary-700' : 'text-surface-500 hover:text-ink',
               )}
               aria-current={isActive ? 'page' : undefined}
             >
               {isActive && (
                 <motion.span
-                  layoutId={`mobile-bottom-active-${userHomeMode}`}
+                  layoutId="mobile-bottom-active-user"
                   className="absolute inset-x-1 top-1 h-12 rounded-2xl bg-gradient-to-br from-primary-50 to-white ring-1 ring-inset ring-primary-200/60 shadow-soft-xs"
                   transition={{ type: 'spring', stiffness: 420, damping: 32 }}
                 />
@@ -140,7 +115,7 @@ export function BottomNav() {
               </motion.span>
               <span
                 className={cn(
-                  'relative z-10 text-[11px] leading-none',
+                  'relative z-10 text-[10px] leading-none',
                   isActive ? 'font-semibold' : 'font-medium',
                 )}
               >

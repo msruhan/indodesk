@@ -8,25 +8,26 @@ import {
   sortNotificationsNewestFirst,
 } from '@/lib/platform-notifications'
 import {
-  loadReadNotificationIds,
-  mergeReadNotificationIds,
+  isNotificationRead,
+  markAllNotificationsRead,
+  markNotificationRead,
   subscribeNotificationReadState,
 } from '@/lib/notification-read-state'
+
+const ADMIN_POLL_MS = 5_000
+const TEKNISI_POLL_MS = 15_000
+const DEFAULT_POLL_MS = 60_000
 
 export function usePlatformNotifications(role: UserRole | undefined, userId?: string) {
   const [notifications, setNotifications] = useState<PlatformNotification[]>([])
   const [loading, setLoading] = useState(false)
-  const [readIds, setReadIds] = useState<Set<string>>(() => loadReadNotificationIds(userId))
-
-  useEffect(() => {
-    setReadIds(loadReadNotificationIds(userId))
-  }, [userId])
+  const [readVersion, setReadVersion] = useState(0)
 
   useEffect(() => {
     return subscribeNotificationReadState(() => {
-      setReadIds(loadReadNotificationIds(userId))
+      setReadVersion((v) => v + 1)
     })
-  }, [userId])
+  }, [])
 
   const refresh = useCallback(async () => {
     if (!role) {
@@ -35,7 +36,9 @@ export function usePlatformNotifications(role: UserRole | undefined, userId?: st
     }
     setLoading(true)
     try {
-      const res = await fetch('/api/notifications', { cache: 'no-store' })
+      const res = await fetch(`/api/notifications?t=${Date.now()}`, {
+        cache: 'no-store',
+      })
       const json = (await res.json()) as {
         success?: boolean
         data?: PlatformNotification[]
@@ -54,8 +57,23 @@ export function usePlatformNotifications(role: UserRole | undefined, userId?: st
 
   useEffect(() => {
     void refresh()
-    const interval = setInterval(() => void refresh(), 60_000)
+    const pollMs =
+      role === 'ADMIN' ? ADMIN_POLL_MS : role === 'TEKNISI' ? TEKNISI_POLL_MS : DEFAULT_POLL_MS
+    const interval = setInterval(() => void refresh(), pollMs)
     return () => clearInterval(interval)
+  }, [refresh, role])
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refresh()
+    }
+    const onFocus = () => void refresh()
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onFocus)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onFocus)
+    }
   }, [refresh])
 
   const visible = useMemo(
@@ -63,27 +81,36 @@ export function usePlatformNotifications(role: UserRole | undefined, userId?: st
     [notifications, role],
   )
 
+  const isUnread = useCallback(
+    (item: PlatformNotification) => {
+      if (!userId) return true
+      void readVersion
+      return !isNotificationRead(userId, item.id, item.createdAt)
+    },
+    [userId, readVersion],
+  )
+
   const unreadNotifications = useMemo(
-    () => visible.filter((n) => !readIds.has(n.id)),
-    [visible, readIds],
+    () => visible.filter((n) => isUnread(n)),
+    [visible, isUnread],
   )
 
   const unreadCount = unreadNotifications.length
 
   const markAllAsRead = useCallback(() => {
     if (!userId || visible.length === 0) return
-    const next = mergeReadNotificationIds(
+    markAllNotificationsRead(
       userId,
-      visible.map((n) => n.id),
+      visible.map((n) => ({ id: n.id, createdAt: n.createdAt })),
     )
-    setReadIds(next)
+    setReadVersion((v) => v + 1)
   }, [userId, visible])
 
   const markAsRead = useCallback(
-    (id: string) => {
+    (id: string, createdAt?: string) => {
       if (!userId) return
-      const next = mergeReadNotificationIds(userId, [id])
-      setReadIds(next)
+      markNotificationRead(userId, id, createdAt)
+      setReadVersion((v) => v + 1)
     },
     [userId],
   )
@@ -96,6 +123,6 @@ export function usePlatformNotifications(role: UserRole | undefined, userId?: st
     refresh,
     markAllAsRead,
     markAsRead,
-    isRead: (id: string) => readIds.has(id),
+    isUnread,
   }
 }

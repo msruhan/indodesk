@@ -3,6 +3,8 @@
  * Supports both Classic (form-data + XML) and Pro (REST + Bearer Token) versions.
  */
 
+import { isStressTestMode, mockDelay } from './stress-mode'
+
 interface DhruFusionConfig {
   host: string
   username: string
@@ -53,6 +55,13 @@ export class DhruFusionProClient {
   }
 
   private async request<T>(endpoint: string, method = 'GET', body?: unknown): Promise<{ success: boolean; data?: T; error?: string; code?: number }> {
+    if (isStressTestMode()) {
+      await mockDelay(200)
+      return {
+        success: true,
+        data: {} as T,
+      }
+    }
     try {
       const url = `${this.host}/api/reseller/v1${endpoint}`
       const headers: Record<string, string> = {
@@ -491,6 +500,19 @@ export class DhruFusionClient {
    * Execute an action against the DhruFusion API.
    */
   private async request(action: string, parameters?: Record<string, string>): Promise<DhruResponse> {
+    if (isStressTestMode()) {
+      await mockDelay(200)
+      return {
+        SUCCESS: [
+          {
+            REFERENCEID: `stress-${Date.now()}`,
+            STATUS: 'Pending',
+            CODE: 'OK',
+            COMMENTS: 'Stress test mock response',
+          },
+        ],
+      }
+    }
     let xmlParams = ''
     if (parameters && Object.keys(parameters).length > 0) {
       const entries = Object.entries(parameters)

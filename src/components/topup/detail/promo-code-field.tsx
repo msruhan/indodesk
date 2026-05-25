@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { CheckCircle, X } from '@/lib/icons'
-import { promoCodes } from '@/data/mock-topup'
+import { TOPUP_PROMO_CODES } from '@/lib/topup-order-config'
 import { formatIDR } from '@/lib/topup-utils'
 import { cn } from '@/lib/utils'
 
@@ -20,7 +20,7 @@ export function PromoCodeField({ value, onChange, subtotal }: PromoCodeFieldProp
   const [draft, setDraft] = useState(value)
   const [error, setError] = useState<string | null>(null)
 
-  const promo = value ? promoCodes[value.toUpperCase()] : null
+  const promo = value ? TOPUP_PROMO_CODES[value.toUpperCase()] : null
   const discount = promo
     ? promo.type === 'percent'
       ? Math.round((subtotal * promo.value) / 100)
@@ -33,7 +33,7 @@ export function PromoCodeField({ value, onChange, subtotal }: PromoCodeFieldProp
       setError('Masukkan kode promo')
       return
     }
-    if (!promoCodes[code]) {
+    if (!TOPUP_PROMO_CODES[code]) {
       setError('Kode promo tidak valid')
       return
     }

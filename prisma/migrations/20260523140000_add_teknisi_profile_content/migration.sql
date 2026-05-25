@@ -1,0 +1,10 @@
+-- AlterTable
+ALTER TABLE "TeknisiProfile" ADD COLUMN IF NOT EXISTS "tagline" TEXT;
+ALTER TABLE "TeknisiProfile" ADD COLUMN IF NOT EXISTS "issuesHandled" TEXT;
+ALTER TABLE "TeknisiProfile" ADD COLUMN IF NOT EXISTS "brandFocus" TEXT;
+ALTER TABLE "TeknisiProfile" ADD COLUMN IF NOT EXISTS "workApproach" TEXT;
+ALTER TABLE "TeknisiProfile" ADD COLUMN IF NOT EXISTS "serviceScope" TEXT[] DEFAULT ARRAY[]::TEXT[];
+ALTER TABLE "TeknisiProfile" ADD COLUMN IF NOT EXISTS "languages" TEXT[] DEFAULT ARRAY[]::TEXT[];
+ALTER TABLE "TeknisiProfile" ADD COLUMN IF NOT EXISTS "secondarySkills" TEXT[] DEFAULT ARRAY[]::TEXT[];
+ALTER TABLE "TeknisiProfile" ADD COLUMN IF NOT EXISTS "operatingHours" JSONB NOT NULL DEFAULT '{}';
+ALTER TABLE "TeknisiProfile" ADD COLUMN IF NOT EXISTS "consultationServices" JSONB NOT NULL DEFAULT '[]';

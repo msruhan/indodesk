@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "TeknisiStore" ADD COLUMN IF NOT EXISTS "journeyIntro" TEXT;
+ALTER TABLE "TeknisiStore" ADD COLUMN IF NOT EXISTS "journey" JSONB NOT NULL DEFAULT '[]';

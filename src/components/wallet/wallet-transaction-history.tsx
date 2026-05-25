@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
@@ -15,6 +14,9 @@ import {
   type TransactionFilter,
   type UnifiedTransaction,
 } from '@/lib/wallet-transactions'
+import { DataPagination } from '@/components/ui/data-pagination'
+import { DEFAULT_PAGE_SIZE, type PageSizeOption } from '@/lib/pagination'
+import { WalletTransactionDetailModal } from '@/components/wallet/wallet-transaction-detail-modal'
 import {
   Package,
   RefreshCw,
@@ -65,6 +67,10 @@ export function WalletTransactionHistory({ onTransactionsLoaded }: WalletTransac
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState<PageSizeOption>(DEFAULT_PAGE_SIZE)
+  const [totalItems, setTotalItems] = useState(0)
+  const [selectedTx, setSelectedTx] = useState<UnifiedTransaction | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -72,7 +78,8 @@ export function WalletTransactionHistory({ onTransactionsLoaded }: WalletTransac
     try {
       const params = new URLSearchParams()
       if (filter !== 'all') params.set('category', filter)
-      params.set('limit', '50')
+      params.set('page', String(page))
+      params.set('pageSize', String(pageSize))
       const { year, month } = periodToQuery(period)
       params.set('year', year)
       params.set('month', month)
@@ -85,6 +92,7 @@ export function WalletTransactionHistory({ onTransactionsLoaded }: WalletTransac
       }
       setTransactions(json.data.transactions ?? [])
       if (json.data.counts) setCounts(json.data.counts)
+      setTotalItems(json.data.pagination?.total ?? json.data.transactions?.length ?? 0)
       onTransactionsLoaded?.()
     } catch {
       setError('Koneksi gagal')
@@ -92,15 +100,19 @@ export function WalletTransactionHistory({ onTransactionsLoaded }: WalletTransac
     } finally {
       setLoading(false)
     }
-  }, [filter, period, onTransactionsLoaded])
+  }, [filter, period, onTransactionsLoaded, page, pageSize])
 
   useEffect(() => {
     load()
   }, [load])
 
+  useEffect(() => {
+    setPage(1)
+  }, [filter, period, pageSize])
+
   return (
     <Card>
-      <CardContent className="p-6">
+      <CardContent className="p-4 sm:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="text-sm font-semibold text-ink">Riwayat Transaksi</h3>
@@ -164,10 +176,12 @@ export function WalletTransactionHistory({ onTransactionsLoaded }: WalletTransac
               const Icon = categoryIcons[tx.category]
               const variant = statusVariant(tx.status, tx.category)
               const row = (
-                <div
+                <button
+                  type="button"
+                  onClick={() => setSelectedTx(tx)}
                   className={cn(
-                    'flex items-center gap-3 rounded-xl border border-surface-200/70 p-3 transition-colors',
-                    tx.href && 'hover:border-primary-200 hover:bg-primary-50/30',
+                    'flex w-full items-center gap-3 rounded-xl border border-surface-200/70 p-3 text-left transition-colors',
+                    'cursor-pointer hover:border-primary-200 hover:bg-primary-50/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300',
                   )}
                 >
                   <div
@@ -204,18 +218,30 @@ export function WalletTransactionHistory({ onTransactionsLoaded }: WalletTransac
                   >
                     {formatTransactionAmount(tx.amount)}
                   </p>
-                </div>
+                </button>
               )
-              return tx.href ? (
-                <Link key={tx.id} href={tx.href} className="block">
-                  {row}
-                </Link>
-              ) : (
-                <div key={tx.id}>{row}</div>
-              )
+              return <div key={tx.id}>{row}</div>
             })
           )}
         </div>
+
+        <WalletTransactionDetailModal
+          transaction={selectedTx}
+          onClose={() => setSelectedTx(null)}
+        />
+        {!loading && totalItems > 0 && (
+          <DataPagination
+            page={page}
+            pageSize={pageSize}
+            totalItems={totalItems}
+            onPageChange={setPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size)
+              setPage(1)
+            }}
+            className="mt-4"
+          />
+        )}
       </CardContent>
     </Card>
   )

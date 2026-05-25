@@ -5,15 +5,17 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
   DashboardPageHeader,
-  DashboardPanel,
   EmptyState,
-  MetricCard,
   StatusBadge,
 } from '@/components/dashboard'
+import {
+  TeknisiStoreForm,
+  defaultStoreFormValues,
+  type TeknisiStoreFormValues,
+} from '@/components/teknisi/teknisi-store-form'
 import {
   Plus,
   Edit,
@@ -25,152 +27,33 @@ import {
   Mail,
   ArrowRight,
   CheckCircle,
-  Eye,
   Trash2,
+  Instagram,
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { listingStatusLabel } from '@/lib/product-catalog'
 import type { TeknisiStoreDto } from '@/lib/teknisi-store-serializer'
+import { formatOperatingHoursLines, STORE_WEEKDAYS } from '@/lib/store-operating-hours'
 
 const DEFAULT_COVER =
   'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1200&h=400&fit=crop'
 
-const emptyForm = {
-  name: '',
-  city: '',
-  address: '',
-  phone: '',
-  email: '',
-  jamWeekdays: '09:00 – 21:00',
-  jamWeekend: '10:00 – 20:00',
-  layanan: 'Service HP, Jual Beli, Unlock, Flashing',
-}
-
-function StoreForm({
-  title,
-  description,
-  initial,
-  submitLabel,
-  onSubmit,
-  onCancel,
-  saving,
-  error,
-}: {
-  title: string
-  description: string
-  initial: typeof emptyForm
-  submitLabel: string
-  onSubmit: (fd: FormData) => Promise<void>
-  onCancel: () => void
-  saving: boolean
-  error: string | null
-}) {
-  const [form, setForm] = useState(initial)
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const fd = new FormData()
-    fd.append('name', form.name.trim())
-    fd.append('city', form.city.trim())
-    fd.append('address', form.address.trim())
-    fd.append('phone', form.phone.trim())
-    fd.append('email', form.email.trim())
-    fd.append('jamWeekdays', form.jamWeekdays.trim())
-    fd.append('jamWeekend', form.jamWeekend.trim())
-    fd.append('layanan', form.layanan.trim())
-    const coverInput = (e.target as HTMLFormElement).elements.namedItem('cover') as HTMLInputElement
-    if (coverInput?.files?.[0]) fd.append('cover', coverInput.files[0])
-    await onSubmit(fd)
+function storeToForm(s: TeknisiStoreDto): TeknisiStoreFormValues {
+  return {
+    name: s.name,
+    city: s.city ?? '',
+    address: s.address ?? '',
+    phone: s.phone ?? '',
+    email: s.email ?? '',
+    instagram: s.instagram ?? '',
+    tiktok: s.tiktok ?? '',
+    operatingHours: Object.fromEntries(
+      STORE_WEEKDAYS.map(({ key }) => [key, { ...s.operatingHours[key] }]),
+    ) as TeknisiStoreFormValues['operatingHours'],
+    journeyIntro: s.journeyIntro ?? '',
+    layanan: s.layanan.length > 0 ? [...s.layanan] : [''],
+    journey: s.journey.map((m) => ({ ...m })),
   }
-
-  return (
-    <DashboardPanel title={title} description={description}>
-      <form className="space-y-4" onSubmit={handleSubmit}>
-        {error && (
-          <p className="rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</p>
-        )}
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-surface-700">Nama Toko</label>
-            <Input
-              required
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              placeholder="HandPhone Center Jakarta"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-surface-700">Kota</label>
-            <Input
-              value={form.city}
-              onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
-              placeholder="Jakarta"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label className="mb-1 block text-sm font-medium text-surface-700">Alamat Lengkap</label>
-            <Input
-              value={form.address}
-              onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-              placeholder="Jl. Thamrin No. 123"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-surface-700">Telepon</label>
-            <Input
-              value={form.phone}
-              onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-              placeholder="0812-3456-7890"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-surface-700">Email</label>
-            <Input
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-              placeholder="info@toko.id"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-surface-700">Jam Sen–Jum</label>
-            <Input
-              value={form.jamWeekdays}
-              onChange={(e) => setForm((f) => ({ ...f, jamWeekdays: e.target.value }))}
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-surface-700">Jam Sab–Min</label>
-            <Input
-              value={form.jamWeekend}
-              onChange={(e) => setForm((f) => ({ ...f, jamWeekend: e.target.value }))}
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label className="mb-1 block text-sm font-medium text-surface-700">
-              Layanan (pisahkan dengan koma)
-            </label>
-            <Input
-              value={form.layanan}
-              onChange={(e) => setForm((f) => ({ ...f, layanan: e.target.value }))}
-              placeholder="Service HP, Unlock, Flashing"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label className="mb-1 block text-sm font-medium text-surface-700">Foto cover</label>
-            <Input type="file" name="cover" accept="image/jpeg,image/png,image/webp,image/gif" />
-          </div>
-        </div>
-        <div className="flex gap-2 pt-2">
-          <Button type="submit" disabled={saving}>
-            {saving ? 'Menyimpan...' : submitLabel}
-          </Button>
-          <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>
-            Batal
-          </Button>
-        </div>
-      </form>
-    </DashboardPanel>
-  )
 }
 
 export default function TeknisiTokoPage() {
@@ -197,17 +80,6 @@ export default function TeknisiTokoPage() {
   useEffect(() => {
     void loadToko()
   }, [loadToko])
-
-  const storeToForm = (s: TeknisiStoreDto) => ({
-    name: s.name,
-    city: s.city ?? '',
-    address: s.address ?? '',
-    phone: s.phone ?? '',
-    email: s.email ?? '',
-    jamWeekdays: s.jamWeekdays ?? '',
-    jamWeekend: s.jamWeekend ?? '',
-    layanan: s.layanan.join(', '),
-  })
 
   const handleCreate = async (fd: FormData) => {
     setSaving(true)
@@ -308,7 +180,7 @@ export default function TeknisiTokoPage() {
         <EmptyState
           icon={Store}
           title="Belum ada toko terdaftar"
-          description="Daftarkan toko handphone Anda untuk tampil di marketplace dan menerima order."
+          description="Daftarkan toko handphone Anda. Setelah admin menyetujui, Anda bisa mempublikasikan ke website."
           action={
             <Button variant="primary" onClick={() => setShowAddForm(true)}>
               <Plus className="mr-2 h-4 w-4" />
@@ -327,10 +199,10 @@ export default function TeknisiTokoPage() {
           title="Tambah Toko"
           description="Lengkapi profil toko handphone Anda."
         />
-        <StoreForm
+        <TeknisiStoreForm
           title="Data Toko Baru"
-          description="Informasi ini akan ditampilkan di halaman publik toko Anda."
-          initial={emptyForm}
+          description="Setelah disimpan, status awal toko adalah menunggu review admin sebelum bisa tampil di website."
+          initial={defaultStoreFormValues}
           submitLabel="Daftarkan Toko"
           onSubmit={handleCreate}
           onCancel={() => setShowAddForm(false)}
@@ -344,6 +216,11 @@ export default function TeknisiTokoPage() {
   if (!toko) return null
 
   const locationLabel = [toko.address, toko.city].filter(Boolean).join(', ')
+  const isPending = toko.listingStatus === 'PENDING'
+  const isRejected = toko.listingStatus === 'REJECTED'
+  const isApproved = toko.listingStatus === 'APPROVED'
+  const canPublish = isApproved
+  const canViewPublic = isApproved && toko.isPublished
 
   return (
     <motion.div
@@ -356,18 +233,38 @@ export default function TeknisiTokoPage() {
         title="Toko"
         description="Kelola informasi toko handphone Anda agar mudah ditemukan pelanggan."
         actions={
-          <div className="flex flex-wrap gap-2">
-            <Link href={`/toko/${toko.id}`} target="_blank">
-              <Button variant="outline" size="sm" className="gap-1.5">
+          <div className="flex flex-nowrap items-center gap-1.5 sm:flex-wrap sm:gap-2">
+            {canViewPublic ? (
+              <Link href={`/toko/${toko.id}`} target="_blank" className="shrink-0">
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <ArrowRight className="h-3.5 w-3.5" />
+                  Lihat publik
+                </Button>
+              </Link>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0 gap-1.5"
+                disabled
+                title="Tersedia setelah disetujui admin dan dipublikasikan"
+              >
                 <ArrowRight className="h-3.5 w-3.5" />
                 Lihat publik
               </Button>
-            </Link>
+            )}
             <Button
               variant="outline"
               size="sm"
-              className="gap-1.5"
-              disabled={saving}
+              className="shrink-0 gap-1.5"
+              disabled={saving || !canPublish}
+              title={
+                isPending
+                  ? 'Menunggu review admin'
+                  : isRejected
+                    ? 'Toko ditolak — edit lalu kirim ulang'
+                    : undefined
+              }
               onClick={() => void handleTogglePublish()}
             >
               {toko.isPublished ? 'Jadikan draft' : 'Publikasikan'}
@@ -375,28 +272,40 @@ export default function TeknisiTokoPage() {
             <Button
               variant="primary"
               size="sm"
-              className="gap-1.5"
+              className="shrink-0 gap-1.5"
               onClick={() => setShowEditForm((open) => !open)}
             >
-              <Edit className="h-3.5 w-3.5" />
-              {showEditForm ? 'Tutup' : 'Edit toko'}
+              <Edit className="h-3.5 w-3.5 shrink-0" />
+              <span className="sm:hidden">{showEditForm ? 'Tutup' : 'Edit'}</span>
+              <span className="hidden sm:inline">{showEditForm ? 'Tutup' : 'Edit toko'}</span>
             </Button>
             <Button
               variant="outline"
               size="sm"
-              className="gap-1.5 text-rose-600 hover:border-rose-200 hover:bg-rose-50"
+              className="h-9 w-9 shrink-0 gap-0 p-0 text-rose-600 hover:border-rose-200 hover:bg-rose-50 sm:h-9 sm:w-auto sm:gap-1.5 sm:px-4"
               disabled={saving}
+              aria-label="Hapus toko"
+              title="Hapus toko"
               onClick={() => void handleDelete()}
             >
               <Trash2 className="h-3.5 w-3.5" />
-              Hapus toko
+              <span className="hidden sm:inline">Hapus toko</span>
             </Button>
           </div>
         }
         meta={
           <div className="flex flex-wrap items-center gap-2 text-xs text-surface-500">
-            <StatusBadge status={toko.isPublished ? 'approved' : 'draft'} />
-            {toko.badge && (
+            {isPending ? (
+              <Badge variant="warning">{listingStatusLabel('PENDING')}</Badge>
+            ) : isRejected ? (
+              <Badge variant="danger">{listingStatusLabel('REJECTED')}</Badge>
+            ) : (
+              <StatusBadge status={toko.isPublished ? 'approved' : 'draft'} />
+            )}
+            {isApproved && !toko.isPublished && (
+              <span className="text-surface-500">Disembunyikan sementara</span>
+            )}
+            {toko.badge && isApproved && (
               <span className="inline-flex items-center gap-1 rounded-full border border-amber-200/80 bg-amber-50 px-2.5 py-1 font-medium text-amber-800">
                 <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
                 {toko.badge}
@@ -405,17 +314,30 @@ export default function TeknisiTokoPage() {
             {toko.isPublished && (
               <span className="inline-flex items-center gap-1">
                 <CheckCircle className="h-3.5 w-3.5 text-primary-600" />
-                Tampil di marketplace
+                Tampil di website
               </span>
             )}
           </div>
         }
       />
 
+      {isPending && (
+        <p className="rounded-xl border border-amber-200/70 bg-amber-50/80 px-4 py-3 text-sm text-amber-900">
+          Toko Anda sedang <strong>menunggu review oleh Admin</strong>. Setelah disetujui, Anda dapat
+          mempublikasikan toko agar tampil di website.
+        </p>
+      )}
+      {isRejected && (
+        <p className="rounded-xl border border-rose-200/70 bg-rose-50/80 px-4 py-3 text-sm text-rose-900">
+          Toko ditolak admin. Perbarui data toko lalu simpan — permintaan akan dikirim ulang ke menu
+          Approval admin.
+        </p>
+      )}
+
       {showEditForm && (
-        <StoreForm
+        <TeknisiStoreForm
           title="Edit Toko"
-          description="Perbarui profil, foto, layanan, jam operasional, dan kontak toko Anda."
+          description="Perbarui profil toko. Jika sebelumnya ditolak, simpan akan mengirim ulang ke review admin."
           initial={storeToForm(toko)}
           submitLabel="Simpan perubahan"
           onSubmit={handleUpdate}
@@ -424,36 +346,6 @@ export default function TeknisiTokoPage() {
           error={formError}
         />
       )}
-
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
-        <MetricCard
-          title="Rating"
-          value={toko.rating > 0 ? toko.rating.toFixed(1) : '—'}
-          footnote={`${toko.reviewCount} ulasan`}
-          icon={Star}
-          tone="primary"
-          compact
-          dense
-        />
-        <MetricCard
-          title="Total Penjualan"
-          value={toko.totalPenjualan.toLocaleString('id-ID')}
-          footnote="Semua waktu"
-          icon={Store}
-          tone="primary"
-          compact
-          dense
-        />
-        <MetricCard
-          title="Dilihat Profil"
-          value={toko.profileViews.toLocaleString('id-ID')}
-          footnote="30 hari terakhir"
-          icon={Eye}
-          tone="neutral"
-          compact
-          dense
-        />
-      </div>
 
       <Card tone="glass" className="overflow-hidden p-0">
         <div className="relative h-36 sm:h-44">
@@ -499,18 +391,39 @@ export default function TeknisiTokoPage() {
             </div>
           )}
 
+          {toko.journey.length > 0 && (
+            <div className="rounded-xl border border-surface-200/70 bg-surface-50/50 p-3.5">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-surface-500">
+                Cerita di balik toko
+              </p>
+              {toko.journeyIntro && (
+                <p className="text-sm text-surface-600">{toko.journeyIntro}</p>
+              )}
+              <ul className="mt-2 space-y-1.5">
+                {toko.journey.map((step) => (
+                  <li key={`${step.year}-${step.title}`} className="text-sm text-ink">
+                    <span className="font-mono text-[10px] font-bold text-primary-700">{step.year}</span>
+                    {' · '}
+                    <span className="font-medium">{step.title}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-surface-200/70 bg-surface-50/50 p-3.5">
               <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-surface-500">
                 <Clock className="h-3.5 w-3.5" />
                 Jam operasional
               </p>
-              <p className="text-sm font-medium text-ink">
-                Sen–Jum: {toko.jamWeekdays ?? '—'}
-              </p>
-              <p className="mt-1 text-sm text-surface-600">
-                Sab–Min: {toko.jamWeekend ?? '—'}
-              </p>
+              <ul className="mt-1 space-y-1">
+                {formatOperatingHoursLines(toko.operatingHours).map((line) => (
+                  <li key={line} className="text-sm text-surface-700">
+                    {line}
+                  </li>
+                ))}
+              </ul>
             </div>
             <div className="rounded-xl border border-surface-200/70 bg-surface-50/50 p-3.5">
               <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-surface-500">
@@ -526,6 +439,12 @@ export default function TeknisiTokoPage() {
                 <p className="mt-1.5 flex items-center gap-2 text-sm text-surface-600">
                   <Mail className="h-3.5 w-3.5 text-primary-600" />
                   {toko.email}
+                </p>
+              )}
+              {toko.instagram && (
+                <p className="mt-1.5 flex items-center gap-2 text-sm text-surface-600">
+                  <Instagram className="h-3.5 w-3.5 text-primary-600" />
+                  @{toko.instagram.replace(/^@/, '')}
                 </p>
               )}
             </div>

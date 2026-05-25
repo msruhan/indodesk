@@ -3,9 +3,10 @@
 import { motion } from 'framer-motion'
 import { TrendingUp } from '@/lib/icons'
 import { ProductCard } from './product-card'
-import { popularProducts } from '@/data/mock-topup'
+import { useTopupCatalog } from '@/contexts/topup-catalog-context'
 
 export function PopularRail() {
+  const { popularProducts } = useTopupCatalog()
   if (popularProducts.length === 0) return null
 
   return (

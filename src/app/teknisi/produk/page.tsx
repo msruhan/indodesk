@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import type { ProductCategory } from '@prisma/client'
@@ -14,7 +14,6 @@ import {
   DataToolbar,
   EmptyState,
   MetricCard,
-  StatusBadge,
 } from '@/components/dashboard'
 import {
   Plus,
@@ -24,19 +23,38 @@ import {
   Package,
   CheckCircle,
   Clock,
-  ArrowRight,
-  ShoppingCart,
   ExternalLink,
+  Globe,
+  Lock,
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { useConfirm } from '@/components/ui/confirm-dialog'
 import { PRODUCT_CATEGORY_OPTIONS, formatProductPrice } from '@/lib/product-catalog'
+import {
+  resolveProductListingUi,
+} from '@/lib/product-listing-ui'
 import type { TeknisiProductDto } from '@/lib/product-serializer'
+import {
+  ProductImagesEditor,
+  buildProductImagesFormData,
+  slotsFromProduct,
+  type ProductImageSlot,
+} from '@/components/teknisi/product-images-editor'
+import {
+  ProductSpecsFields,
+  emptyProductSpecsForm,
+  type ProductSpecsFormState,
+} from '@/components/teknisi/product-specs-fields'
+import { validateProductSpecs } from '@/lib/product-specs'
+import { DataPagination } from '@/components/ui/data-pagination'
+import { useClientPagination } from '@/hooks/use-client-pagination'
 
 const categoryTone: Record<string, string> = {
   Handphone: 'border-primary-200/50 bg-primary-50/80 text-primary-800',
   Software: 'border-accent-200/50 bg-accent-50/80 text-accent-800',
   Laptop: 'border-surface-200/70 bg-surface-100 text-surface-700',
   Aksesoris: 'border-amber-200/50 bg-amber-50/80 text-amber-800',
+  Lainnya: 'border-surface-200/70 bg-surface-50 text-surface-700',
 }
 
 const emptyForm = {
@@ -48,16 +66,25 @@ const emptyForm = {
 }
 
 export default function TeknisiProdukPage() {
+  const confirmDialog = useConfirm()
   const [products, setProducts] = useState<TeknisiProductDto[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
-  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [specs, setSpecs] = useState<ProductSpecsFormState>(emptyProductSpecsForm)
+  const [imageSlots, setImageSlots] = useState<ProductImageSlot[]>([])
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [actionId, setActionId] = useState<string | null>(null)
+  const formPanelRef = useRef<HTMLDivElement>(null)
+
+  const scrollToForm = useCallback(() => {
+    requestAnimationFrame(() => {
+      formPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }, [])
 
   const loadProducts = useCallback(async () => {
     try {
@@ -81,15 +108,18 @@ export default function TeknisiProdukPage() {
     [products, searchQuery],
   )
 
-  const totalViews = products.reduce((sum, p) => sum + p.views, 0)
-  const totalSold = products.reduce((sum, p) => sum + p.sold, 0)
+  const { page, setPage, pageSize, setPageSize, paginatedItems, totalItems } =
+    useClientPagination(filteredProduk, [searchQuery])
+
   const approvedCount = products.filter((p) => p.status === 'approved').length
   const pendingCount = products.filter((p) => p.status === 'pending').length
   const publishedCount = products.filter((p) => p.isPublished).length
+  const draftCount = products.filter((p) => p.status === 'approved' && !p.isPublished).length
 
   const resetForm = () => {
     setForm(emptyForm)
-    setImageFile(null)
+    setSpecs(emptyProductSpecsForm)
+    setImageSlots([])
     setEditingId(null)
     setFormError(null)
   }
@@ -97,6 +127,7 @@ export default function TeknisiProdukPage() {
   const openCreate = () => {
     resetForm()
     setShowForm(true)
+    scrollToForm()
   }
 
   const openEdit = (p: TeknisiProductDto) => {
@@ -108,9 +139,18 @@ export default function TeknisiProdukPage() {
       description: p.description ?? '',
       stock: String(p.stock),
     })
-    setImageFile(null)
+    setSpecs({
+      color: p.color,
+      ram: p.ram,
+      processor: p.processor,
+      storage: p.storage,
+      warranty: p.warranty,
+      completeness: p.completeness,
+    })
+    setImageSlots(slotsFromProduct(p.images))
     setFormError(null)
     setShowForm(true)
+    scrollToForm()
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -118,13 +158,24 @@ export default function TeknisiProdukPage() {
     setSaving(true)
     setFormError(null)
 
+    const specsError = validateProductSpecs({ ...specs, category: form.category })
+    if (specsError) {
+      setFormError(specsError)
+      setSaving(false)
+      return
+    }
+
     const fd = new FormData()
     fd.append('name', form.name.trim())
     fd.append('category', form.category)
     fd.append('price', form.price)
     fd.append('description', form.description.trim())
     fd.append('stock', form.stock)
-    if (imageFile) fd.append('image', imageFile)
+    fd.append('color', specs.color.trim())
+    fd.append('storage', specs.storage.trim())
+    fd.append('warranty', specs.warranty)
+    fd.append('completeness', JSON.stringify(specs.completeness))
+    buildProductImagesFormData(imageSlots, fd)
 
     try {
       const url = editingId ? `/api/teknisi/products/${editingId}` : '/api/teknisi/products'
@@ -166,18 +217,37 @@ export default function TeknisiProdukPage() {
   }
 
   const handleDelete = async (p: TeknisiProductDto) => {
-    if (!confirm(`Hapus produk "${p.name}"? Tindakan ini tidak dapat dibatalkan.`)) return
+    const confirmed = await confirmDialog({
+      title: 'Hapus Produk',
+      description: `Hapus produk "${p.name}"? Tindakan ini tidak dapat dibatalkan.`,
+      variant: 'danger',
+      confirmLabel: 'Hapus',
+      cancelLabel: 'Batal',
+    })
+    if (!confirmed) return
     setActionId(p.id)
     try {
       const res = await fetch(`/api/teknisi/products/${p.id}`, { method: 'DELETE' })
       const data = await res.json()
       if (!data.success) {
-        alert(data.error || 'Gagal menghapus produk')
+        void confirmDialog({
+          title: 'Gagal Menghapus',
+          description: data.error || 'Gagal menghapus produk. Silakan coba lagi.',
+          variant: 'warning',
+          confirmLabel: 'OK',
+          hideCancel: true,
+        })
         return
       }
       await loadProducts()
     } catch {
-      alert('Gagal menghapus produk')
+      void confirmDialog({
+        title: 'Error',
+        description: 'Gagal menghapus produk. Periksa koneksi internet Anda.',
+        variant: 'warning',
+        confirmLabel: 'OK',
+        hideCancel: true,
+      })
     } finally {
       setActionId(null)
     }
@@ -198,7 +268,14 @@ export default function TeknisiProdukPage() {
             variant="primary"
             size="sm"
             className="h-8 gap-1 self-start px-3 text-[11px]"
-            onClick={() => (showForm ? (setShowForm(false), resetForm()) : openCreate())}
+            onClick={() => {
+              if (showForm) {
+                setShowForm(false)
+                resetForm()
+              } else {
+                openCreate()
+              }
+            }}
           >
             <Plus className="h-3.5 w-3.5" />
             {showForm ? 'Tutup Form' : 'Tambah Produk'}
@@ -225,12 +302,13 @@ export default function TeknisiProdukPage() {
       />
 
       {showForm && (
+        <div ref={formPanelRef} className="scroll-mt-24">
         <DashboardPanel
           title={editingId ? 'Edit Produk' : 'Tambah Produk Baru'}
           description={
             editingId
-              ? 'Perbarui detail produk. Perubahan langsung tersimpan ke database.'
-              : 'Lengkapi detail produk. Setelah disimpan, Anda bisa mempublikasikan ke marketplace.'
+              ? 'Setiap perubahan konten (nama, harga, foto, spesifikasi, stok, deskripsi) dikirim ulang ke review admin. Iklan disembunyikan sampai disetujui.'
+              : 'Lengkapi detail produk. Setelah disimpan, admin akan mereview sebelum produk bisa dipublikasikan.'
           }
         >
           <form className="space-y-4" onSubmit={handleSubmit}>
@@ -251,9 +329,14 @@ export default function TeknisiProdukPage() {
                 <label className="mb-1 block text-sm font-medium text-surface-700">Kategori</label>
                 <select
                   value={form.category}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, category: e.target.value as ProductCategory }))
-                  }
+                  onChange={(e) => {
+                    const nextCategory = e.target.value as ProductCategory
+                    setForm((f) => ({ ...f, category: nextCategory }))
+                    setSpecs((s) => ({
+                      ...emptyProductSpecsForm,
+                      warranty: s.warranty,
+                    }))
+                  }}
                   className="w-full rounded-xl border border-surface-200 bg-white px-3 py-2.5 text-sm text-ink shadow-soft-xs focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-200/50"
                 >
                   {PRODUCT_CATEGORY_OPTIONS.map((c) => (
@@ -283,14 +366,8 @@ export default function TeknisiProdukPage() {
                   onChange={(e) => setForm((f) => ({ ...f, stock: e.target.value }))}
                 />
               </div>
-              <div className="md:col-span-2">
-                <label className="mb-1 block text-sm font-medium text-surface-700">Foto Produk</label>
-                <Input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
-                />
-              </div>
+              <ProductImagesEditor slots={imageSlots} onChange={setImageSlots} />
+              <ProductSpecsFields category={form.category} value={specs} onChange={setSpecs} />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-surface-700">Deskripsi</label>
@@ -303,7 +380,7 @@ export default function TeknisiProdukPage() {
               />
             </div>
             <div className="flex gap-2 pt-2">
-              <Button type="submit" disabled={saving}>
+              <Button type="submit" variant="primary" disabled={saving}>
                 {saving ? 'Menyimpan...' : editingId ? 'Simpan Perubahan' : 'Simpan'}
               </Button>
               <Button
@@ -319,31 +396,24 @@ export default function TeknisiProdukPage() {
             </div>
           </form>
         </DashboardPanel>
+        </div>
       )}
 
-      <motion.div className="grid grid-cols-2 gap-3">
+      <motion.div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <MetricCard
-          title="Total Iklan"
-          value={String(products.length)}
-          footnote={`${filteredProduk.length} ditampilkan`}
+          title="Iklan Publish"
+          value={String(publishedCount)}
+          footnote={publishedCount > 0 ? 'Tampil di marketplace' : 'Belum ada yang publik'}
+          icon={CheckCircle}
+          tone="primary"
+          compact
+        />
+        <MetricCard
+          title="Disembunyikan"
+          value={String(draftCount)}
+          footnote={draftCount > 0 ? 'Disembunyikan sementara' : 'Semua iklan aktif tampil'}
           icon={Package}
-          tone="primary"
-          compact
-        />
-        <MetricCard
-          title="Total Terjual"
-          value={totalSold.toLocaleString('id-ID')}
-          footnote="Semua waktu"
-          icon={ShoppingCart}
-          tone="primary"
-          compact
-        />
-        <MetricCard
-          title="Total Dilihat"
-          value={totalViews.toLocaleString('id-ID')}
-          footnote="Semua waktu"
-          icon={Eye}
-          tone="primary"
+          tone="neutral"
           compact
         />
         <MetricCard
@@ -360,7 +430,7 @@ export default function TeknisiProdukPage() {
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
         placeholder="Cari produk..."
-        resultLabel={`${filteredProduk.length} produk`}
+        resultLabel={`${totalItems} produk`}
       />
 
       {loading ? (
@@ -379,7 +449,9 @@ export default function TeknisiProdukPage() {
         />
       ) : (
         <div className="space-y-2">
-          {filteredProduk.map((p, index) => (
+          {paginatedItems.map((p, index) => {
+            const listing = resolveProductListingUi(p)
+            return (
             <motion.div
               key={p.id}
               initial={{ opacity: 0, y: 8 }}
@@ -402,15 +474,9 @@ export default function TeknisiProdukPage() {
                       </div>
                     )}
                     <span className="absolute left-1.5 top-1.5">
-                      <StatusBadge
-                        status={
-                          p.status === 'approved'
-                            ? p.isPublished
-                              ? 'approved'
-                              : 'draft'
-                            : p.status
-                        }
-                      />
+                      <Badge variant={listing.reviewBadge.variant} className="text-[9px]">
+                        {listing.reviewBadge.label}
+                      </Badge>
                     </span>
                   </div>
 
@@ -431,39 +497,73 @@ export default function TeknisiProdukPage() {
                       <p className="mt-0.5 text-[14px] font-bold text-primary-700">
                         {formatProductPrice(p.price)}
                       </p>
-                      <p className="mt-0.5 flex items-center gap-2 text-[10px] text-surface-500">
+                      <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-surface-500">
                         <span className="inline-flex items-center gap-0.5">
                           <Eye className="h-3 w-3" />
-                          {p.views.toLocaleString('id-ID')}
+                          {p.views.toLocaleString('id-ID')} dilihat
                         </span>
-                        <span>·</span>
+                        <span className="text-surface-300">·</span>
+                        <span
+                          className={cn(
+                            'inline-flex items-center gap-0.5 font-medium',
+                            p.stock <= 0 ? 'text-rose-600' : 'text-surface-600',
+                          )}
+                        >
+                          <Package className="h-3 w-3" />
+                          Stok {p.stock.toLocaleString('id-ID')}
+                        </span>
+                        {p.sold > 0 && (
+                          <>
+                            <span className="text-surface-300">·</span>
+                            <span>{p.sold.toLocaleString('id-ID')} terjual</span>
+                          </>
+                        )}
+                        <span className="text-surface-300">·</span>
                         <span>{p.createdAt}</span>
                       </p>
                     </div>
 
-                    <div className="mt-2 flex items-center gap-1.5">
+                    <div className="mt-2 space-y-1.5">
+                      <p
+                        className={cn(
+                          'text-[10px] font-medium',
+                          listing.visibilityTone === 'primary' && 'text-primary-700',
+                          listing.visibilityTone === 'warning' && 'text-amber-700',
+                          listing.visibilityTone === 'danger' && 'text-rose-700',
+                          listing.visibilityTone === 'neutral' && 'text-surface-500',
+                        )}
+                      >
+                        {listing.visibilityLabel}
+                      </p>
+                      <div className="flex items-center gap-1.5">
                       <Button
                         type="button"
-                        variant="outline"
+                        variant={listing.action === 'publish' ? 'primary' : 'outline'}
                         size="sm"
                         className={cn(
                           'h-7 flex-1 gap-1 px-2 text-[10px]',
-                          p.isPublished && 'border-primary-300 bg-primary-50 text-primary-800',
+                          listing.action === 'unpublish' &&
+                            'border-surface-300 text-surface-700 hover:bg-surface-50',
                         )}
-                        disabled={actionId === p.id || p.status === 'pending' || p.status === 'rejected'}
-                        onClick={() => void handleTogglePublish(p)}
-                        title={
-                          p.status === 'pending'
-                            ? 'Menunggu review admin'
-                            : p.isPublished
-                              ? 'Klik untuk jadikan draft'
-                              : 'Klik untuk publikasikan'
-                        }
+                        disabled={actionId === p.id || listing.actionDisabled}
+                        title={listing.actionHint}
+                        onClick={() => {
+                          if (listing.action === 'edit_resubmit') {
+                            openEdit(p)
+                            return
+                          }
+                          if (listing.action === 'publish' || listing.action === 'unpublish') {
+                            void handleTogglePublish(p)
+                          }
+                        }}
                       >
-                        <ArrowRight className="h-3 w-3" />
-                        {p.isPublished ? 'Publik' : 'Draft'}
+                        {listing.action === 'publish' && <Globe className="h-3 w-3" />}
+                        {listing.action === 'unpublish' && <Lock className="h-3 w-3" />}
+                        {listing.action === 'wait' && <Clock className="h-3 w-3" />}
+                        {listing.action === 'edit_resubmit' && <Edit className="h-3 w-3" />}
+                        {listing.actionLabel}
                       </Button>
-                      {p.isPublished && (
+                      {listing.showMarketplaceLink && (
                         <Link href={`/marketplace/${p.id}`} target="_blank">
                           <Button
                             type="button"
@@ -480,7 +580,11 @@ export default function TeknisiProdukPage() {
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="h-7 gap-1 px-2 text-[10px]"
+                        className={cn(
+                          'h-7 gap-1 px-2 text-[10px]',
+                          editingId === p.id && 'border-primary-400 bg-primary-50 text-primary-800',
+                        )}
+                        aria-pressed={editingId === p.id}
                         onClick={() => openEdit(p)}
                       >
                         <Edit className="h-3 w-3" />
@@ -496,13 +600,26 @@ export default function TeknisiProdukPage() {
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </motion.div>
-          ))}
+            )
+          })}
         </div>
+      )}
+
+      {!loading && totalItems > 0 && (
+        <DataPagination
+          page={page}
+          pageSize={pageSize}
+          totalItems={totalItems}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+          className="mt-4"
+        />
       )}
     </motion.div>
   )

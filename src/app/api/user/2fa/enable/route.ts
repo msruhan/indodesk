@@ -6,7 +6,10 @@ import { verifyTotpCode } from '@/lib/totp'
 export const dynamic = 'force-dynamic'
 
 const schema = z.object({
-  code: z.string().min(6).max(8),
+  code: z
+    .string()
+    .transform((v) => v.replace(/\s/g, ''))
+    .pipe(z.string().regex(/^\d{6}$/, 'Kode harus 6 digit angka')),
 })
 
 export async function POST(req: Request) {

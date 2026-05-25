@@ -9,6 +9,7 @@ import {
 } from '@/lib/imei-order-worker'
 import { normalizeSupplierCode, stripSupplierHtml } from '@/lib/imei-public'
 import { normalizeFieldKey } from '@/lib/server-fields'
+import { logSystemEvent } from '@/lib/activity-log'
 import type { Prisma, ServerOrder, ServerOrderStatus } from '@prisma/client'
 
 function extractSupplierCode(remote: { code?: string; comments?: string }): string | null {
@@ -293,6 +294,13 @@ export async function pollServerOrderFromSupplier(orderId: string): Promise<{
         completedAt: new Date(),
       },
     })
+    void logSystemEvent({
+      action: 'order.server.success',
+      severity: 'SUCCESS',
+      summary: `Order Server ${order.orderCode} berhasil`,
+      target: { type: 'server_order', id: order.id, label: order.orderCode },
+      metadata: { orderCode: order.orderCode, code: supplierCode ?? null },
+    })
     return { ok: true, updated: true }
   }
 
@@ -336,6 +344,14 @@ export async function pollServerOrderFromSupplier(orderId: string): Promise<{
           },
         })
       }
+    })
+    void logSystemEvent({
+      action: 'order.server.rejected',
+      severity: 'WARNING',
+      summary: `Order Server ${order.orderCode} ditolak supplier`,
+      detail: remote.error ?? null,
+      target: { type: 'server_order', id: order.id, label: order.orderCode },
+      metadata: { orderCode: order.orderCode, supplierError: remote.error ?? null },
     })
     return { ok: true, updated: true }
   }

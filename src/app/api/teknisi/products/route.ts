@@ -1,9 +1,16 @@
 import { z } from 'zod'
-import { ProductCategory } from '@prisma/client'
+import { ProductCategory, ProductWarranty } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
-import { saveProductImage } from '@/lib/product-image'
+import { resolveProductImagesFromForm } from '@/lib/product-image-api'
 import { serializeTeknisiProduct } from '@/lib/product-serializer'
+import {
+  categoryRequiresSpecs,
+  parseCompletenessJson,
+  parseProductSpecsFromForm,
+  specsToDb,
+  validateProductSpecs,
+} from '@/lib/product-specs'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,7 +52,6 @@ export async function POST(req: Request) {
       const priceRaw = String(form.get('price') ?? '')
       const description = String(form.get('description') ?? '').trim() || null
       const stockRaw = String(form.get('stock') ?? '1')
-      const file = form.get('image')
 
       const parsed = createJsonSchema.safeParse({
         name,
@@ -58,10 +64,11 @@ export async function POST(req: Request) {
         return apiError(parsed.error.issues[0]?.message ?? 'Data tidak valid')
       }
 
-      let imageUrl: string | null = null
-      if (file instanceof File && file.size > 0) {
-        imageUrl = await saveProductImage(file, session.user.id)
-      }
+      const specs = parseProductSpecsFromForm(form, parsed.data.category)
+      const specsError = validateProductSpecs(specs)
+      if (specsError) return apiError(specsError)
+
+      const { images, image } = await resolveProductImagesFromForm(form, session.user.id)
 
       const product = await prisma.product.create({
         data: {
@@ -70,9 +77,11 @@ export async function POST(req: Request) {
           category: parsed.data.category,
           price: parsed.data.price,
           description: parsed.data.description ?? null,
-          image: imageUrl,
+          image,
+          images: images as object,
           stock: parsed.data.stock ?? 1,
-          listingStatus: 'APPROVED',
+          ...specsToDb(specs),
+          listingStatus: 'PENDING',
           isPublished: false,
         },
       })
@@ -86,6 +95,36 @@ export async function POST(req: Request) {
       return apiError(parsed.error.issues[0]?.message ?? 'Data tidak valid')
     }
 
+    if (categoryRequiresSpecs(parsed.data.category)) {
+      const specs = {
+        category: parsed.data.category,
+        color: String(body.color ?? '').trim(),
+        ram: String(body.ram ?? '').trim(),
+        processor: String(body.processor ?? '').trim(),
+        storage: String(body.storage ?? '').trim(),
+        warranty: body.warranty as ProductWarranty,
+        completeness: parseCompletenessJson(body.completeness, parsed.data.category),
+      }
+      const specsError = validateProductSpecs(specs)
+      if (specsError) return apiError(specsError)
+
+      const product = await prisma.product.create({
+        data: {
+          sellerId: session.user.id,
+          name: parsed.data.name,
+          category: parsed.data.category,
+          price: parsed.data.price,
+          description: parsed.data.description ?? null,
+          images: [],
+          stock: parsed.data.stock ?? 1,
+          ...specsToDb(specs),
+          listingStatus: 'PENDING',
+          isPublished: false,
+        },
+      })
+      return apiSuccess(serializeTeknisiProduct(product), 201)
+    }
+
     const product = await prisma.product.create({
       data: {
         sellerId: session.user.id,
@@ -93,8 +132,9 @@ export async function POST(req: Request) {
         category: parsed.data.category,
         price: parsed.data.price,
         description: parsed.data.description ?? null,
+        images: [],
         stock: parsed.data.stock ?? 1,
-        listingStatus: 'APPROVED',
+        listingStatus: 'PENDING',
         isPublished: false,
       },
     })

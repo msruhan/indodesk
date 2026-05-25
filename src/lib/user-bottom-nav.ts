@@ -1,4 +1,4 @@
-import { ShoppingBag, Users, Store, History } from '@/lib/icons'
+import { History, LayoutDashboard, ShoppingBag, Store, Users } from '@/lib/icons'
 import type { IconType } from '@/lib/icons-types'
 
 export type UserBottomNavItem = {
@@ -8,13 +8,29 @@ export type UserBottomNavItem = {
   activePrefixes?: string[]
 }
 
-/** Single bottom-nav model for logged-in USER role (all pages). */
+/** Mobile bottom nav untuk user login: Dashboard, Market, Layanan, Toko, Riwayat. */
 export const USER_BOTTOM_NAV_ITEMS: readonly UserBottomNavItem[] = [
+  {
+    icon: LayoutDashboard,
+    label: 'Dashboard',
+    href: '/user/dashboard',
+    activePrefixes: [
+      '/user/dashboard',
+      '/user/orders',
+      '/user/konsultasi',
+      '/user/rekber',
+      '/user/remote',
+      '/user/akun',
+      '/user/settings',
+      '/user/help',
+      '/user/chat',
+    ],
+  },
   {
     icon: ShoppingBag,
     label: 'Market',
     href: '/marketplace',
-    activePrefixes: ['/marketplace', '/topup'],
+    activePrefixes: ['/marketplace', '/topup', '/cart'],
   },
   {
     icon: Users,
@@ -32,7 +48,7 @@ export const USER_BOTTOM_NAV_ITEMS: readonly UserBottomNavItem[] = [
     icon: History,
     label: 'Riwayat',
     href: '/user/riwayat',
-    activePrefixes: ['/user/riwayat', '/imei/orders'],
+    activePrefixes: ['/user/riwayat', '/user/orders/imei'],
   },
 ]
 

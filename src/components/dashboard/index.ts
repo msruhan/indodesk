@@ -25,4 +25,8 @@ export {
   EmptyState,
   DashboardPanel,
   StatusBadge,
+  TabPills,
+  FilterPills,
+  FilterSelect,
 } from './dashboard-primitives'
+export type { TabPillItem, FilterPillItem, FilterSelectItem } from './dashboard-primitives'

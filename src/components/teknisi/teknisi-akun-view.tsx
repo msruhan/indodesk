@@ -2,22 +2,22 @@
 
 import { useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { motion } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { DashboardPageHeader, DashboardPanel, InsightCard } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardPanel } from '@/components/dashboard'
 import { cn } from '@/lib/utils'
 import { AccountSettingsView } from '@/components/account/account-settings-view'
+import { TeknisiProfileForm } from '@/components/teknisi/teknisi-profile-form'
+import { TeknisiTrustBadges } from '@/components/teknisi/teknisi-trust-badges'
+import { TelegramLinkCard } from '@/components/telegram/telegram-link-card'
+import { useTeknisiProfile } from '@/hooks/use-teknisi-profile'
 import {
-  Award,
   Bell,
-  CheckCircle,
   MessageCircle,
-  Radio,
   Settings,
-  Star,
   UserCircle,
 } from '@/lib/icons'
 
@@ -31,6 +31,24 @@ const TABS: { id: TeknisiAkunTab; label: string; icon: typeof UserCircle }[] = [
 ]
 
 function TeknisiProfilTab() {
+  const { update } = useSession()
+  const { profile, loading, error, reload, setProfile } = useTeknisiProfile()
+
+  if (loading) {
+    return <p className="text-sm text-surface-500">Memuat profil…</p>
+  }
+
+  if (error || !profile) {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-rose-600">{error ?? 'Profil tidak tersedia'}</p>
+        <Button type="button" variant="outline" size="sm" onClick={() => void reload()}>
+          Coba lagi
+        </Button>
+      </div>
+    )
+  }
+
   return (
     <motion.div {...fadeIn} className="space-y-6">
       <Card>
@@ -38,76 +56,11 @@ function TeknisiProfilTab() {
           <CardTitle>Informasi Profil</CardTitle>
         </CardHeader>
         <CardContent>
-          <form className="space-y-4">
-            <motion.div className="mb-6 flex items-center gap-6">
-              <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-accent-500 text-2xl font-bold text-white">
-                AH
-              </div>
-              <div>
-                <Button type="button" variant="outline">
-                  Ubah Foto
-                </Button>
-              </div>
-            </motion.div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-surface-700">Nama Lengkap</label>
-                <Input defaultValue="Ahmad Hidayat" />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-surface-700">Email</label>
-                <Input type="email" defaultValue="ahmad@example.com" />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-surface-700">No. Telepon</label>
-                <Input defaultValue="081234567890" />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-surface-700">Lokasi</label>
-                <Input defaultValue="Jakarta Selatan" />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-surface-700">Pengalaman</label>
-                <Input defaultValue="8 tahun" />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-surface-700">
-                  Harga Konsultasi (Rp)
-                </label>
-                <Input type="number" defaultValue="50000" />
-              </div>
-            </div>
-
-            <div>
-              <label className="mb-1 block text-sm font-medium text-surface-700">Deskripsi</label>
-              <textarea
-                className="w-full resize-none rounded-lg border border-surface-200 px-3 py-2"
-                rows={4}
-                defaultValue="Teknisi handphone berpengalaman dengan spesialisasi unlock, flashing, dan root berbagai brand."
-              />
-            </div>
-
-            <div>
-              <label className="mb-1 block text-sm font-medium text-surface-700">Spesialisasi</label>
-              <div className="flex flex-wrap gap-2">
-                <Badge>Unlock</Badge>
-                <Badge>Flashing</Badge>
-                <Badge>Root</Badge>
-                <Badge>Hardware Repair</Badge>
-                <Button type="button" size="sm" variant="outline">
-                  + Tambah
-                </Button>
-              </div>
-            </div>
-
-            <div className="flex gap-2 pt-4">
-              <Button type="submit">Simpan Perubahan</Button>
-              <Button type="button" variant="outline">
-                Batal
-              </Button>
-            </div>
-          </form>
+          <TeknisiProfileForm
+            profile={profile}
+            onSaved={setProfile}
+            onSessionUpdate={(name, image) => void update({ name, image })}
+          />
         </CardContent>
       </Card>
 
@@ -116,23 +69,13 @@ function TeknisiProfilTab() {
           <CardHeader>
             <CardTitle>Statistik</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-surface-500">Rating</span>
-              <div className="flex items-center gap-1">
-                <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-                <span className="text-lg font-bold">4.9</span>
-                <span className="text-surface-500">(234 review)</span>
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-surface-500">Total Konsultasi</span>
-              <span className="text-lg font-bold">567</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-surface-500">Total View Profil</span>
-              <span className="text-lg font-bold">1,234</span>
-            </div>
+          <CardContent>
+            <TeknisiTrustBadges
+              badge={profile.badge}
+              isVerified={profile.isVerified}
+              isOnline={profile.isOnline}
+              showCriteriaHint
+            />
           </CardContent>
         </Card>
 
@@ -140,62 +83,16 @@ function TeknisiProfilTab() {
           <CardHeader>
             <CardTitle>Badge & Status</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-3 rounded-lg border border-yellow-200 bg-yellow-50 p-4">
-              <Award className="h-8 w-8 text-yellow-600" />
-              <div>
-                <div className="font-semibold">Top Teknisi</div>
-                <div className="text-sm text-surface-500">Berdasarkan rating & konsultasi</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 p-4">
-              <CheckCircle className="h-8 w-8 text-green-600" />
-              <div>
-                <div className="font-semibold">Verified</div>
-                <div className="text-sm text-surface-500">Teknisi terverifikasi</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4">
-              <Radio className="h-8 w-8 text-blue-600" />
-              <div>
-                <div className="font-semibold">Online</div>
-                <div className="text-sm text-surface-500">Sedang online sekarang</div>
-              </div>
-            </div>
+          <CardContent>
+            <TeknisiTrustBadges
+              badge={profile.badge}
+              isVerified={profile.isVerified}
+              isOnline={profile.isOnline}
+              showCriteriaHint
+            />
           </CardContent>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Sertifikasi</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between rounded-lg border border-surface-200 p-4">
-              <div>
-                <div className="font-semibold">Certified Mobile Technician</div>
-                <div className="text-sm text-surface-500">Indonesia Mobile Tech • 2020</div>
-              </div>
-              <Button type="button" variant="outline" size="sm">
-                Hapus
-              </Button>
-            </div>
-            <div className="flex items-center justify-between rounded-lg border border-surface-200 p-4">
-              <div>
-                <div className="font-semibold">Advanced Flashing Specialist</div>
-                <div className="text-sm text-surface-500">Tech Academy • 2021</div>
-              </div>
-              <Button type="button" variant="outline" size="sm">
-                Hapus
-              </Button>
-            </div>
-            <Button type="button" variant="outline">
-              + Tambah Sertifikasi
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </motion.div>
   )
 }
@@ -206,44 +103,37 @@ function TeknisiPengaturanTab() {
       <AccountSettingsView showKycSection={false} initialTab="keamanan" hideTabBar />
 
       <DashboardPanel
-        title="Notification Preferences"
+        title="Preferensi Notifikasi"
         description="Atur channel untuk request konsultasi, remote, payout, dan pesan pelanggan."
       >
         <div className="grid gap-3 md:grid-cols-3">
-          {[
-            {
-              icon: Bell,
-              title: 'In-app notifications',
-              status: 'Aktif',
-              desc: 'Seluruh alert tampil di dashboard.',
-            },
-            {
-              icon: MessageCircle,
-              title: 'WhatsApp reminders',
-              status: 'Belum link',
-              desc: 'Reminder konsultasi dan remote masuk ke WhatsApp.',
-            },
-            {
-              icon: CheckCircle,
-              title: 'Telegram alerts',
-              status: 'Belum link',
-              desc: 'Alert payout dan request urgent ke Telegram.',
-            },
-          ].map((item) => (
-            <div
-              key={item.title}
-              className="rounded-2xl border border-surface-200/70 bg-white/70 p-4"
-            >
-              <div className="mb-3 flex items-start justify-between gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-50 text-primary-700">
-                  <item.icon className="h-5 w-5" />
-                </span>
-                <Badge variant={item.status === 'Aktif' ? 'success' : 'outline'}>{item.status}</Badge>
-              </div>
-              <p className="text-sm font-semibold text-ink">{item.title}</p>
-              <p className="mt-1 text-xs leading-relaxed text-surface-500">{item.desc}</p>
+          <div className="rounded-2xl border border-surface-200/70 bg-white/70 p-4">
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-50 text-primary-700">
+                <Bell className="h-5 w-5" />
+              </span>
+              <Badge variant="success">Aktif</Badge>
             </div>
-          ))}
+            <p className="text-sm font-semibold text-ink">In-app notifications</p>
+            <p className="mt-1 text-xs leading-relaxed text-surface-500">
+              Seluruh alert tampil di dashboard.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-surface-200/70 bg-white/70 p-4">
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-50 text-primary-700">
+                <MessageCircle className="h-5 w-5" />
+              </span>
+              <Badge variant="outline">Belum link</Badge>
+            </div>
+            <p className="text-sm font-semibold text-ink">WhatsApp reminders</p>
+            <p className="mt-1 text-xs leading-relaxed text-surface-500">
+              Reminder konsultasi dan remote masuk ke WhatsApp.
+            </p>
+          </div>
+
+          <TelegramLinkCard />
         </div>
       </DashboardPanel>
     </motion.div>
