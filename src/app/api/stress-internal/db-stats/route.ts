@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 /**
- * GET /api/_internal/db-stats
+ * GET /api/stress-internal/db-stats
  *
  * Return PostgreSQL connection stats. Aktif hanya saat STRESS_TEST_MODE=true.
  */

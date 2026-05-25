@@ -39,7 +39,7 @@ while true; do
 
   echo ""
   echo "🧠 Node.js Memory (RSS):"
-  curl -s "${APP_URL}/api/_internal/memory" 2>/dev/null \
+  curl -s "${APP_URL}/api/stress-internal/memory" 2>/dev/null \
     | python3 -c "import sys, json; d=json.load(sys.stdin); print(f'   RSS={d[\"rssMB\"]}MB  heap={d[\"heapUsedMB\"]}/{d[\"heapTotalMB\"]}MB  uptime={d[\"uptime\"]}s')" \
     2>/dev/null || echo "   (memory endpoint unavailable — STRESS_TEST_MODE off?)"
 

@@ -29,7 +29,7 @@ export const options = {
 const memRss = new Trend('memory_rss_mb', false)
 
 function snapshotMemory() {
-  const res = http.get(`${BASE_URL}/api/_internal/memory`, {
+  const res = http.get(`${BASE_URL}/api/stress-internal/memory`, {
     tags: { name: 'memory_snapshot' },
   })
   if (res.status === 200) {

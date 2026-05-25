@@ -86,10 +86,10 @@ Lihat spec §3.2 dan §7.3.
 ## Production Safety
 
 - `STRESS_TEST_MODE` HARUS tidak di-set di production env
-- Internal endpoints `/api/_internal/*` return 404 jika flag tidak set
+- Internal endpoints `/api/stress-internal/*` return 404 jika flag tidak set
 - Verifikasi via curl post-deploy:
   ```bash
-  curl -o /dev/null -w "%{http_code}\n" https://indoteknizi.com/api/_internal/memory
+  curl -o /dev/null -w "%{http_code}\n" https://indoteknizi.com/api/stress-internal/memory
   # Expected: 404
   ```
 
@@ -101,7 +101,7 @@ Lihat spec §3.2 dan §7.3.
 
 **Mock tidak aktif** — env `STRESS_TEST_MODE=true` belum di-set saat start dev server.
 
-**404 di `/api/_internal/memory`** — sama, flag belum aktif.
+**404 di `/api/stress-internal/memory`** — sama, flag belum aktif.
 
 **k6: command not found** — `brew install k6` belum dijalankan.
 

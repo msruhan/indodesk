@@ -86,7 +86,7 @@
 - [ ] Slow query teratasi (P95 query < 100ms)
 - [ ] Connection pool config sesuai VPS
 - [ ] External API mock dimatikan saat deploy (verify `STRESS_TEST_MODE` tidak ada di production env)
-- [ ] Internal endpoints `/api/_internal/*` return 404 di production (verifikasi via curl post-deploy)
+- [ ] Internal endpoints `/api/stress-internal/*` return 404 di production (verifikasi via curl post-deploy)
 - [ ] Monitoring (logs, error tracking) terpasang
 - [ ] Database backup strategy ready
 - [ ] Rollback plan documented

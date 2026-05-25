@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 /**
- * GET /api/_internal/memory
+ * GET /api/stress-internal/memory
  *
  * Return Node.js memory usage. Aktif hanya saat STRESS_TEST_MODE=true.
  * Production safety: return 404 jika flag off.

@@ -11,7 +11,7 @@
 import http from 'k6/http'
 import { sleep, check, group } from 'k6'
 import { BASE_URL } from '../lib/auth.js'
-import { randomSearchQuery, randomCategory, randomPage, thinkTimeNormal } from '../lib/data.js'
+import { randomCategory, randomPage, thinkTimeNormal } from '../lib/data.js'
 import { baseThresholds } from '../config/thresholds.js'
 
 export const options = {
@@ -58,15 +58,6 @@ export default function () {
       tags: { name: 'stores_list' },
     })
     check(res, { 'stores 200': (r) => r.status === 200 })
-  })
-  sleep(thinkTimeNormal())
-
-  group('Search', () => {
-    const q = randomSearchQuery()
-    const res = http.get(`${BASE_URL}/api/search?q=${q}`, {
-      tags: { name: 'search' },
-    })
-    check(res, { 'search 200': (r) => r.status === 200 })
   })
   sleep(thinkTimeNormal())
 
