@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { RefreshCw } from '@/lib/icons'
+import { DashboardPageHeader, EmptyState, FilterPills } from '@/components/dashboard'
+import { AlertCircle, MessageSquare, RefreshCw } from '@/lib/icons'
 import type { SupportTicketAdminListItemDto, SupportTicketDetailDto } from '@/lib/support-ticket-serializer'
 import {
   SUPPORT_TICKET_CATEGORY_OPTIONS,
@@ -151,35 +152,28 @@ export function AdminSupportTicketsPanel() {
   )
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold text-ink">Tiket Dukungan</h2>
-          <p className="text-xs text-surface-500">Kelola laporan kendala dari user dan teknisi.</p>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => void loadList()} disabled={loading}>
-          <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
-        </Button>
-      </div>
+    <div className="space-y-5">
+      <DashboardPageHeader
+        eyebrow="Dukungan"
+        title="Tiket Dukungan"
+        description="Kelola laporan kendala dari user dan teknisi dalam satu antrian."
+        actions={
+          <Button variant="outline" size="sm" onClick={() => void loadList()} disabled={loading}>
+            <RefreshCw className={cn('mr-1.5 h-3.5 w-3.5', loading && 'animate-spin')} />
+            Muat ulang
+          </Button>
+        }
+      />
 
-      <div className="inline-flex flex-wrap rounded-full border border-surface-200 bg-white p-0.5">
-        {tabs.map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setTab(key)}
-            className={cn(
-              'rounded-full px-3 py-1 text-[11px] font-semibold transition-colors',
-              tab === key ? 'bg-primary-600 text-white' : 'text-surface-600 hover:text-primary-700',
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <FilterPills
+        ariaLabel="Filter tiket dukungan"
+        options={tabs.map(([id, label]) => ({ id, label }))}
+        value={tab}
+        onChange={setTab}
+      />
 
       {error && (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           {error}
         </div>
       )}
@@ -187,9 +181,13 @@ export function AdminSupportTicketsPanel() {
       <div className="grid gap-4 lg:grid-cols-5">
         <div className="space-y-2 lg:col-span-2">
           {loading ? (
-            <p className="text-sm text-surface-500">Memuat…</p>
+            <p className="text-sm text-surface-500">Memuat antrian tiket…</p>
           ) : items.length === 0 ? (
-            <p className="text-sm text-surface-500">Tidak ada tiket.</p>
+            <EmptyState
+              icon={MessageSquare}
+              title="Tidak ada tiket"
+              description="Belum ada tiket pada filter ini. Coba tab lain atau tunggu laporan baru masuk."
+            />
           ) : (
             items.map((item) => (
               <button
@@ -217,11 +215,11 @@ export function AdminSupportTicketsPanel() {
 
         <div className="lg:col-span-3">
           {!selected ? (
-            <Card>
-              <CardContent className="py-10 text-center text-sm text-surface-500">
-                Pilih tiket untuk melihat detail.
-              </CardContent>
-            </Card>
+            <EmptyState
+              icon={AlertCircle}
+              title="Pilih tiket"
+              description="Klik salah satu tiket di daftar sebelah kiri untuk melihat detail, membalas, atau menandai selesai."
+            />
           ) : detailLoading ? (
             <p className="text-sm text-surface-500">Memuat detail…</p>
           ) : (

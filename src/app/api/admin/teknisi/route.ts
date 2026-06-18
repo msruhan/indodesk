@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { logAdminGovernance } from '@/lib/admin-audit'
 import { serializeAdminTeknisi } from '@/lib/admin-user-serializer'
+import { buildTeknisiApprovalUserData } from '@/lib/teknisi-admin-approval'
 
 export const dynamic = 'force-dynamic'
 
@@ -69,6 +70,7 @@ export async function POST(req: Request) {
     if (existing) return apiError('Email sudah terdaftar', 409)
 
     const passwordHash = await hash(data.password, 12)
+    const isVerified = data.isVerified ?? false
 
     const user = await prisma.user.create({
       data: {
@@ -77,16 +79,16 @@ export async function POST(req: Request) {
         password: passwordHash,
         phone: data.phone?.trim() || null,
         role: UserRole.TEKNISI,
-        isActive: true,
         passwordChangedAt: new Date(),
+        ...(isVerified ? buildTeknisiApprovalUserData(null) : { isActive: false }),
         teknisiProfile: {
           create: {
             specialty: parseSpecialty(data.specialty),
             experience: data.experience?.trim() || null,
             location: data.location?.trim() || null,
             description: data.description?.trim() || null,
-            isVerified: data.isVerified ?? false,
-            verificationStatus: data.isVerified ? 'APPROVED' : 'PENDING',
+            isVerified,
+            verificationStatus: isVerified ? 'APPROVED' : 'PENDING',
             price: data.price ?? 50000,
           },
         },

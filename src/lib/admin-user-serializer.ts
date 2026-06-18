@@ -27,6 +27,7 @@ export type AdminTeknisiDto = {
   badge: string
   status: 'verified' | 'pending'
   isVerified: boolean
+  emailVerified: boolean
   twoFactorEnabled: boolean
   hasPending2faSetup: boolean
   specialty: string[]
@@ -76,6 +77,7 @@ export function serializeAdminTeknisi(
     badge: teknisiBadge(profile),
     status: profile.isVerified ? 'verified' : 'pending',
     isVerified: profile.isVerified,
+    emailVerified: Boolean(u.emailVerified),
     twoFactorEnabled: u.twoFactorEnabled,
     hasPending2faSetup: Boolean(u.twoFactorSecret && !u.twoFactorEnabled),
     specialty: profile.specialty,

@@ -6,6 +6,10 @@ import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { logAdminGovernance } from '@/lib/admin-audit'
 import { serializeAdminTeknisi } from '@/lib/admin-user-serializer'
 import { bumpSessionVersion } from '@/lib/session-version'
+import {
+  buildTeknisiApprovalUserData,
+  shouldBackfillEmailVerified,
+} from '@/lib/teknisi-admin-approval'
 
 export const dynamic = 'force-dynamic'
 
@@ -67,6 +71,12 @@ export async function PATCH(
 
     const passwordHash = data.password ? await hash(data.password, 12) : undefined
     const specialty = parseSpecialty(data.specialty)
+    const profileIsVerified = existing.teknisiProfile?.isVerified ?? false
+    const backfillEmail = shouldBackfillEmailVerified(
+      existing.emailVerified,
+      profileIsVerified,
+      data.isVerified,
+    )
 
     const user = await prisma.user.update({
       where: { id },
@@ -76,6 +86,7 @@ export async function PATCH(
         ...(data.phone !== undefined && { phone: data.phone?.trim() || null }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
         ...(data.isVerified === true && data.isActive === undefined && { isActive: true }),
+        ...(backfillEmail && { emailVerified: new Date() }),
         ...(passwordHash && {
           password: passwordHash,
           passwordChangedAt: new Date(),

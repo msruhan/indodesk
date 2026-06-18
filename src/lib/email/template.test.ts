@@ -19,6 +19,7 @@ describe('email template', () => {
 
     expect(html).toContain('background-color:#f4f6f5')
     expect(html).toContain('background:#ffffff')
+    expect(html).toContain('/icon/icon-text-bandoo.png')
     expect(html).toContain('Judul Tes')
     expect(html).toContain('Klik Di Sini')
     expect(html).not.toContain('background-color:#000')

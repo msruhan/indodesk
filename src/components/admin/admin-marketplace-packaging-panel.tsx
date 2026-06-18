@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { CheckCircle, RefreshCw, XCircle } from '@/lib/icons'
+import { DashboardPageHeader, EmptyState } from '@/components/dashboard'
+import { CheckCircle, Package, RefreshCw, XCircle } from '@/lib/icons'
 import type { OrderPackagingProofDto } from '@/lib/marketplace-packaging-proof-serializer'
 import { cn } from '@/lib/utils'
 
@@ -72,29 +73,31 @@ export function AdminMarketplacePackagingPanel() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-ink">Bukti Packaging</h2>
-          <p className="text-xs text-surface-500">Review foto & video kemasan sebelum penjual memproses pesanan.</p>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-          <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
-        </Button>
-      </div>
+    <div className="space-y-5">
+      <DashboardPageHeader
+        eyebrow="Moderasi & Trust"
+        title="Bukti Packaging"
+        description="Review foto dan video kemasan sebelum penjual memproses pesanan marketplace."
+        actions={
+          <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+            <RefreshCw className={cn('mr-1.5 h-3.5 w-3.5', loading && 'animate-spin')} />
+            Muat ulang
+          </Button>
+        }
+      />
 
       {error && (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</div>
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>
       )}
 
-      {loading && <p className="text-sm text-surface-500">Memuat…</p>}
+      {loading && <p className="text-sm text-surface-500">Memuat antrian review…</p>}
 
       {!loading && items.length === 0 && (
-        <Card>
-          <CardContent className="p-6 text-center text-sm text-surface-500">
-            Tidak ada bukti packaging menunggu review.
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Package}
+          title="Tidak ada bukti packaging"
+          description="Semua bukti kemasan sudah direview atau belum ada pengajuan baru dari penjual."
+        />
       )}
 
       <div className="space-y-2">

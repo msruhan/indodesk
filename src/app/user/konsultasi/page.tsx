@@ -3,12 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { searchInputIconClass } from '@/components/ui/search-input'
-import { FilterDropdown, type FilterDropdownOption } from '@/components/ui/filter-dropdown'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import {
   MessageCircle,
@@ -20,7 +19,12 @@ import {
   XCircle,
   Radio,
 } from '@/lib/icons'
-import { DashboardMonthFilter } from '@/components/dashboard'
+import {
+  DashboardMonthFilter,
+  DashboardPageHeader,
+  FilterSelect,
+  MetricCard,
+} from '@/components/dashboard'
 import { useDashboardPeriod } from '@/contexts/dashboard-period-context'
 import { isDateInPeriod } from '@/lib/dashboard-period'
 import { cn } from '@/lib/utils'
@@ -155,71 +159,46 @@ export default function UserKonsultasiPage() {
     }
   }
 
-  const stats = useMemo(
-    () => ({
-      total: items.length,
-      pending: items.filter((i) => i.status === 'pending').length,
-      active: items.filter((i) => i.status === 'active').length,
-      completed: items.filter((i) => i.status === 'completed').length,
-      pendingRating: items.filter((i) => i.canRate).length,
-    }),
-    [items],
+  const periodItems = useMemo(
+    () => items.filter((i) => isDateInPeriod(i.createdAt, period)),
+    [items, period],
   )
 
-  const statusFilterOptions = useMemo((): FilterDropdownOption<StatusFilter>[] => {
-    const countFor = (status?: TeknisiKonsultasiStatus) =>
-      status ? items.filter((i) => i.status === status).length : items.length
+  const stats = useMemo(
+    () => ({
+      total: periodItems.length,
+      active: periodItems.filter(
+        (i) =>
+          i.status === 'pending' ||
+          i.status === 'awaiting_payment' ||
+          i.status === 'active',
+      ).length,
+      completed: periodItems.filter((i) => i.status === 'completed').length,
+      pendingRating: periodItems.filter((i) => i.canRate).length,
+    }),
+    [periodItems],
+  )
 
-    return [
-      { id: 'all', label: 'Semua status', tone: 'neutral', icon: MessageCircle },
-      {
-        id: 'pending',
-        label: statusConfig.pending.label,
-        tone: 'warning',
-        icon: statusConfig.pending.icon,
-        count: countFor('pending'),
-      },
-      {
-        id: 'awaiting_payment',
-        label: statusConfig.awaiting_payment.label,
-        tone: 'warning',
-        icon: statusConfig.awaiting_payment.icon,
-        count: countFor('awaiting_payment'),
-      },
-      {
-        id: 'active',
-        label: statusConfig.active.label,
-        tone: 'info',
-        icon: statusConfig.active.icon,
-        count: countFor('active'),
-      },
-      {
-        id: 'completed',
-        label: statusConfig.completed.label,
-        tone: 'success',
-        icon: statusConfig.completed.icon,
-        count: countFor('completed'),
-      },
-      {
-        id: 'cancelled',
-        label: statusConfig.cancelled.label,
-        tone: 'danger',
-        icon: statusConfig.cancelled.icon,
-        count: countFor('cancelled'),
-      },
-    ]
-  }, [items])
+  const statusFilterOptions = useMemo(
+    () => [
+      { id: 'all' as const, label: 'Semua status' },
+      { id: 'pending' as const, label: statusConfig.pending.label },
+      { id: 'awaiting_payment' as const, label: statusConfig.awaiting_payment.label },
+      { id: 'active' as const, label: statusConfig.active.label },
+      { id: 'completed' as const, label: statusConfig.completed.label },
+      { id: 'cancelled' as const, label: statusConfig.cancelled.label },
+    ],
+    [],
+  )
 
-  const ratingFilterOptions = useMemo((): FilterDropdownOption<RatingFilter>[] => {
-    const rated = items.filter((i) => i.rating != null).length
-    const unrated = items.filter((i) => i.status === 'completed' && i.rating == null).length
-
-    return [
-      { id: 'all', label: 'Semua rating', tone: 'neutral', icon: Star },
-      { id: 'rated', label: 'Sudah dinilai', tone: 'success', icon: Star, count: rated },
-      { id: 'unrated', label: 'Belum dinilai', tone: 'warning', icon: Star, count: unrated },
-    ]
-  }, [items])
+  const ratingFilterOptions = useMemo(
+    () => [
+      { id: 'all' as const, label: 'Semua rating' },
+      { id: 'rated' as const, label: 'Sudah dinilai' },
+      { id: 'unrated' as const, label: 'Belum dinilai' },
+    ],
+    [],
+  )
 
   const filteredItems = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -256,137 +235,130 @@ export default function UserKonsultasiPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tightest text-ink lg:text-3xl">Konsultasi</h1>
-          <p className="mt-1 text-sm text-surface-500">Riwayat konsultasi dengan teknisi</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <DashboardMonthFilter />
-          <Button variant="outline" size="sm" className="h-9" onClick={() => void load()} disabled={loading}>
-            <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
-            Refresh
-          </Button>
-          <Link href="/teknisi">
-            <Button variant="primary" size="sm" className="h-9">
-              Cari Teknisi
+      <DashboardPageHeader
+        title="Konsultasi"
+        description="Riwayat konsultasi dengan teknisi."
+        actions={
+          <>
+            <DashboardMonthFilter />
+            <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+              <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
             </Button>
-          </Link>
-        </div>
-      </div>
+            <Link href="/teknisi">
+              <Button size="sm">Cari teknisi</Button>
+            </Link>
+          </>
+        }
+      />
 
       {error && (
-        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+          {error}
+        </div>
       )}
 
       {stats.pendingRating > 0 && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <strong>Beri rating teknisi</strong> — Anda punya {stats.pendingRating} konsultasi selesai yang
-          belum dinilai. Scroll ke tabel di bawah dan klik &quot;Beri rating&quot;.
+          belum dinilai. Scroll ke daftar di bawah dan klik &quot;Beri rating&quot;.
         </div>
       )}
 
       <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total</CardTitle>
-            <MessageCircle className="h-4 w-4 text-primary-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Berjalan</CardTitle>
-            <Clock className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.pending + stats.active}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Selesai</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.completed}</div>
-          </CardContent>
-        </Card>
+        <MetricCard
+          title="Total"
+          value={stats.total.toString()}
+          icon={MessageCircle}
+          footnote="Semua konsultasi"
+          tone="primary"
+          compact
+        />
+        <MetricCard
+          title="Aktif"
+          value={stats.active.toString()}
+          icon={Clock}
+          footnote="Sedang berjalan"
+          tone={stats.active > 0 ? 'warning' : 'neutral'}
+          compact
+        />
+        <MetricCard
+          title="Selesai"
+          value={stats.completed.toString()}
+          icon={CheckCircle}
+          footnote="Konsultasi tuntas"
+          tone="primary"
+          compact
+        />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Riwayat Konsultasi</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {items.length > 0 && (
-            <>
-              <div className="mb-4 flex flex-col gap-2.5 lg:flex-row lg:items-center">
-                <div className="relative min-w-0 flex-1">
-                  <Search className={cn(searchInputIconClass, 'left-3.5')} strokeWidth={2} aria-hidden />
-                  <Input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Cari kode, teknisi, layanan, ulasan..."
-                    className="h-10 rounded-full bg-white pl-10 text-[12.5px]"
-                  />
-                </div>
-                <FilterDropdown
-                  options={statusFilterOptions}
-                  value={statusFilter}
-                  onChange={setStatusFilter}
-                  ariaLabel="Filter status konsultasi"
-                  label="Status"
-                  triggerIcon={Clock}
-                  placeholder="Semua status"
-                  className="w-full sm:w-[11.5rem]"
-                  align="right"
-                />
-                <FilterDropdown
-                  options={ratingFilterOptions}
-                  value={ratingFilter}
-                  onChange={setRatingFilter}
-                  ariaLabel="Filter rating konsultasi"
-                  label="Rating"
-                  triggerIcon={Star}
-                  placeholder="Semua rating"
-                  className="w-full sm:w-[11.5rem]"
-                  align="right"
-                />
-              </div>
-              <p className="mb-3 text-[11px] text-surface-500">
-                {loading ? 'Memuat…' : `${filteredItems.length} konsultasi`}
-              </p>
-            </>
-          )}
+      <div>
+        <div className="mb-4 flex flex-col gap-2.5 sm:flex-row sm:items-center">
+          <div className="relative min-w-0 flex-1">
+            <Search className={cn(searchInputIconClass, 'left-3.5')} strokeWidth={2} aria-hidden />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Cari kode, teknisi, layanan, ulasan..."
+              className="h-10 rounded-full bg-white pl-10 text-[12.5px]"
+            />
+          </div>
+          <FilterSelect
+            options={statusFilterOptions}
+            value={statusFilter}
+            onChange={setStatusFilter}
+            ariaLabel="Filter status konsultasi"
+            label="Status"
+            className="w-full sm:w-[11.5rem]"
+          />
+          <FilterSelect
+            options={ratingFilterOptions}
+            value={ratingFilter}
+            onChange={setRatingFilter}
+            ariaLabel="Filter rating konsultasi"
+            label="Rating"
+            className="w-full sm:w-[11.5rem]"
+          />
+        </div>
 
-          {loading ? (
-            <p className="py-8 text-center text-sm text-surface-500">Memuat…</p>
-          ) : items.length === 0 ? (
-            <div className="py-10 text-center">
-              <p className="text-sm font-medium text-ink">Belum ada konsultasi</p>
-              <p className="mt-1 text-xs text-surface-500">
-                Pesan konsultasi dari profil teknisi favorit Anda
-              </p>
-              <Link href="/teknisi">
-                <Button variant="primary" size="sm" className="mt-4">
-                  Jelajahi Teknisi
+        <p className="mb-3 text-[11px] text-surface-500">
+          {loading ? 'Memuat…' : `${filteredItems.length} konsultasi`}
+        </p>
+
+        {loading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="h-20 p-4" />
+              </Card>
+            ))}
+          </div>
+        ) : periodItems.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <MessageCircle className="mx-auto mb-4 h-12 w-12 text-surface-300" />
+              <p className="text-sm text-surface-600">Belum ada konsultasi.</p>
+              <Link href="/teknisi" className="mt-4 inline-block">
+                <Button variant="primary" size="sm">
+                  Jelajahi teknisi
                 </Button>
               </Link>
-            </div>
-          ) : filteredItems.length === 0 ? (
-            <div className="py-10 text-center">
+            </CardContent>
+          </Card>
+        ) : filteredItems.length === 0 ? (
+          <Card>
+            <CardContent className="py-10 text-center">
               <p className="text-sm text-surface-600">Tidak ada konsultasi yang cocok dengan filter.</p>
               {hasActiveFilters && (
                 <Button variant="outline" size="sm" className="mt-3" onClick={resetFilters}>
                   Reset filter
                 </Button>
               )}
-            </div>
-          ) : (
-            <Table>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="p-0 sm:p-0">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Teknisi</TableHead>
@@ -524,9 +496,10 @@ export default function UserKonsultasiPage() {
                 ))}
               </TableBody>
             </Table>
-          )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   )
 }

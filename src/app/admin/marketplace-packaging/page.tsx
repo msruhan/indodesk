@@ -6,9 +6,5 @@ export const metadata = {
 }
 
 export default function AdminMarketplacePackagingPage() {
-  return (
-    <div className="mx-auto max-w-5xl space-y-4 p-4 sm:p-6">
-      <AdminMarketplacePackagingPanel />
-    </div>
-  )
+  return <AdminMarketplacePackagingPanel />
 }

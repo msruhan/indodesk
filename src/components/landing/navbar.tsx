@@ -210,7 +210,7 @@ export function Navbar() {
             />
             <BrandLogo
               variant="wordmark"
-              wordmarkClassName="hidden h-7 sm:block"
+              wordmarkClassName="hidden sm:block"
               className="hidden sm:inline-flex"
             />
           </Link>

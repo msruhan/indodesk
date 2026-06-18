@@ -64,7 +64,7 @@ export function Footer() {
           {/* Brand */}
           <div className="col-span-2">
             <Link href="/" className="flex items-center">
-              <BrandLogo variant="wordmark" wordmarkClassName="h-8" />
+              <BrandLogo variant="wordmark" wordmarkClassName="h-9 sm:h-10" />
             </Link>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-surface-600">
               Platform ekosistem teknisi handphone terintegrasi — marketplace, konsultasi online, dan

@@ -156,7 +156,7 @@ export function RoleSidebar({
                 href={brand.href ?? '/'}
                 className="group/logo flex items-center transition-transform duration-450 group-hover/logo:scale-[1.02]"
               >
-                <BrandLogo variant="wordmark" scope={scope} />
+                <BrandLogo variant="wordmark" scope={scope} wordmarkClassName="h-9" />
               </Link>
             </div>
 

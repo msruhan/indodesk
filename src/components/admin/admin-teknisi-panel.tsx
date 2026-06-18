@@ -229,9 +229,14 @@ export function AdminTeknisiPanel() {
                   />
                 </div>
               </div>
-              <label className="flex items-center gap-2 text-sm text-surface-700">
-                <input type="checkbox" checked={form.isVerified} onChange={(e) => setForm((f) => ({ ...f, isVerified: e.target.checked }))} />
-                Tandai sebagai Verified
+              <label className="flex flex-col gap-1 text-sm text-surface-700">
+                <span className="flex items-center gap-2">
+                  <input type="checkbox" checked={form.isVerified} onChange={(e) => setForm((f) => ({ ...f, isVerified: e.target.checked }))} />
+                  Tandai sebagai Verified (persetujuan admin)
+                </span>
+                <span className="text-xs text-surface-500">
+                  Menyetujui teknisi juga mengaktifkan email agar akun bisa login.
+                </span>
               </label>
               <div className="flex gap-2">
                 <Button type="submit" disabled={saving}>{saving ? 'Menyimpan…' : 'Simpan'}</Button>
@@ -274,6 +279,9 @@ export function AdminTeknisiPanel() {
                     <span>{t.totalKonsultasi} sesi</span>
                     <Badge variant={t.status === 'verified' ? 'success' : 'warning'} className="text-[8px] px-1 py-0">
                       {t.status === 'verified' ? 'Verified' : 'Pending'}
+                    </Badge>
+                    <Badge variant={t.emailVerified ? 'success' : 'warning'} className="text-[8px] px-1 py-0">
+                      {t.emailVerified ? 'Email OK' : 'Email belum'}
                     </Badge>
                     {t.twoFactorEnabled && (
                       <Badge variant="warning" className="text-[8px] px-1 py-0">

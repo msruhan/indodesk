@@ -12,7 +12,7 @@ const outfit = Outfit({
 })
 
 export const metadata: Metadata = {
-  title: 'IndoTeknizi - Platform Ekosistem Teknisi Handphone',
+  title: 'Bandoo - Platform Ekosistem Teknisi Handphone',
   description: 'Platform terpadu untuk teknisi handphone, marketplace, konsultasi online, dan manajemen bisnis service handphone.',
 }
 

@@ -1,4 +1,6 @@
 /** Warna & layout email — light theme, kompatibel klien email umum. */
+import { BRAND_WORDMARK_SRC } from '@/components/brand/brand-logo'
+
 export const EMAIL_THEME = {
   pageBg: '#f4f6f5',
   cardBg: '#ffffff',
@@ -46,7 +48,11 @@ export function escapeHtml(value: string): string {
 }
 
 export function getEmailBrandName(): string {
-  return process.env.NEXT_PUBLIC_PLATFORM_NAME?.trim() || 'IndoTeknizi'
+  return process.env.NEXT_PUBLIC_PLATFORM_NAME?.trim() || 'Bandoo'
+}
+
+export function getEmailLogoUrl(): string {
+  return `${getEmailAppUrl()}${BRAND_WORDMARK_SRC}`
 }
 
 export function getEmailAppUrl(): string {
@@ -99,10 +105,11 @@ function renderSecondaryLink(href: string, label: string): string {
     </p>`
 }
 
-/** Bungkus konten email dalam layout light theme IndoTeknizi. */
+/** Bungkus konten email dalam layout light theme Bandoo. */
 export function renderEmailDocument(input: EmailTemplateInput): { html: string; text: string } {
   const brand = getEmailBrandName()
   const appUrl = getEmailAppUrl()
+  const logoUrl = getEmailLogoUrl()
   const year = new Date().getFullYear()
   const preheader = input.preheader ?? input.title
   const tone = toneBox(input.tone ?? 'default')
@@ -163,11 +170,15 @@ export function renderEmailDocument(input: EmailTemplateInput): { html: string; 
       <td align="center">
         <table role="presentation" class="email-shell" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
           <tr>
-            <td style="padding:0 0 16px;text-align:center;">
+            <td style="padding:0 0 20px;text-align:center;">
               <a href="${escapeHtml(appUrl)}" style="text-decoration:none;display:inline-block;">
-                <span style="display:inline-block;padding:10px 18px;border-radius:14px;background:${EMAIL_THEME.headerGradient};color:#ffffff;font-size:18px;font-weight:700;letter-spacing:-0.02em;">
-                  ⚡ ${escapeHtml(brand)}
-                </span>
+                <img
+                  src="${escapeHtml(logoUrl)}"
+                  alt="${escapeHtml(brand)}"
+                  width="200"
+                  height="48"
+                  style="display:block;margin:0 auto;border:0;outline:none;text-decoration:none;height:44px;width:auto;max-width:220px;"
+                />
               </a>
             </td>
           </tr>

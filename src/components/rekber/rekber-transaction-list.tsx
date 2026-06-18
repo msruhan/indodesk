@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -43,6 +44,10 @@ type Props = {
   onAdvance?: (id: string) => void
   onSetShipment?: (id: string, courier: ShippingCourier, trackingNumber: string) => void
   showStats?: boolean
+  emptyCtaHref?: string
+  emptyCtaLabel?: string
+  emptyMessage?: string
+  showEmptyCta?: boolean
 }
 
 export function RekberTransactionList({
@@ -60,6 +65,10 @@ export function RekberTransactionList({
   onAdvance,
   onSetShipment,
   showStats = true,
+  emptyCtaHref,
+  emptyCtaLabel,
+  emptyMessage = 'Belum ada transaksi rekber.',
+  showEmptyCta = Boolean(emptyCtaHref && emptyCtaLabel),
 }: Props) {
   return (
     <div className="space-y-6">
@@ -72,7 +81,7 @@ export function RekberTransactionList({
         </div>
       )}
 
-      {onRefresh && (
+      {onRefresh && showStats && (
         <div className="flex justify-end">
           <Button type="button" variant="outline" size="sm" onClick={onRefresh} disabled={loading}>
             Refresh
@@ -81,12 +90,25 @@ export function RekberTransactionList({
       )}
 
       {loading ? (
-        <p className="py-12 text-center text-sm text-surface-500">Memuat transaksi rekber…</p>
+        <div className="space-y-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i} className="animate-pulse">
+              <CardContent className="h-24 p-4" />
+            </Card>
+          ))}
+        </div>
       ) : items.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Shield className="mx-auto mb-4 h-12 w-12 text-surface-300" />
-            <p className="text-sm font-medium text-ink">Belum ada transaksi rekber</p>
+            <p className="text-sm text-surface-600">{emptyMessage}</p>
+            {showEmptyCta && emptyCtaHref && emptyCtaLabel ? (
+              <Link href={emptyCtaHref} className="mt-4 inline-block">
+                <Button variant="primary" size="sm">
+                  {emptyCtaLabel}
+                </Button>
+              </Link>
+            ) : null}
           </CardContent>
         </Card>
       ) : (

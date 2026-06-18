@@ -15,6 +15,7 @@ import {
   type ApprovalStats,
 } from '@/lib/approval-queue'
 import { notifyProductPublishedIfTransition } from '@/lib/telegram/notify'
+import { buildTeknisiApprovalUserData } from '@/lib/teknisi-admin-approval'
 
 export const dynamic = 'force-dynamic'
 
@@ -198,7 +199,10 @@ export async function POST(req: Request) {
         },
       })
     } else if (entityType === 'teknisi') {
-      const profile = await prisma.teknisiProfile.findUnique({ where: { userId: id } })
+      const profile = await prisma.teknisiProfile.findUnique({
+        where: { userId: id },
+        include: { user: { select: { emailVerified: true } } },
+      })
       if (!profile) return apiError('Profil teknisi tidak ditemukan', 404)
       if (profile.verificationStatus === 'APPROVED' && action === 'approve') {
         return apiError('Teknisi sudah diverifikasi')
@@ -228,7 +232,7 @@ export async function POST(req: Request) {
           ? [
               prisma.user.update({
                 where: { id },
-                data: { isActive: true },
+                data: buildTeknisiApprovalUserData(profile.user.emailVerified),
               }),
             ]
           : []),
