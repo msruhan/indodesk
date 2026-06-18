@@ -1,12 +1,30 @@
-import type { Order, OrderItem, Product, ShippingCourier, User } from '@prisma/client'
+import type {
+  Order,
+  OrderComplaint,
+  OrderComplaintMedia,
+  OrderItem,
+  OrderPackagingMedia,
+  OrderPackagingProof,
+  Product,
+  ProductCategory,
+  ShippingCourier,
+  User,
+} from '@prisma/client'
 import { formatNotificationTimeLabel } from '@/lib/notification-display'
-import { SHIPPING_COURIER_OPTIONS } from '@/lib/shipping-courier'
+import { serializeOrderComplaint, type OrderComplaintDto, type SellerReturnAddressDto } from '@/lib/marketplace-order-complaint-serializer'
+import {
+  serializeOrderPackagingProof,
+  type OrderPackagingProofDto,
+} from '@/lib/marketplace-packaging-proof-serializer'
+import { orderRequiresPhysicalPackaging } from '@/lib/marketplace-physical-order'
+import { isTerminalTrackingStatus, SHIPPING_COURIER_OPTIONS } from '@/lib/shipping-courier'
 
 export type MarketplaceOrderUiStatus =
   | 'pending'
   | 'paid'
   | 'processing'
   | 'shipped'
+  | 'disputed'
   | 'completed'
   | 'cancelled'
   | 'refunded'
@@ -42,9 +60,9 @@ export type MarketplaceOrderDto = {
   role: 'buyer' | 'seller' | 'admin'
   canAdvanceStatus: boolean
   canCancelOrder: boolean
-  nextStatus: 'PROCESSING' | 'SHIPPED' | 'COMPLETED' | null
-  /** Opsi A: wajib input resi saat status processing */
+  nextStatus: 'PROCESSING' | null
   requiresShipmentInput: boolean
+  awaitingBuyerConfirmation: boolean
   tracking: {
     courier: ShippingCourier
     courierLabel: string
@@ -53,12 +71,33 @@ export type MarketplaceOrderDto = {
     lastSyncedAt: string | null
     trackingActive: boolean
   } | null
+  shippingAddress: string | null
+  shippingPhone: string | null
+  deliveredAt: string | null
+  buyerActionDeadline: string | null
+  autoCompletedAt: string | null
+  completedAt: string | null
+  canConfirmReceipt: boolean
+  canFileComplaint: boolean
+  canEscalateComplaint: boolean
+  canRespondToComplaint: boolean
+  canSubmitReturn: boolean
+  canConfirmReturn: boolean
+  canRejectReturn: boolean
+  complaint: OrderComplaintDto | null
+  canReview: boolean
+  reviewedProductIds: string[]
+  packagingProof: OrderPackagingProofDto | null
+  requiresPackagingProof: boolean
+  canSubmitPackagingProof: boolean
 }
 
 type OrderRow = Order & {
   buyer: Pick<User, 'id' | 'name' | 'email' | 'image'>
   seller: Pick<User, 'id' | 'name' | 'email' | 'image'>
-  items: (OrderItem & { product: Pick<Product, 'id' | 'name'> })[]
+  items: (OrderItem & { product: Pick<Product, 'id' | 'name'> & { category?: ProductCategory } })[]
+  complaint?: (OrderComplaint & { media: OrderComplaintMedia[] }) | null
+  packagingProof?: (OrderPackagingProof & { media: OrderPackagingMedia[] }) | null
 }
 
 export function mapMarketplaceOrderUiStatus(db: Order['status']): MarketplaceOrderUiStatus {
@@ -71,6 +110,8 @@ export function mapMarketplaceOrderUiStatus(db: Order['status']): MarketplaceOrd
       return 'processing'
     case 'SHIPPED':
       return 'shipped'
+    case 'DISPUTED':
+      return 'disputed'
     case 'COMPLETED':
       return 'completed'
     case 'CANCELLED':
@@ -90,6 +131,8 @@ export function marketplaceOrderStatusLabel(status: MarketplaceOrderUiStatus): s
       return 'Diproses'
     case 'shipped':
       return 'Dikirim'
+    case 'disputed':
+      return 'Komplain'
     case 'completed':
       return 'Selesai'
     case 'cancelled':
@@ -100,23 +143,27 @@ export function marketplaceOrderStatusLabel(status: MarketplaceOrderUiStatus): s
 }
 
 function sellerNextStatus(db: Order['status']): MarketplaceOrderDto['nextStatus'] {
-  switch (db) {
-    case 'PAID':
-      return 'PROCESSING'
-    case 'SHIPPED':
-      return 'COMPLETED'
-    default:
-      return null
-  }
+  if (db === 'PAID') return 'PROCESSING'
+  return null
 }
 
 function courierLabel(code: ShippingCourier): string {
   return SHIPPING_COURIER_OPTIONS.find((o) => o.value === code)?.label ?? code
 }
 
+function isBeforeBuyerDeadline(deadline: Date | null | undefined): boolean {
+  if (!deadline) return true
+  return deadline > new Date()
+}
+
 export function serializeMarketplaceOrder(
   row: OrderRow,
-  opts: { viewerId?: string; viewerRole?: 'USER' | 'TEKNISI' | 'ADMIN' },
+  opts: {
+    viewerId?: string
+    viewerRole?: 'USER' | 'TEKNISI' | 'ADMIN'
+    reviewedProductIds?: string[]
+    sellerReturnAddress?: SellerReturnAddressDto | null
+  },
 ): MarketplaceOrderDto {
   const status = mapMarketplaceOrderUiStatus(row.status)
   let role: MarketplaceOrderDto['role'] = 'buyer'
@@ -133,10 +180,72 @@ export function serializeMarketplaceOrder(
 
   const nextStatus = sellerNextStatus(row.status)
   const requiresShipmentInput = role === 'seller' && status === 'processing'
+  const isPhysical = orderRequiresPhysicalPackaging(row.items)
+  const packagingApproved = row.packagingProof?.status === 'APPROVED'
+  const packagingPending = row.packagingProof?.status === 'PENDING'
+  const packagingRejected = row.packagingProof?.status === 'REJECTED'
+  const beforeResubmitDeadline =
+    !row.packagingProof?.resubmitDeadline ||
+    row.packagingProof.resubmitDeadline > new Date()
+
+  const requiresPackagingProof =
+    role === 'seller' &&
+    row.status === 'PAID' &&
+    isPhysical &&
+    !packagingApproved
+
+  const canSubmitPackagingProof =
+    role === 'seller' &&
+    row.status === 'PAID' &&
+    isPhysical &&
+    !packagingPending &&
+    (!packagingRejected || beforeResubmitDeadline)
+
   const canAdvance =
-    role === 'seller' && nextStatus != null && (row.status === 'PAID' || row.status === 'SHIPPED')
+    role === 'seller' &&
+    nextStatus != null &&
+    row.status === 'PAID' &&
+    (!isPhysical || packagingApproved)
   const canCancelOrder =
     role === 'seller' && (row.status === 'PAID' || row.status === 'PROCESSING')
+
+  const trackingDelivered = isTerminalTrackingStatus(row.trackingSummaryStatus)
+  const isBuyer = role === 'buyer'
+  const beforeDeadline = isBeforeBuyerDeadline(row.buyerActionDeadline)
+  const hasComplaint = Boolean(row.complaint)
+
+  const isAwaitingBuyerAction =
+    row.status === 'SHIPPED' && trackingDelivered && !hasComplaint && beforeDeadline
+
+  const canConfirmReceipt = isBuyer && isAwaitingBuyerAction
+  const canFileComplaint = canConfirmReceipt
+
+  const canEscalateComplaint =
+    isBuyer && row.complaint?.status === 'SELLER_RESPONDED'
+
+  const canRespondToComplaint =
+    role === 'seller' &&
+    row.complaint?.status === 'OPEN' &&
+    row.complaint.sellerDeadline > new Date()
+
+  const canSubmitReturn =
+    isBuyer &&
+    row.complaint?.status === 'AWAITING_RETURN' &&
+    Boolean(row.complaint.returnDeadline && row.complaint.returnDeadline > new Date())
+
+  const canConfirmReturn =
+    role === 'seller' && row.complaint?.status === 'AWAITING_SELLER_CONFIRM'
+
+  const canRejectReturn = canConfirmReturn
+
+  const awaitingBuyerConfirmation =
+    role === 'seller' && row.status === 'SHIPPED' && trackingDelivered && !hasComplaint
+
+  const reviewedProductIds = opts.reviewedProductIds ?? []
+  const canReview =
+    isBuyer &&
+    row.status === 'COMPLETED' &&
+    row.items.some((i) => !reviewedProductIds.includes(i.productId))
 
   const tracking =
     row.trackingNumber && row.shippingCourier
@@ -149,6 +258,16 @@ export function serializeMarketplaceOrder(
           trackingActive: row.trackingActive,
         }
       : null
+
+  const returnAddress =
+    row.complaint?.status === 'AWAITING_RETURN' ? (opts.sellerReturnAddress ?? null) : null
+
+  const complaintDto = row.complaint
+    ? serializeOrderComplaint(row.complaint, { returnAddress })
+    : null
+  const packagingProofDto = row.packagingProof
+    ? serializeOrderPackagingProof(row.packagingProof)
+    : null
 
   return {
     id: row.id,
@@ -175,6 +294,26 @@ export function serializeMarketplaceOrder(
     canCancelOrder,
     nextStatus,
     requiresShipmentInput,
+    awaitingBuyerConfirmation,
     tracking,
+    shippingAddress: row.shippingAddress,
+    shippingPhone: row.shippingPhone,
+    deliveredAt: row.deliveredAt?.toISOString() ?? null,
+    buyerActionDeadline: row.buyerActionDeadline?.toISOString() ?? null,
+    autoCompletedAt: row.autoCompletedAt?.toISOString() ?? null,
+    completedAt: row.completedAt?.toISOString() ?? null,
+    canConfirmReceipt,
+    canFileComplaint,
+    canEscalateComplaint,
+    canRespondToComplaint,
+    canSubmitReturn,
+    canConfirmReturn,
+    canRejectReturn,
+    complaint: complaintDto,
+    canReview,
+    reviewedProductIds,
+    packagingProof: packagingProofDto,
+    requiresPackagingProof,
+    canSubmitPackagingProof,
   }
 }

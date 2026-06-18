@@ -20,6 +20,7 @@ const importSchema = z.object({
       requiresMep: z.boolean().default(false),
       requiresPrd: z.boolean().default(false),
       requiresSn: z.boolean().default(false),
+      requiresImei: z.boolean().default(true),
     }),
   ).min(1, 'Pilih minimal 1 service'),
 })
@@ -86,7 +87,7 @@ export async function POST(
       price: svc.price,
       deliveryTime: svc.deliveryTime || null,
       status: 'ACTIVE' as const,
-      requiresImei: true,
+      requiresImei: svc.requiresImei ?? !svc.requiresSn,
       requiresNetwork: svc.requiresNetwork,
       requiresModel: svc.requiresModel,
       requiresProvider: svc.requiresProvider,

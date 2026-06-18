@@ -1,24 +1,22 @@
 /**
  * POST /api/admin/wallet/deposit
  * Admin melakukan deposit manual ke wallet user/teknisi.
- *
- * Body:
- *   - userId: string  (target wallet)
- *   - amount: number  (positif, dalam IDR)
- *   - method: 'manual' | 'gateway-sim' (default 'manual')
- *   - note:   string  (alasan / catatan)
- *   - reference?: string (mis. nomor bukti / VA / order PG)
  */
 
 import { z } from 'zod'
-import { Prisma } from '@prisma/client'
-import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import {
   buildGatewayDepositDescription,
   buildManualDepositDescription,
 } from '@/lib/admin-saldo'
 import { extractRequestContext, logAdminEvent, logPaymentEvent } from '@/lib/activity-log'
+import { executeWalletDeposit } from '@/lib/wallet/deposit'
+import {
+  createPendingDepositRequest,
+  getDualControlThreshold,
+  requiresDualControl,
+} from '@/lib/wallet/dual-control'
+import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,7 +28,8 @@ const depositSchema = z.object({
     .positive('Jumlah deposit harus lebih dari 0')
     .max(1_000_000_000, 'Jumlah deposit terlalu besar'),
   method: z.enum(['manual', 'gateway-sim']).default('manual'),
-  note: z.string().max(500).optional().default(''),
+  note: z.string().min(10, 'Justifikasi wajib minimal 10 karakter').max(500),
+  reasonCategory: z.enum(['promo', 'refund', 'correction', 'partnership', 'other']).optional(),
   reference: z.string().max(120).optional().default(''),
 })
 
@@ -60,6 +59,29 @@ export async function POST(req: Request) {
       return apiError('Deposit tidak diperbolehkan untuk akun ADMIN')
     }
 
+    if (requiresDualControl(parsed.amount)) {
+      const pending = await createPendingDepositRequest({
+        userId: parsed.userId,
+        amount: parsed.amount,
+        note: parsed.note,
+        reasonCategory: parsed.reasonCategory,
+        method: parsed.method,
+        reference: parsed.reference,
+        requestedById: adminId,
+      })
+      return apiSuccess(
+        {
+          dualControlRequired: true,
+          depositRequestId: pending.id,
+          status: pending.status,
+          threshold: getDualControlThreshold(),
+          message:
+            'Deposit melebihi batas dual-control. Diperlukan persetujuan 2 admin berbeda.',
+        },
+        202,
+      )
+    }
+
     const description =
       parsed.method === 'manual'
         ? buildManualDepositDescription(parsed.note, adminName)
@@ -68,27 +90,11 @@ export async function POST(req: Request) {
             parsed.reference || `${Date.now()}`,
           )
 
-    const result = await prisma.$transaction(async (tx) => {
-      let wallet = await tx.wallet.findUnique({ where: { userId: parsed.userId } })
-      if (!wallet) {
-        wallet = await tx.wallet.create({ data: { userId: parsed.userId, balance: 0 } })
-      }
-      const newBalance = new Prisma.Decimal(wallet.balance).add(parsed.amount)
-      const updated = await tx.wallet.update({
-        where: { id: wallet.id },
-        data: { balance: newBalance },
-      })
-      const ledger = await tx.walletLedger.create({
-        data: {
-          walletId: wallet.id,
-          type: 'TOPUP',
-          amount: new Prisma.Decimal(parsed.amount),
-          balance: newBalance,
-          description,
-          referenceId: parsed.method === 'manual' ? adminId : parsed.reference || null,
-        },
-      })
-      return { wallet: updated, ledger }
+    const result = await executeWalletDeposit({
+      userId: parsed.userId,
+      amount: parsed.amount,
+      description,
+      referenceId: parsed.method === 'manual' ? adminId : parsed.reference || null,
     })
 
     const ctx = extractRequestContext(req)
@@ -99,7 +105,7 @@ export async function POST(req: Request) {
         parsed.method === 'manual'
           ? `Admin ${adminName} deposit Rp ${parsed.amount.toLocaleString('id-ID')} ke ${targetUser.name}`
           : `Deposit otomatis Rp ${parsed.amount.toLocaleString('id-ID')} untuk ${targetUser.name}`,
-      detail: parsed.note || null,
+      detail: parsed.note,
       actor: {
         id: adminId,
         name: adminName,
@@ -112,9 +118,9 @@ export async function POST(req: Request) {
       metadata: {
         amount: parsed.amount,
         method: parsed.method,
+        reasonCategory: parsed.reasonCategory,
         targetRole: targetUser.role,
         balanceAfter: result.wallet.balance.toString(),
-        reference: parsed.reference || null,
       },
     })
     void logAdminEvent({
@@ -130,10 +136,7 @@ export async function POST(req: Request) {
       target: { type: 'user', id: targetUser.id, label: targetUser.name },
       ip: ctx.ip,
       userAgent: ctx.userAgent,
-      metadata: {
-        amount: parsed.amount,
-        method: parsed.method,
-      },
+      metadata: { amount: parsed.amount, method: parsed.method },
     })
 
     return apiSuccess(

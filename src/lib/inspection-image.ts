@@ -9,6 +9,7 @@ export const inspectionPhotoUrlSchema = z
   .refine(
     (v) => {
       if (v.startsWith(INSPECTION_UPLOAD_PREFIX)) return true
+      if (v.startsWith('/api/media/private/')) return true
       if (isR2PublicUrl(v)) return true
       try {
         new URL(v)
@@ -21,5 +22,6 @@ export const inspectionPhotoUrlSchema = z
   )
 
 export function isUploadedInspectionPhoto(url: string | null | undefined): boolean {
+  if (url?.startsWith('/api/media/private/')) return true
   return isPlatformHostedImageUrl(url, INSPECTION_UPLOAD_PREFIX)
 }

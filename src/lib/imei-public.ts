@@ -57,6 +57,7 @@ export interface PublicImeiOrder {
   id: string
   orderCode: string
   imei: string
+  serialNumber: string | null
   serviceName: string
   price: number
   status: ImeiOrderStatusUi
@@ -264,6 +265,7 @@ export function mapApiOrder(raw: {
   id: string
   orderCode: string
   imei: string
+  serialNumber?: string | null
   price: unknown
   status: string
   code?: string | null
@@ -278,6 +280,7 @@ export function mapApiOrder(raw: {
     id: raw.id,
     orderCode: raw.orderCode,
     imei: raw.imei,
+    serialNumber: raw.serialNumber ?? null,
     serviceName: raw.service?.title ?? '—',
     price: toNumberPrice(raw.price),
     status: raw.status as ImeiOrderStatusUi,

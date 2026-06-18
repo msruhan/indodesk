@@ -8,7 +8,15 @@ import {
   TOPUP_PAYMENT_METHODS,
 } from '@/lib/topup-order-config'
 import { serializeTopupOrder } from '@/lib/topup-order-serializer'
-import { debitUserForTopup } from '@/lib/topup-wallet'
+import {
+  isTopupStressFailAccount,
+  isValidMsisdn,
+  normalizeMsisdn,
+} from '@/lib/topup-account-validation'
+import { debitUserForTopup, refundTopupToBuyer } from '@/lib/topup-wallet'
+import { walletTransaction } from '@/lib/wallet/transaction'
+import { hasWalletLedgerByUser } from '@/lib/wallet/ledger-idempotency'
+import { generateTopupPollToken } from '@/lib/topup-poll-token'
 
 export type TopupCheckoutInput = {
   productSlug: string
@@ -25,6 +33,11 @@ function effectiveDenomPrice(basePrice: Prisma.Decimal, salePrice: Prisma.Decima
   return salePrice ?? basePrice
 }
 
+function generateFulfillmentCode(orderCode: string): string {
+  const tail = orderCode.replace(/^TT-/, '').slice(0, 8).toUpperCase()
+  return `VC-${tail}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
+}
+
 /** Simulated fulfillment progression for wallet-paid orders (demo until provider API). */
 export async function maybeAdvanceTopupFulfillment(orderId: string) {
   const order = await prisma.topupOrder.findUnique({ where: { id: orderId } })
@@ -32,6 +45,41 @@ export async function maybeAdvanceTopupFulfillment(orderId: string) {
   if (order.status === 'COMPLETED' || order.status === 'FAILED') return order
 
   const elapsed = Date.now() - order.paidAt.getTime()
+
+  if (isTopupStressFailAccount(order.accountId) && elapsed >= 2_000) {
+    return walletTransaction(async (tx) => {
+      if (order.userId) {
+        const alreadyRefunded = await hasWalletLedgerByUser(
+          tx,
+          order.userId,
+          'REFUND',
+          order.id,
+        )
+        if (alreadyRefunded) {
+          return tx.topupOrder.update({
+            where: { id: orderId },
+            data: { status: 'FAILED', fulfilledAt: new Date() },
+          })
+        }
+      }
+
+      await refundTopupToBuyer(
+        tx,
+        order.userId!,
+        order.total,
+        order.id,
+        `Refund topup gagal ${order.orderCode}`,
+      )
+      return tx.topupOrder.update({
+        where: { id: orderId },
+        data: {
+          status: 'FAILED',
+          fulfilledAt: new Date(),
+        },
+      })
+    })
+  }
+
   let next: TopupStatus = order.status
   if (elapsed >= 8_000) next = 'COMPLETED'
   else if (elapsed >= 3_000) next = 'FULFILLING'
@@ -44,6 +92,10 @@ export async function maybeAdvanceTopupFulfillment(orderId: string) {
     data: {
       status: next,
       fulfilledAt: next === 'COMPLETED' ? new Date() : order.fulfilledAt,
+      providerOrderId:
+        next === 'COMPLETED' && !order.providerOrderId
+          ? generateFulfillmentCode(order.orderCode)
+          : order.providerOrderId,
     },
   })
 }
@@ -55,6 +107,10 @@ export async function processTopupCheckout(
   userRole: 'USER' | 'TEKNISI' | 'ADMIN',
   input: TopupCheckoutInput,
 ) {
+  if (userRole === 'ADMIN') {
+    throw new Error('ADMIN_NOT_ALLOWED')
+  }
+
   if (input.paymentMethod !== 'saldo') {
     throw new Error('PAYMENT_NOT_SUPPORTED')
   }
@@ -76,8 +132,11 @@ export async function processTopupCheckout(
   }
 
   const denom = product.denominations[0]
-  const accountId = input.accountId.trim()
+  const accountId = normalizeMsisdn(input.accountId.trim())
   if (accountId.length < 3) throw new Error('INVALID_ACCOUNT')
+  if (product.category === 'pulsa' && !isValidMsisdn(accountId)) {
+    throw new Error('INVALID_MSISDN')
+  }
   if (product.serverLabel && !input.serverId?.trim()) {
     throw new Error('SERVER_REQUIRED')
   }
@@ -104,7 +163,9 @@ export async function processTopupCheckout(
     role: userRole,
   }
 
-  const order = await prisma.$transaction(async (tx) => {
+  const poll = generateTopupPollToken()
+
+  const order = await walletTransaction(async (tx) => {
     const created = await tx.topupOrder.create({
       data: {
         orderCode,
@@ -122,6 +183,7 @@ export async function processTopupCheckout(
         paymentMethod: input.paymentMethod,
         status: 'PROCESSING',
         paidAt: new Date(),
+        pollTokenHash: poll.hash,
       },
     })
 
@@ -157,9 +219,12 @@ export async function processTopupCheckout(
     target: { type: 'topup_order', id: order.id, label: order.orderCode },
   })
 
-  return serializeTopupOrder(
-    { ...order, product, denomination: denom },
-    product.name,
-    denom.label,
-  )
+  return {
+    order: serializeTopupOrder(
+      { ...order, product, denomination: denom },
+      product.name,
+      denom.label,
+    ),
+    pollToken: poll.plain,
+  }
 }

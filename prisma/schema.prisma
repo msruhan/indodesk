@@ -92,6 +92,10 @@ model User {
   twoFactorEnabled   Boolean   @default(false)
   twoFactorSecret    String?   @db.Text
   passwordChangedAt  DateTime?
+  mustChangePassword Boolean   @default(false)
+  sessionVersion     Int       @default(0)
+  lockedUntil        DateTime?
+  walletPolicyOverride Json?
   telegramUserId     String?   @unique // Telegram user ID for notifications
   telegramUsername   String?   // Telegram username (optional)
   telegramChatId     String?   // Telegram chat ID for sending messages
@@ -102,6 +106,11 @@ model User {
   // Relations
   accounts         Account[]
   sessions         Session[]
+  passwordResetTokens PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  userSessions       UserSession[]
+  backupCodes        BackupCode[]
+  telegramLinkTokens TelegramLinkToken[]
   teknisiProfile   TeknisiProfile?
   products         Product[]
   ordersAsBuyer    Order[]               @relation("BuyerOrders")
@@ -129,6 +138,100 @@ model User {
   inspectionOrdersAsUser  InspectionOrder[]      @relation("InspectionUser")
   inspectionOrdersAsTech  InspectionOrder[]      @relation("InspectionTeknisi")
   telegramVerifications   TelegramVerification[]
+  productReviewsAuthored  ProductReview[]        @relation("ProductReviewsAuthored")
+  walletDepositRequestsTarget  WalletDepositRequest[] @relation("WalletDepositTarget")
+  walletDepositRequestsAuthored WalletDepositRequest[] @relation("WalletDepositRequester")
+  walletWithdrawRequests       WalletWithdrawRequest[]
+  walletWithdrawOtps           WalletWithdrawOtp[]
+  walletSecurityAlerts         WalletSecurityAlert[]  @relation("WalletSecurityAlertUser")
+  buyerComplaints              OrderComplaint[]       @relation("BuyerComplaints")
+  sellerComplaints             OrderComplaint[]       @relation("SellerComplaints")
+  adminComplaintResolutions    OrderComplaint[]       @relation("AdminComplaintResolutions")
+  rekberBuyerComplaints        RekberComplaint[]      @relation("RekberBuyerComplaints")
+  rekberSellerComplaints       RekberComplaint[]      @relation("RekberSellerComplaints")
+  rekberAdminComplaintResolutions RekberComplaint[]   @relation("RekberAdminComplaintResolutions")
+  packagingProofsAsSeller    OrderPackagingProof[]  @relation("SellerPackagingProofs")
+  packagingProofsReviewed      OrderPackagingProof[]  @relation("AdminPackagingReviews")
+  rekberPackagingProofsAsSeller RekberPackagingProof[] @relation("RekberSellerPackagingProofs")
+  rekberPackagingProofsReviewed RekberPackagingProof[] @relation("RekberAdminPackagingReviews")
+  supportTicketsReported     SupportTicket[]        @relation("TicketReporter")
+  supportTicketsAssigned     SupportTicket[]        @relation("TicketAssignee")
+  supportTicketMessages      SupportTicketMessage[]
+}
+
+// ============================================================
+// SECURITY HARDENING — TOKENS / SESSIONS / BACKUP CODES
+// ============================================================
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique // sha256(token)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique // sha256(token)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model UserSession {
+  id               String   @id @default(cuid())
+  userId           String
+  deviceLabel      String?
+  ip               String?
+  userAgent        String?
+  fingerprint      String?
+  sessionTokenHash String   @unique
+  createdAt        DateTime @default(now())
+  lastSeenAt       DateTime @default(now())
+  revokedAt        DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+}
+
+model BackupCode {
+  id        String   @id @default(cuid())
+  userId    String
+  codeHash  String   // bcrypt hash
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, usedAt])
+}
+
+model TelegramLinkToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique // sha256(token)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 // ============================================================
@@ -261,11 +364,32 @@ model TeknisiStore {
 // ============================================================
 
 enum ProductCategory {
-  HANDPHONE
+  IPHONE
+  ANDROID
+  IPAD
+  MACBOOK
   LAPTOP
+  PC
   AKSESORIS
   SOFTWARE
   LAINNYA
+}
+
+/// Sub-kategori device untuk HANDPHONE & TABLET — menentukan apakah punya 3uTools (Apple)
+enum DeviceType {
+  IPHONE
+  ANDROID_PHONE
+  IPAD
+  ANDROID_TABLET
+}
+
+/// Grade kondisi terstruktur untuk penilaian benchmark objektif
+enum ConditionGrade {
+  BNIB      // Brand New In Box (segel)
+  LIKE_NEW  // Like New (99%)
+  MULUS     // Mulus (95%+)
+  NORMAL    // Normal (tanda pakai wajar)
+  MINUS     // Ada minus (lecet/dent)
 }
 
 enum ProductListingStatus {
@@ -281,11 +405,17 @@ enum ProductWarranty {
   STORE
 }
 
+enum ProductCouponDiscountType {
+  PERCENT
+  FIXED
+}
+
 model Product {
   id             String               @id @default(cuid())
   sellerId       String
   name           String
   category       ProductCategory
+  deviceType     DeviceType?          // diisi untuk HANDPHONE & TABLET
   price          Decimal              @db.Decimal(12, 0)
   description    String?              @db.Text
   color          String               @default("")
@@ -296,6 +426,23 @@ model Product {
   completeness   Json                 @default("[]")
   image          String?
   images         Json                 @default("[]")
+  // Screenshot 3uTools (bukti kualitas hardware iPhone/iPad)
+  threeUtoolsImages Json              @default("[]") // Array URL screenshot 3uTools
+
+  // ---- Kondisi terstruktur (untuk benchmark objektif) ----
+  conditionGrade   ConditionGrade?
+  conditionPercent Int?               // 0-100, estimasi kondisi fisik
+  minusNotes       String?            @db.Text
+
+  // ---- Data 3uTools terstruktur (khusus IPHONE/IPAD) ----
+  batteryHealth    Int?               // 0-100
+  batteryCycle     Int?               // cycle count
+  isAllOriginal    Boolean?           // semua part original?
+  replacedParts    String[]           @default([]) // part yang diganti
+  trueToneActive   Boolean?           // True Tone aktif?
+  faceIdWorks      Boolean?           // Face ID normal?
+  verified3uTools  Boolean            @default(false) // sudah verifikasi screenshot 3uTools?
+
   rating         Decimal              @default(0) @db.Decimal(3, 2)
   reviewCount    Int                  @default(0)
   views          Int                  @default(0)
@@ -303,12 +450,41 @@ model Product {
   stock          Int                  @default(1)
   listingStatus  ProductListingStatus @default(DRAFT)
   isPublished    Boolean              @default(false)
+  /** Ringkasan singkat perubahan terakhir yang menunggu review admin. */
+  pendingChangeSummary String?        @db.Text
+  couponCode             String?
+  couponDiscountType     ProductCouponDiscountType?
+  couponDiscountValue    Decimal?             @db.Decimal(12, 0)
   isActive       Boolean              @default(true)
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
 
-  seller     User        @relation(fields: [sellerId], references: [id])
+  seller     User            @relation(fields: [sellerId], references: [id])
   orderItems OrderItem[]
+  reviews    ProductReview[]
+}
+
+// ============================================================
+// MARKETPLACE PRODUCT REVIEWS (ulasan pembeli setelah order selesai)
+// ============================================================
+
+model ProductReview {
+  id        String   @id @default(cuid())
+  productId String
+  orderId   String
+  authorId  String
+  rating    Int // 1–5
+  comment   String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  author  User    @relation("ProductReviewsAuthored", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@unique([orderId, productId])
+  @@index([productId, createdAt(sort: Desc)])
+  @@index([authorId])
 }
 
 enum OrderStatus {
@@ -316,9 +492,59 @@ enum OrderStatus {
   PAID
   PROCESSING
   SHIPPED
+  DISPUTED
   COMPLETED
   CANCELLED
   REFUNDED
+}
+
+enum OrderCancelledBy {
+  SELLER
+  ADMIN
+  SYSTEM
+}
+
+enum OrderComplaintStatus {
+  OPEN
+  SELLER_RESPONDED
+  AWAITING_RETURN
+  RETURN_SHIPPED
+  AWAITING_SELLER_CONFIRM
+  ESCALATED
+  RESOLVED
+  WITHDRAWN
+  RETURN_EXPIRED
+}
+
+enum OrderComplaintType {
+  RETURN_REQUIRED
+}
+
+enum OrderComplaintResolution {
+  REFUND_FULL
+  REFUND_PARTIAL
+  REJECTED
+}
+
+enum OrderComplaintMediaType {
+  PHOTO
+  VIDEO
+  UNBOXING_VIDEO
+  DEFECT_PHOTO
+  RETURN_PHOTO
+  RETURN_VIDEO
+  RETURN_REJECT_PHOTO
+}
+
+enum OrderPackagingProofStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum OrderPackagingMediaType {
+  PHOTO
+  VIDEO
 }
 
 /// Kode kurir — dipetakan ke BinderByte (`jne`, `jnt`, …)
@@ -343,8 +569,21 @@ model Order {
   fee       Decimal     @default(0) @db.Decimal(12, 0)
   discount  Decimal     @default(0) @db.Decimal(12, 0)
   total     Decimal     @db.Decimal(12, 0)
+  buyerFeeAmount    Decimal           @default(0) @db.Decimal(12, 0)
+  sellerFeeAmount   Decimal           @default(0) @db.Decimal(12, 0)
+  buyerHoldAmount   Decimal           @default(0) @db.Decimal(12, 0)
+  sellerNetAmount   Decimal           @default(0) @db.Decimal(12, 0)
+  settlementVersion Int               @default(2)
+  cancelReason      String?           @db.Text
+  cancelledBy       OrderCancelledBy?
   status    OrderStatus @default(PENDING)
   note      String?
+  shippingAddress       String?   @db.Text
+  shippingPhone         String?
+  completedAt           DateTime?
+  deliveredAt           DateTime?
+  buyerActionDeadline   DateTime?
+  autoCompletedAt       DateTime?
 
   shippingCourier       ShippingCourier?
   trackingNumber        String?
@@ -364,9 +603,125 @@ model Order {
   seller         User                 @relation("SellerOrders", fields: [sellerId], references: [id])
   items          OrderItem[]
   trackingEvents OrderTrackingEvent[]
+  reviews        ProductReview[]
+  complaint      OrderComplaint?
+  packagingProof OrderPackagingProof?
 
   @@index([trackingActive, trackingNextSyncAt])
   @@index([status, trackingActive])
+  @@index([status, buyerActionDeadline])
+}
+
+model OrderComplaint {
+  id                String                    @id @default(cuid())
+  orderId           String                    @unique
+  buyerId           String
+  sellerId          String
+  reason            String                    @db.Text
+  type              OrderComplaintType        @default(RETURN_REQUIRED)
+  status            OrderComplaintStatus      @default(OPEN)
+  sellerResponse    String?                   @db.Text
+  sellerRespondedAt DateTime?
+  escalatedAt       DateTime?
+  resolvedAt        DateTime?
+  resolution        OrderComplaintResolution?
+  refundAmount      Decimal?                  @db.Decimal(12, 0)
+  adminNote         String?                   @db.Text
+  adminId           String?
+  sellerDeadline    DateTime
+  returnDeadline        DateTime?
+  returnShippedAt       DateTime?
+  returnDeliveredAt     DateTime?
+  sellerConfirmDeadline DateTime?
+  returnCourier         ShippingCourier?
+  returnTrackingNumber  String?
+  returnTrackingActive  Boolean               @default(false)
+  returnSummaryStatus   String?
+  returnLastSyncedAt    DateTime?
+  returnNextSyncAt      DateTime?
+  returnSyncFailures    Int                   @default(0)
+  sellerReturnRejectReason String?            @db.Text
+  sellerReturnRejectedAt   DateTime?
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+
+  order          Order                      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  buyer          User                       @relation("BuyerComplaints", fields: [buyerId], references: [id])
+  seller         User                       @relation("SellerComplaints", fields: [sellerId], references: [id])
+  admin          User?                      @relation("AdminComplaintResolutions", fields: [adminId], references: [id])
+  media          OrderComplaintMedia[]
+  returnTrackingEvents OrderReturnTrackingEvent[]
+
+  @@index([status, sellerDeadline])
+  @@index([status, escalatedAt])
+  @@index([status, returnDeadline])
+  @@index([status, sellerConfirmDeadline])
+  @@index([returnTrackingActive, returnNextSyncAt])
+}
+
+model OrderReturnTrackingEvent {
+  id          String   @id @default(cuid())
+  complaintId String
+  occurredAt  DateTime
+  description String   @db.Text
+  location    String?
+  createdAt   DateTime @default(now())
+
+  complaint OrderComplaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+
+  @@index([complaintId, occurredAt])
+}
+
+model OrderComplaintMedia {
+  id          String                  @id @default(cuid())
+  complaintId String
+  type        OrderComplaintMediaType
+  url         String
+  mimeType    String
+  sizeBytes   Int
+  createdAt   DateTime                @default(now())
+
+  complaint OrderComplaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+
+  @@index([complaintId])
+}
+
+model OrderPackagingProof {
+  id               String                    @id @default(cuid())
+  orderId          String                    @unique
+  sellerId         String
+  status           OrderPackagingProofStatus   @default(PENDING)
+  rejectionNote    String?                   @db.Text
+  submittedAt      DateTime?
+  rejectedAt       DateTime?
+  resubmitDeadline DateTime?
+  reviewedAt       DateTime?
+  reviewedById     String?
+  slaNotifiedAt    DateTime?
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+
+  order      Order                   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  seller     User                    @relation("SellerPackagingProofs", fields: [sellerId], references: [id])
+  reviewedBy User?                   @relation("AdminPackagingReviews", fields: [reviewedById], references: [id])
+  media      OrderPackagingMedia[]
+
+  @@index([status, submittedAt])
+  @@index([status, resubmitDeadline])
+}
+
+model OrderPackagingMedia {
+  id        String                  @id @default(cuid())
+  proofId   String
+  type      OrderPackagingMediaType
+  url       String
+  mimeType  String
+  sizeBytes Int
+  createdAt DateTime                @default(now())
+
+  proof OrderPackagingProof @relation(fields: [proofId], references: [id], onDelete: Cascade)
+
+  @@index([proofId])
 }
 
 model OrderTrackingEvent {
@@ -434,6 +789,128 @@ model WalletLedger {
   @@index([walletId, createdAt])
 }
 
+enum WalletDepositStatus {
+  PENDING_APPROVAL
+  APPROVED_BY_ONE
+  APPROVED
+  REJECTED
+}
+
+model WalletDepositRequest {
+  id             String              @id @default(cuid())
+  userId         String
+  amount         Decimal             @db.Decimal(14, 0)
+  note           String              @db.Text
+  reasonCategory String?
+  method         String              @default("manual")
+  reference      String?
+  status         WalletDepositStatus @default(PENDING_APPROVAL)
+  requestedById  String
+  firstApproverId  String?
+  secondApproverId String?
+  rejectedById   String?
+  rejectionNote  String?             @db.Text
+  ledgerId       String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  targetUser  User @relation("WalletDepositTarget", fields: [userId], references: [id], onDelete: Cascade)
+  requestedBy User @relation("WalletDepositRequester", fields: [requestedById], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([userId])
+}
+
+enum WalletWithdrawStatus {
+  PENDING
+  COMPLETED
+  REJECT_PENDING_RELEASE
+  REJECTED
+  CANCELLED
+}
+
+model WalletWithdrawRequest {
+  id                   String               @id @default(cuid())
+  userId               String
+  amount               Decimal              @db.Decimal(14, 0)
+  bankName             String
+  accountNumber        String
+  accountHolder        String
+  note                 String?              @db.Text
+  status               WalletWithdrawStatus @default(PENDING)
+  riskScore            Int                  @default(0)
+  riskFlags            Json?
+  ledgerHoldId         String?
+  ledgerFinalId        String?
+  ledgerReleaseId      String?
+  proofUrl             String?
+  adminNote            String?              @db.Text
+  rejectionNote        String?              @db.Text
+  processedById        String?
+  rejectedById         String?
+  releaseConfirmedById String?
+  rejectInitiatedAt    DateTime?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  completedAt          DateTime?
+  slaDueAt             DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([userId])
+}
+
+model WalletWithdrawOtp {
+  id        String    @id @default(cuid())
+  userId    String
+  codeHash  String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+}
+
+enum WalletSecuritySeverity {
+  INFO
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum WalletSecurityAlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+  DISMISSED
+}
+
+model WalletSecurityAlert {
+  id                String                    @id @default(cuid())
+  userId            String?
+  walletId          String?
+  ruleCode          String
+  severity          WalletSecuritySeverity
+  status            WalletSecurityAlertStatus @default(OPEN)
+  title             String
+  body              String                    @db.Text
+  metadata          Json?
+  ledgerId          String?
+  withdrawRequestId String?
+  createdAt         DateTime                  @default(now())
+  resolvedAt        DateTime?
+  resolvedById      String?
+
+  user User? @relation("WalletSecurityAlertUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status, severity, createdAt])
+  @@index([userId])
+}
+
 // ============================================================
 // REKBER (ESCROW)
 // ============================================================
@@ -441,6 +918,8 @@ model WalletLedger {
 enum RekberStatus {
   PENDING
   HELD
+  PROCESSING
+  SHIPPED
   RELEASED
   DISPUTED
   REFUNDED
@@ -459,15 +938,118 @@ model RekberTransaction {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   heldAt      DateTime?
+  processedAt DateTime?
+  shippedAt   DateTime?
   releasedAt  DateTime?
   disputedAt  DateTime?
   refundedAt  DateTime?
 
+  shippingCourier         ShippingCourier?
+  trackingNumber          String?
+  trackingSummaryStatus   String?
+  trackingSummaryDesc     String?          @db.Text
+  trackingLastEventAt     DateTime?
+  trackingLastSyncedAt    DateTime?
+  trackingNextSyncAt      DateTime?
+  trackingActive          Boolean          @default(false)
+  trackingSyncFailures    Int              @default(0)
+
   inspectionOrderId String? @unique
   inspectionOrder   InspectionOrder? @relation(fields: [inspectionOrderId], references: [id], onDelete: SetNull)
 
-  buyer  User @relation("RekberBuyer", fields: [buyerId], references: [id])
-  seller User @relation("RekberSeller", fields: [sellerId], references: [id])
+  buyer          User                  @relation("RekberBuyer", fields: [buyerId], references: [id])
+  seller         User                  @relation("RekberSeller", fields: [sellerId], references: [id])
+  complaint      RekberComplaint?
+  packagingProof RekberPackagingProof?
+}
+
+model RekberPackagingProof {
+  id               String                    @id @default(cuid())
+  rekberId         String                    @unique
+  sellerId         String
+  status           OrderPackagingProofStatus @default(PENDING)
+  rejectionNote    String?                   @db.Text
+  submittedAt      DateTime?
+  rejectedAt       DateTime?
+  resubmitDeadline DateTime?
+  reviewedAt       DateTime?
+  reviewedById     String?
+  slaNotifiedAt    DateTime?
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+
+  rekber     RekberTransaction      @relation(fields: [rekberId], references: [id], onDelete: Cascade)
+  seller     User                   @relation("RekberSellerPackagingProofs", fields: [sellerId], references: [id])
+  reviewedBy User?                  @relation("RekberAdminPackagingReviews", fields: [reviewedById], references: [id])
+  media      RekberPackagingMedia[]
+
+  @@index([status, submittedAt])
+  @@index([status, resubmitDeadline])
+}
+
+model RekberPackagingMedia {
+  id        String                  @id @default(cuid())
+  proofId   String
+  type      OrderPackagingMediaType
+  url       String
+  mimeType  String
+  sizeBytes Int
+  createdAt DateTime                @default(now())
+
+  proof RekberPackagingProof @relation(fields: [proofId], references: [id], onDelete: Cascade)
+
+  @@index([proofId])
+}
+
+enum RekberComplaintStatus {
+  OPEN
+  SELLER_RESPONDED
+  ESCALATED
+  RESOLVED
+  WITHDRAWN
+}
+
+model RekberComplaint {
+  id                String                    @id @default(cuid())
+  rekberId          String                    @unique
+  buyerId           String
+  sellerId          String
+  reason            String                    @db.Text
+  status            RekberComplaintStatus     @default(OPEN)
+  sellerResponse    String?                   @db.Text
+  sellerRespondedAt DateTime?
+  escalatedAt       DateTime?
+  resolvedAt        DateTime?
+  resolution        OrderComplaintResolution?
+  refundAmount      Decimal?                  @db.Decimal(12, 0)
+  adminNote         String?                   @db.Text
+  adminId           String?
+  sellerDeadline    DateTime
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+
+  rekber RekberTransaction @relation(fields: [rekberId], references: [id], onDelete: Cascade)
+  buyer  User              @relation("RekberBuyerComplaints", fields: [buyerId], references: [id])
+  seller User              @relation("RekberSellerComplaints", fields: [sellerId], references: [id])
+  admin  User?             @relation("RekberAdminComplaintResolutions", fields: [adminId], references: [id])
+  media  RekberComplaintMedia[]
+
+  @@index([status, sellerDeadline])
+  @@index([status, escalatedAt])
+}
+
+model RekberComplaintMedia {
+  id          String                  @id @default(cuid())
+  complaintId String
+  type        OrderComplaintMediaType
+  url         String
+  mimeType    String
+  sizeBytes   Int
+  createdAt   DateTime                @default(now())
+
+  complaint RekberComplaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+
+  @@index([complaintId])
 }
 
 // ============================================================
@@ -546,6 +1128,7 @@ model TopupOrder {
   paymentMethod   String?
   status          TopupStatus @default(PENDING_PAYMENT)
   providerOrderId String?
+  pollTokenHash   String?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   paidAt          DateTime?
@@ -559,10 +1142,31 @@ model TopupOrder {
 // ============================================================
 
 enum KonsultasiStatus {
+  AWAITING_PAYMENT
   PENDING
   ACTIVE
   COMPLETED
   CANCELLED
+}
+
+enum ClientOs {
+  WINDOWS
+  MACOS
+}
+
+enum KonsultasiPaymentMethod {
+  WALLET_HOLD
+  PAYMENT_GATEWAY
+  LEGACY_DEBIT
+}
+
+enum KonsultasiPaymentStatus {
+  UNPAID
+  HELD
+  PAID
+  SECURED
+  CAPTURED
+  RELEASED
 }
 
 model KonsultasiSession {
@@ -572,6 +1176,18 @@ model KonsultasiSession {
   service   String // e.g. "Konsultasi Unlock"
   price     Decimal          @db.Decimal(12, 0)
   status    KonsultasiStatus @default(PENDING)
+  note      String?          @db.Text
+  device    String?
+  clientOs  ClientOs?
+  requiresRemote Boolean       @default(false)
+  remoteId  String?
+  remoteOtp String?
+  paymentMethod    KonsultasiPaymentMethod?
+  paymentStatus    KonsultasiPaymentStatus @default(UNPAID)
+  pgProvider       String?
+  pgExternalRef    String?                 @unique
+  paidAt           DateTime?
+  paymentExpiresAt DateTime?
   rating    Int? // 1-5
   review    String?          @db.Text
   createdAt DateTime         @default(now())
@@ -581,6 +1197,10 @@ model KonsultasiSession {
 
   user    User @relation("KonsultasiUser", fields: [userId], references: [id])
   teknisi User @relation("KonsultasiTeknisi", fields: [teknisiId], references: [id])
+
+  @@index([status, paymentStatus])
+  @@index([userId, status])
+  @@index([teknisiId, status])
 }
 
 // ============================================================
@@ -1039,6 +1659,17 @@ model MarketplaceBanner {
 }
 
 // ============================================================
+// TELEGRAM NOTIFICATION TEMPLATES (admin overrides)
+// ============================================================
+
+model TelegramNotificationTemplate {
+  eventKey  String   @id
+  body      String   @db.Text
+  isEnabled Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================================
 // PLATFORM SETTINGS (key-value)
 // ============================================================
 
@@ -1145,4 +1776,126 @@ model ActivityLog {
   @@index([severity, createdAt(sort: Desc)])
   @@index([actorId, createdAt(sort: Desc)])
   @@index([action, createdAt(sort: Desc)])
+}
+
+// ============================================================
+// SUPPORT TICKETS (Lapor Kendala)
+// ============================================================
+
+enum SupportTicketReporterRole {
+  USER
+  TEKNISI
+}
+
+enum SupportTicketCategory {
+  SERVICE_ISSUE
+  KONSULTASI
+  INSPEKSI
+  MARKETPLACE
+  ACCOUNT_SECURITY
+  PLATFORM_BUG
+  OTHER
+}
+
+enum SupportTicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum SupportTicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_REPORTER
+  RESOLVED
+}
+
+enum SupportTicketRelatedType {
+  KONSULTASI
+  REMOTE
+  INSPEKSI
+  MARKETPLACE_ORDER
+  OTHER
+}
+
+enum SupportTicketMediaKind {
+  IMAGE
+  VIDEO
+}
+
+enum SupportTicketAuthorRole {
+  USER
+  TEKNISI
+  ADMIN
+}
+
+model SupportTicket {
+  id                String                    @id @default(cuid())
+  publicId          String                    @unique
+  reporterId        String
+  reporterRole      SupportTicketReporterRole
+  category          SupportTicketCategory
+  priority          SupportTicketPriority     @default(NORMAL)
+  status            SupportTicketStatus       @default(OPEN)
+  subject           String
+  description       String                    @db.Text
+  relatedType       SupportTicketRelatedType?
+  relatedId         String?
+  relatedLabel      String?
+  relatedManualNote String?                   @db.Text
+  relatedSnapshot   Json?
+  previousTicketId  String?
+  assignedAdminId   String?
+  resolvedAt        DateTime?
+  lastMessageAt     DateTime                  @default(now())
+  reporterUnread    Boolean                   @default(false)
+  adminUnread       Boolean                   @default(true)
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+
+  reporter       User                   @relation("TicketReporter", fields: [reporterId], references: [id])
+  assignedAdmin  User?                  @relation("TicketAssignee", fields: [assignedAdminId], references: [id], onDelete: SetNull)
+  previousTicket SupportTicket?         @relation("TicketFollowUp", fields: [previousTicketId], references: [id], onDelete: SetNull)
+  followUpTickets SupportTicket[]       @relation("TicketFollowUp")
+  messages       SupportTicketMessage[]
+  media          SupportTicketMedia[]
+
+  @@index([status, lastMessageAt(sort: Desc)])
+  @@index([reporterId, createdAt(sort: Desc)])
+  @@index([adminUnread, priority, lastMessageAt(sort: Desc)])
+  @@index([assignedAdminId])
+}
+
+model SupportTicketMessage {
+  id         String                  @id @default(cuid())
+  ticketId   String
+  authorId   String
+  authorRole SupportTicketAuthorRole
+  body       String                  @db.Text
+  isInternal Boolean                 @default(false)
+  createdAt  DateTime                @default(now())
+
+  ticket SupportTicket        @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author User                   @relation(fields: [authorId], references: [id])
+  media  SupportTicketMedia[]
+
+  @@index([ticketId, createdAt])
+}
+
+model SupportTicketMedia {
+  id        String                 @id @default(cuid())
+  ticketId  String
+  messageId String?
+  kind      SupportTicketMediaKind
+  url       String                 @db.Text
+  fileName  String
+  mimeType  String
+  sizeBytes Int
+  createdAt DateTime               @default(now())
+
+  ticket  SupportTicket         @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  message SupportTicketMessage? @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
 }

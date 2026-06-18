@@ -19,17 +19,11 @@ function teknisiNotification(
   }
 }
 
-/** Notifikasi layanan untuk teknisi: remote menunggu, konsultasi pending, pesanan toko baru. */
+/** Notifikasi layanan untuk teknisi: konsultasi pending, pesanan toko baru. */
 export async function fetchTeknisiServiceNotifications(
   teknisiId: string,
 ): Promise<PlatformNotification[]> {
-  const [remoteWaiting, konsultasiPending, marketplacePending] = await Promise.all([
-    prisma.remoteSession.findMany({
-      where: { teknisiId, status: 'WAITING' },
-      orderBy: { createdAt: 'desc' },
-      take: LIMIT,
-      include: { user: { select: { name: true } } },
-    }),
+  const [konsultasiPending, marketplacePending] = await Promise.all([
     prisma.konsultasiSession.findMany({
       where: { teknisiId, status: 'PENDING' },
       orderBy: { createdAt: 'desc' },
@@ -49,32 +43,19 @@ export async function fetchTeknisiServiceNotifications(
 
   const items: PlatformNotification[] = []
 
-  for (const row of remoteWaiting) {
-    const userName = row.user.name ?? 'Pelanggan'
-    items.push(
-      teknisiNotification({
-        id: `teknisi-remote-${row.id}`,
-        title: 'Permintaan remote baru',
-        body: `${userName} mengajukan remote — kode ${row.remoteId}`,
-        tone: 'warning' as NotificationTone,
-        icon: 'message' as NotificationIconKey,
-        createdAt: row.createdAt.toISOString(),
-        href: '/teknisi/remote',
-      }),
-    )
-  }
-
   for (const row of konsultasiPending) {
     const userName = row.user.name ?? 'Pelanggan'
+    const remoteSuffix =
+      row.requiresRemote && row.remoteId ? ` · remote ${row.remoteId}` : ''
     items.push(
       teknisiNotification({
         id: `teknisi-konsultasi-${row.id}`,
-        title: 'Konsultasi baru',
-        body: `${userName} — ${row.service}`,
-        tone: 'primary' as NotificationTone,
+        title: row.requiresRemote ? 'Konsultasi remote baru' : 'Konsultasi baru',
+        body: `${userName} — ${row.service}${remoteSuffix}`,
+        tone: (row.requiresRemote ? 'warning' : 'primary') as NotificationTone,
         icon: 'message' as NotificationIconKey,
         createdAt: row.createdAt.toISOString(),
-        href: '/teknisi/konsultasi',
+        href: row.requiresRemote ? '/teknisi/konsultasi?filter=remote' : '/teknisi/konsultasi',
       }),
     )
   }

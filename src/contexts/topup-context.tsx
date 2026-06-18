@@ -27,6 +27,7 @@ const emptyDraft: TopupOrderDraft = {
 
 interface OrderHistoryEntry {
   orderCode: string
+  pollToken?: string
   productSlug: string
   productName: string
   denominationLabel: string

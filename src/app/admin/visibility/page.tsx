@@ -27,7 +27,7 @@ export default function AdminVisibilityPage() {
           <li className="flex items-start gap-2">
             <span className="mt-1 inline-flex h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary-500" />
             <span>
-              <strong>Admin</strong> selalu memiliki akses ke seluruh panel admin (mis. IMEI &amp;
+              <strong>Admin</strong> selalu memiliki akses ke seluruh panel admin (mis. Digital &amp;
               Server, Inspeksi, Monitoring) untuk keperluan operasional, terlepas dari status
               toggle.
             </span>
@@ -35,16 +35,25 @@ export default function AdminVisibilityPage() {
           <li className="flex items-start gap-2">
             <span className="mt-1 inline-flex h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary-500" />
             <span>
-              <strong>Layanan Perangkat</strong> hanya tampil untuk teknisi terdaftar saat toggle
-              aktif. User biasa &amp; pengunjung tidak pernah melihat menu ini.
+              <strong>Layanan Digital</strong> hanya tampil di navigasi publik untuk teknisi
+              terdaftar saat toggle aktif. User biasa &amp; pengunjung tidak melihat menu ini.
             </span>
           </li>
           <li className="flex items-start gap-2">
             <span className="mt-1 inline-flex h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary-500" />
             <span>
-              <strong>Remote &amp; Inspeksi</strong> tampil untuk semua role (pengunjung, user,
-              teknisi) saat toggle aktif. Bila dimatikan, halaman publik akan menolak akses dan
-              link di navigasi disembunyikan.
+              <strong>IndoDesk &amp; Konsultasi Remote</strong> mengontrol halaman publik{' '}
+              <code className="text-xs">/remote</code> dan pemesanan konsultasi dengan IndoDesk.
+              Tidak ada menu Remote terpisah di dashboard — sesi remote dikelola melalui{' '}
+              <strong>Konsultasi</strong>.
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="mt-1 inline-flex h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary-500" />
+            <span>
+              <strong>Inspeksi</strong> tampil di navigasi publik dan sidebar user/teknisi saat
+              toggle aktif. Dashboard user diblokir bila dimatikan; teknisi dengan order aktif
+              masih dapat mengakses <code className="text-xs">/teknisi/inspeksi</code> langsung.
             </span>
           </li>
           <li className="flex items-start gap-2">

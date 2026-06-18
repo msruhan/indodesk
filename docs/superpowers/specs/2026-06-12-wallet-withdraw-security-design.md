@@ -1,7 +1,7 @@
 # Withdraw Manual + Monitoring Keamanan Wallet — Design Spec
 
 **Tanggal**: 2026-06-12  
-**Status**: Draft — menunggu review  
+**Status**: Approved — implemented (2026-06-12)  
 **Author**: Brainstorming session  
 
 ---

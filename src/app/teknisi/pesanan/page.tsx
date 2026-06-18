@@ -7,9 +7,12 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { SearchInput } from '@/components/ui/search-input'
-import { MetricCard } from '@/components/dashboard'
+import { DashboardMonthFilter, MetricCard } from '@/components/dashboard'
+import { useDashboardPeriod } from '@/contexts/dashboard-period-context'
+import { isDateInPeriod } from '@/lib/dashboard-period'
 import { OrderTrackingTimeline } from '@/components/marketplace/order-tracking-timeline'
 import { MarketplaceOrderDetailModal } from '@/components/marketplace/marketplace-order-detail-modal'
+import { PackagingProofForm } from '@/components/marketplace/packaging-proof-form'
 import { SHIPPING_COURIER_OPTIONS } from '@/lib/shipping-courier'
 import type { ShippingCourier } from '@prisma/client'
 import { cn } from '@/lib/utils'
@@ -46,6 +49,7 @@ const statusConfig: Record<MarketplaceOrderDto['status'], { label: string; varia
   paid: { label: 'Dibayar', variant: 'warning', icon: CheckCircle },
   processing: { label: 'Diproses', variant: 'info', icon: RefreshCw },
   shipped: { label: 'Dikirim', variant: 'info', icon: TruckIcon },
+  disputed: { label: 'Komplain', variant: 'danger', icon: Clock },
   completed: { label: 'Selesai', variant: 'success', icon: Check },
   cancelled: { label: 'Dibatalkan', variant: 'danger', icon: X },
   refunded: { label: 'Refund', variant: 'danger', icon: X },
@@ -61,6 +65,7 @@ const formatDate = (iso: string) => {
 }
 
 export default function TeknisiPesananPage() {
+  const { period, label: periodLabel } = useDashboardPeriod()
   const confirmDialog = useConfirm()
   const [items, setItems] = useState<MarketplaceOrderDto[]>([])
   const [loading, setLoading] = useState(true)
@@ -72,7 +77,12 @@ export default function TeknisiPesananPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [detailOrder, setDetailOrder] = useState<MarketplaceOrderDto | null>(null)
   const [shipmentForms, setShipmentForms] = useState<Record<string, { courier: ShippingCourier; trackingNumber: string }>>({})
+  const [complaintResponses, setComplaintResponses] = useState<Record<string, string>>({})
+  const [returnRejectReasons, setReturnRejectReasons] = useState<Record<string, string>>({})
+  const [returnRejectPhotos, setReturnRejectPhotos] = useState<Record<string, File[]>>({})
   const [toast, setToast] = useState<string | null>(null)
+  const [cancelTarget, setCancelTarget] = useState<MarketplaceOrderDto | null>(null)
+  const [cancelReason, setCancelReason] = useState('')
 
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
@@ -95,16 +105,21 @@ export default function TeknisiPesananPage() {
 
   useEffect(() => { void load() }, [load])
 
+  const periodItems = useMemo(
+    () => items.filter((o) => isDateInPeriod(o.createdAt, period)),
+    [items, period],
+  )
+
   const stats = useMemo(() => {
-    const active = items.filter((o) => ['paid', 'processing'].includes(o.status)).length
-    const shipped = items.filter((o) => o.status === 'shipped').length
-    const completed = items.filter((o) => o.status === 'completed').length
-    const revenue = items.filter((o) => o.status === 'completed').reduce((s, o) => s + o.total, 0)
-    return { total: items.length, active, shipped, completed, revenue }
-  }, [items])
+    const active = periodItems.filter((o) => ['paid', 'processing'].includes(o.status)).length
+    const shipped = periodItems.filter((o) => o.status === 'shipped').length
+    const completed = periodItems.filter((o) => o.status === 'completed').length
+    const revenue = periodItems.filter((o) => o.status === 'completed').reduce((s, o) => s + o.total, 0)
+    return { total: periodItems.length, active, shipped, completed, revenue }
+  }, [periodItems])
 
   const filtered = useMemo(() => {
-    let list = items
+    let list = periodItems
     if (statusFilter === 'active') list = list.filter((o) => ['paid', 'processing'].includes(o.status))
     else if (statusFilter === 'shipped') list = list.filter((o) => o.status === 'shipped')
     else if (statusFilter === 'completed') list = list.filter((o) => o.status === 'completed')
@@ -120,7 +135,7 @@ export default function TeknisiPesananPage() {
       )
     }
     return list
-  }, [items, statusFilter, debouncedQ])
+  }, [periodItems, statusFilter, debouncedQ])
 
   const getShipmentForm = (id: string) => shipmentForms[id] ?? { courier: 'JNE' as ShippingCourier, trackingNumber: '' }
   const setShipmentField = (id: string, patch: Partial<{ courier: ShippingCourier; trackingNumber: string }>) => {
@@ -140,29 +155,29 @@ export default function TeknisiPesananPage() {
     finally { setActingId(null) }
   }
 
-  const cancelOrder = async (order: MarketplaceOrderDto) => {
-    const confirmed = await confirmDialog({
-      title: 'Batalkan pesanan?',
-      description: `Batalkan pesanan ${order.orderCode}?\n\nSaldo pembeli (Rp ${order.total.toLocaleString('id-ID')}) akan dikembalikan ke wallet mereka. Stok produk dikembalikan.`,
-      variant: 'warning',
-      confirmLabel: 'Batalkan',
-      cancelLabel: 'Batal',
-    })
-    if (!confirmed) return
-    setActingId(order.id)
+  const cancelOrder = async () => {
+    if (!cancelTarget) return
+    const reason = cancelReason.trim()
+    if (reason.length < 20) {
+      setError('Alasan pembatalan minimal 20 karakter')
+      return
+    }
+    setActingId(cancelTarget.id)
     setError(null)
     try {
-      const res = await fetch(`/api/teknisi/marketplace/orders/${order.id}`, {
+      const res = await fetch(`/api/teknisi/marketplace/orders/${cancelTarget.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'cancel' }),
+        body: JSON.stringify({ action: 'cancel', reason }),
       })
       const json = await res.json()
       if (!res.ok || !json.success) {
         setError(json.error ?? 'Gagal membatalkan pesanan')
         return
       }
-      setToast('Pesanan dibatalkan. Saldo pembeli telah dikembalikan.')
+      setToast('Pesanan dibatalkan. Dana pembeli telah dikembalikan.')
+      setCancelTarget(null)
+      setCancelReason('')
       setExpandedId(null)
       await load()
     } catch {
@@ -188,6 +203,91 @@ export default function TeknisiPesananPage() {
     finally { setActingId(null) }
   }
 
+  const submitComplaintResponse = async (orderId: string) => {
+    const response = (complaintResponses[orderId] ?? '').trim()
+    if (response.length < 10) {
+      setError('Respons komplain minimal 10 karakter')
+      return
+    }
+    setActingId(orderId)
+    setError(null)
+    try {
+      const res = await fetch(`/api/teknisi/marketplace/orders/${orderId}/complaint/respond`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ response }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.success) {
+        setError(json.error ?? 'Gagal menyimpan respons')
+        return
+      }
+      setToast('Respons komplain berhasil dikirim')
+      await load()
+    } catch {
+      setError('Gagal menyimpan respons')
+    } finally {
+      setActingId(null)
+    }
+  }
+
+  const confirmReturn = async (orderId: string) => {
+    setActingId(orderId)
+    setError(null)
+    try {
+      const res = await fetch(
+        `/api/teknisi/marketplace/orders/${orderId}/complaint/return/confirm`,
+        { method: 'POST' },
+      )
+      const json = await res.json()
+      if (!res.ok || !json.success) {
+        setError(json.error ?? 'Gagal mengonfirmasi retur')
+        return
+      }
+      setToast('Retur dikonfirmasi, refund diproses')
+      await load()
+    } catch {
+      setError('Gagal mengonfirmasi retur')
+    } finally {
+      setActingId(null)
+    }
+  }
+
+  const rejectReturn = async (orderId: string) => {
+    const reason = (returnRejectReasons[orderId] ?? '').trim()
+    if (reason.length < 20) {
+      setError('Alasan penolakan minimal 20 karakter')
+      return
+    }
+    const photos = returnRejectPhotos[orderId] ?? []
+    if (photos.length < 1) {
+      setError('Minimal 1 foto bukti penolakan wajib')
+      return
+    }
+    setActingId(orderId)
+    setError(null)
+    try {
+      const fd = new FormData()
+      fd.append('reason', reason)
+      photos.forEach((f) => fd.append('rejectPhotos', f))
+      const res = await fetch(
+        `/api/teknisi/marketplace/orders/${orderId}/complaint/return/reject`,
+        { method: 'POST', body: fd },
+      )
+      const json = await res.json()
+      if (!res.ok || !json.success) {
+        setError(json.error ?? 'Gagal menolak retur')
+        return
+      }
+      setToast('Penolakan retur dieskalasi ke admin')
+      await load()
+    } catch {
+      setError('Gagal menolak retur')
+    } finally {
+      setActingId(null)
+    }
+  }
+
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -196,15 +296,18 @@ export default function TeknisiPesananPage() {
           <h1 className="text-xl font-semibold tracking-tightest text-ink sm:text-2xl">Pesanan Masuk</h1>
           <p className="mt-0.5 text-[13px] text-surface-500">Kelola pesanan dari pembeli: proses, kirim, dan selesaikan.</p>
         </div>
-        <Button variant="outline" size="sm" className="h-9" onClick={() => void load()} disabled={loading}>
-          <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <DashboardMonthFilter />
+          <Button variant="outline" size="sm" className="h-9" onClick={() => void load()} disabled={loading}>
+            <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Metrics */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
-        <MetricCard title="Total Pesanan" value={stats.total.toLocaleString('id-ID')} icon={ShoppingBag} footnote="Semua waktu" tone="primary" compact />
+        <MetricCard title="Total Pesanan" value={stats.total.toLocaleString('id-ID')} icon={ShoppingBag} footnote={periodLabel} tone="primary" compact />
         <MetricCard title="Perlu Aksi" value={stats.active.toLocaleString('id-ID')} icon={Clock} footnote="Dibayar & diproses" tone={stats.active > 0 ? 'warning' : 'neutral'} compact />
         <MetricCard title="Dikirim" value={stats.shipped.toLocaleString('id-ID')} icon={TruckIcon} footnote="Dalam pengiriman" tone="primary" compact />
         <MetricCard title="Revenue" value={formatPrice(stats.revenue)} icon={TrendingUp} footnote={`${stats.completed} pesanan selesai`} tone="primary" compact />
@@ -370,7 +473,7 @@ export default function TeknisiPesananPage() {
                           onClick={() => void advance(order.id)}
                         >
                           <CheckCircle className="h-3.5 w-3.5" />
-                          {order.nextStatus === 'PROCESSING' ? 'Proses Pesanan' : 'Tandai Selesai'}
+                          {order.nextStatus === 'PROCESSING' ? 'Proses Pesanan' : 'Lanjutkan'}
                         </Button>
                       )}
                       {order.requiresShipmentInput && (
@@ -390,7 +493,10 @@ export default function TeknisiPesananPage() {
                           size="sm"
                           className="h-8 border-rose-200 text-rose-700 hover:bg-rose-50"
                           disabled={actingId === order.id}
-                          onClick={() => void cancelOrder(order)}
+                          onClick={() => {
+                            setCancelTarget(order)
+                            setCancelReason('')
+                          }}
                         >
                           <X className="h-3.5 w-3.5" />
                           Batalkan
@@ -408,6 +514,23 @@ export default function TeknisiPesananPage() {
                         </Button>
                       )}
                     </div>
+
+                    {(order.requiresPackagingProof ||
+                      order.canSubmitPackagingProof ||
+                      order.packagingProof) && (
+                      <div className="mt-3" onClick={(e) => e.stopPropagation()}>
+                        <PackagingProofForm
+                          orderId={order.id}
+                          proof={order.packagingProof}
+                          canSubmit={order.canSubmitPackagingProof}
+                          requiresProof={order.requiresPackagingProof}
+                          onSuccess={() => {
+                            setToast('Bukti packaging berhasil dikirim')
+                            void load()
+                          }}
+                        />
+                      </div>
+                    )}
 
                     {/* Shipment Input Form */}
                     <AnimatePresence>
@@ -464,6 +587,97 @@ export default function TeknisiPesananPage() {
                       )}
                     </AnimatePresence>
 
+                    {order.awaitingBuyerConfirmation && (
+                      <p className="mt-3 rounded-xl border border-amber-200/70 bg-amber-50/60 px-3 py-2 text-[11px] text-amber-800">
+                        Menunggu konfirmasi pembeli — penjual tidak dapat menandai selesai manual.
+                      </p>
+                    )}
+
+                    {order.canRespondToComplaint && order.complaint && (
+                      <div className="mt-3 space-y-2 rounded-2xl border border-rose-200/70 bg-rose-50/40 p-4">
+                        <p className="text-[12px] font-semibold text-ink">Komplain pembeli</p>
+                        <p className="text-[11px] text-surface-700">{order.complaint.reason}</p>
+                        <textarea
+                          value={complaintResponses[order.id] ?? ''}
+                          onChange={(e) =>
+                            setComplaintResponses((prev) => ({ ...prev, [order.id]: e.target.value }))
+                          }
+                          rows={3}
+                          placeholder="Tulis respons Anda (min. 10 karakter)"
+                          className="w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
+                        />
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          className="h-8"
+                          disabled={actingId === order.id}
+                          onClick={() => void submitComplaintResponse(order.id)}
+                        >
+                          Kirim Respons
+                        </Button>
+                      </div>
+                    )}
+
+                    {order.canConfirmReturn && order.complaint && (
+                      <div className="mt-3 space-y-2 rounded-2xl border border-emerald-200/70 bg-emerald-50/40 p-4">
+                        <p className="text-[12px] font-semibold text-ink">Konfirmasi barang retur</p>
+                        <p className="text-[11px] text-surface-700">
+                          Barang retur telah sampai. Konfirmasi jika kondisi sesuai untuk memproses refund,
+                          atau tolak jika tidak sesuai.
+                        </p>
+                        {order.complaint.returnTrackingNumber && (
+                          <p className="text-[10px] text-surface-500">
+                            Resi retur: {order.complaint.returnCourier} ·{' '}
+                            {order.complaint.returnTrackingNumber}
+                          </p>
+                        )}
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            className="h-8"
+                            disabled={actingId === order.id}
+                            onClick={() => void confirmReturn(order.id)}
+                          >
+                            Konfirmasi Diterima
+                          </Button>
+                        </div>
+                        <textarea
+                          value={returnRejectReasons[order.id] ?? ''}
+                          onChange={(e) =>
+                            setReturnRejectReasons((prev) => ({
+                              ...prev,
+                              [order.id]: e.target.value,
+                            }))
+                          }
+                          rows={2}
+                          placeholder="Alasan tolak kondisi retur (min. 20 karakter)"
+                          className="w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
+                        />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={(e) =>
+                            setReturnRejectPhotos((prev) => ({
+                              ...prev,
+                              [order.id]: Array.from(e.target.files ?? []),
+                            }))
+                          }
+                          className="text-xs"
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 border-rose-200 text-rose-700"
+                          disabled={actingId === order.id}
+                          onClick={() => void rejectReturn(order.id)}
+                        >
+                          Tolak Kondisi Retur
+                        </Button>
+                      </div>
+                    )}
+
                     {/* Tracking Timeline */}
                     <AnimatePresence>
                       {isExpanded && showTracking && (
@@ -490,6 +704,51 @@ export default function TeknisiPesananPage() {
       )}
 
       <MarketplaceOrderDetailModal order={detailOrder} onClose={() => setDetailOrder(null)} />
+
+      <AnimatePresence>
+        {cancelTarget && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => setCancelTarget(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-md rounded-2xl border border-surface-200 bg-white p-5 shadow-soft-lg"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-sm font-semibold text-ink">Batalkan pesanan</h3>
+              <p className="mt-1 text-xs text-surface-600">
+                {cancelTarget.orderCode} — dana pembeli akan dikembalikan sepenuhnya.
+              </p>
+              <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Tulis alasan pembatalan (min. 20 karakter)"
+                className="mt-3 min-h-[100px] w-full rounded-xl border border-surface-200 px-3 py-2 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-primary-100"
+              />
+              <div className="mt-4 flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => setCancelTarget(null)}>
+                  Batal
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="bg-rose-600 hover:bg-rose-700"
+                  disabled={actingId === cancelTarget.id || cancelReason.trim().length < 20}
+                  onClick={() => void cancelOrder()}
+                >
+                  Batalkan pesanan
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

@@ -106,7 +106,7 @@ export async function GET() {
     // Transaction mix for donut chart
     const totalTransactions = totalImeiOrders + totalServerOrders + totalTopupOrders + totalMarketplaceOrders + totalRekber
     const transactionMix = [
-      { name: 'IMEI Service', value: totalTransactions > 0 ? Math.round((totalImeiOrders / totalTransactions) * 100) : 0, count: totalImeiOrders, color: '#10b981' },
+      { name: 'Digital Service', value: totalTransactions > 0 ? Math.round((totalImeiOrders / totalTransactions) * 100) : 0, count: totalImeiOrders, color: '#10b981' },
       { name: 'Server Service', value: totalTransactions > 0 ? Math.round((totalServerOrders / totalTransactions) * 100) : 0, count: totalServerOrders, color: '#06b6d4' },
       { name: 'Marketplace', value: totalTransactions > 0 ? Math.round((totalMarketplaceOrders / totalTransactions) * 100) : 0, count: totalMarketplaceOrders, color: '#8b5cf6' },
       { name: 'Top Up', value: totalTransactions > 0 ? Math.round((totalTopupOrders / totalTransactions) * 100) : 0, count: totalTopupOrders, color: '#f59e0b' },
@@ -181,7 +181,7 @@ export async function GET() {
     const serverInProcess = await prisma.serverOrder.count({ where: { status: 'IN_PROCESS' } })
 
     const orderStatusBreakdown = {
-      categories: ['IMEI Service', 'Server Service'],
+      categories: ['Digital Service', 'Server Service'],
       series: [
         { name: 'Sukses', data: [imeiSuccess, serverSuccess] },
         { name: 'Pending', data: [imeiPending, serverPending] },

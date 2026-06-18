@@ -19,7 +19,7 @@ export function getUserActivityHref(type: UserActivityType, id?: string): string
     case 'rekber':
       return '/user/rekber'
     case 'remote':
-      return '/user/remote'
+      return '/user/konsultasi'
     case 'inspeksi':
       return id ? `/user/inspeksi/${id}` : '/user/inspeksi'
     case 'perangkat':

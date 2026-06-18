@@ -4,54 +4,134 @@ import Google from 'next-auth/providers/google'
 import { PrismaAdapter } from '@auth/prisma-adapter'
 import { compare } from 'bcryptjs'
 import { prisma } from '@/lib/db'
-import { verifyTotpCode } from '@/lib/totp'
 import { authConfig } from '@/auth.config'
-import { evaluateLoginFailure, logAuthEvent } from '@/lib/activity-log'
+import { logAuthEvent } from '@/lib/activity-log'
+import { verifySecondFactor } from '@/lib/auth/verify-2fa'
+import { onLoginSuccess } from '@/lib/auth/suspicious-login'
+import { AccountLockedError, checkLockout, clearLockout, recordLoginFailure, recordSecondFactorFailure } from '@/lib/lockout'
 import { checkTeknisiLoginGuard } from '@/lib/teknisi-login-guard'
 import { setTeknisiPresence } from '@/lib/teknisi-presence'
+import { getCachedSessionVersion, setCachedSessionVersion } from '@/lib/session-version-cache'
+import { bumpSessionVersion } from '@/lib/session-version'
+
+import { isGoogleAuthEnabled } from '@/lib/google-auth-enabled'
+import { evaluateGoogleSignIn } from '@/lib/auth/google-oauth-policy'
+import { clearGoogleLinkIntentCookie } from '@/lib/auth/google-link-cookie'
 
 const googleClientId = process.env.AUTH_GOOGLE_ID
 const googleClientSecret = process.env.AUTH_GOOGLE_SECRET
-const googleEnabled = Boolean(googleClientId && googleClientSecret)
+const googleEnabled = isGoogleAuthEnabled
 
-export const isGoogleAuthEnabled = googleEnabled
+export { isGoogleAuthEnabled }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   adapter: PrismaAdapter(prisma) as never,
   callbacks: {
     ...authConfig.callbacks,
-    async signIn({ user }) {
+    async signIn({ user, account }) {
+      if (account?.provider === 'google') {
+        const decision = await evaluateGoogleSignIn({
+          userId: user.id,
+          email: user.email,
+          providerAccountId: account.providerAccountId,
+        })
+        if (!decision.ok) {
+          return `/login?error=${encodeURIComponent(decision.error)}`
+        }
+        return true
+      }
+
       if (!user.id) return false
       const dbUser = await prisma.user.findUnique({
         where: { id: user.id },
-        select: { isActive: true, role: true },
+        select: { isActive: true, role: true, twoFactorEnabled: true, email: true },
       })
       if (!dbUser?.isActive) return false
+
       const guard = await checkTeknisiLoginGuard(user.id, dbUser.role)
       return guard.allowed
     },
     async jwt({ token, user, trigger, session }) {
-      if (user?.id) {
+      const userId = (user?.id ?? token.id) as string | undefined
+
+      if (userId) {
         const dbUser = await prisma.user.findUnique({
-          where: { id: user.id as string },
-          select: { id: true, role: true, name: true, image: true },
+          where: { id: userId },
+          select: {
+            id: true,
+            role: true,
+            name: true,
+            image: true,
+            isActive: true,
+            passwordChangedAt: true,
+            mustChangePassword: true,
+            sessionVersion: true,
+          },
         })
-        if (dbUser) {
-          token.id = dbUser.id
-          token.role = dbUser.role
-          if (dbUser.name) token.name = dbUser.name
-          if (dbUser.image) token.picture = dbUser.image
+
+        if (!dbUser?.isActive) {
+          return null as unknown as typeof token
+        }
+
+        if (
+          typeof token.sessionVersion === 'number' &&
+          token.sessionVersion !== dbUser.sessionVersion
+        ) {
+          return null as unknown as typeof token
+        }
+
+        if (
+          dbUser.passwordChangedAt &&
+          token.iat &&
+          token.iat < Math.floor(dbUser.passwordChangedAt.getTime() / 1000)
+        ) {
+          return null as unknown as typeof token
+        }
+
+        token.id = dbUser.id
+        token.role = dbUser.role
+        token.isActive = dbUser.isActive
+        token.sessionVersion = dbUser.sessionVersion
+        token.mustChangePassword = dbUser.mustChangePassword
+        if (dbUser.passwordChangedAt) {
+          token.passwordChangedAt = Math.floor(dbUser.passwordChangedAt.getTime() / 1000)
+        }
+        if (dbUser.name) token.name = dbUser.name
+        if (dbUser.image) token.picture = dbUser.image
+
+        const cached = await getCachedSessionVersion(userId)
+        if (cached === null || cached !== dbUser.sessionVersion) {
+          await setCachedSessionVersion(userId, dbUser.sessionVersion)
         }
       }
+
       return authConfig.callbacks.jwt({ token, user, trigger, session })
     },
   },
   events: {
+    async createUser({ user }) {
+      if (!user.id) return
+      await prisma.wallet.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id, balance: 0 },
+        update: {},
+      })
+    },
     async signIn({ user, account }) {
       const actor = user as { id?: string; role?: 'ADMIN' | 'TEKNISI' | 'USER' }
+      if (account?.provider === 'google') {
+        await clearGoogleLinkIntentCookie()
+      }
       if (actor.role === 'TEKNISI' && actor.id) {
         await setTeknisiPresence(actor.id, true)
+      }
+      if (actor.id && user.email) {
+        void onLoginSuccess({
+          userId: actor.id,
+          email: user.email,
+          name: user.name ?? null,
+        })
       }
       void logAuthEvent({
         action: 'auth.login.success',
@@ -67,6 +147,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           provider: account?.provider ?? 'credentials',
         },
       })
+    },
+    async linkAccount({ user, account }) {
+      await clearGoogleLinkIntentCookie()
+      if (account.provider === 'google' && user.id) {
+        void logAuthEvent({
+          action: 'auth.oauth.linked',
+          severity: 'SUCCESS',
+          summary: `Google dihubungkan ke akun ${user.email ?? user.id}`,
+          actor: {
+            id: user.id,
+            name: user.name ?? null,
+            email: user.email ?? null,
+            role: (user as { role?: 'ADMIN' | 'TEKNISI' | 'USER' }).role ?? null,
+          },
+          metadata: { provider: 'google' },
+        })
+      }
     },
     async signOut(message) {
       const token = (message as { token?: { id?: string; name?: string; email?: string; role?: 'ADMIN' | 'TEKNISI' | 'USER' } }).token
@@ -93,7 +190,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           Google({
             clientId: googleClientId!,
             clientSecret: googleClientSecret!,
-            allowDangerousEmailAccountLinking: true,
+            allowDangerousEmailAccountLinking: false,
           }),
         ]
       : []),
@@ -112,12 +209,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const password = credentials.password as string
         const totp = (credentials.totp as string | undefined)?.trim() ?? ''
 
+        try {
+          await checkLockout(email)
+        } catch (e) {
+          if (e instanceof AccountLockedError) return null
+          throw e
+        }
+
         const user = await prisma.user.findUnique({
           where: { email },
         })
 
         if (!user || !user.password) {
-          await evaluateLoginFailure({ email, ip: null, userAgent: null })
+          await recordLoginFailure({ email, ip: null, userAgent: null })
           return null
         }
 
@@ -127,7 +231,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const isValid = await compare(password, user.password)
         if (!isValid) {
-          await evaluateLoginFailure({ email, ip: null, userAgent: null })
+          await recordLoginFailure({ email, ip: null, userAgent: null })
           return null
         }
 
@@ -137,17 +241,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
 
         if (user.twoFactorEnabled) {
-          if (!user.twoFactorSecret || !totp || !(await verifyTotpCode(totp, user.twoFactorSecret))) {
+          const ok2fa = await verifySecondFactor({
+            userId: user.id,
+            input: totp,
+            totpSecret: user.twoFactorSecret,
+          })
+          if (!ok2fa) {
+            const lockedUntil = await recordSecondFactorFailure({ email })
             void logAuthEvent({
               action: 'auth.2fa.failed',
               severity: 'WARNING',
               summary: `2FA gagal untuk ${email}`,
               actor: { id: user.id, name: user.name, email: user.email, role: user.role },
-              metadata: { email },
+              metadata: { email, lockedUntil: lockedUntil?.toISOString() ?? null },
             })
             return null
           }
         }
+
+        await clearLockout(email)
 
         return {
           id: user.id,
@@ -155,6 +267,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: user.email,
           image: user.image,
           role: user.role,
+          sessionVersion: user.sessionVersion,
         }
       },
     }),

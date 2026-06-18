@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiAuth } from '@/lib/api-auth'
+import { requireEmailVerifiedUser } from '@/lib/require-email-verified'
+import { RATE_LIMITS, withRateLimit, rateLimitResponse } from '@/lib/rate-limit-store'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
@@ -39,6 +41,12 @@ export interface TopupResponse {
 export async function POST(req: Request) {
   const { session, error } = await requireApiAuth()
   if (error) return error
+
+  const emailGate = await requireEmailVerifiedUser(session.user.id)
+  if (!emailGate.ok) return emailGate.error
+
+  const rl = await withRateLimit(req, ['wallet', 'topup', session.user.id], RATE_LIMITS.walletTopup)
+  if (!rl.allowed) return rateLimitResponse(rl)
 
   try {
     const body = await req.json()

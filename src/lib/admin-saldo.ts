@@ -153,7 +153,7 @@ export function classifySpending(
 }
 
 export const spendingCategoryLabel: Record<SpendingCategory, string> = {
-  imei: 'IMEI Service',
+  imei: 'Digital Service',
   server: 'Server Service',
   shop: 'Marketplace',
   topup: 'Top Up',

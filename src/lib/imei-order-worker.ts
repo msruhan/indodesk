@@ -1,10 +1,23 @@
 /**
  * Submit IMEI orders to Dhru Fusion supplier & poll status updates.
+ * Aligned with NexusServer: Classic API only for submit/poll, submit lock, stale reject.
  */
 import { prisma } from '@/lib/db'
+import { decryptImeiApiKey } from '@/lib/crypto/imei-api-secret'
 import { DhruFusionClient } from '@/lib/dhru-fusion'
 import { normalizeSupplierCode, stripSupplierHtml } from '@/lib/imei-public'
+import { snDeliverViaImeiTag } from '@/lib/imei-supplier-fields'
 import { logSystemEvent } from '@/lib/activity-log'
+import {
+  isImeiStressCredit,
+  isImeiStressTimeout,
+} from '@/lib/imei-stress-mock'
+import {
+  getOrderSubmitWindowMs,
+  isOrderSubmitWindowExpired,
+  STALE_SUBMIT_REJECT_MESSAGE,
+} from '@/lib/order-submit-policy'
+import { isStressTestMode } from '@/lib/stress-mode'
 import type { ImeiOrder, ImeiOrderStatus, Prisma } from '@prisma/client'
 
 function extractSupplierCode(remote: { code?: string; comments?: string }): string | null {
@@ -14,11 +27,6 @@ function extractSupplierCode(remote: { code?: string; comments?: string }): stri
   )
 }
 
-/**
- * Terjemahkan error supplier ke pesan yang jelas untuk user/admin.
- * @param phase submit = placeimeiorder gagal (instan, referenceId kosong);
- *              poll = getimeiorder status reject setelah antrian.
- */
 export function formatSupplierRejectReason(raw: string, phase: 'submit' | 'poll'): string {
   const clean = stripSupplierHtml(raw)
   const lower = clean.toLowerCase()
@@ -29,24 +37,29 @@ export function formatSupplierRejectReason(raw: string, phase: 'submit' | 'poll'
 
   if (lower.includes('creditprocess') || lower.includes('credit process')) {
     return phase === 'submit'
-      ? '[Ditolak saat kirim ke supplier] Saldo/kredit akun reseller API di luteam tidak cukup (CreditprocessError). Top-up saldo di panel luteam.store — ini bukan saldo wallet user di IndoTeknizi.'
-      : `[Ditolak setelah diproses supplier] ${clean}`
+      ? '[Ditolak saat kirim] Saldo/kredit akun reseller API di supplier tidak cukup (CreditprocessError). Top-up di panel supplier — ini bukan saldo wallet user di IndoTeknizi.'
+      : `${prefix} ${clean}`
   }
 
   if (lower.includes('invalid imei') || lower.includes('validationerror')) {
-    return `[Ditolak saat kirim ke supplier] IMEI tidak valid menurut supplier. Pastikan 15 digit benar (cek *#06# di HP). ${clean}`
+    return `[Ditolak saat kirim] IMEI tidak valid menurut supplier. ${clean}`
   }
 
   if (lower.includes('imei') && lower.includes('required')) {
     return phase === 'submit'
-      ? `[Ditolak saat kirim] Supplier menolak format order server (meminta IMEI). Periksa field layanan (username/qty) dan minimum quantity di panel supplier. ${clean}`
+      ? `[Ditolak saat kirim] Supplier menolak format order. Periksa field layanan dan minimum quantity di panel supplier. ${clean}`
+      : `${prefix} ${clean}`
+  }
+
+  if (lower.includes('duplicate')) {
+    return phase === 'submit'
+      ? `[Ditolak supplier — duplikat] ${clean}`
       : `${prefix} ${clean}`
   }
 
   return `${prefix} ${clean}`
 }
 
-/** Dhru Classic getimeiorder STATUS: 0=New, 1=InProcess, 3=Reject, 4=Success */
 export function mapDhruStatusToOrderStatus(dhruStatus: number): ImeiOrderStatus | null {
   switch (dhruStatus) {
     case 4:
@@ -62,7 +75,7 @@ export function mapDhruStatusToOrderStatus(dhruStatus: number): ImeiOrderStatus 
   }
 }
 
-export function buildDhruOrderFields(order: Pick<
+type DhruOrderFieldSource = Pick<
   ImeiOrder,
   | 'imei'
   | 'network'
@@ -73,8 +86,28 @@ export function buildDhruOrderFields(order: Pick<
   | 'mep'
   | 'prd'
   | 'serialNumber'
->): Record<string, string> {
-  const fields: Record<string, string> = { IMEI: order.imei }
+> & {
+  service?: Pick<{ requiresImei: boolean; requiresSn: boolean }, 'requiresImei' | 'requiresSn'>
+}
+
+export function buildDhruOrderFields(
+  order: DhruOrderFieldSource,
+  options?: { snDeliverViaImei?: boolean },
+): Record<string, string> {
+  const fields: Record<string, string> = {}
+  const imei = order.imei?.trim() ?? ''
+  const snStored = order.serialNumber?.trim()
+  const sn = snStored || (imei && options?.snDeliverViaImei ? imei : '')
+  const viaImei = options?.snDeliverViaImei ?? false
+
+  if (viaImei && sn) {
+    fields.IMEI = sn
+  } else if (sn && !viaImei) {
+    fields.SN = sn
+  } else if (imei) {
+    fields.IMEI = imei
+  }
+
   if (order.network?.trim()) fields.NETWORK = order.network.trim()
   if (order.model?.trim()) fields.MODEL = order.model.trim()
   if (order.provider?.trim()) fields.PROVIDER = order.provider.trim()
@@ -82,7 +115,7 @@ export function buildDhruOrderFields(order: Pick<
   if (order.kbh?.trim()) fields.KBH = order.kbh.trim()
   if (order.mep?.trim()) fields.MEP = order.mep.trim()
   if (order.prd?.trim()) fields.PRD = order.prd.trim()
-  if (order.serialNumber?.trim()) fields.SN = order.serialNumber.trim()
+
   return fields
 }
 
@@ -106,7 +139,7 @@ async function refundImeiOrder(
       type: 'REFUND',
       amount: order.price,
       balance: newBalance,
-      description: `Refund order IMEI #${order.orderCode}`,
+      description: `Refund order Digital #${order.orderCode}`,
       referenceId: order.id,
     },
   })
@@ -134,29 +167,119 @@ function getDhruClient(order: OrderWithService): DhruFusionClient | null {
   return new DhruFusionClient({
     host: api.host,
     username: api.username,
-    apiKey: api.apiKey,
+    apiKey: decryptImeiApiKey(api.apiKey),
   })
 }
 
-/** Send a PENDING order to the supplier API. */
+async function claimImeiOrderForSupplierSubmit(
+  orderId: string,
+): Promise<OrderWithService | null> {
+  const claimed = await prisma.imeiOrder.updateMany({
+    where: {
+      id: orderId,
+      status: 'PENDING',
+      referenceId: null,
+      processedAt: null,
+    },
+    data: { processedAt: new Date() },
+  })
+
+  if (claimed.count === 0) return null
+
+  return prisma.imeiOrder.findUnique({
+    where: { id: orderId },
+    include: { service: { include: { api: true } } },
+  })
+}
+
+async function rejectExpiredPendingImeiOrder(
+  order: Pick<ImeiOrder, 'id' | 'orderCode' | 'userId' | 'price' | 'createdAt' | 'status' | 'referenceId'>,
+): Promise<boolean> {
+  if (order.status !== 'PENDING' || order.referenceId) return false
+  if (!isOrderSubmitWindowExpired(order.createdAt)) return false
+
+  await prisma.$transaction(async (tx) => {
+    await refundImeiOrder(tx, order, STALE_SUBMIT_REJECT_MESSAGE)
+  })
+  return true
+}
+
+/** Send a PENDING order to the supplier API (Classic only, at most once per order). */
 export async function submitImeiOrderToSupplier(orderId: string): Promise<{
   ok: boolean
   error?: string
   referenceId?: string
 }> {
-  const order = await prisma.imeiOrder.findUnique({
+  const snapshot = await prisma.imeiOrder.findUnique({
     where: { id: orderId },
-    include: { service: { include: { api: true } } },
+    select: {
+      id: true,
+      orderCode: true,
+      userId: true,
+      price: true,
+      createdAt: true,
+      referenceId: true,
+      status: true,
+      processedAt: true,
+    },
   })
 
-  if (!order) return { ok: false, error: 'Order tidak ditemukan' }
-  if (order.referenceId) return { ok: true, referenceId: order.referenceId }
-  if (order.status !== 'PENDING' && order.status !== 'IN_PROCESS') {
-    return { ok: false, error: `Status order: ${order.status}` }
+  if (!snapshot) return { ok: false, error: 'Order tidak ditemukan' }
+  if (snapshot.referenceId) return { ok: true, referenceId: snapshot.referenceId }
+  if (snapshot.status === 'REJECTED' || snapshot.status === 'CANCELLED' || snapshot.status === 'SUCCESS') {
+    return { ok: false, error: `Status order: ${snapshot.status}` }
+  }
+  if (snapshot.status !== 'PENDING') {
+    return { ok: false, error: `Status order: ${snapshot.status}` }
+  }
+
+  if (await rejectExpiredPendingImeiOrder(snapshot)) {
+    return { ok: false, error: STALE_SUBMIT_REJECT_MESSAGE }
+  }
+
+  if (snapshot.processedAt) {
+    return { ok: false, error: 'Submit sudah pernah dicoba untuk order ini' }
+  }
+
+  const order = await claimImeiOrderForSupplierSubmit(orderId)
+  if (!order) {
+    const again = await prisma.imeiOrder.findUnique({
+      where: { id: orderId },
+      select: { referenceId: true },
+    })
+    if (again?.referenceId) return { ok: true, referenceId: again.referenceId }
+    return { ok: false, error: 'Submit sedang berjalan atau sudah selesai' }
   }
 
   const toolId = order.service.toolId
   if (!toolId) {
+    if (isStressTestMode()) {
+      if (isImeiStressCredit(order.imei)) {
+        const raw = 'CreditprocessError: INSUFFICIENT_CREDIT on reseller account'
+        const userMsg = formatSupplierRejectReason(raw, 'submit')
+        await prisma.$transaction(async (tx) => {
+          await refundImeiOrder(tx, order, userMsg, normalizeSupplierCode(stripSupplierHtml(raw)))
+        })
+        return { ok: false, error: raw }
+      }
+      if (isImeiStressTimeout(order.imei)) {
+        const raw = 'Request timeout while contacting supplier'
+        const userMsg = formatSupplierRejectReason(raw, 'submit')
+        await prisma.$transaction(async (tx) => {
+          await refundImeiOrder(tx, order, userMsg)
+        })
+        return { ok: false, error: raw }
+      }
+      const refId = `stress-local-${orderId}`
+      await prisma.imeiOrder.update({
+        where: { id: orderId },
+        data: {
+          referenceId: refId,
+          status: 'IN_PROCESS',
+        },
+      })
+      return { ok: true, referenceId: refId }
+    }
     await prisma.$transaction(async (tx) => {
       await refundImeiOrder(tx, order, 'Layanan belum terhubung ke supplier (toolId kosong).')
     })
@@ -165,17 +288,23 @@ export async function submitImeiOrderToSupplier(orderId: string): Promise<{
 
   const client = getDhruClient(order)
   if (!client) {
-    await prisma.imeiOrder.update({
-      where: { id: orderId },
-      data: {
-        comments:
-          'API supplier tidak aktif atau bukan DhruFusion — perlu proses manual oleh admin.',
-      },
+    await prisma.$transaction(async (tx) => {
+      await refundImeiOrder(
+        tx,
+        order,
+        'API supplier tidak aktif atau bukan DhruFusion.',
+      )
     })
     return { ok: false, error: 'Supplier API tidak tersedia' }
   }
 
-  const fields = buildDhruOrderFields(order)
+  const fields = buildDhruOrderFields(order, {
+    snDeliverViaImei: snDeliverViaImeiTag({
+      requiresSn: order.service.requiresSn,
+      requiresImei: order.service.requiresImei,
+      api: order.service.api,
+    }),
+  })
   const placed = await client.placeImeiOrderFields(toolId, fields)
 
   if (!placed.success || !placed.referenceId) {
@@ -198,11 +327,11 @@ export async function submitImeiOrderToSupplier(orderId: string): Promise<{
   })
 
   if (collision && collision.serviceId !== order.serviceId) {
-    const msg = `[Duplikat referensi supplier] IMEI ini sudah terdaftar sebagai order #${collision.orderCode} (${collision.service.title}, ref ${refId}). Di luteam hanya terlihat layanan itu — batalkan/tunggu selesai, lalu order ulang.`
+    const msg = `[Duplikat referensi supplier] Nomor digital sudah terdaftar sebagai order #${collision.orderCode} (${collision.service.title}, ref ${refId}).`
     await prisma.$transaction(async (tx) => {
       await refundImeiOrder(tx, order, msg)
     })
-    return { ok: false, error: 'IMEI masih aktif untuk layanan lain di supplier' }
+    return { ok: false, error: 'Nomor digital masih aktif untuk layanan lain di supplier' }
   }
 
   await prisma.imeiOrder.update({
@@ -210,7 +339,6 @@ export async function submitImeiOrderToSupplier(orderId: string): Promise<{
     data: {
       referenceId: refId,
       status: 'IN_PROCESS',
-      processedAt: new Date(),
       comments: null,
     },
   })
@@ -218,7 +346,6 @@ export async function submitImeiOrderToSupplier(orderId: string): Promise<{
   return { ok: true, referenceId: refId }
 }
 
-/** Poll supplier for order result and update DB. */
 export async function pollImeiOrderFromSupplier(orderId: string): Promise<{
   ok: boolean
   updated: boolean
@@ -231,10 +358,10 @@ export async function pollImeiOrderFromSupplier(orderId: string): Promise<{
 
   if (!order) return { ok: false, updated: false, error: 'Order tidak ditemukan' }
   if (!order.referenceId) {
-    if (order.status === 'PENDING') {
+    if (order.status === 'PENDING' && !order.processedAt) {
       return submitImeiOrderToSupplier(orderId).then((r) => ({
         ok: r.ok,
-        updated: r.ok,
+        updated: r.ok || r.error === STALE_SUBMIT_REJECT_MESSAGE,
         error: r.error,
       }))
     }
@@ -304,7 +431,7 @@ export async function pollImeiOrderFromSupplier(orderId: string): Promise<{
     void logSystemEvent({
       action: 'order.imei.success',
       severity: 'SUCCESS',
-      summary: `Order IMEI ${order.orderCode} berhasil`,
+      summary: `Order Digital ${order.orderCode} berhasil`,
       target: { type: 'imei_order', id: order.id, label: order.orderCode },
       metadata: { orderCode: order.orderCode, code: supplierCode ?? null },
     })
@@ -319,16 +446,20 @@ export async function pollImeiOrderFromSupplier(orderId: string): Promise<{
         fresh.status === 'SUCCESS' || fresh.status === 'REJECTED' || fresh.status === 'CANCELLED'
       if (wasFinal) return
 
-      const rejectCode =
-        supplierCode ||
-        normalizeSupplierCode(stripSupplierHtml(remote.error || 'Ditolak supplier'))
+      const supplierReply =
+        stripSupplierHtml(remote.comments || '') ||
+        stripSupplierHtml(remote.code || '') ||
+        stripSupplierHtml(remote.error || '') ||
+        'Ditolak supplier'
+      const rejectCode = supplierCode || normalizeSupplierCode(supplierReply)
+      const rejectComments = formatSupplierRejectReason(supplierReply, 'poll')
 
       await tx.imeiOrder.update({
         where: { id: orderId },
         data: {
           status: 'REJECTED',
           code: rejectCode,
-          comments: null,
+          comments: rejectComments,
           completedAt: new Date(),
         },
       })
@@ -343,7 +474,7 @@ export async function pollImeiOrderFromSupplier(orderId: string): Promise<{
             type: 'REFUND',
             amount: fresh.price,
             balance: newBalance,
-            description: `Refund order IMEI #${fresh.orderCode}`,
+            description: `Refund order Digital #${fresh.orderCode}`,
             referenceId: fresh.id,
           },
         })
@@ -352,7 +483,7 @@ export async function pollImeiOrderFromSupplier(orderId: string): Promise<{
     void logSystemEvent({
       action: 'order.imei.rejected',
       severity: 'WARNING',
-      summary: `Order IMEI ${order.orderCode} ditolak supplier`,
+      summary: `Order Digital ${order.orderCode} ditolak supplier`,
       detail: remote.error ?? null,
       target: { type: 'imei_order', id: order.id, label: order.orderCode },
       metadata: { orderCode: order.orderCode, supplierError: remote.error ?? null },
@@ -370,13 +501,42 @@ export async function pollImeiOrderFromSupplier(orderId: string): Promise<{
   return { ok: true, updated: true }
 }
 
-/** Batch: submit pending orders & poll in-flight orders (for cron). */
+async function rejectStalePendingImeiOrders(limit = 50): Promise<number> {
+  const cutoff = new Date(Date.now() - getOrderSubmitWindowMs())
+  const stale = await prisma.imeiOrder.findMany({
+    where: {
+      status: 'PENDING',
+      referenceId: null,
+      createdAt: { lt: cutoff },
+    },
+    orderBy: { createdAt: 'asc' },
+    take: limit,
+    select: {
+      id: true,
+      orderCode: true,
+      userId: true,
+      price: true,
+      createdAt: true,
+      status: true,
+      referenceId: true,
+    },
+  })
+
+  let rejected = 0
+  for (const row of stale) {
+    if (await rejectExpiredPendingImeiOrder(row)) rejected += 1
+  }
+  return rejected
+}
+
 export async function processImeiOrderQueue(options?: { submitLimit?: number; pollLimit?: number }) {
   const submitLimit = options?.submitLimit ?? 20
   const pollLimit = options?.pollLimit ?? 50
 
+  await rejectStalePendingImeiOrders(submitLimit)
+
   const toSubmit = await prisma.imeiOrder.findMany({
-    where: { status: 'PENDING', referenceId: null },
+    where: { status: 'PENDING', referenceId: null, processedAt: null },
     orderBy: { createdAt: 'asc' },
     take: submitLimit,
     select: { id: true },

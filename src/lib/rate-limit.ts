@@ -1,8 +1,8 @@
 /**
  * Simple in-memory rate limiter for API routes.
  *
- * Untuk production, gunakan Redis-based rate limiter (upstash/ratelimit).
- * Ini cukup untuk single-instance deployment.
+ * @deprecated Prefer `withRateLimit` from `@/lib/rate-limit-store` (Upstash when configured).
+ * This module remains the in-memory fallback implementation for `rate-limit-store`.
  */
 
 type RateLimitEntry = {
@@ -73,4 +73,14 @@ export const RATE_LIMITS = {
   api: { limit: 100, windowSeconds: 60 } satisfies RateLimitConfig,
   /** Admin heavy endpoints: 30 requests per minute */
   adminHeavy: { limit: 30, windowSeconds: 60 } satisfies RateLimitConfig,
+  /** Password change / 2FA disable: 5 per 15 minutes per user */
+  sensitiveUser: { limit: 5, windowSeconds: 15 * 60 } satisfies RateLimitConfig,
+  /** Checkout: 20 per minute per user */
+  checkout: { limit: 20, windowSeconds: 60 } satisfies RateLimitConfig,
+  /** Wallet topup request: 10 per 15 minutes per user */
+  walletTopup: { limit: 10, windowSeconds: 15 * 60 } satisfies RateLimitConfig,
+  /** Chat send: 60 per minute per user */
+  chatSend: { limit: 60, windowSeconds: 60 } satisfies RateLimitConfig,
+  /** Resend email verification: 3 per 15 minutes per user */
+  emailVerify: { limit: 3, windowSeconds: 15 * 60 } satisfies RateLimitConfig,
 }

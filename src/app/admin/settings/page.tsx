@@ -1,10 +1,12 @@
 'use client'
 
+import Link from 'next/link'
 import { Suspense } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { DashboardPageHeader, DashboardPanel } from '@/components/dashboard'
 import { AccountSettingsView } from '@/components/account/account-settings-view'
 import { AdminPlatformSettingsForm } from '@/components/admin/admin-platform-settings-form'
+import { AdminSmtpSettingsForm } from '@/components/admin/admin-smtp-settings-form'
 import { Bell, CheckCircle, MessageCircle } from '@/lib/icons'
 
 function SecuritySettingsFallback() {
@@ -21,7 +23,7 @@ export default function AdminSettingsPage() {
     <div className="space-y-6">
       <DashboardPageHeader
         eyebrow="Kontrol Admin"
-        title="Akun Saya"
+        title="Profil"
         description="Kelola konfigurasi platform, keamanan akun admin, dan preferensi notifikasi operasional."
       />
 
@@ -44,6 +46,13 @@ export default function AdminSettingsPage() {
       </div>
 
       <DashboardPanel
+        title="Pengaturan SMTP (Email)"
+        description="Konfigurasi server email untuk OTP penarikan saldo, reset password, verifikasi akun, dan notifikasi."
+      >
+        <AdminSmtpSettingsForm />
+      </DashboardPanel>
+
+      <DashboardPanel
         title="Preferensi Notifikasi"
         description="Pilih channel untuk alert penting seperti approval, rekber, chat, dan keamanan."
       >
@@ -64,8 +73,9 @@ export default function AdminSettingsPage() {
             {
               icon: CheckCircle,
               title: 'Telegram alerts',
-              status: 'Belum link',
-              desc: 'Channel cepat untuk admin operasional.',
+              status: 'Atur di Pusat Telegram',
+              desc: 'Channel broadcast produk baru & template notifikasi teknisi.',
+              href: '/admin/telegram-notifications',
             },
           ].map((item) => (
             <div
@@ -80,6 +90,14 @@ export default function AdminSettingsPage() {
               </div>
               <p className="text-sm font-semibold text-ink">{item.title}</p>
               <p className="mt-1 text-xs leading-relaxed text-surface-500">{item.desc}</p>
+              {'href' in item && item.href ? (
+                <Link
+                  href={item.href}
+                  className="mt-3 inline-block text-xs font-medium text-primary-700 hover:underline"
+                >
+                  Buka pengaturan →
+                </Link>
+              ) : null}
             </div>
           ))}
         </div>

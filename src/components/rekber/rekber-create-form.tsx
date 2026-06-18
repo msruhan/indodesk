@@ -23,7 +23,7 @@ type Props = {
 
 export function RekberCreateForm({ onSuccess, onCancel }: Props) {
   const router = useRouter()
-  const { status: sessionStatus } = useSession()
+  const { data: session, status: sessionStatus } = useSession()
   const [teknisi, setTeknisi] = useState<PublicTeknisiDto[]>([])
   const [sellerId, setSellerId] = useState('')
   const [amount, setAmount] = useState('')
@@ -76,8 +76,12 @@ export function RekberCreateForm({ onSuccess, onCancel }: Props) {
         setError(json.error ?? 'Gagal membuat rekber')
         return
       }
-      onSuccess?.()
-      router.push('/user/rekber')
+      if (onSuccess) {
+        onSuccess()
+        return
+      }
+      const role = session?.user?.role
+      router.push(role === 'USER' ? '/user/rekber' : '/rekber')
     } catch {
       setError('Gagal membuat rekber')
     } finally {

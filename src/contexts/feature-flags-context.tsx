@@ -31,6 +31,7 @@ export function FeatureFlagsProvider({ children }: { children: ReactNode }) {
           imeiServiceEnabled: Boolean(json.data.imeiServiceEnabled),
           remoteServiceEnabled: Boolean(json.data.remoteServiceEnabled),
           inspectionServiceEnabled: Boolean(json.data.inspectionServiceEnabled),
+          googleAuthEnabled: Boolean(json.data.googleAuthEnabled),
         })
       }
     } catch {

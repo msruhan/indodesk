@@ -1,0 +1,61 @@
+# IndoTeknizi production stack — co-host dengan Nexus di VPS yang sama.
+# Tidak bind 80/443 di sini; HTTPS lewat Caddy milik Nexus (/opt/nexus-server).
+#
+# Prasyarat: network Docker Nexus sudah ada (biasanya nexus-server_default).
+#   docker network ls | grep nexus
+#
+# Deploy pertama:
+#   cp .env.example .env.production   # lalu isi nilai production
+#   export POSTGRES_PASSWORD="$(openssl rand -hex 32)"
+#   docker compose -f docker-compose.production.yml --env-file .env.production up -d
+#   docker compose -f docker-compose.production.yml --env-file .env.production \
+#     run --rm --no-deps app npm run db:setup:production
+#
+# Lalu tambahkan block domain IndoTeknizi di Caddy Nexus — lihat deploy/Caddyfile.multisite.example
+
+name: indoteknizi
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: indoteknizi
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: indoteknizi
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U indoteknizi']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - internal
+
+  app:
+    image: ${BANTOO_IMAGE:-${INDOTEKNIZI_IMAGE:-ghcr.io/msruhan/bantoo:latest}}
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      DATABASE_URL: postgresql://indoteknizi:${POSTGRES_PASSWORD}@postgres:5432/indoteknizi?schema=public
+      DIRECT_URL: postgresql://indoteknizi:${POSTGRES_PASSWORD}@postgres:5432/indoteknizi?schema=public
+    volumes:
+      - uploads:/app/public/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+      - proxy
+
+volumes:
+  pgdata:
+  uploads:
+
+networks:
+  internal:
+  proxy:
+    external: true
+    name: ${NEXUS_PROXY_NETWORK:-nexus-server_default}

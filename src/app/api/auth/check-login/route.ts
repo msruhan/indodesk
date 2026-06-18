@@ -2,7 +2,14 @@ import { compare } from 'bcryptjs'
 import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess } from '@/lib/api-auth'
+import { extractRequestContext } from '@/lib/activity-log'
 import { checkTeknisiLoginGuard } from '@/lib/teknisi-login-guard'
+import {
+  AccountLockedError,
+  checkLockout,
+  recordLoginFailure,
+} from '@/lib/lockout'
+import { getClientIp, RATE_LIMITS, withRateLimit, rateLimitResponse } from '@/lib/rate-limit-store'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,15 +20,39 @@ const schema = z.object({
 
 /** Pre-login check: validates credentials and reports if TOTP is required. */
 export async function POST(req: Request) {
+  const ip = getClientIp(req)
+  let body: unknown
   try {
-    const body = await req.json()
-    const parsed = schema.safeParse(body)
-    if (!parsed.success) {
-      return apiError('Email atau password tidak valid')
+    body = await req.json()
+  } catch {
+    return apiError('Body tidak valid')
+  }
+
+  const parsed = schema.safeParse(body)
+  if (!parsed.success) {
+    return apiError('Email atau password tidak valid')
+  }
+
+  const email = parsed.data.email.toLowerCase().trim()
+  const rl = await withRateLimit(req, ['auth', 'check-login', ip, email], RATE_LIMITS.auth)
+  if (!rl.allowed) return rateLimitResponse(rl, { req, key: `auth:check-login:${ip}` })
+
+  const ctx = extractRequestContext(req)
+
+  try {
+    await checkLockout(email)
+  } catch (e) {
+    if (e instanceof AccountLockedError) {
+      return apiError(
+        'Akun terkunci sementara. Coba lagi nanti atau reset password.',
+        423,
+        { code: 'ACCOUNT_LOCKED', lockedUntil: e.lockedUntil.toISOString() },
+      )
     }
+    throw e
+  }
 
-    const email = parsed.data.email.toLowerCase().trim()
-
+  try {
     const user = await prisma.user.findUnique({
       where: { email },
       select: {
@@ -34,15 +65,28 @@ export async function POST(req: Request) {
     })
 
     if (!user?.password) {
+      await recordLoginFailure({ email, ip: ctx.ip, userAgent: ctx.userAgent })
       return apiError('Email atau password salah', 401)
     }
 
     if (!user.isActive) {
-      return apiError('Akun dinonaktifkan. Hubungi admin.', 403)
+      return apiError('Email atau password salah', 401)
     }
 
     const valid = await compare(parsed.data.password, user.password)
     if (!valid) {
+      const lockedUntil = await recordLoginFailure({
+        email,
+        ip: ctx.ip,
+        userAgent: ctx.userAgent,
+      })
+      if (lockedUntil) {
+        return apiError(
+          'Terlalu banyak percobaan gagal. Akun terkunci sementara.',
+          423,
+          { code: 'ACCOUNT_LOCKED', lockedUntil: lockedUntil.toISOString() },
+        )
+      }
       return apiError('Email atau password salah', 401)
     }
 

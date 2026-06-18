@@ -90,7 +90,7 @@ async function searchForUser(userId: string, q: string, limit: number): Promise<
       id: `imei-${o.id}`,
       kind: 'order',
       label: o.orderCode,
-      hint: `IMEI · ${o.service.title} · ${o.status}`,
+      hint: `Digital · ${o.service.title} · ${o.status}`,
       href: `/user/orders/imei?q=${encodeURIComponent(o.orderCode)}`,
     })
   }
@@ -220,7 +220,7 @@ async function searchForTeknisi(userId: string, q: string, limit: number): Promi
       id: `imei-${o.id}`,
       kind: 'order',
       label: o.orderCode,
-      hint: `IMEI · ${o.service.title} · ${o.status}`,
+      hint: `Digital · ${o.service.title} · ${o.status}`,
       href: `/user/orders/imei?q=${encodeURIComponent(o.orderCode)}`,
     })
   }
@@ -322,7 +322,7 @@ async function searchForAdmin(q: string, limit: number): Promise<SmartSearchApiR
       id: `imei-${o.id}`,
       kind: 'order',
       label: o.orderCode,
-      hint: `IMEI · ${o.user.name} · ${o.status}`,
+      hint: `Digital · ${o.user.name} · ${o.status}`,
       href: `/admin/imei?tab=orders&q=${encodeURIComponent(o.orderCode)}`,
     })
   }

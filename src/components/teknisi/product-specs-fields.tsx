@@ -4,8 +4,15 @@ import type { ProductCategory } from '@prisma/client'
 import { ProductWarranty } from '@prisma/client'
 import { cn } from '@/lib/utils'
 import {
-  PRODUCT_WARRANTY_OPTIONS,
+  categoryRamOptional,
+  categoryRequiresColor,
+  categoryRequiresProcessor,
+  categoryRequiresRam,
   categoryRequiresSpecs,
+  categorySpecProfile,
+} from '@/lib/product-category-config'
+import {
+  PRODUCT_WARRANTY_OPTIONS,
   getCompletenessOptionsForCategory,
   toggleCompletenessSelection,
   type ProductCompletenessKey,
@@ -80,9 +87,8 @@ function CompletenessPicker({
         })}
       </div>
       <p className="mt-1.5 text-[11px] text-surface-500">
-        {category === 'LAPTOP'
-          ? 'Bisa pilih beberapa (Laptop, Charger, dll). Unit Only atau Fullset tidak bisa digabung dengan pilihan lain.'
-          : 'Bisa pilih beberapa (Handphone, Charger, dll). Unit Only atau Fullset tidak bisa digabung dengan pilihan lain.'}
+        Bisa pilih beberapa item kelengkapan. Unit Only atau Fullset tidak bisa digabung dengan
+        pilihan lain.
       </p>
     </div>
   )
@@ -118,6 +124,34 @@ function WarrantySelect({
   )
 }
 
+const COLOR_PLACEHOLDER: Partial<Record<ProductCategory, string>> = {
+  IPHONE: 'Contoh: Graphite, Silver, Deep Purple',
+  ANDROID: 'Contoh: Hitam, Putih, Biru',
+  IPAD: 'Contoh: Space Gray, Silver, Rose Gold',
+}
+
+const STORAGE_PLACEHOLDER: Partial<Record<ProductCategory, string>> = {
+  IPHONE: 'Contoh: 128GB, 256GB',
+  ANDROID: 'Contoh: 128GB, 256GB',
+  IPAD: 'Contoh: 64GB, 256GB',
+  MACBOOK: 'Contoh: 256GB SSD, 512GB SSD',
+  LAPTOP: 'Contoh: 512GB SSD, 1TB SSD',
+  PC: 'Contoh: 512GB SSD, 1TB HDD + 256GB SSD',
+}
+
+const RAM_PLACEHOLDER: Partial<Record<ProductCategory, string>> = {
+  ANDROID: 'Contoh: 6GB, 8GB, 12GB',
+  MACBOOK: 'Contoh: 8GB, 16GB unified memory',
+  LAPTOP: 'Contoh: 8GB, 16GB',
+  PC: 'Contoh: 16GB, 32GB DDR4',
+}
+
+const PROCESSOR_PLACEHOLDER: Partial<Record<ProductCategory, string>> = {
+  MACBOOK: 'Contoh: Apple M2, M3 Pro',
+  LAPTOP: 'Contoh: Intel i7-12700H, Ryzen 7 5800H',
+  PC: 'Contoh: Ryzen 5 5600X + RTX 3060',
+}
+
 export function ProductSpecsFields({ category, value, onChange }: ProductSpecsFieldsProps) {
   if (!categoryRequiresSpecs(category)) {
     return (
@@ -127,7 +161,60 @@ export function ProductSpecsFields({ category, value, onChange }: ProductSpecsFi
     )
   }
 
-  if (category === 'LAPTOP') {
+  const profile = categorySpecProfile(category)
+
+  if (profile === 'mobile') {
+    return (
+      <>
+        {categoryRequiresColor(category) && (
+          <div>
+            <label className="mb-1 block text-sm font-medium text-surface-700">
+              Warna <span className="text-rose-500">*</span>
+            </label>
+            <Input
+              required
+              value={value.color}
+              onChange={(e) => onChange({ ...value, color: e.target.value })}
+              placeholder={COLOR_PLACEHOLDER[category] ?? 'Contoh: Hitam, Silver'}
+            />
+          </div>
+        )}
+        <div>
+          <label className="mb-1 block text-sm font-medium text-surface-700">
+            Storage <span className="text-rose-500">*</span>
+          </label>
+          <Input
+            required
+            value={value.storage}
+            onChange={(e) => onChange({ ...value, storage: e.target.value })}
+            placeholder={STORAGE_PLACEHOLDER[category] ?? 'Contoh: 256GB'}
+          />
+        </div>
+        {(categoryRequiresRam(category) || categoryRamOptional(category)) && (
+          <div>
+            <label className="mb-1 block text-sm font-medium text-surface-700">
+              RAM{' '}
+              {categoryRequiresRam(category) ? (
+                <span className="text-rose-500">*</span>
+              ) : (
+                <span className="text-surface-400">(opsional)</span>
+              )}
+            </label>
+            <Input
+              required={categoryRequiresRam(category)}
+              value={value.ram}
+              onChange={(e) => onChange({ ...value, ram: e.target.value })}
+              placeholder={RAM_PLACEHOLDER[category] ?? 'Contoh: 8GB'}
+            />
+          </div>
+        )}
+        <WarrantySelect value={value} onChange={onChange} />
+        <CompletenessPicker category={category} value={value} onChange={onChange} />
+      </>
+    )
+  }
+
+  if (profile === 'computer') {
     return (
       <>
         <div>
@@ -138,7 +225,7 @@ export function ProductSpecsFields({ category, value, onChange }: ProductSpecsFi
             required
             value={value.ram}
             onChange={(e) => onChange({ ...value, ram: e.target.value })}
-            placeholder="Contoh: 8GB, 16GB"
+            placeholder={RAM_PLACEHOLDER[category] ?? 'Contoh: 16GB'}
           />
         </div>
         <div>
@@ -149,18 +236,19 @@ export function ProductSpecsFields({ category, value, onChange }: ProductSpecsFi
             required
             value={value.storage}
             onChange={(e) => onChange({ ...value, storage: e.target.value })}
-            placeholder="Contoh: 512GB SSD, 1TB SSD"
+            placeholder={STORAGE_PLACEHOLDER[category] ?? 'Contoh: 512GB SSD'}
           />
         </div>
         <div>
           <label className="mb-1 block text-sm font-medium text-surface-700">
-            Processor <span className="text-rose-500">*</span>
+            {category === 'PC' ? 'Processor / GPU' : 'Processor'}{' '}
+            <span className="text-rose-500">*</span>
           </label>
           <Input
             required
             value={value.processor}
             onChange={(e) => onChange({ ...value, processor: e.target.value })}
-            placeholder="Contoh: Intel i7-12700H, Ryzen 7 5800H"
+            placeholder={PROCESSOR_PLACEHOLDER[category] ?? 'Contoh: Intel i7, Ryzen 5'}
           />
         </div>
         <WarrantySelect value={value} onChange={onChange} />
@@ -169,32 +257,5 @@ export function ProductSpecsFields({ category, value, onChange }: ProductSpecsFi
     )
   }
 
-  return (
-    <>
-      <div>
-        <label className="mb-1 block text-sm font-medium text-surface-700">
-          Warna <span className="text-rose-500">*</span>
-        </label>
-        <Input
-          required
-          value={value.color}
-          onChange={(e) => onChange({ ...value, color: e.target.value })}
-          placeholder="Contoh: Graphite, Silver, Hitam"
-        />
-      </div>
-      <div>
-        <label className="mb-1 block text-sm font-medium text-surface-700">
-          Storage <span className="text-rose-500">*</span>
-        </label>
-        <Input
-          required
-          value={value.storage}
-          onChange={(e) => onChange({ ...value, storage: e.target.value })}
-          placeholder="Contoh: 256GB, 512GB"
-        />
-      </div>
-      <WarrantySelect value={value} onChange={onChange} />
-      <CompletenessPicker category={category} value={value} onChange={onChange} />
-    </>
-  )
+  return null
 }

@@ -3,7 +3,9 @@ import { UserRole } from '@prisma/client'
 import { hash } from 'bcryptjs'
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
+import { logAdminGovernance } from '@/lib/admin-audit'
 import { serializeAdminTeknisi } from '@/lib/admin-user-serializer'
+import { bumpSessionVersion } from '@/lib/session-version'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,7 +36,7 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { error } = await requireApiRole(['ADMIN'])
+  const { session, error } = await requireApiRole(['ADMIN'])
   if (error) return error
 
   const { id } = await params
@@ -106,8 +108,26 @@ export async function PATCH(
       include: { teknisiProfile: true },
     })
 
+    if (passwordHash || data.isActive === false) {
+      await bumpSessionVersion(id)
+    }
+
     const dto = serializeAdminTeknisi(user)
     if (!dto) return apiError('Profil teknisi tidak ditemukan', 500)
+
+    logAdminGovernance({
+      req,
+      actor: session.user,
+      action: 'admin.teknisi.update',
+      summary: `Admin memperbarui teknisi ${user.email}`,
+      severity: data.isActive === false || passwordHash ? 'CRITICAL' : 'WARNING',
+      target: { type: 'teknisi', id: user.id, label: user.email },
+      metadata: {
+        isActive: data.isActive,
+        isVerified: data.isVerified,
+        passwordReset: Boolean(passwordHash),
+      },
+    })
 
     return apiSuccess(dto)
   } catch (e) {
@@ -135,6 +155,16 @@ export async function DELETE(
     }
 
     await prisma.user.delete({ where: { id } })
+
+    logAdminGovernance({
+      req: _req,
+      actor: session.user,
+      action: 'admin.teknisi.delete',
+      summary: `Admin menghapus teknisi ${existing.email}`,
+      severity: 'CRITICAL',
+      target: { type: 'teknisi', id: existing.id, label: existing.email },
+    })
+
     return apiSuccess({ deleted: true })
   } catch (e) {
     console.error('[ADMIN_TEKNISI_DELETE]', e)

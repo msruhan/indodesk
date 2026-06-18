@@ -6,8 +6,14 @@ import {
   sortNotificationsNewestFirst,
 } from '@/lib/platform-notifications'
 import { fetchAdminMonitoringNotifications } from '@/lib/admin-monitoring-notifications'
+import { fetchMarketplaceNotificationsForUser } from '@/lib/marketplace-notifications'
 import { fetchOrderNotificationsForUser } from '@/lib/user-order-notifications'
 import { fetchTeknisiServiceNotifications } from '@/lib/teknisi-service-notifications'
+import {
+  fetchTicketNotificationsForAdmin,
+  fetchTicketNotificationsForReporter,
+} from '@/lib/ticket-notifications'
+import { fetchUserRatingPromptNotifications } from '@/lib/user-rating-prompt-notifications'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,7 +28,7 @@ export async function GET() {
     const isAdmin = session.user.role === 'ADMIN'
     const isTeknisi = session.user.role === 'TEKNISI'
 
-    const [rows, orderNotifications, teknisiNotifications, monitoringNotifications] =
+    const [rows, orderNotifications, teknisiNotifications, monitoringNotifications, marketplaceNotifications, ticketNotifications, ratingPrompts] =
       await Promise.all([
         prisma.platformNotification.findMany({
           where: { active: true },
@@ -31,6 +37,14 @@ export async function GET() {
         fetchOrderNotificationsForUser(userId),
         isTeknisi ? fetchTeknisiServiceNotifications(userId) : Promise.resolve([]),
         isAdmin ? fetchAdminMonitoringNotifications() : Promise.resolve([]),
+        fetchMarketplaceNotificationsForUser(
+          userId,
+          session.user.role as 'USER' | 'TEKNISI' | 'ADMIN',
+        ),
+        isAdmin
+          ? fetchTicketNotificationsForAdmin()
+          : fetchTicketNotificationsForReporter(userId, session.user.role),
+        session.user.role === 'USER' ? fetchUserRatingPromptNotifications(userId) : Promise.resolve([]),
       ])
 
     const broadcasts = rows
@@ -38,7 +52,10 @@ export async function GET() {
       .filter((n) => notificationMatchesRole(n, session.user.role))
 
     const items = sortNotificationsNewestFirst([
+      ...ratingPrompts,
       ...monitoringNotifications,
+      ...marketplaceNotifications,
+      ...ticketNotifications,
       ...teknisiNotifications,
       ...orderNotifications,
       ...broadcasts,

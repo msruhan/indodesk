@@ -14,10 +14,11 @@ export async function resolveProductImagesFromForm(
   form: FormData,
   sellerId: string,
   existingProduct?: { images?: unknown; image?: string | null },
+  prefix = '',
 ): Promise<{ images: ProductImageEntry[]; image: string | null }> {
-  const orderRaw = form.get('imageOrder')
+  const orderRaw = form.get(`${prefix}imageOrder`)
   const files = form
-    .getAll('images')
+    .getAll(`${prefix}images`)
     .filter((f): f is File => f instanceof File && f.size > 0)
 
   let order: ImageOrderItem[] = []
@@ -60,7 +61,7 @@ export async function resolveProductImagesFromForm(
     ]
   }
 
-  const primaryIndex = Math.max(0, Number(String(form.get('primaryIndex') ?? '0')) || 0)
+  const primaryIndex = Math.max(0, Number(String(form.get(`${prefix}primaryIndex`) ?? '0')) || 0)
   const mergedUrls: string[] = []
   let fileIdx = 0
 

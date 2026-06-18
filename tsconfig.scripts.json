@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": "node_modules/.cache/tsconfig.scripts.tsbuildinfo"
+  },
+  "include": ["scripts/**/*.ts", "stress-test/**/*.ts", "prisma/seed.ts"],
+  "exclude": ["node_modules"]
+}

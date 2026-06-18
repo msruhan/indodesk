@@ -4,9 +4,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { useWallet } from '@/contexts/wallet-context'
 import { Button } from '@/components/ui/button'
-import { MetricCard } from '@/components/dashboard'
-import { Plus, TrendingUp, TrendingDown, Wallet } from '@/lib/icons'
+import { DashboardMonthFilter, MetricCard } from '@/components/dashboard'
+import { Download, Plus, TrendingUp, TrendingDown, Wallet } from '@/lib/icons'
 import { WalletTopupModal } from '@/components/wallet/wallet-topup-modal'
+import { WalletWithdrawModal } from '@/components/wallet/wallet-withdraw-modal'
 import { useDashboardPeriod } from '@/contexts/dashboard-period-context'
 import { periodToQuery } from '@/lib/dashboard-period'
 import { formatIdr } from '@/lib/wallet-transactions'
@@ -16,6 +17,7 @@ export function TeknisiSaldoView() {
   const { period } = useDashboardPeriod()
   const { wallet, isLoading } = useWallet()
   const [showTopup, setShowTopup] = useState(false)
+  const [showWithdraw, setShowWithdraw] = useState(false)
   const [totalSpending, setTotalSpending] = useState(0)
   const [spendingCount, setSpendingCount] = useState(0)
   const [spendingLoading, setSpendingLoading] = useState(true)
@@ -46,6 +48,8 @@ export function TeknisiSaldoView() {
   }, [loadSpendingSummary])
 
   const balance = wallet ? parseFloat(wallet.balance) : 0
+  const pendingEarnings = wallet?.pendingEarnings ? parseFloat(wallet.pendingEarnings) : 0
+  const heldBalance = wallet?.heldBalance ? parseFloat(wallet.heldBalance) : 0
   const formattedBalance = formatIdr(balance)
   const updatedLabel = wallet
     ? `Update: ${new Date(wallet.updatedAt).toLocaleDateString('id-ID')}`
@@ -60,10 +64,23 @@ export function TeknisiSaldoView() {
             Kelola saldo Anda dan lihat riwayat transaksi
           </p>
         </div>
-        <Button onClick={() => setShowTopup(true)} variant="primary" size="sm" className="w-full sm:w-auto">
-          <Plus className="h-4 w-4" />
-          Topup Saldo
-        </Button>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+          <DashboardMonthFilter className="self-start sm:self-auto" />
+          <Button onClick={() => setShowTopup(true)} variant="primary" size="sm" className="w-full sm:w-auto">
+            <Plus className="h-4 w-4" />
+            Topup Saldo
+          </Button>
+          <Button
+            onClick={() => setShowWithdraw(true)}
+            variant="outline"
+            size="sm"
+            className="w-full sm:w-auto"
+            disabled={isLoading || balance <= 0}
+          >
+            <Download className="h-4 w-4" />
+            Tarik Saldo
+          </Button>
+        </div>
       </div>
 
       {/* Metrics — mobile: saldo full width, deposit & pengeluaran 2 kolom; desktop: 3 kolom */}
@@ -101,6 +118,22 @@ export function TeknisiSaldoView() {
         </div>
       </div>
 
+      {(pendingEarnings > 0 || heldBalance > 0) && (
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          {pendingEarnings > 0 && (
+            <div className="rounded-xl border border-amber-200/80 bg-amber-50/60 px-4 py-3 text-xs">
+              <p className="font-medium text-amber-900">Pendapatan menunggu</p>
+              <p className="mt-1 text-lg font-bold tabular-nums text-amber-950">
+                {formatIdr(pendingEarnings)}
+              </p>
+              <p className="mt-0.5 text-amber-800/80">
+                Masuk ke saldo setelah pembeli konfirmasi pesanan selesai.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       <WalletTransactionHistory onTransactionsLoaded={loadSpendingSummary} />
 
       <AnimatePresence>
@@ -109,6 +142,15 @@ export function TeknisiSaldoView() {
             onClose={() => setShowTopup(false)}
             onSuccess={() => {
               setShowTopup(false)
+              void loadSpendingSummary()
+            }}
+          />
+        )}
+        {showWithdraw && (
+          <WalletWithdrawModal
+            onClose={() => setShowWithdraw(false)}
+            onSuccess={() => {
+              setShowWithdraw(false)
               void loadSpendingSummary()
             }}
           />

@@ -11,6 +11,7 @@ function mapMarketplaceStatus(status: MarketplaceOrderDto['status']): RiwayatTxS
       return 'pending'
     case 'processing':
     case 'shipped':
+    case 'disputed':
       return 'in-progress'
     case 'cancelled':
     case 'refunded':

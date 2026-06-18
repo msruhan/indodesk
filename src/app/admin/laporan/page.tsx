@@ -161,9 +161,9 @@ export default function AdminLaporanPage() {
 
       {/* Overview metrics — row 1 */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
-        <MetricCard title="Total Revenue" value={formatIdr(data.overview.totalRevenue)} icon={DollarSign} footnote="IMEI + Server + Marketplace" tone="primary" compact />
+        <MetricCard title="Total Revenue" value={formatIdr(data.overview.totalRevenue)} icon={DollarSign} footnote="Digital + Server + Marketplace" tone="primary" compact />
         <MetricCard title="Total Transaksi" value={data.overview.totalTransactions.toLocaleString('id-ID')} icon={Package} footnote="Seluruh platform" tone="primary" compact />
-        <MetricCard title="Success Rate" value={`${data.overview.successRate}%`} icon={CheckCircle} footnote="IMEI & Server orders" tone={data.overview.successRate >= 80 ? 'primary' : 'warning'} compact />
+        <MetricCard title="Success Rate" value={`${data.overview.successRate}%`} icon={CheckCircle} footnote="Digital & Server orders" tone={data.overview.successRate >= 80 ? 'primary' : 'warning'} compact />
         <MetricCard title="Saldo Platform" value={formatIdr(data.overview.totalWalletBalance)} icon={Wallet} footnote="Akumulasi semua wallet" tone="neutral" compact />
       </div>
 
@@ -171,7 +171,7 @@ export default function AdminLaporanPage() {
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
         <MetricCard title="Total User" value={data.overview.totalUsers.toLocaleString('id-ID')} icon={Users} footnote="Registered users" tone="primary" compact />
         <MetricCard title="Total Teknisi" value={data.overview.totalTeknisi.toLocaleString('id-ID')} icon={Sparkles} footnote="Verified & pending" tone="primary" compact />
-        <MetricCard title="Order Hari Ini" value={data.overview.ordersToday.toLocaleString('id-ID')} icon={TrendingUp} footnote="IMEI + Server" tone="primary" compact />
+        <MetricCard title="Order Hari Ini" value={data.overview.ordersToday.toLocaleString('id-ID')} icon={TrendingUp} footnote="Digital + Server" tone="primary" compact />
         <MetricCard title="Chat Hari Ini" value={data.overview.chatMessagesToday.toLocaleString('id-ID')} icon={MessageSquare} footnote="Pesan terkirim" tone="neutral" compact />
       </div>
 
@@ -213,7 +213,7 @@ export default function AdminLaporanPage() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <OrderCategoryCard
             icon={Smartphone}
-            label="IMEI Service"
+            label="Digital Service"
             tone="bg-blue-50 text-blue-700 ring-blue-200/70"
             total={data.orders.imei.total}
             success={data.orders.imei.success}
@@ -327,9 +327,9 @@ export default function AdminLaporanPage() {
             desc="Dari view ke terjual"
           />
           <InsightChip
-            label="Avg Order (IMEI)"
+            label="Avg Order (Digital)"
             value={data.orders.imei.total > 0 ? formatIdr(Number(data.orders.imei.revenue) / data.orders.imei.total) : '—'}
-            desc="Rata-rata per order IMEI"
+            desc="Rata-rata per order digital"
           />
           <InsightChip
             label="Chat per Percakapan"
@@ -514,7 +514,7 @@ function RevenueLineChart({ labels, revenue }: { labels: string[]; revenue: numb
       <Card>
         <CardHeader className="border-b border-surface-100 pb-3">
           <CardTitle>Revenue Harian (7 Hari)</CardTitle>
-          <p className="mt-0.5 text-[11px] text-surface-500">Pendapatan dari order IMEI & Server yang sukses</p>
+          <p className="mt-0.5 text-[11px] text-surface-500">Pendapatan dari order Digital & Server yang sukses</p>
         </CardHeader>
         <CardContent className="pt-4">
           <Chart options={options} series={[{ name: 'Revenue', data: revenue }]} type="area" height={260} />
@@ -538,10 +538,10 @@ function OrdersAreaChart({ labels, imei, server }: { labels: string[]; imei: num
       <Card>
         <CardHeader className="border-b border-surface-100 pb-3">
           <CardTitle>Order Harian (7 Hari)</CardTitle>
-          <p className="mt-0.5 text-[11px] text-surface-500">Jumlah order IMEI & Server per hari</p>
+          <p className="mt-0.5 text-[11px] text-surface-500">Jumlah order Digital & Server per hari</p>
         </CardHeader>
         <CardContent className="pt-4">
-          <Chart options={options} series={[{ name: 'IMEI', data: imei }, { name: 'Server', data: server }]} type="area" height={260} />
+          <Chart options={options} series={[{ name: 'Digital', data: imei }, { name: 'Server', data: server }]} type="area" height={260} />
         </CardContent>
       </Card>
     </motion.div>
@@ -608,7 +608,7 @@ function OrderStatusStackedBar({ data }: { data: { categories: string[]; series:
     <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}>
       <Card>
         <CardHeader className="border-b border-surface-100 pb-3">
-          <CardTitle>Status Order (IMEI vs Server)</CardTitle>
+          <CardTitle>Status Order (Digital vs Server)</CardTitle>
           <p className="mt-0.5 text-[11px] text-surface-500">Breakdown status per kategori layanan</p>
         </CardHeader>
         <CardContent className="pt-4">

@@ -10,11 +10,17 @@ import { categoryLabel, PRODUCT_CATEGORY_SLUG } from '@/lib/product-catalog'
 import {
   getPrimaryProductImageUrl,
   parseProductImagesField,
+  parseThreeUtoolsImagesField,
   resolveProductImagesForDisplay,
   type ProductImageEntry,
 } from '@/lib/product-images'
 import { resolveDisplayImageUrl } from '@/lib/image-url-utils'
 import { parseCompletenessJson, type ProductCompletenessKey } from '@/lib/product-specs'
+import {
+  couponFromProduct,
+  formatCouponLabel,
+  type ProductCouponConfig,
+} from '@/lib/product-coupon'
 
 export type MarketplaceProductDto = {
   id: string
@@ -26,6 +32,7 @@ export type MarketplaceProductDto = {
   description: string | null
   image: string | null
   images: ProductImageEntry[]
+  threeUtoolsImages: ProductImageEntry[]
   rating: number
   reviewCount: number
   views: number
@@ -36,6 +43,8 @@ export type MarketplaceProductDto = {
   storage: string
   warranty: ProductWarranty
   completeness: ProductCompletenessKey[]
+  coupon: ProductCouponConfig | null
+  couponLabel: string | null
   seller: {
     id: string
     storeId: string | null
@@ -61,6 +70,10 @@ export function serializeMarketplaceProduct(p: ProductWithSeller): MarketplacePr
   const profile = p.seller.teknisiProfile
   const store = p.seller.teknisiStore
   const images = resolveProductImagesForDisplay(parseProductImagesField(p))
+  const threeUtoolsImages = resolveProductImagesForDisplay(
+    parseThreeUtoolsImagesField(p.threeUtoolsImages),
+  )
+  const coupon = couponFromProduct(p)
 
   return {
     id: p.id,
@@ -71,6 +84,7 @@ export function serializeMarketplaceProduct(p: ProductWithSeller): MarketplacePr
     price: Number(p.price),
     description: p.description,
     images,
+    threeUtoolsImages,
     image: resolveDisplayImageUrl(getPrimaryProductImageUrl(images, p.image)),
     rating: profile ? Number(profile.rating) : 0,
     reviewCount: profile?.reviewCount ?? 0,
@@ -82,6 +96,8 @@ export function serializeMarketplaceProduct(p: ProductWithSeller): MarketplacePr
     storage: p.storage,
     warranty: p.warranty,
     completeness: parseCompletenessJson(p.completeness, p.category),
+    coupon,
+    couponLabel: coupon ? formatCouponLabel(coupon) : null,
     seller: {
       id: p.seller.id,
       storeId: store?.id ?? null,

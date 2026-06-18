@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -19,6 +20,9 @@ import {
   XCircle,
   Radio,
 } from '@/lib/icons'
+import { DashboardMonthFilter } from '@/components/dashboard'
+import { useDashboardPeriod } from '@/contexts/dashboard-period-context'
+import { isDateInPeriod } from '@/lib/dashboard-period'
 import { cn } from '@/lib/utils'
 import type { UserKonsultasiDto } from '@/lib/user-konsultasi-serializer'
 import type { TeknisiKonsultasiStatus } from '@/lib/teknisi-layanan-serializer'
@@ -35,6 +39,7 @@ function statusBadgeVariant(status: UserKonsultasiDto['status']) {
     case 'completed':
       return 'success' as const
     case 'pending':
+    case 'awaiting_payment':
       return 'warning' as const
     case 'active':
       return 'default' as const
@@ -50,6 +55,7 @@ const statusConfig: Record<
   TeknisiKonsultasiStatus,
   { label: string; variant: 'warning' | 'success' | 'danger' | 'default'; icon: typeof Clock }
 > = {
+  awaiting_payment: { label: 'Menunggu bayar', variant: 'warning', icon: Clock },
   pending: { label: 'Menunggu', variant: 'warning', icon: Clock },
   active: { label: 'Berjalan', variant: 'default', icon: Radio },
   completed: { label: 'Selesai', variant: 'success', icon: CheckCircle },
@@ -57,6 +63,8 @@ const statusConfig: Record<
 }
 
 export default function UserKonsultasiPage() {
+  const { period } = useDashboardPeriod()
+  const searchParams = useSearchParams()
   const [items, setItems] = useState<UserKonsultasiDto[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -90,9 +98,40 @@ export default function UserKonsultasiPage() {
     void load()
   }, [load])
 
+  useEffect(() => {
+    const paySession = searchParams.get('paySession')
+    const pgRef = searchParams.get('pgRef')
+    if (!paySession || !pgRef) return
+
+    void (async () => {
+      setActingId(paySession)
+      try {
+        const res = await fetch(`/api/user/konsultasi/${paySession}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'confirm-payment', pgExternalRef: pgRef }),
+        })
+        const json = await res.json()
+        if (!json.success) {
+          setError(json.error || 'Gagal mengonfirmasi pembayaran')
+          return
+        }
+        window.history.replaceState({}, '', '/user/konsultasi')
+        await load()
+      } catch {
+        setError('Gagal mengonfirmasi pembayaran')
+      } finally {
+        setActingId(null)
+      }
+    })()
+  }, [searchParams, load])
+
   const patchAction = async (
     id: string,
-    body: { action: 'cancel' } | { action: 'rate'; rating: number; review?: string },
+    body:
+      | { action: 'cancel' }
+      | { action: 'rate'; rating: number; review?: string }
+      | { action: 'confirm-payment'; pgExternalRef?: string },
   ) => {
     setActingId(id)
     try {
@@ -122,6 +161,7 @@ export default function UserKonsultasiPage() {
       pending: items.filter((i) => i.status === 'pending').length,
       active: items.filter((i) => i.status === 'active').length,
       completed: items.filter((i) => i.status === 'completed').length,
+      pendingRating: items.filter((i) => i.canRate).length,
     }),
     [items],
   )
@@ -138,6 +178,13 @@ export default function UserKonsultasiPage() {
         tone: 'warning',
         icon: statusConfig.pending.icon,
         count: countFor('pending'),
+      },
+      {
+        id: 'awaiting_payment',
+        label: statusConfig.awaiting_payment.label,
+        tone: 'warning',
+        icon: statusConfig.awaiting_payment.icon,
+        count: countFor('awaiting_payment'),
       },
       {
         id: 'active',
@@ -177,6 +224,7 @@ export default function UserKonsultasiPage() {
   const filteredItems = useMemo(() => {
     const q = query.trim().toLowerCase()
     return items.filter((item) => {
+      if (!isDateInPeriod(item.createdAt, period)) return false
       if (statusFilter !== 'all' && item.status !== statusFilter) return false
       if (ratingFilter === 'rated' && item.rating == null) return false
       if (ratingFilter === 'unrated') {
@@ -195,7 +243,7 @@ export default function UserKonsultasiPage() {
         .toLowerCase()
       return haystack.includes(q)
     })
-  }, [items, query, statusFilter, ratingFilter])
+  }, [items, period, query, statusFilter, ratingFilter])
 
   const hasActiveFilters =
     query.trim() !== '' || statusFilter !== 'all' || ratingFilter !== 'all'
@@ -213,7 +261,8 @@ export default function UserKonsultasiPage() {
           <h1 className="text-2xl font-semibold tracking-tightest text-ink lg:text-3xl">Konsultasi</h1>
           <p className="mt-1 text-sm text-surface-500">Riwayat konsultasi dengan teknisi</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          <DashboardMonthFilter />
           <Button variant="outline" size="sm" className="h-9" onClick={() => void load()} disabled={loading}>
             <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
             Refresh
@@ -228,6 +277,13 @@ export default function UserKonsultasiPage() {
 
       {error && (
         <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>
+      )}
+
+      {stats.pendingRating > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <strong>Beri rating teknisi</strong> — Anda punya {stats.pendingRating} konsultasi selesai yang
+          belum dinilai. Scroll ke tabel di bawah dan klik &quot;Beri rating&quot;.
+        </div>
       )}
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -367,6 +423,20 @@ export default function UserKonsultasiPage() {
                             Chat
                           </Button>
                         </Link>
+                        {k.canConfirmPayment && (
+                          <Button
+                            type="button"
+                            variant="primary"
+                            size="sm"
+                            className="h-7 px-2 text-[10px]"
+                            disabled={actingId === k.id}
+                            onClick={() =>
+                              void patchAction(k.id, { action: 'confirm-payment' })
+                            }
+                          >
+                            Konfirmasi bayar
+                          </Button>
+                        )}
                         {k.canCancel && (
                           <Button
                             type="button"

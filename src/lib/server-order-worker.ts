@@ -2,7 +2,15 @@
  * Submit server orders to Dhru Fusion supplier & poll status updates.
  */
 import { prisma } from '@/lib/db'
-import { DhruFusionClient } from '@/lib/dhru-fusion'
+import { decryptImeiApiKey } from '@/lib/crypto/imei-api-secret'
+import {
+  DhruFusionClient,
+  DhruFusionProClient,
+  isDhruInvalidServiceIdError,
+  isDhruProProductId,
+  isServerProProduct,
+  mapProOrderStatusToDhruNumber,
+} from '@/lib/dhru-fusion'
 import {
   formatSupplierRejectReason,
   mapDhruStatusToOrderStatus,
@@ -10,6 +18,17 @@ import {
 import { normalizeSupplierCode, stripSupplierHtml } from '@/lib/imei-public'
 import { normalizeFieldKey } from '@/lib/server-fields'
 import { logSystemEvent } from '@/lib/activity-log'
+import {
+  getOrderSubmitWindowMs,
+  isOrderSubmitWindowExpired,
+  STALE_SUBMIT_REJECT_MESSAGE,
+} from '@/lib/order-submit-policy'
+import {
+  extractServerStressEmail,
+  isServerStressCredit,
+  isServerStressTimeout,
+} from '@/lib/server-stress-mock'
+import { isStressTestMode } from '@/lib/stress-mode'
 import type { Prisma, ServerOrder, ServerOrderStatus } from '@prisma/client'
 
 function extractSupplierCode(remote: { code?: string; comments?: string }): string | null {
@@ -19,18 +38,55 @@ function extractSupplierCode(remote: { code?: string; comments?: string }): stri
   )
 }
 
-/** Map preset / custom keys to Dhru CUSTOMFIELD JSON keys. */
+/** Flat XML params (legacy uppercase). */
 const DHRU_SERVER_FIELD_KEYS: Record<string, string> = {
   sn: 'SN',
   email: 'EMAIL',
   username: 'USERNAME',
   password: 'PASSWORD',
-  id: 'ID',
+  id: 'USERID',
   licensekey: 'LICENSEKEY',
   license: 'LICENSEKEY',
   comments: 'COMMENTS',
   notes: 'COMMENTS',
   catatan: 'COMMENTS',
+}
+
+/**
+ * Requires.Custom field names on Dhru v6.1 panels (e.g. legitunlocks Username/Password).
+ * Used inside CUSTOMFIELD base64 JSON for placeserverorder.
+ */
+const DHRU_SERVER_CUSTOM_FIELD_NAMES: Record<string, string> = {
+  username: 'Username',
+  password: 'Password',
+  email: 'Email',
+  qnt: 'QNT',
+  quantity: 'QNT',
+  qty: 'QNT',
+  sn: 'SN',
+  licensekey: 'LicenseKey',
+  license: 'LicenseKey',
+  comments: 'Comments',
+  notes: 'Comments',
+  catatan: 'Comments',
+}
+
+function toDhruCustomFieldName(key: string): string {
+  const nk = normalizeFieldKey(key)
+  return DHRU_SERVER_CUSTOM_FIELD_NAMES[nk] ?? key.trim()
+}
+
+/** CUSTOMFIELD JSON keys as declared in supplier Requires.Custom (Title Case). */
+export function buildDhruServerCustomFields(requiredFieldsJson: string | null): Record<string, string> {
+  const { nativeFields, quantity } = buildDhruServerFields(requiredFieldsJson)
+  const out: Record<string, string> = {}
+
+  for (const [key, value] of Object.entries(nativeFields)) {
+    out[toDhruCustomFieldName(key)] = value
+  }
+  if (quantity) out.QNT = quantity
+
+  return out
 }
 
 export function buildDhruServerFields(requiredFieldsJson: string | null): {
@@ -114,51 +170,256 @@ type OrderWithService = Prisma.ServerOrderGetPayload<{
   }
 }>
 
-function getDhruClient(order: OrderWithService): DhruFusionClient | null {
+function getDhruApiConfig(order: OrderWithService) {
   const api = order.service.api
   if (!api || api.status !== 'ACTIVE' || api.apiType !== 'DhruFusion') return null
-  return new DhruFusionClient({
+  return {
     host: api.host,
     username: api.username,
-    apiKey: api.apiKey,
+    apiKey: decryptImeiApiKey(api.apiKey),
+  }
+}
+
+function getDhruClient(order: OrderWithService): DhruFusionClient | null {
+  const cfg = getDhruApiConfig(order)
+  if (!cfg) return null
+  return new DhruFusionClient(cfg)
+}
+
+function getDhruProClient(order: OrderWithService): DhruFusionProClient | null {
+  const cfg = getDhruApiConfig(order)
+  if (!cfg) return null
+  return new DhruFusionProClient(cfg)
+}
+
+function buildProServerOrderFields(
+  requiredFieldsJson: string | null,
+  orderCode: string,
+): Record<string, unknown> {
+  const { nativeFields, quantity } = buildDhruServerFields(requiredFieldsJson)
+  const out: Record<string, unknown> = { reference_id: orderCode }
+
+  for (const [key, value] of Object.entries(nativeFields)) {
+    const nk = normalizeFieldKey(key)
+    if (nk === 'qnt' || nk === 'quantity' || nk === 'qty') {
+      const n = Number(value)
+      out.Quantity = Number.isFinite(n) && n > 0 ? n : value
+    } else {
+      out[key] = value
+    }
+  }
+
+  if (quantity != null && out.Quantity == null) {
+    const n = Number(quantity)
+    out.Quantity = Number.isFinite(n) && n > 0 ? n : quantity
+  }
+
+  return out
+}
+
+async function submitServerOrderViaPro(
+  order: OrderWithService,
+  toolId: string,
+): Promise<{ success: boolean; referenceId?: string; error?: string }> {
+  const client = getDhruProClient(order)
+  if (!client) return { success: false, error: 'Pro API unavailable' }
+
+  const fields = buildProServerOrderFields(order.requiredFields, order.orderCode)
+  const placed = await client.placeOrder([{ product_uuid: toolId, fields: [fields] }])
+
+  if (!placed.success || !placed.data?.[0]?.order_uuid) {
+    return { success: false, error: placed.error || 'Pro order failed' }
+  }
+
+  return { success: true, referenceId: placed.data[0].order_uuid }
+}
+
+async function resolveProProductUuid(
+  order: OrderWithService,
+  toolId: string,
+): Promise<string | null> {
+  const client = getDhruProClient(order)
+  if (!client) return null
+  const catalog = await client.getProducts()
+  if (!catalog.success || !catalog.products?.length) return null
+
+  const serverProducts = catalog.products.filter(isServerProProduct)
+  const byId = serverProducts.find((p) => p.uuid === toolId)
+  if (byId) return byId.uuid
+
+  const title = order.service.title.trim().toLowerCase()
+  const byTitle = serverProducts.find((p) => p.name.trim().toLowerCase() === title)
+  return byTitle?.uuid ?? null
+}
+
+async function rejectExpiredPendingServerOrder(
+  order: Pick<ServerOrder, 'id' | 'orderCode' | 'userId' | 'price' | 'createdAt' | 'status' | 'referenceId'>,
+): Promise<boolean> {
+  if (order.status !== 'PENDING' || order.referenceId) return false
+  if (!isOrderSubmitWindowExpired(order.createdAt)) return false
+
+  await prisma.$transaction(async (tx) => {
+    await refundServerOrder(tx, order, STALE_SUBMIT_REJECT_MESSAGE)
+  })
+  return true
+}
+
+async function rejectStalePendingServerOrders(limit = 50): Promise<number> {
+  const cutoff = new Date(Date.now() - getOrderSubmitWindowMs())
+  const stale = await prisma.serverOrder.findMany({
+    where: {
+      status: 'PENDING',
+      referenceId: null,
+      createdAt: { lt: cutoff },
+    },
+    orderBy: { createdAt: 'asc' },
+    take: limit,
+    select: {
+      id: true,
+      orderCode: true,
+      userId: true,
+      price: true,
+      createdAt: true,
+      status: true,
+      referenceId: true,
+    },
+  })
+
+  let rejected = 0
+  for (const row of stale) {
+    if (await rejectExpiredPendingServerOrder(row)) rejected += 1
+  }
+  return rejected
+}
+
+/**
+ * Exclusive claim: only one worker (API route, scheduler, or poll) may submit
+ * a given order to the supplier. Uses processedAt as the submit lock.
+ */
+async function claimServerOrderForSupplierSubmit(
+  orderId: string,
+): Promise<OrderWithService | null> {
+  const claimed = await prisma.serverOrder.updateMany({
+    where: {
+      id: orderId,
+      status: 'PENDING',
+      referenceId: null,
+      processedAt: null,
+    },
+    data: { processedAt: new Date() },
+  })
+
+  if (claimed.count === 0) {
+    const existing = await prisma.serverOrder.findUnique({
+      where: { id: orderId },
+      select: { referenceId: true, status: true },
+    })
+    if (existing?.referenceId) {
+      return null
+    }
+    return null
+  }
+
+  return prisma.serverOrder.findUnique({
+    where: { id: orderId },
+    include: { service: { include: { api: true } } },
   })
 }
 
-/** Send a PENDING server order to the supplier API. */
+/** Send a PENDING server order to the supplier API (at most once per order). */
 export async function submitServerOrderToSupplier(orderId: string): Promise<{
   ok: boolean
   error?: string
   referenceId?: string
 }> {
-  const order = await prisma.serverOrder.findUnique({
+  const snapshot = await prisma.serverOrder.findUnique({
     where: { id: orderId },
-    include: { service: { include: { api: true } } },
+    select: {
+      id: true,
+      orderCode: true,
+      userId: true,
+      price: true,
+      createdAt: true,
+      referenceId: true,
+      status: true,
+      processedAt: true,
+    },
   })
 
-  if (!order) return { ok: false, error: 'Order tidak ditemukan' }
-  if (order.referenceId) return { ok: true, referenceId: order.referenceId }
-  if (order.status !== 'PENDING' && order.status !== 'IN_PROCESS') {
-    return { ok: false, error: `Status order: ${order.status}` }
+  if (!snapshot) return { ok: false, error: 'Order not found' }
+  if (snapshot.referenceId) return { ok: true, referenceId: snapshot.referenceId }
+  if (snapshot.status === 'REJECTED' || snapshot.status === 'CANCELLED' || snapshot.status === 'SUCCESS') {
+    return { ok: false, error: `Status order: ${snapshot.status}` }
+  }
+  if (snapshot.status !== 'PENDING') {
+    return { ok: false, error: `Status order: ${snapshot.status}` }
+  }
+
+  if (await rejectExpiredPendingServerOrder(snapshot)) {
+    return { ok: false, error: STALE_SUBMIT_REJECT_MESSAGE }
+  }
+
+  if (snapshot.processedAt) {
+    return { ok: false, error: 'Submit already attempted for this order' }
+  }
+
+  const order = await claimServerOrderForSupplierSubmit(orderId)
+  if (!order) {
+    const again = await prisma.serverOrder.findUnique({
+      where: { id: orderId },
+      select: { referenceId: true },
+    })
+    if (again?.referenceId) return { ok: true, referenceId: again.referenceId }
+    return { ok: false, error: 'Submit already in progress or completed' }
   }
 
   const toolId = order.service.toolId
   if (!toolId) {
+    if (isStressTestMode()) {
+      const email = extractServerStressEmail(order.requiredFields)
+      if (isServerStressCredit(email)) {
+        const raw = 'CreditprocessError: INSUFFICIENT_CREDIT on reseller account'
+        const userMsg = formatSupplierRejectReason(raw, 'submit')
+        await prisma.$transaction(async (tx) => {
+          await refundServerOrder(tx, order, userMsg, normalizeSupplierCode(stripSupplierHtml(raw)))
+        })
+        return { ok: false, error: raw }
+      }
+      if (isServerStressTimeout(email)) {
+        const raw = 'Request timeout while contacting supplier'
+        const userMsg = formatSupplierRejectReason(raw, 'submit')
+        await prisma.$transaction(async (tx) => {
+          await refundServerOrder(tx, order, userMsg)
+        })
+        return { ok: false, error: raw }
+      }
+      const refId = `stress-server-${orderId}`
+      await prisma.serverOrder.update({
+        where: { id: orderId },
+        data: {
+          referenceId: refId,
+          status: 'IN_PROCESS',
+          processedAt: new Date(),
+        },
+      })
+      return { ok: true, referenceId: refId }
+    }
     await prisma.$transaction(async (tx) => {
-      await refundServerOrder(tx, order, 'Layanan belum terhubung ke supplier (toolId kosong).')
+      await refundServerOrder(tx, order, 'Service is not linked to supplier (missing toolId).')
     })
-    return { ok: false, error: 'toolId kosong' }
+    return { ok: false, error: 'toolId is empty' }
   }
 
   const client = getDhruClient(order)
   if (!client) {
-    await prisma.serverOrder.update({
-      where: { id: orderId },
-      data: {
-        comments:
-          'API supplier tidak aktif atau bukan DhruFusion — perlu proses manual oleh admin.',
-      },
+    await prisma.$transaction(async (tx) => {
+      await refundServerOrder(
+        tx,
+        order,
+        'Supplier API is inactive or not DhruFusion — requires manual processing by admin.',
+      )
     })
-    return { ok: false, error: 'Supplier API tidak tersedia' }
+    return { ok: false, error: 'Supplier API unavailable' }
   }
 
   const { fields, nativeFields, quantity } = buildDhruServerFields(order.requiredFields)
@@ -166,13 +427,28 @@ export async function submitServerOrderToSupplier(orderId: string): Promise<{
     quantity ??
     (order.service.quantity > 0 ? String(order.service.quantity) : undefined)
 
-  const placed = await client.placeServerOrder(toolId, fields, {
-    quantity: qnt,
-    alternateFields: nativeFields,
-  })
+  let placed: { success: boolean; referenceId?: string; error?: string }
+
+  if (isDhruProProductId(toolId)) {
+    placed = await submitServerOrderViaPro(order, toolId)
+  } else {
+    const customFields = buildDhruServerCustomFields(order.requiredFields)
+    placed = await client.placeServerOrder(toolId, fields, {
+      quantity: qnt,
+      alternateFields: nativeFields,
+      customFields,
+    })
+    if (!placed.success && isDhruInvalidServiceIdError(placed.error ?? '')) {
+      const proUuid = await resolveProProductUuid(order, toolId)
+      if (proUuid) {
+        const proAttempt = await submitServerOrderViaPro(order, proUuid)
+        if (proAttempt.success) placed = proAttempt
+      }
+    }
+  }
 
   if (!placed.success || !placed.referenceId) {
-    const raw = placed.error || 'Gagal submit ke supplier'
+    const raw = placed.error || 'Failed to submit to supplier'
     const userMsg = formatSupplierRejectReason(raw, 'submit')
     await prisma.$transaction(async (tx) => {
       await refundServerOrder(tx, order, userMsg, normalizeSupplierCode(stripSupplierHtml(raw)))
@@ -191,11 +467,11 @@ export async function submitServerOrderToSupplier(orderId: string): Promise<{
   })
 
   if (collision && collision.serviceId !== order.serviceId) {
-    const msg = `[Duplikat referensi supplier] Order server ini bentrok dengan #${collision.orderCode} (${collision.service.title}, ref ${refId}).`
+    const msg = `[Duplicate supplier reference] This server order conflicts with #${collision.orderCode} (${collision.service.title}, ref ${refId}).`
     await prisma.$transaction(async (tx) => {
       await refundServerOrder(tx, order, msg)
     })
-    return { ok: false, error: 'Referensi supplier duplikat' }
+    return { ok: false, error: 'Duplicate supplier reference' }
   }
 
   await prisma.serverOrder.update({
@@ -203,7 +479,6 @@ export async function submitServerOrderToSupplier(orderId: string): Promise<{
     data: {
       referenceId: refId,
       status: 'IN_PROCESS',
-      processedAt: new Date(),
       comments: null,
     },
   })
@@ -222,16 +497,16 @@ export async function pollServerOrderFromSupplier(orderId: string): Promise<{
     include: { service: { include: { api: true } } },
   })
 
-  if (!order) return { ok: false, updated: false, error: 'Order tidak ditemukan' }
+  if (!order) return { ok: false, updated: false, error: 'Order not found' }
   if (!order.referenceId) {
-    if (order.status === 'PENDING') {
+    if (order.status === 'PENDING' && !order.processedAt) {
       return submitServerOrderToSupplier(orderId).then((r) => ({
         ok: r.ok,
-        updated: r.ok,
+        updated: r.ok || r.error === STALE_SUBMIT_REJECT_MESSAGE,
         error: r.error,
       }))
     }
-    return { ok: false, updated: false, error: 'Belum ada referenceId supplier' }
+    return { ok: false, updated: false, error: 'No supplier referenceId yet' }
   }
 
   const isFinal =
@@ -240,12 +515,37 @@ export async function pollServerOrderFromSupplier(orderId: string): Promise<{
     return { ok: true, updated: false }
   }
 
-  const client = getDhruClient(order)
-  if (!client) return { ok: false, updated: false, error: 'Supplier API tidak tersedia' }
+  const toolId = order.service.toolId ?? ''
+  const useProPoll = isDhruProProductId(toolId)
 
-  const remote = await client.getServerOrderStatus(order.referenceId)
-  if (!remote.success) {
-    return { ok: false, updated: false, error: remote.error }
+  let remote: {
+    success: boolean
+    status?: number
+    code?: string
+    comments?: string
+    error?: string
+  }
+
+  if (useProPoll) {
+    const proClient = getDhruProClient(order)
+    if (!proClient) return { ok: false, updated: false, error: 'Supplier API unavailable' }
+    const pro = await proClient.getOrderDetails(order.referenceId)
+    if (!pro.success) {
+      return { ok: false, updated: false, error: pro.error }
+    }
+    remote = {
+      success: true,
+      status: mapProOrderStatusToDhruNumber(pro.status),
+      code: pro.status,
+      comments: pro.status,
+    }
+  } else {
+    const client = getDhruClient(order)
+    if (!client) return { ok: false, updated: false, error: 'Supplier API unavailable' }
+    remote = await client.getServerOrderStatus(order.referenceId)
+    if (!remote.success) {
+      return { ok: false, updated: false, error: remote.error }
+    }
   }
 
   const supplierCode = extractSupplierCode(remote)
@@ -297,7 +597,7 @@ export async function pollServerOrderFromSupplier(orderId: string): Promise<{
     void logSystemEvent({
       action: 'order.server.success',
       severity: 'SUCCESS',
-      summary: `Order Server ${order.orderCode} berhasil`,
+      summary: `Server order ${order.orderCode} completed`,
       target: { type: 'server_order', id: order.id, label: order.orderCode },
       metadata: { orderCode: order.orderCode, code: supplierCode ?? null },
     })
@@ -314,7 +614,7 @@ export async function pollServerOrderFromSupplier(orderId: string): Promise<{
 
       const rejectCode =
         supplierCode ||
-        normalizeSupplierCode(stripSupplierHtml(remote.error || 'Ditolak supplier'))
+        normalizeSupplierCode(stripSupplierHtml(remote.error || 'Rejected by supplier'))
 
       await tx.serverOrder.update({
         where: { id: orderId },
@@ -322,7 +622,7 @@ export async function pollServerOrderFromSupplier(orderId: string): Promise<{
           status: 'REJECTED',
           code: rejectCode,
           comments: formatSupplierRejectReason(
-            stripSupplierHtml(remote.comments || remote.error || 'Ditolak supplier'),
+            stripSupplierHtml(remote.comments || remote.error || 'Rejected by supplier'),
             'poll',
           ),
           completedAt: new Date(),
@@ -348,7 +648,7 @@ export async function pollServerOrderFromSupplier(orderId: string): Promise<{
     void logSystemEvent({
       action: 'order.server.rejected',
       severity: 'WARNING',
-      summary: `Order Server ${order.orderCode} ditolak supplier`,
+      summary: `Server order ${order.orderCode} rejected by supplier`,
       detail: remote.error ?? null,
       target: { type: 'server_order', id: order.id, label: order.orderCode },
       metadata: { orderCode: order.orderCode, supplierError: remote.error ?? null },
@@ -371,8 +671,10 @@ export async function processServerOrderQueue(options?: { submitLimit?: number; 
   const submitLimit = options?.submitLimit ?? 20
   const pollLimit = options?.pollLimit ?? 50
 
+  await rejectStalePendingServerOrders(submitLimit)
+
   const toSubmit = await prisma.serverOrder.findMany({
-    where: { status: 'PENDING', referenceId: null },
+    where: { status: 'PENDING', referenceId: null, processedAt: null },
     orderBy: { createdAt: 'asc' },
     take: submitLimit,
     select: { id: true },

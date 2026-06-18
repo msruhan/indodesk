@@ -2,7 +2,9 @@ import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { logCommunicationEvent } from '@/lib/activity-log'
-import { refundUserForKonsultasi } from '@/lib/konsultasi-wallet'
+import { secureKonsultasiPaymentByRef } from '@/lib/konsultasi-payment'
+import { refundKonsultasiPayment } from '@/lib/konsultasi-wallet'
+import { walletTransaction } from '@/lib/wallet/transaction'
 import { serializeUserKonsultasi } from '@/lib/user-konsultasi-serializer'
 
 export const dynamic = 'force-dynamic'
@@ -22,6 +24,10 @@ const patchSchema = z.discriminatedUnion('action', [
     action: z.literal('rate'),
     rating: z.number().int().min(1).max(5),
     review: z.string().max(2000).optional(),
+  }),
+  z.object({
+    action: z.literal('confirm-payment'),
+    pgExternalRef: z.string().min(1).optional(),
   }),
 ])
 
@@ -83,25 +89,64 @@ export async function PATCH(
     }
     const teknisiLabel = existing.teknisi.name ?? 'Teknisi'
 
+    if (parsed.data.action === 'confirm-payment') {
+      const ref = parsed.data.pgExternalRef ?? existing.pgExternalRef
+      if (!ref) return apiError('Referensi pembayaran tidak ditemukan')
+
+      const result = await secureKonsultasiPaymentByRef(ref, Number(existing.price))
+      if (!result.ok) return apiError(result.error)
+
+      const updated = await prisma.konsultasiSession.findUniqueOrThrow({
+        where: { id },
+        include: { teknisi: { select: TEKNISI_SELECT } },
+      })
+
+      void logCommunicationEvent({
+        action: 'konsultasi.created',
+        severity: 'INFO',
+        summary: `Konsultasi dibayar: ${existing.service} — ${teknisiLabel}`,
+        actor,
+        target: { type: 'konsultasi', id, label: existing.service },
+      })
+
+      return apiSuccess(serializeUserKonsultasi(updated))
+    }
+
     if (parsed.data.action === 'cancel') {
-      if (existing.status !== 'PENDING') {
-        return apiError('Hanya konsultasi menunggu yang bisa dibatalkan')
+      if (existing.status === 'ACTIVE') {
+        return apiError('Konsultasi yang sudah berjalan tidak dapat dibatalkan oleh user')
+      }
+      if (
+        existing.status !== 'PENDING' &&
+        existing.status !== 'AWAITING_PAYMENT'
+      ) {
+        return apiError('Konsultasi tidak dapat dibatalkan pada status ini')
       }
 
-      const updated = await prisma.$transaction(async (tx) => {
+      const updated = await walletTransaction(async (tx) => {
         const row = await tx.konsultasiSession.update({
           where: { id },
-          data: { status: 'CANCELLED', endedAt: new Date() },
+          data: {
+            status: 'CANCELLED',
+            endedAt: new Date(),
+            remoteOtp: null,
+            paymentStatus:
+              existing.paymentStatus === 'UNPAID' ? 'RELEASED' : existing.paymentStatus,
+          },
           include: { teknisi: { select: TEKNISI_SELECT } },
         })
 
-        await refundUserForKonsultasi(
-          tx,
-          session.user.id,
-          existing.price,
-          id,
-          `Refund konsultasi dibatalkan: ${existing.service}`,
-        )
+        if (existing.status !== 'AWAITING_PAYMENT') {
+          await refundKonsultasiPayment(
+            tx,
+            session.user.id,
+            existing.price,
+            id,
+            existing.service,
+            existing.paymentMethod,
+            existing.paymentStatus,
+          )
+        }
 
         return row
       })

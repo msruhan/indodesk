@@ -45,36 +45,62 @@ import {
   emptyProductSpecsForm,
   type ProductSpecsFormState,
 } from '@/components/teknisi/product-specs-fields'
+import {
+  ProductBenchmarkFields,
+  emptyBenchmarkForm,
+  type BenchmarkFormState,
+} from '@/components/teknisi/product-benchmark-fields'
+import { categorySupportsThreeUtools } from '@/lib/product-category-config'
+import { normalizeReplacedParts } from '@/lib/replaced-parts'
+import {
+  ProductCouponFields,
+  appendCouponToFormData,
+  emptyProductCouponForm,
+  productCouponFormFromDto,
+  type ProductCouponFormState,
+} from '@/components/teknisi/product-coupon-fields'
+import { validateProductCouponInput } from '@/lib/product-coupon'
 import { validateProductSpecs } from '@/lib/product-specs'
+import { FilterDropdown, type FilterDropdownOption } from '@/components/ui/filter-dropdown'
 import { DataPagination } from '@/components/ui/data-pagination'
 import { useClientPagination } from '@/hooks/use-client-pagination'
 
 const categoryTone: Record<string, string> = {
-  Handphone: 'border-primary-200/50 bg-primary-50/80 text-primary-800',
-  Software: 'border-accent-200/50 bg-accent-50/80 text-accent-800',
+  iPhone: 'border-primary-200/50 bg-primary-50/80 text-primary-800',
+  Android: 'border-primary-200/50 bg-primary-50/80 text-primary-800',
+  iPad: 'border-blue-200/50 bg-blue-50/80 text-blue-800',
+  Macbook: 'border-surface-200/70 bg-surface-100 text-surface-700',
   Laptop: 'border-surface-200/70 bg-surface-100 text-surface-700',
+  PC: 'border-surface-200/70 bg-surface-100 text-surface-700',
+  Software: 'border-accent-200/50 bg-accent-50/80 text-accent-800',
   Aksesoris: 'border-amber-200/50 bg-amber-50/80 text-amber-800',
   Lainnya: 'border-surface-200/70 bg-surface-50 text-surface-700',
 }
 
 const emptyForm = {
   name: '',
-  category: 'HANDPHONE' as ProductCategory,
+  category: 'IPHONE' as ProductCategory,
   price: '',
   description: '',
   stock: '1',
 }
+
+type CategoryFilter = 'all' | ProductCategory
 
 export default function TeknisiProdukPage() {
   const confirmDialog = useConfirm()
   const [products, setProducts] = useState<TeknisiProductDto[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all')
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [specs, setSpecs] = useState<ProductSpecsFormState>(emptyProductSpecsForm)
+  const [benchmark, setBenchmark] = useState<BenchmarkFormState>(emptyBenchmarkForm)
   const [imageSlots, setImageSlots] = useState<ProductImageSlot[]>([])
+  const [threeUtoolsSlots, setThreeUtoolsSlots] = useState<ProductImageSlot[]>([])
+  const [coupon, setCoupon] = useState<ProductCouponFormState>(emptyProductCouponForm)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [actionId, setActionId] = useState<string | null>(null)
@@ -103,13 +129,36 @@ export default function TeknisiProdukPage() {
     void loadProducts()
   }, [loadProducts])
 
-  const filteredProduk = useMemo(
-    () => products.filter((p) => p.name.toLowerCase().includes(searchQuery.toLowerCase())),
-    [products, searchQuery],
-  )
+  const categoryFilterOptions = useMemo((): FilterDropdownOption<CategoryFilter>[] => {
+    const countFor = (category?: ProductCategory) =>
+      category ? products.filter((p) => p.categoryValue === category).length : products.length
+
+    return [
+      { id: 'all', label: 'Semua kategori', tone: 'neutral', icon: Package },
+      ...PRODUCT_CATEGORY_OPTIONS.map((c) => ({
+        id: c.value as CategoryFilter,
+        label: c.label,
+        tone: 'primary' as const,
+        icon: Package,
+        count: countFor(c.value),
+      })),
+    ]
+  }, [products])
+
+  const filteredProduk = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    return products.filter((p) => {
+      if (categoryFilter !== 'all' && p.categoryValue !== categoryFilter) return false
+      if (!q) return true
+      return (
+        p.name.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q)
+      )
+    })
+  }, [products, searchQuery, categoryFilter])
 
   const { page, setPage, pageSize, setPageSize, paginatedItems, totalItems } =
-    useClientPagination(filteredProduk, [searchQuery])
+    useClientPagination(filteredProduk, [searchQuery, categoryFilter])
 
   const approvedCount = products.filter((p) => p.status === 'approved').length
   const pendingCount = products.filter((p) => p.status === 'pending').length
@@ -119,7 +168,10 @@ export default function TeknisiProdukPage() {
   const resetForm = () => {
     setForm(emptyForm)
     setSpecs(emptyProductSpecsForm)
+    setBenchmark(emptyBenchmarkForm)
     setImageSlots([])
+    setThreeUtoolsSlots([])
+    setCoupon(emptyProductCouponForm)
     setEditingId(null)
     setFormError(null)
   }
@@ -147,7 +199,20 @@ export default function TeknisiProdukPage() {
       warranty: p.warranty,
       completeness: p.completeness,
     })
+    setBenchmark({
+      conditionGrade: p.conditionGrade,
+      conditionPercent: p.conditionPercent != null ? String(p.conditionPercent) : '',
+      minusNotes: p.minusNotes ?? '',
+      batteryHealth: p.batteryHealth != null ? String(p.batteryHealth) : '',
+      batteryCycle: p.batteryCycle != null ? String(p.batteryCycle) : '',
+      isAllOriginal: p.isAllOriginal,
+      replacedParts: normalizeReplacedParts(p.replacedParts),
+      trueToneActive: p.trueToneActive,
+      faceIdWorks: p.faceIdWorks,
+    })
     setImageSlots(slotsFromProduct(p.images))
+    setThreeUtoolsSlots(slotsFromProduct(p.threeUtoolsImages ?? []))
+    setCoupon(productCouponFormFromDto(p.coupon))
     setFormError(null)
     setShowForm(true)
     scrollToForm()
@@ -165,6 +230,13 @@ export default function TeknisiProdukPage() {
       return
     }
 
+    const couponError = validateProductCouponInput(coupon, Number(form.price))
+    if (couponError) {
+      setFormError(couponError)
+      setSaving(false)
+      return
+    }
+
     const fd = new FormData()
     fd.append('name', form.name.trim())
     fd.append('category', form.category)
@@ -172,10 +244,28 @@ export default function TeknisiProdukPage() {
     fd.append('description', form.description.trim())
     fd.append('stock', form.stock)
     fd.append('color', specs.color.trim())
+    fd.append('ram', specs.ram.trim())
+    fd.append('processor', specs.processor.trim())
     fd.append('storage', specs.storage.trim())
     fd.append('warranty', specs.warranty)
     fd.append('completeness', JSON.stringify(specs.completeness))
+
+    // Benchmark fields
+    if (benchmark.conditionGrade) fd.append('conditionGrade', benchmark.conditionGrade)
+    if (benchmark.conditionPercent) fd.append('conditionPercent', benchmark.conditionPercent)
+    if (benchmark.minusNotes.trim()) fd.append('minusNotes', benchmark.minusNotes.trim())
+    if (benchmark.batteryHealth) fd.append('batteryHealth', benchmark.batteryHealth)
+    if (benchmark.batteryCycle) fd.append('batteryCycle', benchmark.batteryCycle)
+    if (benchmark.isAllOriginal !== null) fd.append('isAllOriginal', String(benchmark.isAllOriginal))
+    if (benchmark.replacedParts.length > 0) {
+      fd.append('replacedParts', benchmark.replacedParts.join(','))
+    }
+    if (benchmark.trueToneActive !== null) fd.append('trueToneActive', String(benchmark.trueToneActive))
+    if (benchmark.faceIdWorks !== null) fd.append('faceIdWorks', String(benchmark.faceIdWorks))
+
     buildProductImagesFormData(imageSlots, fd)
+    buildProductImagesFormData(threeUtoolsSlots, fd, '3utools_')
+    appendCouponToFormData(fd, coupon)
 
     try {
       const url = editingId ? `/api/teknisi/products/${editingId}` : '/api/teknisi/products'
@@ -332,10 +422,12 @@ export default function TeknisiProdukPage() {
                   onChange={(e) => {
                     const nextCategory = e.target.value as ProductCategory
                     setForm((f) => ({ ...f, category: nextCategory }))
-                    setSpecs((s) => ({
+                    setSpecs({
                       ...emptyProductSpecsForm,
-                      warranty: s.warranty,
-                    }))
+                      warranty: specs.warranty,
+                    })
+                    setBenchmark(emptyBenchmarkForm)
+                    setThreeUtoolsSlots([])
                   }}
                   className="w-full rounded-xl border border-surface-200 bg-white px-3 py-2.5 text-sm text-ink shadow-soft-xs focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-200/50"
                 >
@@ -366,8 +458,39 @@ export default function TeknisiProdukPage() {
                   onChange={(e) => setForm((f) => ({ ...f, stock: e.target.value }))}
                 />
               </div>
+
+              <ProductCouponFields
+                value={coupon}
+                onChange={setCoupon}
+                productPrice={Number(form.price) || undefined}
+              />
+
               <ProductImagesEditor slots={imageSlots} onChange={setImageSlots} />
+
+              {categorySupportsThreeUtools(form.category) && (
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-sm font-medium text-surface-700">
+                      Screenshot / Foto 3uTools <span className="text-surface-400">(opsional)</span>
+                    </p>
+                    <p className="text-[11px] text-surface-500">
+                      Upload screenshot dari 3uTools untuk membuktikan kualitas hardware iPhone/iPad (baterai, True Tone, Face ID, dll).
+                    </p>
+                  </div>
+                  <ProductImagesEditor
+                    slots={threeUtoolsSlots}
+                    onChange={setThreeUtoolsSlots}
+                    showTitle={false}
+                  />
+                </div>
+              )}
+
               <ProductSpecsFields category={form.category} value={specs} onChange={setSpecs} />
+              <ProductBenchmarkFields
+                category={form.category}
+                value={benchmark}
+                onChange={setBenchmark}
+              />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-surface-700">Deskripsi</label>
@@ -431,6 +554,20 @@ export default function TeknisiProdukPage() {
         onSearchChange={setSearchQuery}
         placeholder="Cari produk..."
         resultLabel={`${totalItems} produk`}
+        filters={
+          <FilterDropdown
+            options={categoryFilterOptions}
+            value={categoryFilter}
+            onChange={setCategoryFilter}
+            ariaLabel="Filter kategori produk"
+            label="Kategori"
+            triggerIcon={Package}
+            placeholder="Semua kategori"
+            className="w-full sm:w-[11.5rem]"
+            align="right"
+            disabled={loading}
+          />
+        }
       />
 
       {loading ? (
@@ -439,12 +576,28 @@ export default function TeknisiProdukPage() {
         <EmptyState
           icon={Package}
           title="Produk tidak ditemukan"
-          description="Coba kata kunci lain atau tambah iklan produk baru."
+          description={
+            categoryFilter !== 'all' || searchQuery.trim()
+              ? 'Coba ubah filter kategori atau kata kunci pencarian.'
+              : 'Belum ada iklan produk. Tambah produk pertama Anda.'
+          }
           action={
-            <Button variant="primary" onClick={openCreate}>
-              <Plus className="mr-2 h-4 w-4" />
-              Tambah Produk
-            </Button>
+            categoryFilter !== 'all' || searchQuery.trim() ? (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearchQuery('')
+                  setCategoryFilter('all')
+                }}
+              >
+                Reset filter
+              </Button>
+            ) : (
+              <Button variant="primary" onClick={openCreate}>
+                <Plus className="mr-2 h-4 w-4" />
+                Tambah Produk
+              </Button>
+            )
           }
         />
       ) : (
@@ -487,11 +640,16 @@ export default function TeknisiProdukPage() {
                           variant="outline"
                           className={cn(
                             'rounded-full px-2 py-0 text-[9px] font-medium',
-                            categoryTone[p.category] ?? categoryTone.Handphone,
+                            categoryTone[p.category] ?? categoryTone.iPhone,
                           )}
                         >
                           {p.category}
                         </Badge>
+                        {p.coupon && (
+                          <Badge variant="primary" className="rounded-full px-2 py-0 text-[9px]">
+                            Kupon {p.coupon.code}
+                          </Badge>
+                        )}
                       </div>
                       <h3 className="line-clamp-1 text-[13px] font-semibold text-ink">{p.name}</h3>
                       <p className="mt-0.5 text-[14px] font-bold text-primary-700">

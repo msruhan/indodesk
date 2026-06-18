@@ -4,6 +4,8 @@ import type { Session } from 'next-auth'
 import type { UserRole } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { SESSION_STALE_CODE } from '@/lib/api-constants'
+import { assertOriginAllowed } from '@/lib/security/csrf'
+import { logAdminForbiddenProbe } from '@/lib/security/request-blocks'
 
 export { SESSION_STALE_CODE }
 
@@ -26,6 +28,11 @@ export async function getApiSession() {
  */
 export async function requireApiAuth():
   Promise<{ session: ApiSession; error: null } | { session: null; error: NextResponse }> {
+  const csrfError = await assertOriginAllowed()
+  if (csrfError) {
+    return { session: null, error: csrfError }
+  }
+
   const session = await auth()
   if (!session?.user?.id) {
     return {
@@ -39,7 +46,15 @@ export async function requireApiAuth():
 
   const dbUser = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { id: true, role: true, name: true, email: true, image: true, isActive: true },
+    select: {
+      id: true,
+      role: true,
+      name: true,
+      email: true,
+      image: true,
+      isActive: true,
+      sessionVersion: true,
+    },
   })
 
   if (!dbUser) {
@@ -63,6 +78,21 @@ export async function requireApiAuth():
       error: NextResponse.json(
         { success: false, error: 'Akun Anda telah dinonaktifkan. Hubungi admin untuk informasi lebih lanjut.' },
         { status: 403 },
+      ),
+    }
+  }
+
+  const tokenVersion = session.sessionVersion
+  if (typeof tokenVersion === 'number' && tokenVersion !== dbUser.sessionVersion) {
+    return {
+      session: null,
+      error: NextResponse.json(
+        {
+          success: false,
+          error: 'Sesi login sudah tidak valid. Silakan login kembali.',
+          code: SESSION_STALE_CODE,
+        },
+        { status: 401 },
       ),
     }
   }
@@ -93,6 +123,21 @@ export async function requireApiRole(roles: UserRole[]):
 
   const userRole = result.session.user.role as UserRole
   if (!roles.includes(userRole)) {
+    const { headers } = await import('next/headers')
+    const h = await headers()
+    const pathname = h.get('x-request-pathname') ?? ''
+    if (pathname.startsWith('/api/admin') || roles.includes('ADMIN' as UserRole)) {
+      const forwardedFor = h.get('x-forwarded-for')
+      const realIp = h.get('x-real-ip')
+      logAdminForbiddenProbe({
+        pathname,
+        actorId: result.session.user.id,
+        actorRole: userRole,
+        requiredRoles: roles,
+        ip: forwardedFor?.split(',')[0]?.trim() || realIp || null,
+        userAgent: h.get('user-agent'),
+      })
+    }
     return {
       session: null,
       error: NextResponse.json(
@@ -115,6 +160,10 @@ export function apiSuccess<T>(data: T, status = 200) {
 /**
  * Standard JSON error response.
  */
-export function apiError(message: string, status = 400) {
-  return NextResponse.json({ success: false, error: message }, { status })
+export function apiError(
+  message: string,
+  status = 400,
+  extra?: Record<string, unknown>,
+) {
+  return NextResponse.json({ success: false, error: message, ...extra }, { status })
 }

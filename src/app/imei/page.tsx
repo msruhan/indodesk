@@ -60,6 +60,7 @@ import { ImeiServiceCard, ImeiServiceCardSkeleton } from '@/components/imei/imei
 import { ServerOrderModal, ServerServiceCard } from '@/components/imei/server-catalog'
 import { CatalogTabs, type CatalogTab } from '@/components/imei/catalog-tabs'
 import { CatalogGroupFilter, type CatalogGroupFilterOption } from '@/components/imei/catalog-group-filter'
+import { normalizeSerialNumber, validateImeiValue } from '@/lib/imei-order-input'
 
 function OrderModal({
   service,
@@ -68,6 +69,7 @@ function OrderModal({
   service: PublicImeiService
   onClose: () => void
 }) {
+  const router = useRouter()
   const [imei, setImei] = useState('')
   const [network, setNetwork] = useState('')
   const [model, setModel] = useState('')
@@ -82,10 +84,13 @@ function OrderModal({
   const [success, setSuccess] = useState(false)
   const [orderCode, setOrderCode] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const ordersHref = orderCode.trim()
+    ? `/teknisi/orders?tab=imei&q=${encodeURIComponent(orderCode.trim())}`
+    : '/teknisi/orders?tab=imei'
 
   const imeiNeeded = service.requiresImei
-  const imeiValid = !imeiNeeded || (imei.length >= 15 && imei.length <= 17)
-  const imeiShort = imeiNeeded && imei.length > 0 && imei.length < 15
+  const snNeeded = service.requiresSn
+  const imeiValid = !imeiNeeded || validateImeiValue(imei) === null
 
   const canSubmit =
     imeiValid &&
@@ -96,7 +101,7 @@ function OrderModal({
     (!service.requiresKbh || kbh.trim().length > 0) &&
     (!service.requiresMep || mep.trim().length > 0) &&
     (!service.requiresPrd || prd.trim().length > 0) &&
-    (!service.requiresSn || serialNumber.trim().length > 0)
+    (!snNeeded || serialNumber.trim().length > 0)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -117,7 +122,7 @@ function OrderModal({
           kbh: kbh || null,
           mep: mep || null,
           prd: prd || null,
-          serialNumber: serialNumber || null,
+          serialNumber: serialNumber ? normalizeSerialNumber(serialNumber) : null,
           note: note || null,
         }),
       })
@@ -186,8 +191,12 @@ function OrderModal({
                 </motion.div>
               )}
               <div className="mt-2 flex justify-between text-xs">
-                <span className="text-surface-500">Nomor perangkat</span>
-                <span className="font-mono font-medium text-ink">{imei}</span>
+                <span className="text-surface-500">
+                  {snNeeded && !imeiNeeded ? 'Serial Number' : 'Nomor perangkat'}
+                </span>
+                <span className="font-mono font-medium text-ink">
+                  {snNeeded && !imeiNeeded ? normalizeSerialNumber(serialNumber) : imei}
+                </span>
               </div>
               <div className="mt-2 flex justify-between text-xs">
                 <span className="text-surface-500">Service</span>
@@ -199,11 +208,14 @@ function OrderModal({
               </div>
             </div>
             <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
-              <Link href="/imei/orders">
-                <Button variant="primary" size="sm" className="w-full sm:w-auto">
-                  Lihat riwayat
-                </Button>
-              </Link>
+              <Button
+                variant="primary"
+                size="sm"
+                className="w-full sm:w-auto"
+                onClick={() => router.push(ordersHref)}
+              >
+                Lihat riwayat
+              </Button>
               <Button variant="ghost" size="sm" onClick={onClose}>
                 Tutup
               </Button>
@@ -269,22 +281,14 @@ function OrderModal({
                   </label>
                   <Input
                     type="text"
-                    placeholder="Masukkan 15–17 digit (dial *#06#)"
+                    placeholder="Masukkan nomor digital perangkat"
                     value={imei}
-                    onChange={(e) => setImei(e.target.value.replace(/\D/g, '').slice(0, 17))}
+                    onChange={(e) => setImei(e.target.value.trimStart())}
                     className="h-10 font-mono text-sm"
-                    maxLength={17}
+                    maxLength={20}
                   />
-                  <p
-                    className={cn(
-                      'mt-1 text-[10px]',
-                      imeiShort ? 'font-medium text-red-600' : 'text-surface-400',
-                    )}
-                  >
-                    Nomor tampil saat dial *#06# di HP. {imei.length}/17 digit
-                    {imei.length > 0 && imei.length < 15 && (
-                      <> — masih kurang {15 - imei.length} digit</>
-                    )}
+                  <p className="mt-1 text-[10px] text-surface-400">
+                    Format nomor digital divalidasi oleh supplier (biasanya 15 digit, cek *#06# di HP).
                   </p>
                 </div>
               )}
@@ -357,13 +361,21 @@ function OrderModal({
 
               {service.requiresSn && (
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-ink">Serial Number</label>
+                  <label className="mb-1 block text-xs font-medium text-ink">
+                    Serial Number
+                    {snNeeded && <span className="text-red-500"> *</span>}
+                  </label>
                   <Input
                     type="text"
+                    placeholder="Masukkan Serial Number perangkat"
                     value={serialNumber}
-                    onChange={(e) => setSerialNumber(e.target.value)}
-                    className="h-10 text-sm"
+                    onChange={(e) => setSerialNumber(e.target.value.trimStart())}
+                    className="h-10 font-mono text-sm"
+                    maxLength={100}
                   />
+                  <p className="mt-1 text-[10px] text-surface-400">
+                    Format SN divalidasi oleh supplier, bukan IndoTeknizi.
+                  </p>
                 </div>
               )}
 
@@ -391,9 +403,7 @@ function OrderModal({
 
               {!canSubmit && !submitting && (
                 <p className="text-center text-[11px] text-amber-700">
-                  {imeiShort
-                    ? 'Lengkapi nomor perangkat minimal 15 digit untuk melanjutkan.'
-                    : 'Lengkapi semua field wajib sebelum submit.'}
+                  Lengkapi semua field wajib sebelum submit.
                 </p>
               )}
 
@@ -600,12 +610,12 @@ export default function ImeiPage() {
               <Smartphone className="h-6 w-6" />
             </div>
             <h2 className="text-lg font-semibold text-ink">
-              Layanan Perangkat tidak tersedia
+              Layanan Digital tidak tersedia
             </h2>
             <p className="mt-2 text-sm text-surface-600">
               {role === 'TEKNISI'
-                ? 'Menu Layanan Perangkat sedang dinonaktifkan oleh admin. Silakan cek kembali nanti.'
-                : 'Menu Layanan Perangkat hanya tersedia untuk teknisi terdaftar dan administrator platform.'}
+                ? 'Menu Layanan Digital sedang dinonaktifkan oleh admin. Silakan cek kembali nanti.'
+                : 'Menu Layanan Digital hanya tersedia untuk teknisi terdaftar dan administrator platform.'}
             </p>
             <div className="mt-5 flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
               <Button variant="primary" size="sm" onClick={() => router.push('/')}>
@@ -645,7 +655,7 @@ export default function ImeiPage() {
               <div className="max-w-2xl">
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-primary-200/60 bg-primary-50/70 px-3 py-1 text-[11px] font-medium text-primary-700 backdrop-blur-md">
                   <Smartphone className="h-3 w-3" />
-                  Layanan Perangkat & Cek Status
+                  Layanan Digital & Cek Status
                 </span>
                 <h1 className="mt-3 text-balance text-[28px] font-semibold leading-[1.05] tracking-tightest text-ink sm:text-4xl lg:text-[44px]">
                   Layanan HP

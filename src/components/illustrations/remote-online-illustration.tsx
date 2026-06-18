@@ -87,7 +87,8 @@ export function RemoteOnlineIllustration({ className }: Props) {
             style={{
               offsetPath: 'path("M 110 175 Q 200 120 290 175")',
               filter: 'drop-shadow(0 0 6px rgba(16,185,129,0.7))',
-            }}
+              offsetDistance: '0%',
+            } as any}
             animate={{
               offsetDistance: ['0%', '100%'],
             }}

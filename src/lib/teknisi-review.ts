@@ -26,6 +26,23 @@ export type TeknisiReviewStatsDto = {
   breakdown: Array<{ stars: number; percent: number; count: number }>
 }
 
+export type TeknisiReviewSource = 'KONSULTASI' | 'INSPEKSI' | 'MARKETPLACE'
+
+export type TeknisiUnifiedReviewDto = {
+  id: string
+  source: TeknisiReviewSource
+  sourceLabel: string
+  authorId: string
+  authorName: string
+  authorImage: string | null
+  rating: number
+  comment: string
+  contextLabel: string
+  createdAt: string
+  dateLabel: string
+  verified: true
+}
+
 export function computeReviewStats(
   reviews: Array<{ rating: number }>,
 ): TeknisiReviewStatsDto {

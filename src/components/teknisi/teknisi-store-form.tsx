@@ -13,6 +13,12 @@ import {
 } from '@/lib/store-content'
 import { defaultOperatingHours, type StoreOperatingHours } from '@/lib/store-operating-hours'
 import { OperatingHoursEditor } from './operating-hours-editor'
+import {
+  StoreGalleryEditor,
+  buildStoreGalleryFormData,
+  slotsFromGallery,
+  type StoreGallerySlot,
+} from './store-gallery-editor'
 import { Plus, Trash2, ChevronUp, ChevronDown } from '@/lib/icons'
 
 export type TeknisiStoreFormValues = {
@@ -27,6 +33,7 @@ export type TeknisiStoreFormValues = {
   journeyIntro: string
   layanan: string[]
   journey: StoreJourneyMilestone[]
+  gallery: string[]
 }
 
 export const defaultStoreFormValues: TeknisiStoreFormValues = {
@@ -42,6 +49,7 @@ export const defaultStoreFormValues: TeknisiStoreFormValues = {
     'Dari servis online hingga toko fisik — perjalanan membangun kepercayaan pelanggan satu per satu.',
   layanan: ['Service HP', 'Jual Beli', 'Unlock', 'Flashing'],
   journey: DEFAULT_STORE_JOURNEY.map((m) => ({ ...m })),
+  gallery: [],
 }
 
 function moveItem<T>(list: T[], from: number, to: number): T[] {
@@ -300,6 +308,9 @@ export function TeknisiStoreForm({
   error: string | null
 }) {
   const [form, setForm] = useState(initial)
+  const [gallerySlots, setGallerySlots] = useState<StoreGallerySlot[]>(() =>
+    slotsFromGallery(initial.gallery),
+  )
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -329,6 +340,8 @@ export function TeknisiStoreForm({
 
     const coverInput = (e.target as HTMLFormElement).elements.namedItem('cover') as HTMLInputElement
     if (coverInput?.files?.[0]) fd.append('cover', coverInput.files[0])
+
+    buildStoreGalleryFormData(gallerySlots, fd)
 
     await onSubmit(fd)
   }
@@ -377,6 +390,13 @@ export function TeknisiStoreForm({
                 <Input type="file" name="cover" accept="image/jpeg,image/png,image/webp,image/gif" />
                 <p className="mt-1 text-[11px] text-surface-500">Banner di bagian atas halaman detail toko.</p>
               </div>
+            </div>
+          </section>
+
+          <section className="space-y-4 border-t border-surface-100 pt-6">
+            <h3 className="text-sm font-semibold text-ink">Galeri &amp; suasana</h3>
+            <div className="grid gap-4 md:grid-cols-2">
+              <StoreGalleryEditor slots={gallerySlots} onChange={setGallerySlots} />
             </div>
           </section>
 

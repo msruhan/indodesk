@@ -12,6 +12,7 @@ const consultationServiceSchema = z.object({
   duration: z.string().max(40).optional(),
   price: z.number().int().min(0).nullable().optional(),
   popular: z.boolean().optional(),
+  requiresRemote: z.boolean().optional(),
 })
 
 const patchSchema = z.object({

@@ -1,7 +1,17 @@
 import 'server-only'
 
+import path from 'node:path'
+import { createRequire } from 'node:module'
 import PDFDocument from 'pdfkit'
 import type { ChecklistItemResult } from '@/lib/inspection-checklist'
+
+const require = createRequire(import.meta.url)
+// Turbopack can return a numeric module id from require.resolve() during build evaluation.
+// Coerce to string so node:path receives the correct type.
+const resolvedPdfkitPkg = require.resolve('pdfkit/package.json') as unknown
+const pdfkitPkgPath = typeof resolvedPdfkitPkg === 'string' ? resolvedPdfkitPkg : String(resolvedPdfkitPkg)
+const pdfkitDataDir = path.join(path.dirname(pdfkitPkgPath), 'js', 'data')
+process.env.PDFKIT_FONT_PATH = pdfkitDataDir
 
 export type InspectionCertificateInput = {
   certificateNumber: string

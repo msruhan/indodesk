@@ -3,6 +3,7 @@ import { UserRole } from '@prisma/client'
 import { hash } from 'bcryptjs'
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
+import { logAdminGovernance } from '@/lib/admin-audit'
 import { serializeAdminUser } from '@/lib/admin-user-serializer'
 
 export const dynamic = 'force-dynamic'
@@ -33,7 +34,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const { error } = await requireApiRole(['ADMIN'])
+  const { session, error } = await requireApiRole(['ADMIN'])
   if (error) return error
 
   try {
@@ -65,6 +66,15 @@ export async function POST(req: Request) {
     })
 
     await prisma.wallet.create({ data: { userId: user.id, balance: 0 } })
+
+    logAdminGovernance({
+      req,
+      actor: session.user,
+      action: 'admin.user.create',
+      summary: `Admin membuat user ${user.email}`,
+      severity: 'WARNING',
+      target: { type: 'user', id: user.id, label: user.email },
+    })
 
     return apiSuccess(serializeAdminUser(user), 201)
   } catch (e) {

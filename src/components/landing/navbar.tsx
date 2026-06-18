@@ -53,14 +53,14 @@ const ALL_NAV_GROUPS = [
     items: [
       { href: '/marketplace', label: 'Shop' },
       { href: '/topup', label: 'Topup' },
-      { href: '/imei', label: 'Layanan Perangkat', requireImei: true },
+      { href: '/imei', label: 'Layanan Digital', requireImei: true },
     ],
   },
   {
     label: 'Layanan',
     items: [
       { href: '/teknisi', label: 'Teknisi' },
-      { href: '/remote', label: 'Remote', requireRemote: true },
+      { href: '/remote', label: 'IndoDesk', requireRemote: true },
       { href: '/inspeksi', label: 'Inspeksi', requireInspection: true },
     ],
   },
@@ -90,14 +90,14 @@ const ALL_MOBILE_NAV_SECTIONS: {
     items: [
       { href: '/marketplace', label: 'Shop', icon: ShoppingBag },
       { href: '/topup', label: 'Top Up', icon: Zap },
-      { href: '/imei', label: 'Layanan Perangkat', icon: Smartphone, requireImei: true },
+      { href: '/imei', label: 'Layanan Digital', icon: Smartphone, requireImei: true },
     ],
   },
   {
     title: 'Layanan',
     items: [
       { href: '/teknisi', label: 'Teknisi', icon: Users },
-      { href: '/remote', label: 'Remote', icon: Laptop, requireRemote: true },
+      { href: '/remote', label: 'IndoDesk', icon: Laptop, requireRemote: true },
       {
         href: '/inspeksi',
         label: 'Inspeksi',

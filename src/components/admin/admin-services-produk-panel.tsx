@@ -54,7 +54,7 @@ type ProductFormState = {
 
 const emptyForm = (sellerId = ''): ProductFormState => ({
   name: '',
-  category: 'HANDPHONE',
+  category: 'IPHONE',
   price: '',
   description: '',
   stock: '1',

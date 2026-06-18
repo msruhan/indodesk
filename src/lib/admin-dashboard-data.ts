@@ -9,6 +9,8 @@ export type AdminDashboardDto = {
     totalKonsultasi: number
     pendingApprovals: number
     rekberHeld: number
+    pendingWithdraws: number
+    openSecurityAlerts: number
   }
   sparklines: {
     users: number[]
@@ -72,6 +74,8 @@ export async function getAdminDashboardData(): Promise<AdminDashboardDto> {
     pendingStores,
     unverifiedTeknisi,
     rekberHeld,
+    pendingWithdraws,
+    openSecurityAlerts,
     topProducts,
     recentMarketplace,
     recentImei,
@@ -89,6 +93,10 @@ export async function getAdminDashboardData(): Promise<AdminDashboardDto> {
     prisma.teknisiStore.count({ where: { listingStatus: 'PENDING' } }),
     prisma.teknisiProfile.count({ where: { verificationStatus: 'PENDING' } }),
     prisma.rekberTransaction.count({ where: { status: 'HELD' } }),
+    prisma.walletWithdrawRequest.count({
+      where: { status: { in: ['PENDING', 'REJECT_PENDING_RELEASE'] } },
+    }),
+    prisma.walletSecurityAlert.count({ where: { status: 'OPEN' } }),
     prisma.product.findMany({
       where: { soldCount: { gt: 0 } },
       orderBy: { soldCount: 'desc' },
@@ -163,7 +171,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardDto> {
   const totalForMix = totalImei + totalServer + totalMarketplace + totalTopup + totalRekber || 1
   const transactionMix = [
     { name: 'Marketplace', value: Math.round((totalMarketplace / totalForMix) * 100), color: '#8b5cf6' },
-    { name: 'IMEI', value: Math.round((totalImei / totalForMix) * 100), color: '#10b981' },
+    { name: 'Digital', value: Math.round((totalImei / totalForMix) * 100), color: '#10b981' },
     { name: 'Server', value: Math.round((totalServer / totalForMix) * 100), color: '#06b6d4' },
     { name: 'Top Up', value: Math.round((totalTopup / totalForMix) * 100), color: '#f59e0b' },
     { name: 'Rekber', value: Math.round((totalRekber / totalForMix) * 100), color: '#ec4899' },
@@ -176,7 +184,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardDto> {
   const funnel = [
     { stage: 'Kunjungan produk', value: productViews._sum.views ?? 0 },
     { stage: 'Order dibuat', value: totalTransaksi },
-    { stage: 'IMEI/Server sukses', value: imeiSuccess },
+    { stage: 'Digital/Server sukses', value: imeiSuccess },
     { stage: 'Marketplace selesai', value: completedMarketplace },
   ]
 
@@ -224,6 +232,22 @@ export async function getAdminDashboardData(): Promise<AdminDashboardDto> {
     })
   }
 
+  if (pendingWithdraws > 0) {
+    insights.push({
+      title: `${pendingWithdraws} penarikan menunggu proses`,
+      description: 'Review antrian di Manajemen → Saldo → Penarikan (SLA 1×24 jam).',
+      tone: pendingWithdraws > 3 ? 'warning' : 'primary',
+    })
+  }
+
+  if (openSecurityAlerts > 0) {
+    insights.push({
+      title: `${openSecurityAlerts} alert keamanan wallet terbuka`,
+      description: 'Periksa anomali saldo di Manajemen → Saldo → Keamanan.',
+      tone: openSecurityAlerts > 0 ? 'danger' : 'neutral',
+    })
+  }
+
   if (konsultasiDaily[konsultasiDaily.length - 1] > 0) {
     insights.push({
       title: 'Aktivitas konsultasi & remote hari ini',
@@ -248,6 +272,8 @@ export async function getAdminDashboardData(): Promise<AdminDashboardDto> {
       totalKonsultasi: totalKonsultasiAll,
       pendingApprovals,
       rekberHeld,
+      pendingWithdraws,
+      openSecurityAlerts,
     },
     sparklines: {
       users: usersDaily,

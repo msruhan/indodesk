@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -161,6 +162,7 @@ export function ServerOrderModal({
   service: PublicServerService
   onClose: () => void
 }) {
+  const router = useRouter()
   const [fieldValues, setFieldValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(service.fieldDefs.map((f) => [f.key, ''])),
   )
@@ -168,7 +170,9 @@ export function ServerOrderModal({
   const [success, setSuccess] = useState(false)
   const [orderCode, setOrderCode] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const ordersHref = '/user/orders/imei?tab=server'
+  const ordersHref = orderCode.trim()
+    ? `/teknisi/orders?tab=server&q=${encodeURIComponent(orderCode.trim())}`
+    : '/teknisi/orders?tab=server'
 
   const canSubmit = useMemo(() => {
     if (service.fieldDefs.length === 0) return false
@@ -255,11 +259,14 @@ export function ServerOrderModal({
               </div>
             </div>
             <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
-              <Link href={ordersHref}>
-                <Button variant="primary" size="sm" className="w-full bg-amber-600 hover:bg-amber-700 sm:w-auto">
-                  Lihat riwayat order
-                </Button>
-              </Link>
+              <Button
+                variant="primary"
+                size="sm"
+                className="w-full bg-amber-600 hover:bg-amber-700 sm:w-auto"
+                onClick={() => router.push(ordersHref)}
+              >
+                Lihat riwayat order
+              </Button>
               <Button variant="ghost" size="sm" onClick={onClose}>
                 Tutup
               </Button>

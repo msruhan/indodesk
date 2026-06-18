@@ -31,7 +31,7 @@ export function CatalogTabs({ value, onChange, imeiCount, serverCount, className
             : 'text-surface-600 hover:bg-surface-50 hover:text-ink',
         )}
       >
-        Layanan Perangkat
+        Digital Services
         {imeiCount !== undefined && (
           <span
             className={cn(

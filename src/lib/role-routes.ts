@@ -48,10 +48,13 @@ const TEKNISI_WORKSPACE_SEGMENTS = new Set([
   'pesanan',
   'orders',
   'remote',
+  'rekber',
   'konsultasi',
   'inspeksi',
   'toko',
   'help',
+  'bantuan',
+  'tickets',
   'analitik',
   'chat',
   'profil',
@@ -112,17 +115,17 @@ export function profileMenuItemsForRole(
   if (role === 'TEKNISI') {
     return [
       { label: 'Marketplace', href: MARKETPLACE_PATH },
-      { label: 'Akun Saya', href: '/teknisi/settings' },
+      { label: 'Profil', href: '/teknisi/settings' },
       { label: 'Analitik', href: '/teknisi/analitik' },
     ]
   }
   if (role === 'USER' && pathname && isUserDashboardZone(pathname)) {
     return [
       { label: 'Marketplace', href: MARKETPLACE_PATH },
-      { label: 'Akun Saya', href: accountPathForRole('USER') },
+      { label: 'Profil', href: accountPathForRole('USER') },
     ]
   }
-  return [{ label: 'Akun Saya', href: accountPathForRole(role) }]
+  return [{ label: 'Profil', href: accountPathForRole(role) }]
 }
 
 type BottomNavItemLike = {
@@ -201,7 +204,7 @@ export function publicProfileMenuItemsForRole(
       : { label: 'Market', href: MARKETPLACE_PATH }
     return [
       marketOrDashboard,
-      { label: 'Akun Saya', href: '/teknisi/settings' },
+      { label: 'Profil', href: '/teknisi/settings' },
       { label: 'Analitik', href: '/teknisi/analitik' },
     ]
   }
@@ -210,6 +213,9 @@ export function publicProfileMenuItemsForRole(
   if (onPublic) {
     items.push({ label: 'Dashboard', href: homePathForRole(role) })
   }
-  items.push({ label: 'Akun Saya', href: accountPathForRole(role) })
+  items.push({
+    label: 'Profil',
+    href: accountPathForRole(role),
+  })
   return items
 }

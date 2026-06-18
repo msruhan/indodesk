@@ -60,3 +60,19 @@ export function parseProductImagesField(
   if (parsed.length > 0) return parsed
   return productImagesFromLegacy(product.image)
 }
+
+export const MAX_THREE_UTOOLS_IMAGES = 4
+
+/**
+ * Parse threeUtoolsImages JSON field (same shape as product images).
+ * Used for iPhone/iPad hardware quality screenshots from 3uTools.
+ */
+export function parseThreeUtoolsImagesField(raw: unknown): ProductImageEntry[] {
+  if (!Array.isArray(raw)) return []
+  const out: ProductImageEntry[] = []
+  for (const item of raw) {
+    const parsed = entrySchema.safeParse(item)
+    if (parsed.success) out.push(parsed.data)
+  }
+  return out.slice(0, MAX_THREE_UTOOLS_IMAGES)
+}

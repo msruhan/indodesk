@@ -1,4 +1,5 @@
 import { apiError, apiSuccess } from '@/lib/api-auth'
+import { validateCronSecret } from '@/lib/cron-auth'
 import { processImeiOrderQueue } from '@/lib/imei-order-worker'
 import { processServerOrderQueue } from '@/lib/server-order-worker'
 
@@ -14,15 +15,8 @@ export const maxDuration = 60
  * instrumentation scheduler otomatis — tidak perlu panggil manual.
  */
 async function handle(req: Request) {
-  const secret = process.env.CRON_SECRET
-  if (!secret) {
-    return apiError('CRON_SECRET belum dikonfigurasi di server', 503)
-  }
-
-  const auth = req.headers.get('authorization')
-  if (auth !== `Bearer ${secret}`) {
-    return apiError('Unauthorized', 401)
-  }
+  const cronAuth = validateCronSecret(req)
+  if (cronAuth) return cronAuth
 
   try {
     const [imei, server] = await Promise.all([
@@ -30,13 +24,13 @@ async function handle(req: Request) {
       processServerOrderQueue(),
     ])
     return apiSuccess({
-      message: 'IMEI & server order queues processed',
+      message: 'Digital & server order queues processed',
       imei,
       server,
     })
   } catch (e) {
     console.error('[CRON_IMEI_ORDERS]', e)
-    return apiError('Gagal memproses antrian order IMEI', 500)
+    return apiError('Gagal memproses antrian order digital', 500)
   }
 }
 

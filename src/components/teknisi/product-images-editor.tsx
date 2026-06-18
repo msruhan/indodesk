@@ -16,9 +16,15 @@ export type ProductImageSlot = {
 type ProductImagesEditorProps = {
   slots: ProductImageSlot[]
   onChange: (slots: ProductImageSlot[]) => void
+  /** Tampilkan judul "Foto Produk". Nonaktifkan jika blok induk sudah punya judul sendiri. */
+  showTitle?: boolean
 }
 
-export function ProductImagesEditor({ slots, onChange }: ProductImagesEditorProps) {
+export function ProductImagesEditor({
+  slots,
+  onChange,
+  showTitle = true,
+}: ProductImagesEditorProps) {
   const inputRef = useRef<HTMLInputElement>(null)
 
   const setPrimary = (key: string) => {
@@ -61,8 +67,15 @@ export function ProductImagesEditor({ slots, onChange }: ProductImagesEditorProp
 
   return (
     <div className="md:col-span-2">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <label className="text-sm font-medium text-surface-700">Foto Produk</label>
+      <div
+        className={cn(
+          'mb-2 flex items-center gap-2',
+          showTitle ? 'justify-between' : 'justify-end',
+        )}
+      >
+        {showTitle && (
+          <label className="text-sm font-medium text-surface-700">Foto Produk</label>
+        )}
         <span className="text-[11px] text-surface-500">
           {slots.length}/{MAX_PRODUCT_IMAGES} foto · pilih foto utama
         </span>
@@ -161,12 +174,13 @@ export function slotsFromProduct(images: { url: string; isPrimary?: boolean }[])
 export function buildProductImagesFormData(
   slots: ProductImageSlot[],
   fd: FormData,
+  prefix = '',
 ): void {
   const order: Array<{ kind: 'url'; url: string } | { kind: 'file' }> = []
 
   for (const slot of slots) {
     if (slot.file) {
-      fd.append('images', slot.file)
+      fd.append(`${prefix}images`, slot.file)
       order.push({ kind: 'file' })
     } else if (slot.url) {
       order.push({ kind: 'url', url: slot.url })
@@ -174,6 +188,6 @@ export function buildProductImagesFormData(
   }
 
   const primaryIndex = slots.findIndex((s) => s.isPrimary)
-  fd.append('imageOrder', JSON.stringify(order))
-  fd.append('primaryIndex', String(primaryIndex >= 0 ? primaryIndex : 0))
+  fd.append(`${prefix}imageOrder`, JSON.stringify(order))
+  fd.append(`${prefix}primaryIndex`, String(primaryIndex >= 0 ? primaryIndex : 0))
 }

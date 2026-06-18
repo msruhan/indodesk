@@ -11,6 +11,7 @@ export type ProfileConsultationService = {
   duration: string
   price: number | null
   popular: boolean
+  requiresRemote: boolean
 }
 
 export type TeknisiProfileContent = {
@@ -62,6 +63,7 @@ export function defaultConsultationServices(
       duration: '30 menit',
       price: basePrice,
       popular: true,
+      requiresRemote: false,
     },
   ]
   const seen = new Set(['konsultasi umum'])
@@ -79,6 +81,7 @@ export function defaultConsultationServices(
       duration: '30–60 menit',
       price: basePrice,
       popular: false,
+      requiresRemote: false,
     })
   }
   return services
@@ -104,6 +107,7 @@ function parseConsultationServices(raw: unknown): ProfileConsultationService[] {
       price:
         price !== null && Number.isFinite(price) && price >= 0 ? Math.round(price) : null,
       popular: row.popular === true,
+      requiresRemote: row.requiresRemote === true,
     })
     if (out.length >= 12) break
   }
@@ -193,6 +197,7 @@ export function emptyConsultationService(basePrice: number): ProfileConsultation
     duration: '30 menit',
     price: basePrice,
     popular: false,
+    requiresRemote: false,
   }
 }
 
@@ -224,6 +229,7 @@ export function parseConsultationServicesFromProfile(raw: unknown): ProfileConsu
       price:
         price !== null && Number.isFinite(price) && price >= 0 ? Math.round(price) : null,
       popular: row.popular === true,
+      requiresRemote: row.requiresRemote === true,
     })
     if (out.length >= 12) break
   }

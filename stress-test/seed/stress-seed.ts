@@ -74,6 +74,9 @@ async function main() {
       where: { userId: user.id },
       update: {
         verificationStatus: 'APPROVED',
+        isVerified: true,
+        price: 50_000,
+        specialty: ['Unlock', 'Flashing'],
         telegramChatId: isLinkedTelegram ? `99900000${i}` : null,
         telegramUsername: isLinkedTelegram ? `stress_teknisi_${i}` : null,
         telegramLinkedAt: isLinkedTelegram ? new Date() : null,
@@ -81,6 +84,9 @@ async function main() {
       create: {
         userId: user.id,
         verificationStatus: 'APPROVED',
+        isVerified: true,
+        price: 50_000,
+        specialty: ['Unlock', 'Flashing'],
         telegramChatId: isLinkedTelegram ? `99900000${i}` : null,
         telegramUsername: isLinkedTelegram ? `stress_teknisi_${i}` : null,
         telegramLinkedAt: isLinkedTelegram ? new Date() : null,
@@ -139,11 +145,26 @@ async function main() {
     console.warn('   ⚠️  stress-teknisi-1 not found, skipping product seed')
   }
 
+  // ---- ADMIN (functional test runner) ----
+  const stressAdminEmail = 'stress-admin-1@indoteknizi.test'
+  await prisma.user.upsert({
+    where: { email: stressAdminEmail },
+    update: { role: UserRole.ADMIN },
+    create: {
+      email: stressAdminEmail,
+      name: 'Stress Admin 1',
+      password: passwordHash,
+      role: UserRole.ADMIN,
+      phone: '+62 802-0000-0001',
+    },
+  })
+
   console.log('✅ Stress test seed complete')
   console.log(`   Users:    ${USER_COUNT}  (stress-user-1..${USER_COUNT}@indoteknizi.test)`)
   console.log(`   Teknisi:  ${TEKNISI_COUNT}  (stress-teknisi-1..${TEKNISI_COUNT}@indoteknizi.test)`)
   console.log(`   Products: ${STRESS_PRODUCT_COUNT}  (stock ${STRESS_PRODUCT_STOCK} each, sold by stress-teknisi-1)`)
   console.log(`   With Telegram: ${TEKNISI_WITH_TELEGRAM}`)
+  console.log(`   Admin:    stress-admin-1@indoteknizi.test`)
   console.log(`   Password (semua): ${STRESS_PASSWORD}`)
   console.log(`   Wallet user: Rp ${STARTING_BALANCE.toLocaleString('id-ID')}`)
 }

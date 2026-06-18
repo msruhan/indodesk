@@ -1,6 +1,8 @@
 import { z } from 'zod'
 import { apiError, apiSuccess, requireApiAuth } from '@/lib/api-auth'
 import { processTopupCheckout } from '@/lib/topup-checkout'
+import { requireEmailVerifiedUser } from '@/lib/require-email-verified'
+import { RATE_LIMITS, withRateLimit, rateLimitResponse } from '@/lib/rate-limit-store'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,11 +28,25 @@ const ERROR_MAP: Record<string, { message: string; status: number }> = {
   WALLET_NOT_FOUND: { message: 'Wallet tidak ditemukan', status: 400 },
   INSUFFICIENT_BALANCE: { message: 'Saldo tidak cukup. Top-up saldo dulu ya.', status: 402 },
   INVALID_TOTAL: { message: 'Total pembayaran tidak valid', status: 400 },
+  INVALID_MSISDN: {
+    message: 'Nomor tujuan tidak valid. Gunakan format 08xxxxxxxxxx.',
+    status: 400,
+  },
+  ADMIN_NOT_ALLOWED: {
+    message: 'Admin tidak dapat checkout topup. Gunakan akun user.',
+    status: 403,
+  },
 }
 
 export async function POST(req: Request) {
   const { session, error } = await requireApiAuth()
   if (error) return error
+
+  const emailGate = await requireEmailVerifiedUser(session.user.id)
+  if (!emailGate.ok) return emailGate.error
+
+  const rl = await withRateLimit(req, ['checkout', 'topup', session.user.id], RATE_LIMITS.checkout)
+  if (!rl.allowed) return rateLimitResponse(rl)
 
   let body: unknown
   try {
@@ -45,7 +61,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const order = await processTopupCheckout(
+    const result = await processTopupCheckout(
       session.user.id,
       session.user.name,
       session.user.email,
@@ -56,7 +72,7 @@ export async function POST(req: Request) {
         promoCode: parsed.data.promoCode,
       },
     )
-    return apiSuccess({ order }, 201)
+    return apiSuccess(result, 201)
   } catch (e) {
     const code = e instanceof Error ? e.message : ''
     const mapped = ERROR_MAP[code]

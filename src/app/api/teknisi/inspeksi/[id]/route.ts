@@ -30,11 +30,12 @@ export async function GET(
 
   const { id } = await params
   try {
-    const row = await prisma.inspectionOrder.findFirst({
-      where: { id, teknisiId: session.user.id },
+    const row = await prisma.inspectionOrder.findUnique({
+      where: { id },
       include: includeOrder,
     })
     if (!row) return apiError('Inspeksi tidak ditemukan', 404)
+    if (row.teknisiId !== session.user.id) return apiError('Akses ditolak', 403)
     return apiSuccess(serializeInspectionOrder(row, 'TEKNISI'))
   } catch (e) {
     console.error('[TEKNISI_INSPEKSI_ID_GET]', e)
@@ -63,11 +64,14 @@ export async function PATCH(
   }
 
   try {
-    const existing = await prisma.inspectionOrder.findFirst({
-      where: { id, teknisiId: session.user.id },
+    const existing = await prisma.inspectionOrder.findUnique({
+      where: { id },
       include: { user: { select: { id: true, name: true, email: true, image: true } } },
     })
     if (!existing) return apiError('Inspeksi tidak ditemukan', 404)
+    if (existing.teknisiId !== session.user.id) {
+      return apiError('Akses ditolak', 403)
+    }
 
     const now = new Date()
     const { action } = parsed.data

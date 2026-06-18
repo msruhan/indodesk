@@ -50,7 +50,7 @@ function SyncDropdown({
               onClick={() => { setOpen(false); onSyncImei() }}
             >
               <Unlock className="h-3.5 w-3.5" />
-              Sync IMEI Services
+              Sync Digital Services
             </button>
             <button
               className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[11px] font-medium text-surface-700 hover:bg-emerald-50 hover:text-emerald-700"
@@ -133,7 +133,7 @@ function SyncModal({
   const importEndpoint = syncType === 'server'
     ? `/api/admin/imei/apis/${apiId}/import-server`
     : `/api/admin/imei/apis/${apiId}/import`
-  const typeLabel = syncType === 'server' ? 'Server' : 'IMEI'
+  const typeLabel = syncType === 'server' ? 'Server' : 'Digital'
 
   useEffect(() => {
     const doSync = async () => {
@@ -284,7 +284,7 @@ function SyncModal({
             <p className="text-sm font-medium text-red-700">{error}</p>
             <p className="mt-1 text-xs text-red-500">
               {error.includes('tidak memiliki layanan Server') ||
-              error.includes('IMEI saja') ||
+              error.includes('digital saja') ||
               error.includes('SERVICETYPE') ||
               error.includes('imeiservicelist')
                 ? 'Ini batasan akun di panel supplier, bukan salah kredensial.'
@@ -506,7 +506,7 @@ function ApiFormModal({
               {isEdit ? 'Edit API Provider' : 'Tambah API Provider'}
             </h3>
             <p className="mt-0.5 text-xs text-surface-500">
-              {isEdit ? 'Perbarui kredensial supplier IMEI' : 'Hubungkan ke supplier IMEI service'}
+              {isEdit ? 'Perbarui kredensial supplier digital' : 'Hubungkan ke supplier digital service'}
             </p>
           </div>
           <button onClick={onClose} className="rounded-lg p-1.5 text-surface-400 hover:bg-surface-100 hover:text-ink">
@@ -798,7 +798,7 @@ export function AdminImeiApiPanel() {
               <Globe className="mx-auto h-6 w-6 text-surface-300" />
               <p className="mt-3 text-sm font-semibold text-ink">Belum ada API provider</p>
               <p className="mt-1 text-xs text-surface-500">
-                Tambahkan API supplier untuk mulai menyediakan layanan IMEI.
+                Tambahkan API supplier untuk mulai menyediakan layanan digital.
               </p>
             </div>
           )}

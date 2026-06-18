@@ -69,7 +69,8 @@ export async function seedPlatformContent(prisma: PrismaClient) {
       { key: 'support_email', value: s.supportEmail },
       { key: 'support_phone', value: s.supportPhone },
       { key: 'admin_email', value: s.adminEmail },
-      { key: 'fee_percent', value: String(s.feePercent) },
+      { key: 'buyer_fee_percent', value: String(s.buyerFeePercent) },
+      { key: 'seller_fee_percent', value: String(s.sellerFeePercent) },
       { key: 'maintenance_mode', value: s.maintenanceMode ? 'true' : 'false' },
       {
         key: 'imei_service_enabled',

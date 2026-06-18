@@ -15,6 +15,14 @@ import {
   type ProductForCart,
   productToCartItem,
 } from '@/lib/cart'
+import type { ProductCouponConfig } from '@/lib/product-coupon'
+
+export type CartProductSync = {
+  id: string
+  price: number
+  coupon: ProductCouponConfig | null
+  available: boolean
+}
 
 interface CartContextType {
   items: CartItem[]
@@ -24,6 +32,7 @@ interface CartContextType {
   updateQuantity: (id: string, delta: number) => void
   removeItem: (id: string) => void
   clearCart: () => void
+  syncProducts: (products: CartProductSync[]) => void
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined)
@@ -56,9 +65,32 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const idx = prev.findIndex((i) => i.id === incoming.id && i.type === incoming.type)
       if (idx === -1) return [...prev, incoming]
       return prev.map((item, i) =>
-        i === idx ? { ...item, quantity: item.quantity + quantity } : item,
+        i === idx
+          ? {
+              ...item,
+              quantity: item.quantity + quantity,
+              price: incoming.price,
+              coupon: incoming.coupon ?? item.coupon ?? null,
+            }
+          : item,
       )
     })
+  }, [])
+
+  const syncProducts = useCallback((products: CartProductSync[]) => {
+    if (products.length === 0) return
+    const byId = new Map(products.map((p) => [p.id, p]))
+    setItems((prev) =>
+      prev.map((item) => {
+        const sync = byId.get(item.id)
+        if (!sync || item.type === 'topup') return item
+        return {
+          ...item,
+          price: sync.available ? sync.price : item.price,
+          coupon: sync.coupon,
+        }
+      }),
+    )
   }, [])
 
   const updateQuantity = useCallback((id: string, delta: number) => {
@@ -89,8 +121,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       updateQuantity,
       removeItem,
       clearCart,
+      syncProducts,
     }),
-    [items, itemCount, hydrated, addItem, updateQuantity, removeItem, clearCart],
+    [items, itemCount, hydrated, addItem, updateQuantity, removeItem, clearCart, syncProducts],
   )
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>

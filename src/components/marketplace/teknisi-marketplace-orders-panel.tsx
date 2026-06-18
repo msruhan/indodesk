@@ -31,6 +31,7 @@ const statusVariant: Record<
   paid: 'warning',
   processing: 'default',
   shipped: 'default',
+  disputed: 'danger',
   completed: 'success',
   cancelled: 'danger',
   refunded: 'danger',
@@ -235,7 +236,7 @@ export function TeknisiMarketplaceOrdersPanel({ variant = 'embedded' }: Props) {
                         disabled={actingId === order.id}
                         onClick={() => void advance(order.id)}
                       >
-                        {order.nextStatus === 'PROCESSING' ? 'Proses' : 'Selesai'}
+                        {order.nextStatus === 'PROCESSING' ? 'Proses' : 'Lanjutkan'}
                       </Button>
                     )}
                     {showTracking && (

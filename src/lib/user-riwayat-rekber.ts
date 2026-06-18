@@ -9,6 +9,8 @@ function mapRekberStatus(status: RekberDto['status']): RiwayatTxStatus {
     case 'pending':
       return 'pending'
     case 'held':
+    case 'processing':
+    case 'shipped':
       return 'in-progress'
     case 'disputed':
       return 'in-progress'

@@ -2,6 +2,7 @@ import 'server-only'
 
 import { prisma } from '@/lib/db'
 import { categoryLabel } from '@/lib/product-catalog'
+import { couponFromProduct, formatCouponLabel } from '@/lib/product-coupon'
 import {
   getPrimaryProductImageUrl,
   parseProductImagesField,
@@ -71,6 +72,10 @@ export async function loadApprovalDetail(
       views: p.views,
       soldCount: p.soldCount,
       createdAt: p.createdAt.toISOString(),
+      pendingChangeSummary: p.pendingChangeSummary,
+      couponCode: p.couponCode,
+      couponDiscountType: p.couponDiscountType,
+      couponDiscountValue: p.couponDiscountValue != null ? Number(p.couponDiscountValue) : null,
       seller: {
         id: p.seller.id,
         name: p.seller.name,

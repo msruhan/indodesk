@@ -49,7 +49,7 @@ export function imeiOrderToRiwayatTransaction(order: PublicImeiOrder): RiwayatTr
     id: `imei-${order.id}`,
     type: 'perangkat',
     title: order.serviceName,
-    subtitle: `${order.orderCode} · IMEI ${order.imei}`,
+    subtitle: `${order.orderCode} · Digital ${order.imei}`,
     amount: order.price,
     status: mapOrderStatus(order.status),
     date: order.createdAt,

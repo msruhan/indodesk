@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
+import 'leaflet/dist/leaflet.css'
 import type { OrderTrackingDto } from '@/lib/order-tracking-sync'
 
-/** Koordinat kota Indonesia (lat, lng) */
+/** Koordinat kota / hub kurir Indonesia (lat, lng) */
 const CITY_COORDS: Record<string, [number, number]> = {
   'jakarta': [-6.2088, 106.8456],
   'jakarta selatan': [-6.2615, 106.8106],
@@ -38,22 +39,87 @@ const CITY_COORDS: Record<string, [number, number]> = {
   'jne hub bandung': [-6.9175, 107.6191],
   'jne cabang bandung': [-6.9300, 107.6100],
   'jne gateway jakarta': [-6.1900, 106.8200],
+  // Kode hub kurir (JNT, JNE, dll.) — BinderByte sering kosongkan field location
+  'jkt': [-6.2088, 106.8456],
+  'jkt_gateway': [-6.1900, 106.8200],
+  'dpk': [-6.4025, 106.7942],
+  'dpk_gateway': [-6.4025, 106.7942],
+  'bdg': [-6.9175, 107.6191],
+  'bdg_gateway': [-6.9175, 107.6191],
+  'sby': [-7.2575, 112.7521],
+  'cgk': [-6.1256, 106.6558],
+  'infinity_bizpark': [-6.1783, 106.6319],
+}
+
+/** Ambil lokasi dari field location atau teks deskripsi event kurir */
+function extractTrackingLocation(event: {
+  location: string | null
+  description: string
+}): string | null {
+  const direct = event.location?.trim()
+  if (direct) return direct
+
+  const desc = event.description.trim()
+  if (!desc) return null
+
+  const patterns = [
+    /(?:sampai di|dikirimkan ke|diterima oleh|menuju ke?|ke)\s+([A-Z0-9_]+)/i,
+    /\b([A-Z]{2,}_[A-Z0-9_]+)\b/,
+  ]
+  for (const pattern of patterns) {
+    const match = desc.match(pattern)
+    if (match?.[1]) return match[1].trim()
+  }
+  return null
 }
 
 function findCityCoord(location: string): [number, number] | null {
+  const normalized = location.toLowerCase().trim().replace(/\s+/g, '_')
+  if (CITY_COORDS[normalized]) return CITY_COORDS[normalized]
+
+  const hubPrefix = normalized.split('_')[0]
+  if (CITY_COORDS[hubPrefix]) return CITY_COORDS[hubPrefix]
+
   const lower = location.toLowerCase().trim()
   if (CITY_COORDS[lower]) return CITY_COORDS[lower]
   for (const [key, coord] of Object.entries(CITY_COORDS)) {
     if (lower.includes(key) || key.includes(lower.split(',')[0].trim())) return coord
   }
-  const words = lower.replace(/[^a-z\s]/g, '').split(/\s+/)
+  const words = lower.replace(/[^a-z\s_]/g, '').split(/[\s_]+/)
   for (const word of words) {
-    if (word.length < 4) continue
+    if (word.length < 3) continue
+    if (CITY_COORDS[word]) return CITY_COORDS[word]
     for (const [key, coord] of Object.entries(CITY_COORDS)) {
       if (key.includes(word) || word.includes(key.split(' ')[0])) return coord
     }
   }
   return null
+}
+
+type RoutePoint = { latlng: [number, number]; label: string; loc: string }
+
+function buildRoutePoints(tracking: OrderTrackingDto): RoutePoint[] {
+  const chronological = [...tracking.events].reverse()
+  const allResolved: RoutePoint[] = []
+
+  for (const event of chronological) {
+    const loc = extractTrackingLocation(event)
+    if (!loc) continue
+    const coord = findCityCoord(loc)
+    if (!coord) continue
+    allResolved.push({ latlng: coord, label: loc, loc })
+  }
+
+  const routePoints: RoutePoint[] = []
+  for (const point of allResolved) {
+    const last = routePoints[routePoints.length - 1]
+    if (last) {
+      const dist = Math.hypot(last.latlng[0] - point.latlng[0], last.latlng[1] - point.latlng[1])
+      if (dist < MERGE_DISTANCE_DEG) continue
+    }
+    routePoints.push(point)
+  }
+  return routePoints
 }
 
 const MERGE_DISTANCE_DEG = 0.03 // ~3km — tighter merge to keep distinct stops visible
@@ -68,9 +134,10 @@ export function ShippingMap({ tracking, isDelivered }: Props) {
   const mapInstanceRef = useRef<import('leaflet').Map | null>(null)
   const animFrameRef = useRef<number | null>(null)
   const animTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const routePoints = useMemo(() => buildRoutePoints(tracking), [tracking])
 
   useEffect(() => {
-    if (!mapRef.current || mapInstanceRef.current) return
+    if (!mapRef.current || mapInstanceRef.current || routePoints.length === 0) return
 
     // Dynamic import to avoid SSR issues
     void (async () => {
@@ -84,31 +151,6 @@ export function ShippingMap({ tracking, isDelivered }: Props) {
         iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
         shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
       })
-
-      // Resolve route points
-      const chronological = [...tracking.events].reverse()
-      const locations = chronological.filter((e) => e.location).map((e) => e.location!)
-
-      type Point = { latlng: [number, number]; label: string; loc: string }
-      const allResolved: Point[] = []
-      for (const loc of locations) {
-        const coord = findCityCoord(loc)
-        if (!coord) continue
-        allResolved.push({ latlng: coord, label: loc, loc })
-      }
-
-      // Deduplicate nearby points
-      const routePoints: Point[] = []
-      for (const p of allResolved) {
-        const last = routePoints[routePoints.length - 1]
-        if (last) {
-          const dist = Math.hypot(last.latlng[0] - p.latlng[0], last.latlng[1] - p.latlng[1])
-          if (dist < MERGE_DISTANCE_DEG) continue
-        }
-        routePoints.push(p)
-      }
-
-      if (routePoints.length === 0) return
 
       // Calculate bounds with generous padding so all markers + labels fit
       const lats = routePoints.map((p) => p.latlng[0])
@@ -296,16 +338,18 @@ export function ShippingMap({ tracking, isDelivered }: Props) {
         mapInstanceRef.current = null
       }
     }
-  }, [tracking, isDelivered])
+  }, [tracking, isDelivered, routePoints])
+
+  if (routePoints.length === 0) {
+    return (
+      <div className="flex h-full w-full items-center justify-center rounded-xl bg-surface-50 px-4 text-center text-xs text-surface-500">
+        Peta pelacakan belum tersedia untuk lokasi pengiriman ini
+      </div>
+    )
+  }
 
   return (
     <>
-      {/* Leaflet CSS */}
-      <link
-        rel="stylesheet"
-        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        crossOrigin=""
-      />
       <style>{`
         .shipping-tooltip {
           background: rgba(5,150,105,0.92) !important;

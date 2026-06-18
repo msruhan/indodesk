@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client'
 import { Prisma as PrismaNamespace } from '@prisma/client'
+import { hasWalletLedgerByUser } from '@/lib/wallet/ledger-idempotency'
 
 type TxClient = Prisma.TransactionClient
 
@@ -11,6 +12,8 @@ export async function holdRekberFunds(
   rekberId: string,
   orderCode: string,
 ) {
+  if (await hasWalletLedgerByUser(tx, buyerId, 'ESCROW_HOLD', rekberId)) return
+
   const wallet = await tx.wallet.findUnique({ where: { userId: buyerId } })
   if (!wallet) throw new Error('WALLET_NOT_FOUND')
   if (wallet.balance.lessThan(totalHold)) throw new Error('INSUFFICIENT_BALANCE')
@@ -41,6 +44,8 @@ export async function releaseRekberToSeller(
   rekberId: string,
   orderCode: string,
 ) {
+  if (await hasWalletLedgerByUser(tx, sellerId, 'ESCROW_RELEASE', rekberId)) return
+
   const wallet = await tx.wallet.findUnique({ where: { userId: sellerId } })
   if (!wallet) throw new Error('SELLER_WALLET_NOT_FOUND')
 
@@ -70,6 +75,8 @@ export async function refundRekberToBuyer(
   rekberId: string,
   orderCode: string,
 ) {
+  if (await hasWalletLedgerByUser(tx, buyerId, 'REFUND', rekberId)) return
+
   const wallet = await tx.wallet.findUnique({ where: { userId: buyerId } })
   if (!wallet) throw new Error('WALLET_NOT_FOUND')
 
@@ -89,4 +96,39 @@ export async function refundRekberToBuyer(
       referenceId: rekberId,
     },
   })
+}
+
+/** Partial settlement: refund sebagian ke buyer, sisa nominal ke seller */
+export async function partialRekberSettlement(
+  tx: TxClient,
+  buyerId: string,
+  sellerId: string,
+  refundToBuyer: PrismaNamespace.Decimal,
+  releaseToSeller: PrismaNamespace.Decimal,
+  rekberId: string,
+  orderCode: string,
+) {
+  if (refundToBuyer.greaterThan(0)) {
+    const buyerWallet = await tx.wallet.findUnique({ where: { userId: buyerId } })
+    if (!buyerWallet) throw new Error('WALLET_NOT_FOUND')
+    const buyerBalance = buyerWallet.balance.add(refundToBuyer)
+    await tx.wallet.update({
+      where: { id: buyerWallet.id },
+      data: { balance: buyerBalance },
+    })
+    await tx.walletLedger.create({
+      data: {
+        walletId: buyerWallet.id,
+        type: 'REFUND',
+        amount: refundToBuyer,
+        balance: buyerBalance,
+        description: `Rekber partial refund ${orderCode}`,
+        referenceId: rekberId,
+      },
+    })
+  }
+
+  if (releaseToSeller.greaterThan(0)) {
+    await releaseRekberToSeller(tx, sellerId, releaseToSeller, rekberId, orderCode)
+  }
 }

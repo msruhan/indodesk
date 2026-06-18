@@ -48,6 +48,13 @@ export const createInspectionSchema = z
     },
     { message: 'URL sumber produk tidak valid', path: ['productSourceUrl'] },
   )
+  .refine(
+    (data) => {
+      if (!data.scheduledAt) return true
+      return new Date(data.scheduledAt) > new Date()
+    },
+    { message: 'Jadwal harus di masa depan', path: ['scheduledAt'] },
+  )
 
 export const submitInspectionReportSchema = z.object({
   overallCondition: z.enum(['EXCELLENT', 'GOOD', 'FAIR', 'POOR']),
@@ -55,7 +62,12 @@ export const submitInspectionReportSchema = z.object({
   checklist: z.array(checklistItemSchema).min(1),
   findings: z.string().min(10).max(5000),
   suggestions: z.string().max(2000).optional(),
-  photoUrls: z.array(inspectionPhotoUrlSchema).max(20).optional().default([]),
+  photoUrls: z
+    .array(inspectionPhotoUrlSchema)
+    .min(3, 'Minimal 3 foto bukti wajib diunggah')
+    .max(20)
+    .optional()
+    .default([]),
 })
 
 export const rateInspectionSchema = z.object({

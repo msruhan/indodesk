@@ -1,6 +1,12 @@
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
-import { DhruFusionClient, DhruFusionProClient, isImeiProProduct } from '@/lib/dhru-fusion'
+import { decryptImeiApiKey } from '@/lib/crypto/imei-api-secret'
+import {
+  DhruFusionClient,
+  DhruFusionProClient,
+  isClassicDhruApiKey,
+  isImeiProProduct,
+} from '@/lib/dhru-fusion'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,14 +28,21 @@ export async function POST(
     if (!api) return apiError('API tidak ditemukan', 404)
     if (api.status !== 'ACTIVE') return apiError('API tidak aktif', 400)
 
-    // Try Pro API first (REST + Bearer Token)
-    const proClient = new DhruFusionProClient({
-      host: api.host,
-      username: api.username,
-      apiKey: api.apiKey,
-    })
+    const apiKey = decryptImeiApiKey(api.apiKey)
 
-    const proResult = await proClient.getProducts()
+    let proResult: Awaited<ReturnType<DhruFusionProClient['getProducts']>> = {
+      success: false,
+      error: 'Skipped — Classic API key format',
+    }
+
+    if (!isClassicDhruApiKey(apiKey)) {
+      const proClient = new DhruFusionProClient({
+        host: api.host,
+        username: api.username,
+        apiKey,
+      })
+      proResult = await proClient.getProducts()
+    }
 
     const imeiProducts =
       proResult.success && proResult.products
@@ -59,6 +72,7 @@ export async function POST(
           requiresMep: fieldNames.some((n) => n.includes('mep')),
           requiresPrd: fieldNames.some((n) => n.includes('prd')),
           requiresSn: fieldNames.some((n) => n.includes('serial')),
+          requiresImei: !fieldNames.some((n) => n.includes('serial')),
           alreadyImported: importedToolIds.has(p.uuid),
         }
       })
@@ -77,7 +91,7 @@ export async function POST(
     const classicClient = new DhruFusionClient({
       host: api.host,
       username: api.username,
-      apiKey: api.apiKey,
+      apiKey,
     })
 
     const result = await classicClient.getImeiServiceList()

@@ -1,18 +1,21 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSession } from 'next-auth/react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { useUserProfile } from '@/hooks/use-user-profile'
+import { GoogleLinkCard } from '@/components/account/google-link-card'
 import {
   CheckCircle,
   Edit,
   Lock,
+  Mail,
   Shield,
   UserCircle,
   X,
@@ -42,6 +45,42 @@ function formatPasswordChanged(iso: string | null): string {
   if (diffDays < 30) return `Diubah ${diffDays} hari lalu`
   const months = Math.floor(diffDays / 30)
   return `Diubah ${months} bulan lalu`
+}
+
+type VerifyQueryStatus = 'success' | 'invalid' | 'missing' | 'sent'
+
+function EmailVerifyQuerySync({
+  onStatus,
+}: {
+  onStatus: (status: VerifyQueryStatus) => void
+}) {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
+
+  useEffect(() => {
+    const verify = searchParams.get('verify')
+    if (verify === 'success' || verify === 'invalid' || verify === 'missing' || verify === 'sent') {
+      onStatus(verify)
+      router.replace(pathname, { scroll: false })
+    }
+  }, [searchParams, router, pathname, onStatus])
+
+  return null
+}
+
+function GoogleLinkedQuerySync({ onLinked }: { onLinked: () => void }) {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
+
+  useEffect(() => {
+    if (searchParams.get('google') !== 'linked') return
+    onLinked()
+    router.replace(pathname, { scroll: false })
+  }, [searchParams, router, pathname, onLinked])
+
+  return null
 }
 
 type AccountSettingsViewProps = {
@@ -83,6 +122,50 @@ export function AccountSettingsView({
   const [disablePassword, setDisablePassword] = useState('')
   const [twoFaLoading, setTwoFaLoading] = useState(false)
   const [twoFaMsg, setTwoFaMsg] = useState<string | null>(null)
+
+  const [sendingVerification, setSendingVerification] = useState(false)
+  const [emailVerifyMsg, setEmailVerifyMsg] = useState<string | null>(null)
+  const [googleLinkMsg, setGoogleLinkMsg] = useState<string | null>(null)
+
+  const handleGoogleLinked = useCallback(() => {
+    setActiveTab('keamanan')
+    setGoogleLinkMsg('Google berhasil dihubungkan. Anda dapat login dengan tombol "Lanjutkan dengan Google".')
+    void reload()
+  }, [reload])
+
+  const handleVerifyQuery = useCallback((status: VerifyQueryStatus) => {
+    setActiveTab('keamanan')
+    if (status === 'success') {
+      setEmailVerifyMsg('Email berhasil diverifikasi.')
+      void reload()
+    } else if (status === 'sent') {
+      setEmailVerifyMsg(
+        'Akun berhasil dibuat. Kami telah mengirim email verifikasi — periksa inbox Anda (atau log server jika SMTP belum dikonfigurasi).',
+      )
+    } else if (status === 'invalid') {
+      setEmailVerifyMsg('Tautan verifikasi tidak valid atau sudah kedaluwarsa.')
+    } else {
+      setEmailVerifyMsg('Tautan verifikasi tidak ditemukan.')
+    }
+  }, [reload])
+
+  const sendVerificationEmail = async () => {
+    setSendingVerification(true)
+    setEmailVerifyMsg(null)
+    try {
+      const res = await fetch('/api/auth/send-verification', { method: 'POST' })
+      const data = await res.json()
+      if (!data.success) {
+        setEmailVerifyMsg(data.error || 'Gagal mengirim email verifikasi')
+        return
+      }
+      setEmailVerifyMsg(data.data?.message ?? 'Email verifikasi telah dikirim. Periksa inbox Anda.')
+    } catch {
+      setEmailVerifyMsg('Gagal menghubungi server')
+    } finally {
+      setSendingVerification(false)
+    }
+  }
 
   const syncSession = useCallback(
     async (patch: { name?: string; image?: string | null }) => {
@@ -275,6 +358,10 @@ export function AccountSettingsView({
 
   return (
     <motion.div className="space-y-5">
+      <Suspense fallback={null}>
+        <EmailVerifyQuerySync onStatus={handleVerifyQuery} />
+        <GoogleLinkedQuerySync onLinked={handleGoogleLinked} />
+      </Suspense>
       {!hideTabBar && (
       <div className="inline-flex items-center gap-1 rounded-full border border-surface-200/70 bg-white/80 p-1 shadow-soft-xs backdrop-blur-md">
         {tabs.map((tab) => {
@@ -433,6 +520,61 @@ export function AccountSettingsView({
 
       {activeTab === 'keamanan' && (
         <motion.div {...fadeIn} className="space-y-4">
+          <Card className="shadow-soft-xs">
+            <CardContent className="p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-primary-600" />
+                  <h3 className="text-sm font-bold text-ink">Verifikasi Email</h3>
+                </div>
+                <Badge
+                  variant={profile.emailVerified ? 'success' : 'warning'}
+                  className="text-[10px]"
+                >
+                  {profile.emailVerified ? 'Terverifikasi' : 'Belum terverifikasi'}
+                </Badge>
+              </div>
+              <p className="mb-1 text-[13px] text-surface-600">{profile.email}</p>
+              <p className="mb-3 text-xs text-surface-500">
+                {profile.emailVerified
+                  ? 'Email Anda sudah terverifikasi. Diperlukan untuk checkout, top-up, penarikan saldo, dan rekber.'
+                  : 'Verifikasi email diperlukan sebelum checkout, top-up saldo, penarikan, atau membuat transaksi rekber.'}
+              </p>
+              {emailVerifyMsg && (
+                <p
+                  className={cn(
+                    'mb-3 text-xs',
+                    emailVerifyMsg.includes('berhasil') ||
+                      emailVerifyMsg.includes('dikirim') ||
+                      emailVerifyMsg.includes('terverifikasi')
+                      ? 'text-primary-700'
+                      : 'text-rose-600',
+                  )}
+                >
+                  {emailVerifyMsg}
+                </p>
+              )}
+              {!profile.emailVerified && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={sendingVerification}
+                  onClick={() => void sendVerificationEmail()}
+                >
+                  <Mail className="h-3.5 w-3.5" />
+                  {sendingVerification ? 'Mengirim…' : 'Kirim email verifikasi'}
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+
+          {profile && (
+            <GoogleLinkCard profile={profile} onChanged={reload} />
+          )}
+          {googleLinkMsg && (
+            <p className="text-xs text-primary-700">{googleLinkMsg}</p>
+          )}
+
           <Card className="shadow-soft-xs">
             <CardContent className="p-5">
               <div className="mb-4 flex items-center justify-between">

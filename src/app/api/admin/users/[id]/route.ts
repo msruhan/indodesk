@@ -3,7 +3,9 @@ import { UserRole } from '@prisma/client'
 import { hash } from 'bcryptjs'
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
+import { logAdminGovernance } from '@/lib/admin-audit'
 import { serializeAdminUser } from '@/lib/admin-user-serializer'
+import { bumpSessionVersion } from '@/lib/session-version'
 
 export const dynamic = 'force-dynamic'
 
@@ -62,6 +64,24 @@ export async function PATCH(
       include: { _count: { select: { ordersAsBuyer: true } } },
     })
 
+    if (passwordHash || data.isActive === false) {
+      await bumpSessionVersion(id)
+    }
+
+    logAdminGovernance({
+      req,
+      actor: session.user,
+      action: 'admin.user.update',
+      summary: `Admin memperbarui user ${user.email}`,
+      severity: data.isActive === false || passwordHash ? 'CRITICAL' : 'WARNING',
+      target: { type: 'user', id: user.id, label: user.email },
+      metadata: {
+        isActive: data.isActive,
+        passwordReset: Boolean(passwordHash),
+        emailChanged: data.email !== undefined,
+      },
+    })
+
     return apiSuccess(serializeAdminUser(user))
   } catch (e) {
     console.error('[ADMIN_USERS_PATCH]', e)
@@ -88,6 +108,16 @@ export async function DELETE(
     }
 
     await prisma.user.delete({ where: { id } })
+
+    logAdminGovernance({
+      req: _req,
+      actor: session.user,
+      action: 'admin.user.delete',
+      summary: `Admin menghapus user ${existing.email}`,
+      severity: 'CRITICAL',
+      target: { type: 'user', id: existing.id, label: existing.email },
+    })
+
     return apiSuccess({ deleted: true })
   } catch (e) {
     console.error('[ADMIN_USERS_DELETE]', e)

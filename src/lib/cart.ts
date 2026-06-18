@@ -1,4 +1,5 @@
 import type { ProductCategory } from '@prisma/client'
+import type { ProductCouponConfig } from '@/lib/product-coupon'
 
 export type CartItemType = 'physical' | 'software' | 'topup'
 
@@ -13,6 +14,7 @@ export interface CartItem {
   seller: string
   sellerId?: string
   badge?: string
+  coupon?: ProductCouponConfig | null
 }
 
 export type ProductForCart = {
@@ -24,6 +26,7 @@ export type ProductForCart = {
   image: string | null
   description?: string | null
   stock?: number
+  coupon?: ProductCouponConfig | null
   seller: {
     id: string
     storeName: string
@@ -52,6 +55,7 @@ export function productToCartItem(product: ProductForCart, quantity = 1): CartIt
     seller: product.seller.storeName,
     sellerId: product.seller.id,
     badge: product.category,
+    coupon: product.coupon ?? null,
   }
 }
 

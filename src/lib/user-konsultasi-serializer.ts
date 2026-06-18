@@ -17,6 +17,12 @@ export type UserKonsultasiDto = {
   amount: number
   status: TeknisiKonsultasiStatus
   statusLabel: string
+  paymentStatus: string
+  device: string | null
+  clientOs: string | null
+  requiresRemote: boolean
+  remoteId: string | null
+  note: string | null
   rating: number | null
   review: string | null
   createdAt: string
@@ -24,6 +30,7 @@ export type UserKonsultasiDto = {
   endedAt: string | null
   canCancel: boolean
   canRate: boolean
+  canConfirmPayment: boolean
   chatHref: string
 }
 
@@ -41,13 +48,20 @@ export function serializeUserKonsultasi(
     amount: Number(session.price),
     status,
     statusLabel: konsultasiStatusLabel(status),
+    paymentStatus: session.paymentStatus,
+    device: session.device,
+    clientOs: session.clientOs,
+    requiresRemote: session.requiresRemote,
+    remoteId: session.remoteId,
+    note: session.note,
     rating: session.rating,
     review: session.review,
     createdAt: session.createdAt.toISOString(),
     startedAt: session.startedAt?.toISOString() ?? null,
     endedAt: session.endedAt?.toISOString() ?? null,
-    canCancel: session.status === 'PENDING',
+    canCancel: session.status === 'PENDING' || session.status === 'AWAITING_PAYMENT',
     canRate: session.status === 'COMPLETED' && session.rating == null,
+    canConfirmPayment: session.status === 'AWAITING_PAYMENT',
     chatHref: `/user/chat?peer=${session.teknisi.id}`,
   }
 }

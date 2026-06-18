@@ -10,28 +10,18 @@ import {
   categoryMeta,
   formatTransactionAmount,
   formatTransactionDate,
+  formatIdr,
   transactionFilterOptions,
   type TransactionFilter,
   type UnifiedTransaction,
 } from '@/lib/wallet-transactions'
 import { DataPagination } from '@/components/ui/data-pagination'
 import { DEFAULT_PAGE_SIZE, type PageSizeOption } from '@/lib/pagination'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { WalletTransactionDetailModal } from '@/components/wallet/wallet-transaction-detail-modal'
 import {
-  Package,
   RefreshCw,
-  ShoppingBag,
-  Unlock,
-  Wallet,
 } from '@/lib/icons'
-
-const categoryIcons = {
-  wallet: Wallet,
-  shop: ShoppingBag,
-  topup: RefreshCw,
-  imei: Unlock,
-  server: Package,
-} as const
 
 function statusVariant(
   status: string,
@@ -64,6 +54,8 @@ export function WalletTransactionHistory({ onTransactionsLoaded }: WalletTransac
     topup: 0,
     imei: 0,
     server: 0,
+    konsultasi: 0,
+    inspeksi: 0,
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -117,7 +109,7 @@ export function WalletTransactionHistory({ onTransactionsLoaded }: WalletTransac
           <div>
             <h3 className="text-sm font-semibold text-ink">Riwayat Transaksi</h3>
             <p className="mt-0.5 text-xs text-surface-500 capitalize">
-              Periode {periodLabel} · shop, topup, perangkat, server, saldo
+              Periode {periodLabel} · shop, topup, perangkat, server, konsultasi, inspeksi, saldo
             </p>
           </div>
           <button
@@ -158,70 +150,83 @@ export function WalletTransactionHistory({ onTransactionsLoaded }: WalletTransac
           <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
         )}
 
-        <div className="mt-4 space-y-2">
+        <div className="mt-4 overflow-x-auto">
           {loading ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-16 animate-pulse rounded-xl bg-surface-100" />
-            ))
+            <div className="space-y-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-12 animate-pulse rounded-lg bg-surface-100" />
+              ))}
+            </div>
           ) : transactions.length === 0 ? (
             <div className="rounded-lg border border-dashed border-surface-200 bg-surface-50 px-4 py-8 text-center">
               <p className="text-sm text-surface-500">Belum ada transaksi</p>
               <p className="mt-1 text-xs text-surface-400">
-                Order shop, topup, perangkat, atau server akan muncul di sini
+                Order shop, topup, perangkat, server, konsultasi, atau inspeksi akan muncul di sini
               </p>
             </div>
           ) : (
-            transactions.map((tx) => {
-              const meta = categoryMeta[tx.category]
-              const Icon = categoryIcons[tx.category]
-              const variant = statusVariant(tx.status, tx.category)
-              const row = (
-                <button
-                  type="button"
-                  onClick={() => setSelectedTx(tx)}
-                  className={cn(
-                    'flex w-full items-center gap-3 rounded-xl border border-surface-200/70 p-3 text-left transition-colors',
-                    'cursor-pointer hover:border-primary-200 hover:bg-primary-50/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300',
-                  )}
-                >
-                  <div
-                    className={cn(
-                      'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl',
-                      meta.bg,
-                    )}
-                  >
-                    <Icon className={cn('h-4 w-4', meta.color)} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <p className="truncate text-[12px] font-semibold text-ink">{tx.title}</p>
-                      <Badge variant="default" className="text-[8px] px-1 py-0">
-                        {meta.label}
-                      </Badge>
-                      <Badge variant={variant} className="text-[8px] px-1 py-0">
-                        {tx.statusLabel}
-                      </Badge>
-                    </div>
-                    <p className="mt-0.5 font-mono text-[10px] text-surface-500">{tx.orderCode}</p>
-                    {tx.subtitle && (
-                      <p className="mt-0.5 truncate text-[10px] text-surface-400">{tx.subtitle}</p>
-                    )}
-                    <p className="mt-1 text-[10px] text-surface-400">
-                      {formatTransactionDate(tx.createdAt)}
-                    </p>
-                  </div>
-                  <p
-                    className={cn(
-                      'flex-shrink-0 text-[12px] font-bold tabular-nums',
-                      tx.amount >= 0 ? 'text-emerald-600' : 'text-ink',
-                    )}
-                  >
-                    {formatTransactionAmount(tx.amount)}
-                  </p>
-                </button>
-              )
-              return <div key={tx.id}>{row}</div>
-            })
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="min-w-[130px]">Tanggal</TableHead>
+                  <TableHead className="min-w-[220px]">Aktivitas</TableHead>
+                  <TableHead className="min-w-[120px]">Kode</TableHead>
+                  <TableHead className="min-w-[110px] text-right">Nominal</TableHead>
+                  <TableHead className="min-w-[120px] text-right">Saldo Sebelum</TableHead>
+                  <TableHead className="min-w-[120px] text-right">Saldo Sesudah</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {transactions.map((tx) => {
+                  const meta = categoryMeta[tx.category]
+                  const variant = statusVariant(tx.status, tx.category)
+                  return (
+                    <TableRow
+                      key={tx.id}
+                      className="cursor-pointer hover:bg-primary-50/40"
+                      onClick={() => setSelectedTx(tx)}
+                    >
+                      <TableCell className="align-top text-xs text-surface-600">
+                        {formatTransactionDate(tx.createdAt)}
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-ink">{tx.title}</p>
+                          <div className="flex flex-wrap items-center gap-1">
+                            <Badge variant="default" className="px-1 py-0 text-[8px]">
+                              {meta.label}
+                            </Badge>
+                            <Badge variant={variant} className="px-1 py-0 text-[8px]">
+                              {tx.statusLabel}
+                            </Badge>
+                          </div>
+                          {tx.subtitle ? (
+                            <p className="text-[10px] text-surface-500">{tx.subtitle}</p>
+                          ) : null}
+                        </div>
+                      </TableCell>
+                      <TableCell className="align-top font-mono text-[10px] text-surface-500">
+                        {tx.orderCode}
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          'align-top text-right text-xs font-bold tabular-nums',
+                          tx.amount >= 0 ? 'text-emerald-600' : 'text-ink',
+                        )}
+                      >
+                        {formatTransactionAmount(tx.amount)}
+                      </TableCell>
+                      <TableCell className="align-top text-right text-xs tabular-nums text-surface-600">
+                        {tx.balanceBefore != null ? formatIdr(tx.balanceBefore) : '—'}
+                      </TableCell>
+                      <TableCell className="align-top text-right text-xs font-semibold tabular-nums text-ink">
+                        {tx.balanceAfter != null ? formatIdr(tx.balanceAfter) : '—'}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
           )}
         </div>
 

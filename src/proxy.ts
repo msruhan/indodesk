@@ -1,34 +1,38 @@
+/**
+ * RBAC proxy for dashboard routes (Next.js 16 `proxy` export).
+ *
+ * Security headers, CSP nonce, CORS, and CSRF Origin/Referer checks run in
+ * project-root `middleware.ts` for all matched requests (including `/api/**`).
+ */
 import NextAuth from 'next-auth'
 import { NextResponse } from 'next/server'
 import { authConfig } from '@/auth.config'
 
 const { auth } = NextAuth(authConfig)
 
-/** Teknisi workspace (not the public listing /teknisi or /teknisi/[id]). */
 const TEKNISI_PRIVATE_PREFIXES = [
   '/teknisi/dashboard',
   '/teknisi/produk',
+  '/teknisi/iklan-konsultasi',
   '/teknisi/pesanan',
   '/teknisi/profil',
   '/teknisi/toko',
   '/teknisi/saldo',
   '/teknisi/konsultasi',
+  '/teknisi/inspeksi',
   '/teknisi/analitik',
   '/teknisi/remote',
+  '/teknisi/rekber',
   '/teknisi/settings',
   '/teknisi/help',
+  '/teknisi/bantuan',
 ] as const
 
 type RouteRule = { prefix: string; roles: readonly string[] }
 
-/**
- * Strict RBAC: one role per area (no admin impersonating teknisi/user dashboards).
- * Order matters: first match wins.
- */
 const PROTECTED_ROUTES: RouteRule[] = [
   { prefix: '/admin', roles: ['ADMIN'] },
   { prefix: '/user', roles: ['USER'] },
-  /** Legacy /dashboard — treat as customer workspace */
   { prefix: '/dashboard', roles: ['USER'] },
   ...TEKNISI_PRIVATE_PREFIXES.map((prefix) => ({
     prefix,
@@ -48,10 +52,6 @@ function matchProtectedRoute(pathname: string): RouteRule | undefined {
   )
 }
 
-/**
- * RBAC proxy — protects dashboard routes by role.
- * Public: marketplace, /teknisi (listing), /teknisi/[id], topup, etc.
- */
 export const proxy = auth((req) => {
   const { pathname } = req.nextUrl
   const session = req.auth
@@ -83,6 +83,8 @@ export const config = {
     '/teknisi/dashboard/:path*',
     '/teknisi/produk',
     '/teknisi/produk/:path*',
+    '/teknisi/iklan-konsultasi',
+    '/teknisi/iklan-konsultasi/:path*',
     '/teknisi/pesanan',
     '/teknisi/pesanan/:path*',
     '/teknisi/profil',
@@ -93,13 +95,20 @@ export const config = {
     '/teknisi/saldo/:path*',
     '/teknisi/konsultasi',
     '/teknisi/konsultasi/:path*',
+    '/teknisi/inspeksi',
+    '/teknisi/inspeksi/:path*',
     '/teknisi/analitik',
     '/teknisi/analitik/:path*',
     '/teknisi/remote',
     '/teknisi/remote/:path*',
+    '/teknisi/rekber',
+    '/teknisi/rekber/:path*',
     '/teknisi/settings',
     '/teknisi/settings/:path*',
     '/teknisi/help',
     '/teknisi/help/:path*',
+    '/teknisi/bantuan',
+    '/teknisi/bantuan/:path*',
+    
   ],
 }

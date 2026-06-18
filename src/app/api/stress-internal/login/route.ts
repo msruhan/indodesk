@@ -31,10 +31,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'email & password required' }, { status: 400 })
   }
 
-  // Extra safety: hanya boleh login user dengan email @indoteknizi.test
-  if (!email.endsWith('@indoteknizi.test')) {
+  const normalizedEmail = email.toLowerCase().trim()
+  const isStressAccount = normalizedEmail.endsWith('@indoteknizi.test')
+  const seedEmails = new Set([
+    'admin@indoteknizi.com',
+    'ahmad@indoteknizi.com',
+    'budi@indoteknizi.com',
+    'siti@gmail.com',
+    'rudi@gmail.com',
+    'dewi@gmail.com',
+  ])
+  // Extra safety: stress accounts atau seed QA (hanya saat STRESS_TEST_MODE)
+  if (!isStressAccount && !seedEmails.has(normalizedEmail)) {
     return NextResponse.json(
-      { error: 'only stress test accounts allowed' },
+      { error: 'only stress test or seed QA accounts allowed' },
       { status: 403 },
     )
   }

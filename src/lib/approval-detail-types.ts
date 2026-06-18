@@ -1,6 +1,6 @@
 import type { ProductImageEntry } from '@/lib/product-images'
 import type { ProductCompletenessKey } from '@/lib/product-specs'
-import type { ProductCategory, ProductWarranty } from '@prisma/client'
+import type { ProductCategory, ProductCouponDiscountType, ProductWarranty } from '@prisma/client'
 
 export type ApprovalProductDetail = {
   entityType: 'product'
@@ -24,6 +24,10 @@ export type ApprovalProductDetail = {
   views: number
   soldCount: number
   createdAt: string
+  pendingChangeSummary: string | null
+  couponCode: string | null
+  couponDiscountType: ProductCouponDiscountType | null
+  couponDiscountValue: number | null
   seller: {
     id: string
     name: string

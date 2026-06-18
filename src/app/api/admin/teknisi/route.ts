@@ -3,6 +3,7 @@ import { UserRole } from '@prisma/client'
 import { hash } from 'bcryptjs'
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
+import { logAdminGovernance } from '@/lib/admin-audit'
 import { serializeAdminTeknisi } from '@/lib/admin-user-serializer'
 
 export const dynamic = 'force-dynamic'
@@ -51,7 +52,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const { error } = await requireApiRole(['ADMIN'])
+  const { session, error } = await requireApiRole(['ADMIN'])
   if (error) return error
 
   try {
@@ -97,6 +98,15 @@ export async function POST(req: Request) {
 
     const dto = serializeAdminTeknisi(user)
     if (!dto) return apiError('Gagal membuat profil teknisi', 500)
+
+    logAdminGovernance({
+      req,
+      actor: session.user,
+      action: 'admin.teknisi.create',
+      summary: `Admin membuat teknisi ${user.email}`,
+      severity: 'WARNING',
+      target: { type: 'teknisi', id: user.id, label: user.email },
+    })
 
     return apiSuccess(dto, 201)
   } catch (e) {

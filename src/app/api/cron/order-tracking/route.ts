@@ -1,4 +1,5 @@
 import { apiError, apiSuccess } from '@/lib/api-auth'
+import { validateCronSecret } from '@/lib/cron-auth'
 import { processOrderTrackingQueue } from '@/lib/order-tracking-worker'
 
 export const dynamic = 'force-dynamic'
@@ -10,15 +11,8 @@ export const maxDuration = 60
  * Authorization: Bearer <CRON_SECRET>
  */
 async function handle(req: Request) {
-  const secret = process.env.CRON_SECRET
-  if (!secret) {
-    return apiError('CRON_SECRET belum dikonfigurasi di server', 503)
-  }
-
-  const auth = req.headers.get('authorization')
-  if (auth !== `Bearer ${secret}`) {
-    return apiError('Unauthorized', 401)
-  }
+  const cronAuth = validateCronSecret(req)
+  if (cronAuth) return cronAuth
 
   try {
     const stats = await processOrderTrackingQueue()

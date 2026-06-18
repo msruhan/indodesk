@@ -19,6 +19,7 @@ import {
   CheckCircle as PhCheckCircle,
   CheckSquare as PhCheckSquare,
   Checks,
+  Scales as PhScales,
   Clock as PhClock,
   ClockCounterClockwise,
   Code as PhCode,
@@ -125,6 +126,7 @@ export const CheckCheck = withPremiumWeight(Checks)
 export const CheckCircle = withPremiumWeight(PhCheckCircle)
 export const CheckCircle2 = CheckCircle
 export const CheckSquare = withPremiumWeight(PhCheckSquare)
+export const Scales = withPremiumWeight(PhScales)
 export const ChevronDown = withPremiumWeight(CaretDown, 'regular')
 export const ChevronUp = withPremiumWeight(CaretUp, 'regular')
 export const ChevronLeft = withPremiumWeight(CaretLeft, 'regular')

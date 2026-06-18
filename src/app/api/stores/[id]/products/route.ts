@@ -1,5 +1,7 @@
+import { ProductCategory } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess } from '@/lib/api-auth'
+import { MARKETPLACE_CATEGORY_SLUGS } from '@/lib/product-category-config'
 import type { PublicStoreProductDto } from '@/lib/teknisi-store-serializer'
 
 export const dynamic = 'force-dynamic'
@@ -36,7 +38,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
             }
           : {}),
         ...(category && category !== 'all'
-          ? { category: category as 'HANDPHONE' | 'LAPTOP' | 'AKSESORIS' | 'SOFTWARE' | 'LAINNYA' }
+          ? {
+              category: {
+                in:
+                  MARKETPLACE_CATEGORY_SLUGS[category.toLowerCase()] ??
+                  ([category.toUpperCase()] as ProductCategory[]),
+              },
+            }
           : {}),
       },
       orderBy: { createdAt: 'desc' },

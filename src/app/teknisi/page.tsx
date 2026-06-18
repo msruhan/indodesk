@@ -46,6 +46,13 @@ const badgeConfig: Record<
 }
 
 type SortKey = 'relevance' | 'rating' | 'price-low' | 'price-high'
+type OnlineFilter = 'online' | 'offline' | 'all'
+
+const onlineFilterOptions: { value: OnlineFilter; label: string }[] = [
+  { value: 'online', label: 'Online' },
+  { value: 'offline', label: 'Offline' },
+  { value: 'all', label: 'Semua' },
+]
 
 const sortOptions: { value: SortKey; label: string }[] = [
   { value: 'relevance', label: 'Relevansi' },
@@ -76,7 +83,7 @@ export default function TeknisiListPage() {
   const [teknisiList, setTeknisiList] = useState<PublicTeknisiDto[]>([])
   const [loadingList, setLoadingList] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-  const [filterOnline, setFilterOnline] = useState(false)
+  const [onlineFilter, setOnlineFilter] = useState<OnlineFilter>('online')
   const [filterInspection, setFilterInspection] = useState(false)
   const [sortBy, setSortBy] = useState<SortKey>('relevance')
 
@@ -111,7 +118,9 @@ export default function TeknisiListPage() {
       const matchesSearch =
         t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         t.specialty.some((s) => s.toLowerCase().includes(searchQuery.toLowerCase()))
-      const matchesOnline = !filterOnline || t.isOnline
+      const matchesOnline =
+        onlineFilter === 'all' ||
+        (onlineFilter === 'online' ? t.isOnline : !t.isOnline)
       const matchesInspection = !filterInspection || t.providesInspection
       return matchesSearch && matchesOnline && matchesInspection
     })
@@ -174,32 +183,56 @@ export default function TeknisiListPage() {
                 className="h-11 pl-11"
               />
             </div>
-            <button
-              onClick={() => setFilterOnline(!filterOnline)}
-              className={cn(
-                'inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-full px-4 text-sm font-medium transition-all duration-300 ease-out-expo',
-                filterOnline
-                  ? 'border border-transparent bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-glow-primary hover:shadow-glow-primary-lg'
-                  : 'border border-surface-200/80 bg-white/80 text-surface-700 backdrop-blur-md hover:border-surface-300 hover:text-ink',
-              )}
-            >
-              <span className="relative flex h-2 w-2">
-                <span
-                  className={cn(
-                    'absolute inline-flex h-full w-full rounded-full opacity-70',
-                    filterOnline ? 'animate-ping bg-white' : 'bg-primary-400',
-                  )}
-                />
-                <span
-                  className={cn(
-                    'relative inline-flex h-2 w-2 rounded-full',
-                    filterOnline ? 'bg-white' : 'bg-primary-500',
-                  )}
-                />
-              </span>
-              <Radio className="h-4 w-4" />
-              Hanya Online
-            </button>
+            <div className="relative inline-flex h-11 items-center gap-1 rounded-full border border-surface-200/70 bg-white/80 p-1 shadow-soft-xs backdrop-blur-md">
+              {onlineFilterOptions.map((opt) => {
+                const active = onlineFilter === opt.value
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setOnlineFilter(opt.value)}
+                    className={cn(
+                      'relative z-10 inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors duration-300',
+                      active
+                        ? opt.value === 'online'
+                          ? 'text-white'
+                          : 'text-ink'
+                        : 'text-surface-500 hover:text-ink',
+                    )}
+                  >
+                    {active && (
+                      <motion.span
+                        layoutId="teknisi-online-filter-pill"
+                        className={cn(
+                          'absolute inset-0 -z-10 rounded-full shadow-soft-xs ring-1 ring-inset',
+                          opt.value === 'online'
+                            ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white ring-primary-400/30'
+                            : 'bg-white ring-surface-200/80',
+                        )}
+                        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                      />
+                    )}
+                    {opt.value === 'online' && (
+                      <span className="relative flex h-2 w-2">
+                        <span
+                          className={cn(
+                            'absolute inline-flex h-full w-full rounded-full opacity-70',
+                            active ? 'animate-ping bg-white' : 'bg-primary-400',
+                          )}
+                        />
+                        <span
+                          className={cn(
+                            'relative inline-flex h-2 w-2 rounded-full',
+                            active ? 'bg-white' : 'bg-primary-500',
+                          )}
+                        />
+                      </span>
+                    )}
+                    <span>{opt.label}</span>
+                  </button>
+                )
+              })}
+            </div>
             <button
               onClick={() => setFilterInspection(!filterInspection)}
               className={cn(

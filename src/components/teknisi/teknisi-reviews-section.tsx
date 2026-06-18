@@ -4,11 +4,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Badge } from '@/components/ui/badge'
 import { CheckCircle, Star } from '@/lib/icons'
-import { cn } from '@/lib/utils'
 import type { PublicTeknisiDetailDto } from '@/lib/teknisi-public-detail'
-import type { TeknisiReviewDto, TeknisiReviewStatsDto } from '@/lib/teknisi-review'
-import { TEKNISI_REVIEW_TAGS } from '@/lib/teknisi-review'
-import { TeknisiReviewForm } from '@/components/teknisi/teknisi-review-form'
+import type { TeknisiReviewStatsDto, TeknisiUnifiedReviewDto } from '@/lib/teknisi-review'
 
 const ease = [0.22, 1, 0.36, 1] as const
 
@@ -17,10 +14,20 @@ function AnimatedNumber({ value, decimal = false }: { value: number; decimal?: b
   return <span className="tabular-nums">{text}</span>
 }
 
+function sourceBadgeVariant(source: TeknisiUnifiedReviewDto['source']) {
+  switch (source) {
+    case 'KONSULTASI':
+      return 'primary' as const
+    case 'INSPEKSI':
+      return 'info' as const
+    case 'MARKETPLACE':
+      return 'secondary' as const
+  }
+}
+
 type ReviewsPayload = {
-  items: TeknisiReviewDto[]
+  items: TeknisiUnifiedReviewDto[]
   stats: TeknisiReviewStatsDto
-  myReview: TeknisiReviewDto | null
 }
 
 type TeknisiReviewsSectionProps = {
@@ -51,26 +58,22 @@ export function TeknisiReviewsSection({ teknisi }: TeknisiReviewsSectionProps) {
   }, [load])
 
   const stats = data?.stats ?? {
-    averageRating: Number(teknisi.rating),
-    reviewCount: teknisi.reviewCount,
-    breakdown: [
-      { stars: 5, percent: 0, count: 0 },
-      { stars: 4, percent: 0, count: 0 },
-      { stars: 3, percent: 0, count: 0 },
-    ],
+    averageRating: teknisi.platformStats.averageRating,
+    reviewCount: teknisi.platformStats.reviewCount,
+    breakdown: teknisi.platformStats.ratingDistribution
+      .filter((r) => r.star >= 3)
+      .map((r) => ({ stars: r.star, percent: r.percent, count: r.count })),
   }
 
   const items = data?.items ?? []
-  const displayRating = stats.reviewCount > 0 ? stats.averageRating : Number(teknisi.rating)
-  const displayCount = stats.reviewCount > 0 ? stats.reviewCount : teknisi.reviewCount
+  const displayRating = stats.reviewCount > 0 ? stats.averageRating : teknisi.platformStats.averageRating
+  const displayCount = stats.reviewCount > 0 ? stats.reviewCount : teknisi.platformStats.reviewCount
 
   return (
     <div className="relative overflow-hidden rounded-3xl border border-surface-200/70 bg-gradient-to-br from-white via-white to-primary-50/20 shadow-soft-sm">
-      {/* Subtle radial accent — same as Track Record */}
       <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-primary-100/50 blur-3xl" />
 
       <div className="relative grid gap-0 lg:grid-cols-[280px_1fr]">
-        {/* LEFT — Rating summary (no amber card, inline) */}
         <div className="relative border-b border-surface-200/70 p-6 sm:p-8 lg:border-b-0 lg:border-r">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -84,7 +87,7 @@ export function TeknisiReviewsSection({ teknisi }: TeknisiReviewsSectionProps) {
 
           <div className="mt-6 flex items-end gap-3">
             <p className="text-[72px] font-black leading-none tracking-tight text-ink sm:text-[88px]">
-              <AnimatedNumber value={displayRating} decimal />
+              {displayCount > 0 ? <AnimatedNumber value={displayRating} decimal /> : '—'}
             </p>
             <div className="pb-2">
               <div className="flex items-center gap-0.5 text-amber-500">
@@ -107,10 +110,10 @@ export function TeknisiReviewsSection({ teknisi }: TeknisiReviewsSectionProps) {
           </div>
 
           <p className="mt-3 max-w-sm text-[13px] leading-relaxed text-surface-600">
-            Rata-rata penilaian pelanggan setelah sesi diselesaikan. Hanya akun terverifikasi yang dapat memberi rating.
+            Ulasan dari transaksi selesai — marketplace, konsultasi, dan inspeksi. Hanya pelanggan yang
+            benar-benar menggunakan layanan.
           </p>
 
-          {/* Distribution bars — minimalist, same as Track Record */}
           <div className="mt-6 space-y-1.5">
             {stats.breakdown.map((row, idx) => (
               <div key={row.stars} className="flex items-center gap-2 text-[11px]">
@@ -131,7 +134,6 @@ export function TeknisiReviewsSection({ teknisi }: TeknisiReviewsSectionProps) {
           </div>
         </div>
 
-        {/* RIGHT — Reviews list */}
         <div className="p-6 sm:p-8">
           <div className="flex items-baseline justify-between">
             <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary-700">Testimonials</p>
@@ -140,27 +142,7 @@ export function TeknisiReviewsSection({ teknisi }: TeknisiReviewsSectionProps) {
             </p>
           </div>
 
-          <div className="mt-5 space-y-4">
-            <TeknisiReviewForm
-              teknisiId={teknisi.id}
-              myReview={data?.myReview ?? null}
-              onSubmitted={() => void load()}
-            />
-
-            <div className="flex flex-wrap gap-2">
-              {TEKNISI_REVIEW_TAGS.map((tag, idx) => (
-                <motion.div
-                  key={tag}
-                  initial={{ opacity: 0, scale: 0.85 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: idx * 0.05 }}
-                >
-                  <Badge variant="outline">{tag}</Badge>
-                </motion.div>
-              ))}
-            </div>
-
+          <div className="mt-5">
             {loading && (
               <p className="py-6 text-center text-sm text-surface-500">Memuat ulasan…</p>
             )}
@@ -168,7 +150,9 @@ export function TeknisiReviewsSection({ teknisi }: TeknisiReviewsSectionProps) {
             {!loading && items.length === 0 && (
               <div className="rounded-2xl border border-dashed border-surface-200 bg-surface-50/80 py-10 text-center">
                 <p className="text-sm font-medium text-ink">Belum ada ulasan</p>
-                <p className="mt-1 text-xs text-surface-500">Jadilah yang pertama memberikan testimoni.</p>
+                <p className="mt-1 text-xs text-surface-500">
+                  Ulasan akan muncul setelah pelanggan menyelesaikan transaksi dan memberi rating.
+                </p>
               </div>
             )}
 
@@ -197,14 +181,14 @@ export function TeknisiReviewsSection({ teknisi }: TeknisiReviewsSectionProps) {
                       )}
                       <div>
                         <p className="font-bold text-ink">{review.authorName}</p>
-                        <p className="mt-0.5 inline-flex items-center gap-1 text-[11px]">
-                          <span className="inline-flex items-center gap-0.5 rounded-full border border-amber-200/80 bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-100/90 px-1.5 py-0.5 font-black uppercase tracking-[0.12em] text-amber-800">
-                            <CheckCircle className="h-2.5 w-2.5 text-amber-600" weight="fill" />
+                        <p className="mt-0.5 inline-flex flex-wrap items-center gap-1 text-[11px]">
+                          <span className="inline-flex items-center gap-0.5 rounded-full border border-amber-200/70 bg-amber-50/90 px-1 py-px text-[10px] font-medium text-amber-800">
+                            <CheckCircle className="h-2 w-2 text-amber-600" weight="fill" />
                             Verified
                           </span>
-                          {review.tag && (
-                            <span className="text-surface-500">· {review.tag}</span>
-                          )}
+                          <Badge variant={sourceBadgeVariant(review.source)} className="text-[9px]">
+                            {review.sourceLabel}
+                          </Badge>
                         </p>
                       </div>
                     </div>
@@ -213,9 +197,12 @@ export function TeknisiReviewsSection({ teknisi }: TeknisiReviewsSectionProps) {
                       {review.rating}
                     </span>
                   </div>
-                  <p className="mt-3 text-[13px] leading-relaxed text-surface-600">
-                    &ldquo;{review.comment}&rdquo;
-                  </p>
+                  <p className="mt-1 text-[11px] text-surface-500">{review.contextLabel}</p>
+                  {review.comment !== '—' && (
+                    <p className="mt-3 text-[13px] leading-relaxed text-surface-600">
+                      &ldquo;{review.comment}&rdquo;
+                    </p>
+                  )}
                   <p className="mt-2 text-[10px] text-surface-400">{review.dateLabel}</p>
                 </motion.li>
               ))}

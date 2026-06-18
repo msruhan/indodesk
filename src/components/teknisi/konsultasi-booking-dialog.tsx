@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { motion } from 'framer-motion'
@@ -37,11 +38,30 @@ export function KonsultasiBookingDialog({
       teknisi.services.find((s) => s.kind === 'consultation') ??
       null,
   )
+  const [device, setDevice] = useState('')
+  const [clientOs, setClientOs] = useState<'WINDOWS' | 'MACOS'>('WINDOWS')
   const [note, setNote] = useState('')
+  const [remoteId, setRemoteId] = useState('')
+  const [remoteOtp, setRemoteOtp] = useState('')
+  const [walletBalance, setWalletBalance] = useState<number | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  useEffect(() => {
+    if (!open || sessionStatus !== 'authenticated') return
+    void fetch('/api/wallet')
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.success) setWalletBalance(Number(json.data.balance))
+      })
+      .catch(() => setWalletBalance(null))
+  }, [open, sessionStatus])
+
   if (!open) return null
+
+  const requiresRemote = selected?.requiresRemote === true
+  const price = selected?.price ?? 0
+  const hasEnoughBalance = walletBalance != null && walletBalance >= price
 
   const handleSubmit = async () => {
     if (!selected) return
@@ -50,6 +70,21 @@ export function KonsultasiBookingDialog({
       const callback = encodeURIComponent(`/teknisi/${teknisi.id}`)
       router.push(`/login?callbackUrl=${callback}`)
       return
+    }
+
+    if (!device.trim()) {
+      setError('Perangkat wajib diisi')
+      return
+    }
+    if (requiresRemote) {
+      if (!remoteId.trim()) {
+        setError('IndoDesk ID wajib untuk layanan remote')
+        return
+      }
+      if (!remoteOtp.trim()) {
+        setError('OTP IndoDesk wajib untuk layanan remote')
+        return
+      }
     }
 
     setSubmitting(true)
@@ -63,6 +98,10 @@ export function KonsultasiBookingDialog({
           service: selected.name,
           price: selected.price,
           note: note.trim() || undefined,
+          device: device.trim(),
+          clientOs,
+          remoteId: requiresRemote ? remoteId.trim() : undefined,
+          remoteOtp: requiresRemote ? remoteOtp.trim() : undefined,
         }),
       })
       const json = await res.json()
@@ -70,6 +109,12 @@ export function KonsultasiBookingDialog({
         setError(json.error ?? 'Gagal memesan konsultasi')
         return
       }
+
+      if (json.data?.needsPayment && json.data?.redirectUrl) {
+        window.location.href = json.data.redirectUrl as string
+        return
+      }
+
       onClose()
       router.push('/user/konsultasi')
     } catch {
@@ -87,7 +132,7 @@ export function KonsultasiBookingDialog({
         aria-label="Tutup"
         onClick={onClose}
       />
-      <div className="relative z-10 w-full max-w-md rounded-t-3xl border border-surface-200/80 bg-white p-5 shadow-soft-lg sm:rounded-3xl">
+      <div className="relative z-10 max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-3xl border border-surface-200/80 bg-white p-5 shadow-soft-lg sm:rounded-3xl">
         <motion.div className="mb-4 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-ink">Pesan Konsultasi</h2>
@@ -102,7 +147,7 @@ export function KonsultasiBookingDialog({
           </button>
         </motion.div>
 
-        <div className="mb-4 max-h-48 space-y-2 overflow-y-auto">
+        <div className="mb-4 max-h-40 space-y-2 overflow-y-auto">
           {teknisi.services
             .filter((svc) => svc.kind === 'consultation')
             .map((svc) => (
@@ -118,7 +163,10 @@ export function KonsultasiBookingDialog({
               >
                 <div>
                   <p className="font-medium text-ink">{svc.name}</p>
-                  <p className="text-[11px] text-surface-500">{svc.duration}</p>
+                  <p className="text-[11px] text-surface-500">
+                    {svc.duration}
+                    {svc.requiresRemote ? ' · Termasuk remote' : ''}
+                  </p>
                 </div>
                 <p className="text-sm font-semibold text-primary-700 tabular-nums">
                   {formatPrice(svc.price)}
@@ -126,6 +174,78 @@ export function KonsultasiBookingDialog({
               </button>
             ))}
         </div>
+
+        <div className="mb-3">
+          <label className="mb-1 block text-xs font-medium text-surface-600">
+            Perangkat <span className="text-red-500">*</span>
+          </label>
+          <Input
+            value={device}
+            onChange={(e) => setDevice(e.target.value)}
+            placeholder="Contoh: iPhone 13 Pro, Samsung A54"
+            className="text-sm"
+          />
+        </div>
+
+        <div className="mb-3">
+          <label className="mb-1 block text-xs font-medium text-surface-600">
+            Sistem operasi komputer Anda <span className="text-red-500">*</span>
+          </label>
+          <div className="flex gap-2">
+            {(
+              [
+                ['WINDOWS', 'Windows'],
+                ['MACOS', 'macOS'],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setClientOs(value)}
+                className={`flex-1 rounded-lg border px-3 py-2 text-sm ${
+                  clientOs === value
+                    ? 'border-primary-300 bg-primary-50 font-medium text-primary-800'
+                    : 'border-surface-200 text-surface-600'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {requiresRemote && (
+          <div className="mb-3 space-y-3 rounded-xl border border-primary-100 bg-primary-50/40 p-3">
+            <p className="text-xs text-primary-800">
+              Layanan ini membutuhkan IndoDesk.{' '}
+              <Link href="/remote" className="font-medium underline">
+                Download IndoDesk
+              </Link>
+            </p>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-surface-600">
+                IndoDesk ID <span className="text-red-500">*</span>
+              </label>
+              <Input
+                value={remoteId}
+                onChange={(e) => setRemoteId(e.target.value)}
+                placeholder="123 456 789"
+                className="text-sm"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-surface-600">
+                OTP IndoDesk <span className="text-red-500">*</span>
+              </label>
+              <Input
+                value={remoteOtp}
+                onChange={(e) => setRemoteOtp(e.target.value)}
+                placeholder="OTP dari aplikasi IndoDesk"
+                className="text-sm"
+              />
+            </div>
+          </div>
+        )}
 
         <div className="mb-4">
           <label className="mb-1 block text-xs font-medium text-surface-600">
@@ -146,8 +266,11 @@ export function KonsultasiBookingDialog({
         )}
 
         <p className="rounded-xl bg-surface-50 px-3 py-2 text-xs text-surface-600">
-          Saldo akan dipotong saat pesanan dibuat. Refund otomatis jika dibatalkan saat status
-          menunggu.
+          {walletBalance == null
+            ? 'Pembayaran diperlukan sebelum teknisi mulai sesi.'
+            : hasEnoughBalance
+              ? `Saldo ${formatPrice(walletBalance)} — ${formatPrice(price)} akan ditahan sampai sesi selesai atau dibatalkan.`
+              : `Saldo ${formatPrice(walletBalance)} tidak cukup. Anda akan diarahkan ke payment gateway untuk bayar ${formatPrice(price)}.`}
         </p>
 
         <div className="mt-4 flex gap-2">
@@ -161,7 +284,11 @@ export function KonsultasiBookingDialog({
             disabled={!selected || submitting}
             onClick={() => void handleSubmit()}
           >
-            {submitting ? 'Memproses…' : `Bayar ${selected ? formatPrice(selected.price) : ''}`}
+            {submitting
+              ? 'Memproses…'
+              : hasEnoughBalance
+                ? 'Pesan Sesi'
+                : `Bayar ${selected ? formatPrice(selected.price) : ''}`}
           </Button>
         </div>
       </div>

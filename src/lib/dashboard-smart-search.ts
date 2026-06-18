@@ -54,7 +54,7 @@ export function quickActionsForRole(role: UserRole): SmartSearchItem[] {
         'user',
         'akun',
       ]),
-      quick('imei', 'IMEI & server', 'API supplier dan order masuk', '/admin/imei?tab=orders', [
+      quick('imei', 'Digital & server', 'API supplier dan order masuk', '/admin/imei?tab=orders', [
         'order',
         'dhru',
         'unlock',
@@ -64,8 +64,38 @@ export function quickActionsForRole(role: UserRole): SmartSearchItem[] {
         'marketplace',
       ]),
       quick('rekber', 'Rekber / escrow', 'Transaksi ditahan', '/admin/rekber', ['escrow']),
-      quick('notif', 'Notifikasi', 'Broadcast dan alert', '/admin/notifications', ['bell']),
-      quick('akun', 'Akun Saya', 'Profil, keamanan, dan 2FA', '/admin/settings', ['settings', 'security']),
+      quick(
+        'keuangan-marketplace',
+        'Keuangan Marketplace',
+        'Pengaturan & riwayat fee marketplace',
+        '/admin/keuangan-marketplace',
+        ['fee', 'marketplace'],
+      ),
+      quick(
+        'pendapatan-platform',
+        'Pendapatan Platform',
+        'Fee owner semua kanal layanan',
+        '/admin/pendapatan-platform',
+        ['revenue', 'fee', 'pendapatan', 'platform', 'rekber', 'inspeksi'],
+      ),
+      quick('notif', 'Notifikasi In-App', 'Broadcast dan alert di aplikasi', '/admin/notifications', [
+        'bell',
+        'in-app',
+      ]),
+      quick('telegram', 'Notifikasi Telegram', 'Template notifikasi bot Telegram', '/admin/telegram-notifications', [
+        'telegram',
+        'bot',
+      ]),
+      quick('profil', 'Profil', 'Keamanan akun admin dan pengaturan platform', '/admin/settings', [
+        'settings',
+        'security',
+        'akun',
+      ]),
+      quick('bantuan', 'Pusat Bantuan', 'Kelola FAQ untuk setiap peran', '/admin/help', [
+        'help',
+        'faq',
+        'dukungan',
+      ]),
       quick('market', 'Marketplace', 'Halaman depan publik', MARKETPLACE_PATH, ['beranda']),
     ]
   }
@@ -73,45 +103,77 @@ export function quickActionsForRole(role: UserRole): SmartSearchItem[] {
   if (role === 'TEKNISI') {
     return [
       quick('dashboard', 'Dashboard teknisi', 'Ringkasan performa', '/teknisi/dashboard', ['home']),
-      quick('saldo', 'Saldo & transaksi', 'Top up dan riwayat', '/teknisi/saldo', [
-        'wallet',
-        'order',
-      ]),
-      quick('produk', 'Produk & software', 'Kelola katalog toko', '/teknisi/produk', [
+      quick('analitik', 'Analitik', 'Statistik toko dan layanan', '/teknisi/analitik', ['statistik']),
+      quick('toko', 'Profil Toko', 'Kelola profil toko', '/teknisi/toko', ['store']),
+      quick('produk', 'Iklan Produk', 'Kelola katalog produk', '/teknisi/produk', [
         'marketplace',
         'jual',
       ]),
-      quick('pesanan', 'Pesanan masuk', 'Order marketplace dari pembeli', '/teknisi/pesanan', [
+      quick('iklan konsultasi', 'Iklan Konsultasi', 'Kelola paket konsultasi', '/teknisi/iklan-konsultasi', [
+        'konsultasi',
+        'layanan',
+        'paket',
+      ]),
+      quick('pesanan masuk', 'Pesanan Masuk', 'Order marketplace dari pembeli', '/teknisi/pesanan', [
         'order',
         'pesanan',
         'resi',
       ]),
       quick('konsultasi', 'Konsultasi', 'Request dari pelanggan', '/teknisi/konsultasi', ['chat']),
-      quick('remote', 'Remote', 'Sesi remote aktif', '/teknisi/remote', ['rustdesk']),
-      quick('imei', 'Order perangkat (IMEI)', 'Status order unlock', '/imei', [
+      quick('inspeksi', 'Inspeksi', 'Permintaan inspeksi pra-beli', '/teknisi/inspeksi', ['cek']),
+      quick('rekber', 'Rekber', 'Transaksi escrow', '/teknisi/rekber', ['escrow']),
+      quick('belanja', 'Pesanan', 'Belanja sebagai pembeli', '/teknisi/orders', ['order', 'belanja']),
+      quick('saldo', 'Riwayat Transaksi', 'Saldo, top up, dan tarik', '/teknisi/saldo', [
+        'wallet',
+        'transaksi',
+      ]),
+      quick('profil', 'Profil', 'Profil teknisi dan pengaturan', '/teknisi/settings', ['profil', 'akun', 'setting']),
+      quick('bantuan', 'Pusat Bantuan', 'FAQ, tiket, dan kontak support', '/teknisi/bantuan', [
+        'help',
+        'support',
+        'tiket',
+      ]),
+      quick('remote', 'Konsultasi remote', 'Sesi IndoDesk via konsultasi', '/teknisi/konsultasi?filter=remote', [
+        'rustdesk',
+        'remote',
+        'indodesk',
+      ]),
+      quick('imei', 'Order perangkat (Digital)', 'Status order unlock', '/imei', [
         'imei',
         'unlock',
       ]),
       quick('server', 'Order server', 'Layanan server supplier', '/imei', [
         'server',
       ]),
-      quick('akun', 'Akun Saya', 'Profil teknisi dan pengaturan akun', '/teknisi/settings', ['profil', 'akun', 'setting']),
       quick('market', 'Marketplace', 'Halaman depan', MARKETPLACE_PATH, ['beranda']),
     ]
   }
 
   return [
     quick('dashboard', 'Dashboard', 'Ringkasan akun', '/user/dashboard', ['home']),
+    quick('pesanan', 'Pesanan', 'Marketplace, top up, digital & server', '/user/orders', [
+      'order',
+      'belanja',
+      'shop',
+    ]),
+    quick('konsultasi', 'Konsultasi', 'Riwayat konsultasi teknisi', '/user/konsultasi', ['chat', 'remote']),
+    quick('inspeksi', 'Inspeksi', 'Inspeksi pra-beli', '/user/inspeksi', ['cek', 'laporan']),
+    quick('rekber', 'Rekber', 'Transaksi rekening bersama', '/user/rekber', ['escrow']),
     quick('riwayat', 'Riwayat transaksi', 'Semua order dan aktivitas', '/user/riwayat', [
       'order',
       'history',
     ]),
     quick('saldo', 'Saldo & riwayat', 'Dashboard dan top up', '/user/dashboard', ['wallet', 'topup', 'saldo']),
-    quick('imei', 'Order perangkat (IMEI)', 'Cek status unlock', USER_IMEI_ORDERS_PATH, ['imei']),
+    quick('imei', 'Order perangkat (Digital)', 'Cek status unlock', USER_IMEI_ORDERS_PATH, ['imei']),
     quick('server', 'Order server', 'Layanan server', userImeiOrdersHref('server'), ['server']),
     quick('topup', 'Top up game', 'Beli voucher & diamond', '/topup', ['game', 'voucher']),
     quick('market', 'Marketplace', 'Belanja produk teknisi', MARKETPLACE_PATH, ['belanja', 'toko']),
-    quick('akun', 'Akun saya', 'Profil dan keamanan', accountPathForRole('USER'), ['profile']),
+    quick('profil', 'Profil', 'Profil dan keamanan', accountPathForRole('USER'), ['profile', 'akun']),
+    quick('bantuan', 'Pusat Bantuan', 'FAQ, tiket, dan kontak support', '/user/bantuan', [
+      'help',
+      'support',
+      'tiket',
+    ]),
     quick('chat', 'Chat', 'Pesan dengan teknisi', chatPathForRole('USER'), ['pesan']),
     quick('beranda', 'Beranda', 'Halaman depan IndoTeknizi', '/', ['home', 'landing']),
   ]

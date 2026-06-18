@@ -6,10 +6,10 @@ import { BinderbyteError, isBinderbyteConfigured } from '@/lib/binderbyte-client
 import { logOrderEvent } from '@/lib/activity-log'
 import { syncOrderTrackingFromBinderbyte } from '@/lib/order-tracking-sync'
 import { serializeMarketplaceOrder } from '@/lib/marketplace-order-serializer'
+import { MARKETPLACE_ORDER_INCLUDE } from '@/lib/marketplace-order-includes'
 import {
   debitSellerForMarketplace,
-  ensureMarketplaceOrderSettlement,
-  refundBuyerForMarketplace,
+  refundBuyerHoldForMarketplace,
 } from '@/lib/marketplace-wallet'
 
 export const dynamic = 'force-dynamic'
@@ -34,6 +34,7 @@ const patchSchema = z.discriminatedUnion('action', [
   }),
   z.object({
     action: z.literal('cancel'),
+    reason: z.string().trim().min(20, 'Alasan pembatalan minimal 20 karakter').max(500),
   }),
 ])
 
@@ -58,11 +59,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   try {
     const existing = await prisma.order.findFirst({
       where: { id, sellerId: session.user.id },
-      include: {
-        buyer: { select: PARTY_SELECT },
-        seller: { select: PARTY_SELECT },
-        items: { include: { product: { select: { id: true, name: true } } } },
-      },
+      include: MARKETPLACE_ORDER_INCLUDE,
     })
     if (!existing) return apiError('Pesanan tidak ditemukan', 404)
 
@@ -82,6 +79,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         return apiError('Pesanan ini sudah dibatalkan / direfund')
       }
 
+      const isEscrow = existing.settlementVersion === 2
+      const refundAmount = isEscrow
+        ? existing.buyerHoldAmount
+        : existing.total
+      const cancelReason = parsed.data.reason
+
       const updated = await prisma.$transaction(async (tx) => {
         for (const item of existing.items) {
           await tx.product.update({
@@ -93,33 +96,34 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           })
         }
 
-        await refundBuyerForMarketplace(
+        await refundBuyerHoldForMarketplace(
           tx,
           existing.buyerId,
-          existing.total,
+          refundAmount,
           id,
           `Refund pembatalan order ${existing.orderCode}`,
         )
-        await debitSellerForMarketplace(
-          tx,
-          existing.sellerId,
-          existing.total,
-          id,
-          `Pembatalan penjualan ${existing.orderCode}`,
-        )
+
+        if (!isEscrow) {
+          await debitSellerForMarketplace(
+            tx,
+            existing.sellerId,
+            existing.total,
+            id,
+            `Pembatalan penjualan ${existing.orderCode}`,
+          )
+        }
 
         return tx.order.update({
           where: { id },
           data: {
             status: 'CANCELLED',
+            cancelReason,
+            cancelledBy: 'SELLER',
             trackingActive: false,
             trackingNextSyncAt: null,
           },
-          include: {
-            buyer: { select: PARTY_SELECT },
-            seller: { select: PARTY_SELECT },
-            items: { include: { product: { select: { id: true, name: true } } } },
-          },
+          include: MARKETPLACE_ORDER_INCLUDE,
         })
       })
 
@@ -170,11 +174,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
       const updated = await prisma.order.findFirst({
         where: { id },
-        include: {
-          buyer: { select: PARTY_SELECT },
-          seller: { select: PARTY_SELECT },
-          items: { include: { product: { select: { id: true, name: true } } } },
-        },
+        include: MARKETPLACE_ORDER_INCLUDE,
       })
       if (!updated) return apiError('Pesanan tidak ditemukan', 404)
 
@@ -199,47 +199,46 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       )
     }
 
-    // action: advance — PAID→PROCESSING atau SHIPPED→COMPLETED saja (bukan PROCESSING→SHIPPED)
+    // action: advance — hanya PAID→PROCESSING (SHIPPED→COMPLETED via pembeli/cron)
+    if (existing.status === 'PAID') {
+      const isPhysical = existing.items.some((i) => i.product.category !== 'SOFTWARE')
+      if (isPhysical) {
+        const proof = await prisma.orderPackagingProof.findUnique({
+          where: { orderId: id },
+        })
+        if (!proof || proof.status !== 'APPROVED') {
+          return apiError(
+            'Upload dan tunggu persetujuan bukti packaging terlebih dahulu',
+            400,
+          )
+        }
+      }
+    }
+
     if (existing.status === 'PROCESSING') {
       return apiError(
         'Untuk menandai dikirim, input kurir dan nomor resi terlebih dahulu',
       )
     }
 
+    if (existing.status === 'SHIPPED' || existing.status === 'DISPUTED') {
+      return apiError(
+        'Penyelesaian pesanan ditentukan pembeli setelah paket sampai',
+      )
+    }
+
     let nextStatus: OrderStatus | null = null
-    switch (existing.status) {
-      case 'PAID':
-        nextStatus = 'PROCESSING'
-        break
-      case 'SHIPPED':
-        nextStatus = 'COMPLETED'
-        break
-      default:
-        return apiError('Status pesanan tidak dapat diperbarui')
+    if (existing.status === 'PAID') {
+      nextStatus = 'PROCESSING'
+    } else {
+      return apiError('Status pesanan tidak dapat diperbarui')
     }
 
     const updated = await prisma.order.update({
       where: { id },
-      data: {
-        status: nextStatus,
-        ...(nextStatus === 'COMPLETED' ? { trackingActive: false, trackingNextSyncAt: null } : {}),
-      },
-      include: {
-        buyer: { select: PARTY_SELECT },
-        seller: { select: PARTY_SELECT },
-        items: { include: { product: { select: { id: true, name: true } } } },
-      },
+      data: { status: nextStatus },
+      include: MARKETPLACE_ORDER_INCLUDE,
     })
-
-    if (nextStatus === 'COMPLETED') {
-      try {
-        await ensureMarketplaceOrderSettlement(id)
-      } catch (e) {
-        if (!(e instanceof Error && e.message === 'INSUFFICIENT_BALANCE')) {
-          throw e
-        }
-      }
-    }
 
     void logOrderEvent({
       action: 'marketplace.status_updated',

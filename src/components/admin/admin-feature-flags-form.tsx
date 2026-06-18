@@ -5,6 +5,10 @@ import { Button } from '@/components/ui/button'
 import { Smartphone, Laptop, CheckSquare } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import type { PlatformSettingsDto } from '@/lib/platform-settings-shared'
+import {
+  fetchAdminTwoFactorEnabled,
+  requestAdminStepUpCredentials,
+} from '@/lib/admin-step-up-client'
 
 type FlagKey = 'imeiServiceEnabled' | 'remoteServiceEnabled' | 'inspectionServiceEnabled'
 
@@ -20,27 +24,27 @@ type FeatureFlag = {
 const FLAGS: FeatureFlag[] = [
   {
     key: 'imeiServiceEnabled',
-    title: 'Menu Layanan Perangkat',
+    title: 'Menu Layanan Digital',
     description:
-      'Tampilkan menu "Layanan Perangkat" (IMEI & Server services) untuk teknisi terdaftar. Admin selalu memiliki akses ke panel admin terkait. User biasa & pengunjung tidak pernah melihat menu ini.',
+      'Tampilkan menu "Layanan Digital" di navigasi publik dan halaman /imei untuk teknisi terdaftar. Admin selalu memiliki akses ke panel admin terkait. User biasa & pengunjung tidak melihat menu ini.',
     icon: Smartphone,
-    audienceNote: 'Tampil untuk: Teknisi · Admin',
+    audienceNote: 'Navigasi publik · Teknisi · Admin',
   },
   {
     key: 'remoteServiceEnabled',
-    title: 'Menu Remote Assistance',
+    title: 'Halaman IndoDesk & Konsultasi Remote',
     description:
-      'Tampilkan menu "Remote" untuk pengunjung, user, dan teknisi. Bila dimatikan, halaman publik akan menampilkan pesan "tidak tersedia" dan link di navigasi disembunyikan. Admin selalu memiliki akses.',
+      'Tampilkan halaman publik /remote (panduan IndoDesk) dan izinkan pemesanan konsultasi dengan remote (requiresRemote). Sesi remote dikelola di menu Konsultasi — bukan menu terpisah. Bila dimatikan, link navigasi disembunyikan dan booking remote diblokir.',
     icon: Laptop,
-    audienceNote: 'Tampil untuk: Semua role · Admin',
+    audienceNote: 'Navigasi publik · Booking konsultasi remote',
   },
   {
     key: 'inspectionServiceEnabled',
     title: 'Menu Inspeksi Pra-Beli',
     description:
-      'Tampilkan menu "Inspeksi" di navigasi publik dan section bar layanan. Bila dimatikan, halaman publik tidak bisa diakses dan link disembunyikan. Admin selalu memiliki akses.',
+      'Tampilkan menu Inspeksi di navigasi publik, sidebar user/teknisi, dan halaman layanan terkait. Bila dimatikan, halaman publik dan dashboard user tidak bisa diakses; link disembunyikan. Admin selalu memiliki akses panel admin.',
     icon: CheckSquare,
-    audienceNote: 'Tampil untuk: Semua role · Admin',
+    audienceNote: 'Navigasi publik · Dashboard user/teknisi · Admin',
   },
 ]
 
@@ -75,6 +79,10 @@ export function AdminFeatureFlagsForm() {
 
   const toggle = async (flag: FeatureFlag, next: boolean) => {
     if (!settings) return
+    const twoFa = await fetchAdminTwoFactorEnabled()
+    const stepUp = await requestAdminStepUpCredentials(twoFa)
+    if (!stepUp) return
+
     setSaving(flag.key)
     setError(null)
     setMessage(null)
@@ -84,7 +92,7 @@ export function AdminFeatureFlagsForm() {
       const res = await fetch('/api/admin/platform/settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(optimistic),
+        body: JSON.stringify({ ...optimistic, ...stepUp }),
       })
       const json = await res.json()
       if (!res.ok || !json.success) {

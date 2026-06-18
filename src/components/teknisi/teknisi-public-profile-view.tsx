@@ -405,12 +405,8 @@ function AboutSection({ teknisi }: { teknisi: PublicTeknisiDetailDto }) {
             {teknisi.description ??
               `${teknisi.name} adalah teknisi spesialis ${teknisi.specialty.join(', ')} dengan pendekatan diagnosis yang rapi, komunikasi transparan, dan prioritas pada keamanan data pelanggan.`}
           </p>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3">
             {[
-              {
-                label: 'Core expertise',
-                value: teknisi.specialty.slice(0, 3).join(', ') || 'Hardware & software repair',
-              },
               { label: 'Issue handled', value: summary.issuesHandled },
               { label: 'Brand focus', value: summary.brandFocus },
               { label: 'Work approach', value: summary.workApproach },

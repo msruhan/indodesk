@@ -6,6 +6,7 @@ import type { ChatConversationDto, ChatMessageDto } from '@/lib/chat-serializer'
 import { handleStaleSessionResponse } from '@/lib/handle-stale-session'
 
 const POLL_MS = 5000
+const MESSAGE_POLL_MS = 3000
 
 export type UseChatMessengerReturn = {
   isAuthenticated: boolean
@@ -49,11 +50,12 @@ export function useChatMessenger(options?: {
 
   const connectRequestRef = useRef(0)
   const lastConnectedPeerRef = useRef<string | null>(null)
+  const convActivityRef = useRef<Map<string, string>>(new Map())
 
   const loadConversations = useCallback(async () => {
     if (!userId) return
     try {
-      const res = await fetch('/api/chat/conversations')
+      const res = await fetch('/api/chat/conversations', { cache: 'no-store' })
       const data = await res.json()
       if (await handleStaleSessionResponse(res, data)) return
       if (data.success) {
@@ -129,7 +131,9 @@ export function useChatMessenger(options?: {
       if (!userId) return
       if (!silent) setLoadingMessages(true)
       try {
-        const res = await fetch(`/api/chat/conversations/${conversationId}/messages`)
+        const res = await fetch(`/api/chat/conversations/${conversationId}/messages`, {
+          cache: 'no-store',
+        })
         const data = await res.json()
         if (data.success) {
           setMessages(data.data)
@@ -258,20 +262,46 @@ export function useChatMessenger(options?: {
   }, [options?.peerId, userId, autoConnectPeer, connectToPeer])
 
   useEffect(() => {
+    if (!pollMessages || !selectedId) return
+
+    const active = conversations.find((c) => c.id === selectedId)
+    if (!active) return
+
+    const snapshot = `${active.lastMessage ?? ''}|${active.unread}|${active.timestamp}`
+    const prev = convActivityRef.current.get(selectedId)
+    if (prev !== undefined && prev !== snapshot) {
+      void loadMessages(selectedId, true)
+    }
+    convActivityRef.current.set(selectedId, snapshot)
+  }, [conversations, selectedId, pollMessages, loadMessages])
+
+  useEffect(() => {
     if (!poll || !userId) return
-    const interval = setInterval(() => {
-      void loadConversations()
-    }, POLL_MS)
+    const tick = () => void loadConversations()
+    tick()
+    const interval = setInterval(tick, POLL_MS)
     return () => clearInterval(interval)
   }, [poll, userId, loadConversations])
 
   useEffect(() => {
     if (!pollMessages || !selectedId || !userId) return
-    const interval = setInterval(() => {
-      void loadMessages(selectedId, true)
-    }, POLL_MS)
+    const tick = () => void loadMessages(selectedId, true)
+    tick()
+    const interval = setInterval(tick, MESSAGE_POLL_MS)
     return () => clearInterval(interval)
   }, [pollMessages, selectedId, userId, loadMessages])
+
+  useEffect(() => {
+    if (!pollMessages || !selectedId) return
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void loadMessages(selectedId, true)
+        void loadConversations()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [pollMessages, selectedId, loadMessages, loadConversations])
 
   const currentConversation = conversations.find((c) => c.id === selectedId) ?? null
   const totalUnread = conversations.reduce((sum, c) => sum + c.unread, 0)

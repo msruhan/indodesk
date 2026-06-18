@@ -6,7 +6,8 @@ import { useWallet } from '@/contexts/wallet-context'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { WalletTopupModal } from '@/components/wallet/wallet-topup-modal'
-import { Plus, Wallet } from '@/lib/icons'
+import { WalletWithdrawModal } from '@/components/wallet/wallet-withdraw-modal'
+import { Download, Plus, Wallet } from '@/lib/icons'
 import { formatIdr } from '@/lib/wallet-transactions'
 import { cn } from '@/lib/utils'
 
@@ -18,7 +19,12 @@ type UserWalletBalanceCardProps = {
 export function UserWalletBalanceCard({ className, compact = false }: UserWalletBalanceCardProps) {
   const { wallet, isLoading, refreshWallet } = useWallet()
   const [depositOpen, setDepositOpen] = useState(false)
+  const [withdrawOpen, setWithdrawOpen] = useState(false)
   const balance = wallet ? parseFloat(wallet.balance) : 0
+  const heldBalance = wallet?.heldBalance ? parseFloat(wallet.heldBalance) : 0
+  const totalBalance = wallet?.totalBalance
+    ? parseFloat(wallet.totalBalance)
+    : balance + heldBalance
 
   return (
     <>
@@ -42,6 +48,18 @@ export function UserWalletBalanceCard({ className, compact = false }: UserWallet
             >
               {isLoading ? '…' : formatIdr(balance)}
             </p>
+            {!isLoading && heldBalance > 0 && (
+              <div className="mt-2 space-y-0.5 text-xs text-primary-700/90">
+                <p>
+                  Ditahan (escrow):{' '}
+                  <span className="font-semibold tabular-nums">{formatIdr(heldBalance)}</span>
+                </p>
+                <p>
+                  Total:{' '}
+                  <span className="font-semibold tabular-nums">{formatIdr(totalBalance)}</span>
+                </p>
+              </div>
+            )}
             <p className="mt-1 text-xs text-primary-600/90">
               {wallet
                 ? `Terakhir update: ${new Date(wallet.updatedAt).toLocaleDateString('id-ID')}`
@@ -53,16 +71,29 @@ export function UserWalletBalanceCard({ className, compact = false }: UserWallet
           </div>
         </div>
 
-        <Button
-          type="button"
-          variant="primary"
-          size="sm"
-          className="mt-4 w-full"
-          onClick={() => setDepositOpen(true)}
-        >
-          <Plus className="h-3.5 w-3.5 shrink-0" aria-hidden />
-          <span className="truncate">Deposit</span>
-        </Button>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            className="w-full"
+            onClick={() => setDepositOpen(true)}
+          >
+            <Plus className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            <span className="truncate">Deposit</span>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={() => setWithdrawOpen(true)}
+            disabled={isLoading || balance <= 0}
+          >
+            <Download className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            <span className="truncate">Tarik</span>
+          </Button>
+        </div>
       </CardContent>
     </Card>
 
@@ -70,6 +101,12 @@ export function UserWalletBalanceCard({ className, compact = false }: UserWallet
       {depositOpen && (
         <WalletTopupModal
           onClose={() => setDepositOpen(false)}
+          onSuccess={() => void refreshWallet()}
+        />
+      )}
+      {withdrawOpen && (
+        <WalletWithdrawModal
+          onClose={() => setWithdrawOpen(false)}
           onSuccess={() => void refreshWallet()}
         />
       )}

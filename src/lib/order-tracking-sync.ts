@@ -24,6 +24,28 @@ function parseBinderbyteDate(value: string): Date | null {
   return Number.isNaN(d.getTime()) ? null : d
 }
 
+/** BinderByte/JNT sering mengosongkan field location — ambil dari deskripsi jika perlu */
+export function extractTrackingLocationFromText(
+  description: string,
+  location?: string | null,
+): string | null {
+  const direct = location?.trim()
+  if (direct) return direct
+
+  const desc = description.trim()
+  if (!desc) return null
+
+  const patterns = [
+    /(?:sampai di|dikirimkan ke|diterima oleh|menuju ke?|ke)\s+([A-Z0-9_]+)/i,
+    /\b([A-Z]{2,}_[A-Z0-9_]+)\b/,
+  ]
+  for (const pattern of patterns) {
+    const match = desc.match(pattern)
+    if (match?.[1]) return match[1].trim()
+  }
+  return null
+}
+
 export type OrderTrackingDto = {
   courier: ShippingCourier | null
   trackingNumber: string | null
@@ -160,7 +182,7 @@ export async function syncOrderTrackingFromBinderbyte(
         orderId: input.orderId,
         occurredAt,
         description,
-        location: h.location?.trim() || null,
+        location: extractTrackingLocationFromText(description, h.location),
       })
     }
 
@@ -191,6 +213,11 @@ export async function syncOrderTrackingFromBinderbyte(
       data: orderUpdate,
     })
   })
+
+  if (isTerminalTrackingStatus(trackResult.status)) {
+    const { markOrderDelivered } = await import('@/lib/marketplace-order-deadlines')
+    await markOrderDelivered(input.orderId)
+  }
 
   return { newEvents: createdCount, result: trackResult }
 }

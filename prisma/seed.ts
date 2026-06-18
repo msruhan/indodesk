@@ -32,8 +32,10 @@ async function main() {
   await prisma.serverServiceBox.deleteMany()
   await prisma.imeiServiceGroup.deleteMany()
   await prisma.imeiApi.deleteMany()
-  await prisma.walletLedger.deleteMany()
+  // WalletLedger has append-only protection — delete Wallet first (cascade takes ledger)
+  // then forcefully clean any remaining rows
   await prisma.wallet.deleteMany()
+  await prisma.$executeRawUnsafe('TRUNCATE "WalletLedger"')
   await prisma.orderItem.deleteMany()
   await prisma.order.deleteMany()
   await prisma.rekberTransaction.deleteMany()
@@ -60,6 +62,7 @@ async function main() {
   await prisma.user.deleteMany()
 
   const passwordHash = await hash('password123', 12)
+  const seedEmailVerified = new Date()
 
   // ---- USERS ----
   const admin = await prisma.user.create({
@@ -69,6 +72,8 @@ async function main() {
       password: passwordHash,
       role: UserRole.ADMIN,
       phone: '+62 812-0000-0001',
+      emailVerified: seedEmailVerified,
+      mustChangePassword: true,
     },
   })
 
@@ -89,6 +94,7 @@ async function main() {
       role: UserRole.TEKNISI,
       phone: '+62 812-1111-1111',
       image: TEKNISI_AVATAR_AHMAD,
+      emailVerified: seedEmailVerified,
     },
   })
 
@@ -100,6 +106,7 @@ async function main() {
       role: UserRole.TEKNISI,
       phone: '+62 812-2222-2222',
       image: TEKNISI_AVATAR_BUDI,
+      emailVerified: seedEmailVerified,
     },
   })
 
@@ -110,6 +117,7 @@ async function main() {
       password: passwordHash,
       role: UserRole.USER,
       phone: '+62 812-3333-3333',
+      emailVerified: seedEmailVerified,
     },
   })
 
@@ -120,6 +128,7 @@ async function main() {
       password: passwordHash,
       role: UserRole.USER,
       phone: '+62 812-4444-4444',
+      emailVerified: seedEmailVerified,
     },
   })
 
@@ -130,6 +139,7 @@ async function main() {
       password: passwordHash,
       role: UserRole.USER,
       phone: '+62 812-5555-5555',
+      emailVerified: seedEmailVerified,
     },
   })
 
@@ -415,56 +425,259 @@ async function main() {
   await prisma.wallet.create({ data: { userId: user2.id, balance: 250000 } })
   await prisma.wallet.create({ data: { userId: user3.id, balance: 100000 } })
 
-  // ---- PRODUCTS ----
+  // ---- PRODUCTS (terhubung dengan akun teknisi, data siap test) ----
+
+  // Produk 1: iPhone milik Ahmad (teknisi1) — lengkap dengan 3uTools
   const product1 = await prisma.product.create({
     data: {
       sellerId: teknisi1.id,
-      name: 'iPhone 13 Pro Max - Second',
-      category: ProductCategory.HANDPHONE,
+      name: 'iPhone 13 Pro Max 256GB - Graphite',
+      category: ProductCategory.IPHONE,
       price: 8500000,
-      description: 'iPhone 13 Pro Max 256GB, kondisi 95%, fullset, garansi toko 1 bulan.',
-      image: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=400&h=300&fit=crop',
+      description:
+        'iPhone 13 Pro Max 256GB Graphite. Kondisi 95% like new, layar mulus tanpa scratch, body tidak ada penyok. Baterai health 89%. Face ID, True Tone, semua sensor berfungsi normal. Fullset: unit + charger + box. Garansi toko 1 bulan.',
+      color: 'Graphite',
+      ram: '6GB',
+      processor: 'A15 Bionic',
+      storage: '256GB',
+      warranty: 'STORE',
+      completeness: ['IPHONE', 'CHARGER', 'BOX'],
+      deviceType: 'IPHONE',
+      conditionGrade: 'MULUS',
+      conditionPercent: 95,
+      batteryHealth: 89,
+      batteryCycle: 320,
+      isAllOriginal: true,
+      trueToneActive: true,
+      faceIdWorks: true,
+      verified3uTools: true,
+      image: 'https://images.unsplash.com/photo-1632633173522-47456de71b76?w=800&h=600&fit=crop',
+      images: [
+        { url: 'https://images.unsplash.com/photo-1632633173522-47456de71b76?w=800&h=600&fit=crop', isPrimary: true },
+        { url: 'https://images.unsplash.com/photo-1591337676887-a217a6970a8a?w=800&h=600&fit=crop', isPrimary: false },
+        { url: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=800&h=600&fit=crop', isPrimary: false },
+      ],
+      threeUtoolsImages: [
+        { url: 'https://images.unsplash.com/photo-1526406915894-7bcd65f60845?w=800&h=600&fit=crop', isPrimary: true },
+        { url: 'https://images.unsplash.com/photo-1551650975-87deedd944c3?w=800&h=600&fit=crop', isPrimary: false },
+      ],
       rating: 4.8,
-      reviewCount: 124,
+      reviewCount: 12,
       views: 2341,
-      soldCount: 12,
-      stock: 3,
-      listingStatus: 'APPROVED',
-      isPublished: true,
-    },
-  })
-
-  const product2 = await prisma.product.create({
-    data: {
-      sellerId: teknisi2.id,
-      name: 'Samsung S21 Ultra - Refurbished',
-      category: ProductCategory.HANDPHONE,
-      price: 7200000,
-      description: 'Samsung S21 Ultra 128GB, refurbished grade A, baterai 92%.',
-      image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400&h=300&fit=crop',
-      rating: 4.6,
-      reviewCount: 89,
-      views: 1892,
-      soldCount: 8,
+      soldCount: 3,
       stock: 2,
       listingStatus: 'APPROVED',
       isPublished: true,
     },
   })
 
+  // Produk 2: Samsung milik Budi (teknisi2) — tanpa 3uTools (bukan Apple)
+  const product2 = await prisma.product.create({
+    data: {
+      sellerId: teknisi2.id,
+      name: 'Samsung Galaxy S24 Ultra 512GB - Titanium Gray',
+      category: ProductCategory.IPHONE,
+      price: 15900000,
+      description:
+        'Samsung Galaxy S24 Ultra 512GB Titanium Gray. Unit mulus 98%, baru pemakaian 3 bulan. S Pen berfungsi sempurna, kamera 200MP jernih. Baterai 95% health. Fullset lengkap + bonus case original. Garansi resmi SEIN aktif.',
+      color: 'Titanium Gray',
+      ram: '12GB',
+      processor: 'Snapdragon 8 Gen 3',
+      storage: '512GB',
+      warranty: 'OFFICIAL',
+      completeness: ['HANDPHONE', 'CHARGER', 'BOX', 'EARPHONE'],
+      deviceType: 'ANDROID_PHONE',
+      conditionGrade: 'LIKE_NEW',
+      conditionPercent: 98,
+      image: 'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=800&h=600&fit=crop',
+      images: [
+        { url: 'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=800&h=600&fit=crop', isPrimary: true },
+        { url: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&h=600&fit=crop', isPrimary: false },
+      ],
+      threeUtoolsImages: [],
+      rating: 4.9,
+      reviewCount: 8,
+      views: 1892,
+      soldCount: 1,
+      stock: 1,
+      listingStatus: 'APPROVED',
+      isPublished: true,
+    },
+  })
+
+  // Produk 3: iPhone milik Ahmad (teknisi1) — budget, dengan 3uTools
   const product3 = await prisma.product.create({
     data: {
       sellerId: teknisi1.id,
-      name: 'Unlock Tool Premium License',
-      category: ProductCategory.SOFTWARE,
-      price: 500000,
-      description: 'License key unlock tool premium, support semua brand, lifetime update.',
-      image: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=400&h=300&fit=crop',
+      name: 'iPhone 11 64GB - Black',
+      category: ProductCategory.IPHONE,
+      price: 4200000,
+      description:
+        'iPhone 11 64GB Black. Kondisi 85%, ada minor scratch di body samping (tidak terlihat saat pakai case). Baterai health 82%. Semua fungsi normal: Face ID, kamera, speaker, charging. Unit only + charger aftermarket.',
+      color: 'Black',
+      ram: '4GB',
+      processor: 'A13 Bionic',
+      storage: '64GB',
+      warranty: 'STORE',
+      completeness: ['IPHONE', 'CHARGER'],
+      deviceType: 'IPHONE',
+      conditionGrade: 'NORMAL',
+      conditionPercent: 85,
+      minusNotes: 'Lecet halus di body samping kiri',
+      batteryHealth: 82,
+      batteryCycle: 540,
+      isAllOriginal: false,
+      replacedParts: ['Battery'],
+      trueToneActive: true,
+      faceIdWorks: true,
+      verified3uTools: true,
+      image: 'https://images.unsplash.com/photo-1574944985070-8f3ebc6b79d2?w=800&h=600&fit=crop',
+      images: [
+        { url: 'https://images.unsplash.com/photo-1574944985070-8f3ebc6b79d2?w=800&h=600&fit=crop', isPrimary: true },
+        { url: 'https://images.unsplash.com/photo-1565849904461-04a58ad377e0?w=800&h=600&fit=crop', isPrimary: false },
+      ],
+      threeUtoolsImages: [
+        { url: 'https://images.unsplash.com/photo-1526406915894-7bcd65f60845?w=800&h=600&fit=crop', isPrimary: true },
+      ],
+      rating: 4.5,
+      reviewCount: 24,
+      views: 3102,
+      soldCount: 7,
+      stock: 3,
+      listingStatus: 'APPROVED',
+      isPublished: true,
+    },
+  })
+
+  // Produk 3b: iPhone 12 milik Budi — untuk uji benchmark iPhone vs iPhone
+  await prisma.product.create({
+    data: {
+      sellerId: teknisi2.id,
+      name: 'iPhone 12 128GB - Blue',
+      category: ProductCategory.IPHONE,
+      price: 5800000,
+      description:
+        'iPhone 12 128GB Blue. Kondisi mulus 92%, baterai sehat. Fullset original. Face ID & True Tone normal.',
+      color: 'Blue',
+      ram: '4GB',
+      processor: 'A14 Bionic',
+      storage: '128GB',
+      warranty: 'STORE',
+      completeness: ['FULLSET'],
+      deviceType: 'IPHONE',
+      conditionGrade: 'MULUS',
+      conditionPercent: 92,
+      batteryHealth: 91,
+      batteryCycle: 210,
+      isAllOriginal: true,
+      trueToneActive: true,
+      faceIdWorks: true,
+      verified3uTools: true,
+      image: 'https://images.unsplash.com/photo-1605236453806-6ff36851218e?w=800&h=600&fit=crop',
+      images: [
+        { url: 'https://images.unsplash.com/photo-1605236453806-6ff36851218e?w=800&h=600&fit=crop', isPrimary: true },
+      ],
+      threeUtoolsImages: [
+        { url: 'https://images.unsplash.com/photo-1551650975-87deedd944c3?w=800&h=600&fit=crop', isPrimary: true },
+      ],
       rating: 4.7,
-      reviewCount: 167,
-      views: 2891,
+      reviewCount: 0,
+      views: 540,
       soldCount: 0,
-      stock: 99,
+      stock: 2,
+      listingStatus: 'APPROVED',
+      isPublished: true,
+    },
+  })
+
+  // Produk 4: Laptop milik Budi (teknisi2)
+  await prisma.product.create({
+    data: {
+      sellerId: teknisi2.id,
+      name: 'MacBook Air M2 256GB - Midnight',
+      category: ProductCategory.LAPTOP,
+      price: 12500000,
+      description:
+        'MacBook Air M2 2022 256GB Midnight. Kondisi 92%, layar mulus, keyboard responsive, trackpad sempurna. Cycle count 87. Fullset: unit + charger MagSafe + box. Garansi toko 1 bulan.',
+      color: 'Midnight',
+      ram: '8GB',
+      processor: 'Apple M2',
+      storage: '256GB',
+      warranty: 'STORE',
+      completeness: ['IPHONE', 'CHARGER', 'BOX'],
+      image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800&h=600&fit=crop',
+      images: [
+        { url: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800&h=600&fit=crop', isPrimary: true },
+        { url: 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=800&h=600&fit=crop', isPrimary: false },
+      ],
+      threeUtoolsImages: [],
+      rating: 4.7,
+      reviewCount: 5,
+      views: 890,
+      soldCount: 2,
+      stock: 1,
+      listingStatus: 'APPROVED',
+      isPublished: true,
+    },
+  })
+
+  // Produk 5: Aksesoris milik Ahmad (teknisi1)
+  await prisma.product.create({
+    data: {
+      sellerId: teknisi1.id,
+      name: 'Charger iPhone 20W USB-C Original',
+      category: ProductCategory.AKSESORIS,
+      price: 185000,
+      description:
+        'Charger iPhone 20W USB-C original Apple. Baru, segel. Support fast charging untuk iPhone 8 ke atas dan iPad. Garansi toko 1 minggu.',
+      color: 'White',
+      ram: '',
+      processor: '',
+      storage: '',
+      warranty: 'STORE',
+      completeness: [],
+      image: 'https://images.unsplash.com/photo-1583394838336-acd977736f90?w=800&h=600&fit=crop',
+      images: [
+        { url: 'https://images.unsplash.com/photo-1583394838336-acd977736f90?w=800&h=600&fit=crop', isPrimary: true },
+      ],
+      threeUtoolsImages: [],
+      rating: 4.9,
+      reviewCount: 45,
+      views: 4520,
+      soldCount: 32,
+      stock: 15,
+      listingStatus: 'APPROVED',
+      isPublished: true,
+    },
+  })
+
+  // Produk 6: iPhone iPad milik Budi — PENDING (belum approved, untuk test admin approval)
+  await prisma.product.create({
+    data: {
+      sellerId: teknisi2.id,
+      name: 'iPad Pro 11" M2 128GB WiFi - Space Gray',
+      category: ProductCategory.IPHONE,
+      price: 9800000,
+      description:
+        'iPad Pro 11 inch M2 2022 128GB WiFi Space Gray. Kondisi 90%, layar sempurna, Apple Pencil 2 support. Baterai health 91%. Unit + charger + box.',
+      color: 'Space Gray',
+      ram: '8GB',
+      processor: 'Apple M2',
+      storage: '128GB',
+      warranty: 'STORE',
+      completeness: ['IPHONE', 'CHARGER', 'BOX'],
+      image: 'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=800&h=600&fit=crop',
+      images: [
+        { url: 'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=800&h=600&fit=crop', isPrimary: true },
+      ],
+      threeUtoolsImages: [
+        { url: 'https://images.unsplash.com/photo-1526406915894-7bcd65f60845?w=800&h=600&fit=crop', isPrimary: true },
+      ],
+      rating: 0,
+      reviewCount: 0,
+      views: 0,
+      soldCount: 0,
+      stock: 1,
       listingStatus: 'PENDING',
       isPublished: false,
     },
@@ -551,6 +764,138 @@ async function main() {
     where: { referenceId: sampleOrder.id },
     data: { createdAt: new Date('2026-05-16T14:30:00+07:00') },
   })
+
+  // ---- PRODUCT REVIEWS (ulasan produk dari pembeli) ----
+  // Buat beberapa order completed untuk bisa seed review (@@unique orderId+productId)
+  const reviewOrder2 = await prisma.order.create({
+    data: {
+      orderCode: 'ORD-2026-000002',
+      buyerId: user2.id,
+      sellerId: teknisi1.id,
+      subtotal: 8500000,
+      total: 8500000,
+      status: 'COMPLETED',
+      completedAt: new Date('2026-05-20T10:00:00+07:00'),
+      items: { create: { productId: product1.id, quantity: 1, price: 8500000 } },
+    },
+  })
+  const reviewOrder3 = await prisma.order.create({
+    data: {
+      orderCode: 'ORD-2026-000003',
+      buyerId: user2.id,
+      sellerId: teknisi1.id,
+      subtotal: 4200000,
+      total: 4200000,
+      status: 'COMPLETED',
+      completedAt: new Date('2026-05-21T10:00:00+07:00'),
+      items: { create: { productId: product3.id, quantity: 1, price: 4200000 } },
+    },
+  })
+  const reviewOrder4 = await prisma.order.create({
+    data: {
+      orderCode: 'ORD-2026-000004',
+      buyerId: user3.id,
+      sellerId: teknisi1.id,
+      subtotal: 4200000,
+      total: 4200000,
+      status: 'COMPLETED',
+      completedAt: new Date('2026-05-22T10:00:00+07:00'),
+      items: { create: { productId: product3.id, quantity: 1, price: 4200000 } },
+    },
+  })
+  const reviewOrder5 = await prisma.order.create({
+    data: {
+      orderCode: 'ORD-2026-000005',
+      buyerId: user1.id,
+      sellerId: teknisi2.id,
+      subtotal: 15900000,
+      total: 15900000,
+      status: 'COMPLETED',
+      completedAt: new Date('2026-05-19T14:00:00+07:00'),
+      items: { create: { productId: product2.id, quantity: 1, price: 15900000 } },
+    },
+  })
+  const reviewOrder6 = await prisma.order.create({
+    data: {
+      orderCode: 'ORD-2026-000006',
+      buyerId: user3.id,
+      sellerId: teknisi2.id,
+      subtotal: 15900000,
+      total: 15900000,
+      status: 'COMPLETED',
+      completedAt: new Date('2026-05-23T14:00:00+07:00'),
+      items: { create: { productId: product2.id, quantity: 1, price: 15900000 } },
+    },
+  })
+
+  await prisma.productReview.createMany({
+    data: [
+      {
+        productId: product1.id,
+        orderId: sampleOrder.id,
+        authorId: user1.id,
+        rating: 5,
+        comment:
+          'iPhone 13 Pro Max nya mantap! Kondisi sesuai deskripsi, layar mulus, baterai masih bagus. Packing rapi dan pengiriman cepat. Recommended seller!',
+      },
+      {
+        productId: product1.id,
+        orderId: reviewOrder2.id,
+        authorId: user2.id,
+        rating: 5,
+        comment:
+          'Beli buat istri, dia senang banget. Warna Graphite elegan, ProMotion display smooth. Teknisi juga kasih tips cara rawat baterai. Top!',
+      },
+      {
+        productId: product3.id,
+        orderId: reviewOrder3.id,
+        authorId: user2.id,
+        rating: 5,
+        comment:
+          'iPhone 11 nya kondisi bagus, sesuai foto. Face ID lancar, kamera jernih. Harga sangat worth it untuk unit second. Garansi toko bikin tenang.',
+      },
+      {
+        productId: product3.id,
+        orderId: reviewOrder4.id,
+        authorId: user3.id,
+        rating: 4,
+        comment:
+          'Unit oke, cuma ada sedikit scratch di body samping seperti yang dibilang penjual. Overall puas, charging normal dan speaker lantang.',
+      },
+      {
+        productId: product2.id,
+        orderId: reviewOrder5.id,
+        authorId: user1.id,
+        rating: 5,
+        comment:
+          'Samsung S24 Ultra nya premium banget. S Pen responsive, kamera 200MP detail gila. Garansi SEIN masih panjang. Best purchase!',
+      },
+      {
+        productId: product2.id,
+        orderId: reviewOrder6.id,
+        authorId: user3.id,
+        rating: 4,
+        comment:
+          'Unit mulus dan lengkap. Satu minus: agak lama shipping karena beda kota. Tapi overall produk sesuai harapan.',
+      },
+    ],
+  })
+
+  // Update reviewCount pada produk yang di-review
+  for (const pid of [product1.id, product2.id, product3.id]) {
+    const count = await prisma.productReview.count({ where: { productId: pid } })
+    const avgResult = await prisma.productReview.aggregate({
+      where: { productId: pid },
+      _avg: { rating: true },
+    })
+    await prisma.product.update({
+      where: { id: pid },
+      data: {
+        reviewCount: count,
+        rating: Math.round((avgResult._avg.rating ?? 0) * 100) / 100,
+      },
+    })
+  }
 
   // ---- SAMPLE REKBER ----
   await prisma.rekberTransaction.create({
@@ -839,6 +1184,63 @@ async function main() {
       price: 150000,
       status: 'PENDING',
       note: 'Galaxy S24 Ultra warna hitam',
+    },
+  })
+
+  // ---- SERVER SERVICES ----
+  const serverBoxTools = await prisma.serverServiceBox.create({
+    data: { title: 'Firmware & Activation Tools', sortOrder: 1 },
+  })
+
+  const serverFieldDefsJson = JSON.stringify([
+    { key: 'email', label: 'Email', required: true, type: 'email' },
+    { key: 'username', label: 'Username', required: true, type: 'text' },
+  ])
+
+  const svcServerActive = await prisma.serverService.create({
+    data: {
+      apiId: dhruApi1.id,
+      boxId: serverBoxTools.id,
+      title: 'Sigma Key Activation (1 Year)',
+      description: 'Aktivasi Sigma Key 1 tahun. Butuh email dan username akun Sigma.',
+      price: 75000,
+      deliveryTime: '1-24 jam',
+      quantity: 1,
+      requiredFields: serverFieldDefsJson,
+      status: 'ACTIVE',
+    },
+  })
+
+  await prisma.serverService.create({
+    data: {
+      apiId: dhruApi1.id,
+      boxId: serverBoxTools.id,
+      title: 'Legacy Server Tool (Inactive)',
+      description: 'Layanan nonaktif untuk uji validasi.',
+      price: 50000,
+      deliveryTime: '—',
+      quantity: 1,
+      requiredFields: serverFieldDefsJson,
+      status: 'INACTIVE',
+    },
+  })
+
+  await prisma.serverOrder.create({
+    data: {
+      orderCode: 'SRV-2026-A1B2C3',
+      userId: user1.id,
+      serviceId: svcServerActive.id,
+      price: 75000,
+      status: 'SUCCESS',
+      email: 'siti@gmail.com',
+      requiredFields: JSON.stringify({
+        email: 'siti@gmail.com',
+        username: 'sigma_user_01',
+      }),
+      code: 'LICENSE-KEY: ABCD-1234-EFGH-5678',
+      comments: 'Aktivasi berhasil',
+      processedAt: new Date('2026-05-15T08:00:00Z'),
+      completedAt: new Date('2026-05-15T10:30:00Z'),
     },
   })
 

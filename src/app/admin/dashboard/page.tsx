@@ -175,6 +175,29 @@ export default function AdminDashboardPage() {
                 tone="warning"
               />
             )}
+            {data.stats.pendingWithdraws > 0 && (
+              <InsightCard
+                icon={Clock}
+                title={`${data.stats.pendingWithdraws} penarikan tertunda`}
+                description="Proses di Manajemen → Saldo → Penarikan."
+                tone="warning"
+              />
+            )}
+            {data.stats.openSecurityAlerts > 0 && (
+              <InsightCard
+                icon={AlertCircle}
+                title={`${data.stats.openSecurityAlerts} alert keamanan wallet`}
+                description="Tinjau anomali saldo di Manajemen → Saldo → Keamanan."
+                tone="danger"
+              />
+            )}
+            {(data.stats.pendingWithdraws > 0 || data.stats.openSecurityAlerts > 0) && (
+              <Link href="/admin/management?tab=saldo">
+                <Button variant="outline" size="sm" className="w-full">
+                  Buka Manajemen Saldo
+                </Button>
+              </Link>
+            )}
             <Link href="/admin/transactions">
               <Button variant="outline" size="sm" className="w-full">
                 Lihat semua transaksi

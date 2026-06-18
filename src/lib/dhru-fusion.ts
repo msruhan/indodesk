@@ -3,12 +3,168 @@
  * Supports both Classic (form-data + XML) and Pro (REST + Bearer Token) versions.
  */
 
+import { formatDhruSupplierUserMessage } from '@/lib/dhru-supplier-messages'
+import { hasDhruCustomSnField } from '@/lib/imei-supplier-fields'
+import {
+  isImeiStressCredit,
+  isImeiStressTimeout,
+} from '@/lib/imei-stress-mock'
+import {
+  isServerStressCredit,
+  isServerStressTimeout,
+} from '@/lib/server-stress-mock'
 import { isStressTestMode, mockDelay } from './stress-mode'
 
 interface DhruFusionConfig {
   host: string
   username: string
   apiKey: string
+}
+
+function buildClassicApiUrls(host: string): string[] {
+  const cleaned = host.replace(/\/+$/, '')
+  const urls = new Set<string>([`${cleaned}/api/index.php`, `${cleaned}/index.php`])
+
+  try {
+    const parsed = new URL(cleaned)
+    const origin = parsed.origin.replace(/\/+$/, '')
+    urls.add(`${origin}/api/index.php`)
+    urls.add(`${origin}/index.php`)
+    if (!parsed.pathname.toLowerCase().includes('/dhru')) {
+      urls.add(`${origin}/dhru/api/index.php`)
+      urls.add(`${origin}/dhru/index.php`)
+    }
+  } catch {
+    // Host validated on create/update.
+  }
+
+  return [...urls]
+}
+
+/** Dhru Classic keys are dashed segments (e.g. VQL-CBG-UIO-…); Pro uses Bearer tokens. */
+export function isClassicDhruApiKey(apiKey: string): boolean {
+  return /^[A-Z0-9]{3}(-[A-Z0-9]{3}){4,}$/i.test(apiKey.trim())
+}
+
+export function isDhruProSkippedOrUnavailable(error?: string): boolean {
+  if (!error) return true
+  return (
+    error.includes('REST API Pro tidak tersedia') ||
+    error.includes('REST API Pro is not available') ||
+    error.includes('Skipped — Classic API key format')
+  )
+}
+
+const DHRU_CLASSIC_USER_AGENT = 'IndoTeknizi/1.0 (DhruFusion Classic API)'
+const DHRU_BROWSER_USER_AGENT =
+  'Mozilla/5.0 (compatible; IndoTeknizi/1.0; DhruFusion Classic API) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+
+function resolveSiteOrigin(host: string): string {
+  try {
+    const parsed = new URL(host.includes('://') ? host : `https://${host}`)
+    return parsed.origin
+  } catch {
+    return host.replace(/\/+$/, '')
+  }
+}
+
+function parseBotCookieChallenge(body: string): string | null {
+  const m = body.match(/document\.cookie\s*=\s*["']([^"']+)["']/i)
+  return m?.[1]?.trim() || null
+}
+
+function isBotCookieChallenge(status: number, body: string): boolean {
+  return status === 409 && parseBotCookieChallenge(body) !== null
+}
+
+function isUnsupportedMediaType(status: number, body: string): boolean {
+  return status === 415 || /415 Unsupported Media Type/i.test(body)
+}
+
+function parseSupplierWafDenial(body: string): string | null {
+  const trimmed = body.trim()
+  if (!trimmed.startsWith('{')) return null
+  try {
+    const json = JSON.parse(trimmed) as { message?: string; SUCCESS?: unknown; ERROR?: unknown }
+    if (json.SUCCESS || json.ERROR) return null
+    const msg = String(json.message ?? '').trim()
+    if (!msg) return null
+    if (/imunify|bot.protection|access denied|whitelist|automation/i.test(msg)) return msg
+    return null
+  } catch {
+    return null
+  }
+}
+
+type ClassicPostOptions = {
+  cookie?: string
+  siteOrigin?: string
+  browserLike?: boolean
+}
+
+async function postClassicForm(
+  url: string,
+  formData: URLSearchParams,
+  options: ClassicPostOptions = {},
+): Promise<{ response: Response; text: string }> {
+  const { cookie, siteOrigin, browserLike = false } = options
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/x-www-form-urlencoded',
+    'User-Agent': browserLike ? DHRU_BROWSER_USER_AGENT : DHRU_CLASSIC_USER_AGENT,
+    Accept: 'application/json, text/plain, */*',
+  }
+  if (browserLike && siteOrigin) {
+    headers.Origin = siteOrigin
+    headers.Referer = `${siteOrigin}/`
+  }
+  if (cookie) headers.Cookie = cookie
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: formData.toString(),
+    signal: AbortSignal.timeout(60000),
+  })
+  const text = await response.text()
+  return { response, text }
+}
+
+async function postClassicWithBypass(
+  url: string,
+  formData: URLSearchParams,
+  siteOrigin: string,
+): Promise<{ response: Response; text: string; lastError?: string }> {
+  let { response, text } = await postClassicForm(url, formData, { siteOrigin })
+
+  if (isUnsupportedMediaType(response.status, text)) {
+    ;({ response, text } = await postClassicForm(url, formData, { siteOrigin, browserLike: true }))
+  }
+
+  if (isBotCookieChallenge(response.status, text)) {
+    const cookie = parseBotCookieChallenge(text)!
+    ;({ response, text } = await postClassicForm(url, formData, {
+      siteOrigin,
+      browserLike: true,
+      cookie,
+    }))
+  }
+
+  const waf = parseSupplierWafDenial(text)
+  if (waf) {
+    return { response, text, lastError: formatDhruSupplierUserMessage(waf) }
+  }
+
+  if (isBotCookieChallenge(response.status, text)) {
+    return {
+      response,
+      text,
+      lastError: formatDhruSupplierUserMessage(
+        'Supplier memblokir request API (bot protection cookie). Whitelist IP server Anda.',
+      ),
+    }
+  }
+
+  return { response, text }
 }
 
 // ============================================================
@@ -201,6 +357,7 @@ interface DhruServiceItem {
   CREDIT: string
   TIME: string
   INFO?: string
+  CUSTOM?: Record<string, string>
   'Requires.Network'?: string
   'Requires.Mobile'?: string
   'Requires.Provider'?: string
@@ -211,6 +368,8 @@ interface DhruServiceItem {
   'Requires.SN'?: string
   [key: string]: string | unknown
 }
+
+export type { DhruServiceItem }
 
 interface DhruServiceGroup {
   GROUPNAME: string
@@ -285,6 +444,7 @@ export interface ParsedImeiService {
   groupName: string
   price: number
   deliveryTime: string
+  requiresImei: boolean
   requiresNetwork: boolean
   requiresModel: boolean
   requiresProvider: boolean
@@ -382,12 +542,16 @@ function parseGroupedListToImeiServices(
     for (const [serviceId, svc] of Object.entries(group.SERVICES)) {
       if (!isClassicImeiService(svc, group)) continue
 
+      const customSn = hasDhruCustomSnField(svc)
+      const requiresSn = svc['Requires.SN'] === 'Required' || customSn
+
       services.push({
         toolId: String(svc.SERVICEID || serviceId),
         title: svc.SERVICENAME || `Service ${serviceId}`,
         groupName,
         price: parseFloat(String(svc.CREDIT)) || 0,
         deliveryTime: svc.TIME || '',
+        requiresImei: !requiresSn,
         requiresNetwork: svc['Requires.Network'] === 'Required',
         requiresModel: svc['Requires.Mobile'] === 'Required',
         requiresProvider: svc['Requires.Provider'] === 'Required',
@@ -395,7 +559,7 @@ function parseGroupedListToImeiServices(
         requiresKbh: svc['Requires.KBH'] === 'Required',
         requiresMep: svc['Requires.MEP'] === 'Required',
         requiresPrd: svc['Requires.PRD'] === 'Required',
-        requiresSn: svc['Requires.SN'] === 'Required',
+        requiresSn: requiresSn,
       })
     }
   }
@@ -405,6 +569,87 @@ function parseGroupedListToImeiServices(
 
 function encodeDhruCustomField(fields: Record<string, string>): string {
   return Buffer.from(JSON.stringify(fields), 'utf8').toString('base64')
+}
+
+/** Dhru Classic panels often expect base64("null") when using flat SN/IMEI tags. */
+export const DHRU_NULL_CUSTOMFIELD = 'bnVsbA=='
+
+const DHRU_CLASSIC_FLAT_TAGS = [
+  'MODELID',
+  'PROVIDERID',
+  'NETWORK',
+  'PIN',
+  'KBH',
+  'MEP',
+  'PRD',
+  'TYPE',
+  'LOCKS',
+  'REFERENCE',
+  'SECRO',
+] as const
+
+/** Full flat XML skeleton (empty IMEI + optional SN) — luteam/Dhru SN OFF services. */
+export function withDhruClassicImeiShell(params: Record<string, string>): Record<string, string> {
+  const shell: Record<string, string> = { IMEI: '', SN: '' }
+  for (const tag of DHRU_CLASSIC_FLAT_TAGS) {
+    shell[tag] = ''
+  }
+  return { ...shell, ...params }
+}
+
+/** Build placeimeiorder parameter variants (flat XML tags; never CUSTOMFIELD-only when IMEI/SN present). */
+export function buildPlaceImeiOrderAttempts(
+  serviceId: string,
+  fields: Record<string, string>,
+): Record<string, string>[] {
+  const attempts: Record<string, string>[] = []
+  const seen = new Set<string>()
+  const sn = fields.SN?.trim()
+  const imei = fields.IMEI?.trim()
+  const customAll = encodeDhruCustomField(fields)
+
+  const push = (params: Record<string, string>) => {
+    const key = JSON.stringify(Object.entries(params).sort(([a], [b]) => a.localeCompare(b)))
+    if (seen.has(key)) return
+    seen.add(key)
+    attempts.push(params)
+  }
+
+  // luteam CUSTOM SN: serial in <IMEI> only
+  if (imei && !sn) {
+    push({ ID: serviceId, IMEI: imei })
+    push({ ID: serviceId, IMEI: imei, CUSTOMFIELD: encodeDhruCustomField({ SN: imei }) })
+    return attempts
+  }
+
+  if (sn) {
+    push(withDhruClassicImeiShell({ ID: serviceId, SN: sn, CUSTOMFIELD: DHRU_NULL_CUSTOMFIELD }))
+    push(withDhruClassicImeiShell({ ID: serviceId, SN: sn }))
+    push({ ID: serviceId, SN: sn })
+
+    const customFieldVariants: Record<string, string>[] = [{ SN: sn }, { sn: sn }]
+    for (const customFields of customFieldVariants) {
+      push(
+        withDhruClassicImeiShell({
+          ID: serviceId,
+          SN: sn,
+          CUSTOMFIELD: encodeDhruCustomField(customFields),
+        }),
+      )
+    }
+
+    if (imei) {
+      push(withDhruClassicImeiShell({ ID: serviceId, IMEI: imei, SN: sn, CUSTOMFIELD: DHRU_NULL_CUSTOMFIELD }))
+      push({ ID: serviceId, IMEI: imei, SN: sn })
+    }
+    return attempts
+  }
+
+  if (Object.keys(fields).length > 0) {
+    push({ ID: serviceId, ...fields })
+  }
+
+  return attempts
 }
 
 function dhruErrorMessage(res: DhruResponse): string {
@@ -423,6 +668,43 @@ function isDhruLegacyActionUnavailable(msg: string): boolean {
 function isDhruImeiFieldRequiredError(msg: string): boolean {
   const m = msg.toLowerCase()
   return m.includes('imei') && m.includes('required')
+}
+
+function isDhruServiceIdRequiredError(msg: string): boolean {
+  const m = msg.toLowerCase()
+  return m.includes('id service is required') || (m.includes('service') && m.includes('required'))
+}
+
+/** Dhru Fusion Pro product UUID (toolId from Pro /products sync). */
+export function isDhruProProductId(id: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    id.trim(),
+  )
+}
+
+export function isDhruInvalidServiceIdError(msg: string): boolean {
+  const m = msg.toLowerCase()
+  return (
+    (m.includes('id') && m.includes('invalid')) ||
+    m.includes('invalid service') ||
+    m.includes('service not found') ||
+    m.includes('product not found') ||
+    m.includes('product_uuid')
+  )
+}
+
+export function mapProOrderStatusToDhruNumber(status: string | undefined): number {
+  const s = (status ?? '').toLowerCase()
+  if (s.includes('success') || s.includes('complete')) return 4
+  if (s.includes('reject') || s.includes('fail') || s.includes('cancel')) return 3
+  if (s.includes('process') || s.includes('pending') || s.includes('queue')) return 1
+  return 0
+}
+
+function extractDhruPlaceReference(row: Record<string, unknown> | undefined): string {
+  if (!row) return ''
+  const ref = row.REFERENCEID ?? row.referenceid ?? row.ID ?? row.id
+  return String(ref ?? '').trim()
 }
 
 function withDhruQuantity(
@@ -449,6 +731,12 @@ export function isImeiProProduct(product: DhruProProduct): boolean {
   return !isServerProProduct(product)
 }
 
+export function isDhruProProductUuid(value: string | null | undefined): boolean {
+  const id = String(value ?? '').trim()
+  if (!id) return false
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
+}
+
 export function resolveProCategoryName(
   categories: DhruProCategory[] | undefined,
   product: DhruProProduct,
@@ -470,19 +758,21 @@ export function formatServerSyncError(classicError: string, proError?: string): 
     lower.includes('tidak ada layanan server') ||
     lower.includes('servicetype server')
   ) {
-    return 'Akun supplier ini tidak memiliki layanan Server/Remote/File yang aktif di imeiservicelist. Gunakan Sync IMEI Services — kredensial Anda valid untuk layanan IMEI saja.'
+    return 'Akun supplier ini tidak memiliki layanan Server/Remote/File yang aktif di imeiservicelist. Gunakan Sync Digital Services — kredensial Anda valid untuk layanan digital saja.'
   }
 
   const proUnavailable =
     !proError ||
     proError.includes('REST API Pro tidak tersedia') ||
-    proError.includes('Invalid JSON')
+    proError.includes('REST API Pro is not available') ||
+    proError.includes('Invalid JSON') ||
+    proError.includes('Skipped — Classic API key format')
 
   if (proUnavailable) {
-    return classicError
+    return formatDhruSupplierUserMessage(classicError)
   }
 
-  return `${classicError} (Pro API: ${proError})`
+  return formatDhruSupplierUserMessage(`${classicError} (Pro API: ${proError})`)
 }
 
 export class DhruFusionClient {
@@ -528,25 +818,40 @@ export class DhruFusionClient {
     formData.set('requestformat', 'JSON')
     formData.set('parameters', xmlParams)
 
-    const url = `${this.host}/api/index.php`
+    const classicUrls = buildClassicApiUrls(this.host)
+    const siteOrigin = resolveSiteOrigin(this.host)
+    let lastError = 'DhruFusion API endpoint not found'
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: formData.toString(),
-      signal: AbortSignal.timeout(60000), // 60s timeout
-    })
+    for (const url of classicUrls) {
+      try {
+        const { response, text, lastError: wafError } = await postClassicWithBypass(
+          url,
+          formData,
+          siteOrigin,
+        )
 
-    if (!response.ok) {
-      throw new Error(`DhruFusion API returned ${response.status}: ${response.statusText}`)
+        if (wafError) {
+          lastError = wafError
+          continue
+        }
+
+        if (!response.ok) {
+          lastError = `DhruFusion API returned ${response.status}: ${response.statusText}`
+          continue
+        }
+
+        try {
+          return JSON.parse(text) as DhruResponse
+        } catch {
+          lastError = `DhruFusion API returned invalid JSON: ${text.slice(0, 200)}`
+          continue
+        }
+      } catch (e) {
+        lastError = e instanceof Error ? e.message : 'Request failed'
+      }
     }
 
-    const text = await response.text()
-    try {
-      return JSON.parse(text) as DhruResponse
-    } catch {
-      throw new Error(`DhruFusion API returned invalid JSON: ${text.slice(0, 200)}`)
-    }
+    throw new Error(formatDhruSupplierUserMessage(lastError))
   }
 
   /**
@@ -608,7 +913,7 @@ export class DhruFusionClient {
       return {
         success: false,
         services: [],
-        error: 'Tidak ada layanan IMEI di imeiservicelist (hanya Server/Remote/File atau daftar kosong)',
+        error: 'Tidak ada layanan digital di imeiservicelist (hanya Server/Remote/File atau daftar kosong)',
       }
     }
 
@@ -633,24 +938,58 @@ export class DhruFusionClient {
     serviceId: string,
     fields: Record<string, string>,
   ): Promise<{ success: boolean; referenceId?: string; error?: string }> {
+    if (isStressTestMode()) {
+      await mockDelay(200)
+      const imei = fields.IMEI ?? ''
+      if (isImeiStressCredit(imei)) {
+        return {
+          success: false,
+          error: 'CreditprocessError: INSUFFICIENT_CREDIT on reseller account',
+        }
+      }
+      if (isImeiStressTimeout(imei)) {
+        return { success: false, error: 'Request timeout while contacting supplier' }
+      }
+      return {
+        success: true,
+        referenceId: `stress-${Date.now()}`,
+      }
+    }
+
     try {
-      let res = await this.request('placeimeiorder', {
-        ID: serviceId,
-        CUSTOMFIELD: encodeDhruCustomField(fields),
-      })
+      const attempts = buildPlaceImeiOrderAttempts(serviceId, fields)
+      let lastError = 'Order failed'
+      let lastFlatDeviceError = ''
 
-      if ('ERROR' in res) {
-        const flat: Record<string, string> = { ID: serviceId, ...fields }
-        if (fields.IMEI) flat.IMEI = fields.IMEI
-        res = await this.request('placeimeiorder', flat)
+      for (const params of attempts) {
+        const hasFlatImei = Boolean(params.IMEI?.trim())
+        const hasFlatSn = Boolean(params.SN?.trim())
+        const res = await this.request('placeimeiorder', params)
+        if ('ERROR' in res) {
+          const msg = res.ERROR[0]?.MESSAGE || lastError
+          if (params.ID?.trim() && isDhruServiceIdRequiredError(msg)) {
+            const { ID, ...restParams } = params
+            const aliasParams = { ...restParams, SERVICEID: ID }
+            const aliasRes = await this.request('placeimeiorder', aliasParams)
+            if (!('ERROR' in aliasRes)) {
+              const aliasRefId = aliasRes.SUCCESS?.[0]?.REFERENCEID
+              return { success: true, referenceId: String(aliasRefId ?? '') }
+            }
+            const aliasMsg = aliasRes.ERROR[0]?.MESSAGE || msg
+            lastError = aliasMsg
+            if (hasFlatImei || hasFlatSn) lastFlatDeviceError = aliasMsg
+            continue
+          }
+          lastError = msg
+          if (hasFlatImei || hasFlatSn) lastFlatDeviceError = msg
+          continue
+        }
+
+        const refId = res.SUCCESS?.[0]?.REFERENCEID
+        return { success: true, referenceId: String(refId ?? '') }
       }
 
-      if ('ERROR' in res) {
-        return { success: false, error: res.ERROR[0]?.MESSAGE || 'Order failed' }
-      }
-
-      const refId = res.SUCCESS?.[0]?.REFERENCEID
-      return { success: true, referenceId: String(refId ?? '') }
+      return { success: false, error: lastFlatDeviceError || lastError }
     } catch (e) {
       return { success: false, error: e instanceof Error ? e.message : 'Order failed' }
     }
@@ -746,73 +1085,130 @@ export class DhruFusionClient {
   async placeServerOrder(
     serviceId: string,
     fields: Record<string, string>,
-    options?: { quantity?: string; alternateFields?: Record<string, string> },
+    options?: {
+      quantity?: string
+      alternateFields?: Record<string, string>
+      customFields?: Record<string, string>
+    },
   ): Promise<{
     success: boolean
     referenceId?: string
     error?: string
   }> {
+    if (isStressTestMode()) {
+      await mockDelay(200)
+      const email = String(fields.EMAIL ?? fields.email ?? '').toLowerCase()
+      if (isServerStressCredit(email)) {
+        return {
+          success: false,
+          error: 'CreditprocessError: INSUFFICIENT_CREDIT on reseller account',
+        }
+      }
+      if (isServerStressTimeout(email)) {
+        return { success: false, error: 'Request timeout while contacting supplier' }
+      }
+      return {
+        success: true,
+        referenceId: `stress-server-${Date.now()}`,
+      }
+    }
+
     try {
       const qnt = options?.quantity
+      const customFields = options?.customFields ?? {}
       const fieldVariants: Record<string, string>[] = [fields]
       if (options?.alternateFields && Object.keys(options.alternateFields).length > 0) {
         fieldVariants.push(options.alternateFields)
       }
-
       const attempts: Array<{ action: 'placeserverorder' | 'placeimeiorder'; params: Record<string, string> }> =
         []
 
-      for (const variant of fieldVariants) {
-        attempts.push({
-          action: 'placeserverorder',
-          params: withDhruQuantity({ ID: serviceId, ...variant }, qnt),
-        })
+      const pushServerAttempts = (idKey: 'ID' | 'SERVICE_ID', variant: Record<string, string>) => {
         attempts.push({
           action: 'placeserverorder',
           params: withDhruQuantity(
-            { ID: serviceId, CUSTOMFIELD: encodeDhruCustomField(variant) },
-            qnt,
-          ),
-        })
-      }
-
-      for (const variant of fieldVariants) {
-        attempts.push({
-          action: 'placeimeiorder',
-          params: withDhruQuantity(
-            { ID: serviceId, CUSTOMFIELD: encodeDhruCustomField(variant) },
+            { [idKey]: serviceId, CUSTOMFIELD: encodeDhruCustomField(variant) },
             qnt,
           ),
         })
         attempts.push({
-          action: 'placeimeiorder',
-          params: withDhruQuantity({ ID: serviceId, ...variant }, qnt),
+          action: 'placeserverorder',
+          params: withDhruQuantity({ [idKey]: serviceId, ...variant }, qnt),
         })
       }
 
-      let lastError = 'Order failed'
+      if (Object.keys(customFields).length > 0) {
+        pushServerAttempts('ID', customFields)
+      }
+
+      for (const variant of fieldVariants) {
+        pushServerAttempts('ID', variant)
+        pushServerAttempts('SERVICE_ID', variant)
+      }
+
+      let lastServerError = 'Order failed'
+      let lastImeiError = 'Order failed'
       let sawLegacyUnavailable = false
-      let sawImeiRequired = false
+      let serverActionMissing = false
 
       for (const { action, params } of attempts) {
         const res = await this.request(action, params)
         if (!('ERROR' in res)) {
-          const refId = res.SUCCESS?.[0]?.REFERENCEID
-          return { success: true, referenceId: String(refId ?? '') }
+          const refId = extractDhruPlaceReference(
+            res.SUCCESS?.[0] as Record<string, unknown> | undefined,
+          )
+          if (refId) return { success: true, referenceId: refId }
         }
 
         const msg = dhruErrorMessage(res) || 'Order failed'
-        lastError = msg
-        if (isDhruLegacyActionUnavailable(msg)) sawLegacyUnavailable = true
-        if (isDhruImeiFieldRequiredError(msg)) sawImeiRequired = true
-
-        // Panel hanya punya satu action — lewati format lain yang sama action-nya
-        if (action === 'placeimeiorder' && sawImeiRequired && !sawLegacyUnavailable) {
-          break
+        if (action === 'placeserverorder') {
+          lastServerError = msg
+          if (isDhruLegacyActionUnavailable(msg)) {
+            sawLegacyUnavailable = true
+            serverActionMissing = true
+          }
+        } else {
+          lastImeiError = msg
         }
       }
 
-      return { success: false, error: lastError }
+      if (serverActionMissing || sawLegacyUnavailable) {
+        for (const variant of fieldVariants) {
+          for (const { action, params } of [
+            {
+              action: 'placeimeiorder' as const,
+              params: withDhruQuantity(
+                { ID: serviceId, CUSTOMFIELD: encodeDhruCustomField(variant) },
+                qnt,
+              ),
+            },
+            {
+              action: 'placeimeiorder' as const,
+              params: withDhruQuantity({ ID: serviceId, ...variant }, qnt),
+            },
+          ]) {
+            const res = await this.request(action, params)
+            if (!('ERROR' in res)) {
+              const refId = extractDhruPlaceReference(
+                res.SUCCESS?.[0] as Record<string, unknown> | undefined,
+              )
+              if (refId) return { success: true, referenceId: refId }
+            }
+            const msg = dhruErrorMessage(res) || 'Order failed'
+            lastImeiError = msg
+            if (isDhruImeiFieldRequiredError(msg) && !sawLegacyUnavailable) break
+          }
+        }
+      }
+
+      const preferServer =
+        lastServerError !== 'Order failed' &&
+        !isDhruInvalidServiceIdError(lastServerError) &&
+        !lastServerError.toLowerCase().includes('imei')
+      return {
+        success: false,
+        error: preferServer ? lastServerError : lastImeiError !== 'Order failed' ? lastImeiError : lastServerError,
+      }
     } catch (e) {
       return { success: false, error: e instanceof Error ? e.message : 'Order failed' }
     }

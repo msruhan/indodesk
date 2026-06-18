@@ -53,6 +53,7 @@ function storeToForm(s: TeknisiStoreDto): TeknisiStoreFormValues {
     journeyIntro: s.journeyIntro ?? '',
     layanan: s.layanan.length > 0 ? [...s.layanan] : [''],
     journey: s.journey.map((m) => ({ ...m })),
+    gallery: [...s.gallery],
   }
 }
 
@@ -168,7 +169,7 @@ export default function TeknisiTokoPage() {
       <div className="space-y-6">
         <DashboardPageHeader
           eyebrow="Toko & mitra"
-          title="Toko"
+          title="Profil Toko"
           description="Kelola informasi toko handphone Anda agar mudah ditemukan pelanggan."
           actions={
             <Button variant="primary" onClick={() => setShowAddForm(true)}>
@@ -230,7 +231,7 @@ export default function TeknisiTokoPage() {
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
     >
       <DashboardPageHeader
-        title="Toko"
+        title="Profil Toko"
         description="Kelola informasi toko handphone Anda agar mudah ditemukan pelanggan."
         actions={
           <div className="flex flex-nowrap items-center gap-1.5 sm:flex-wrap sm:gap-2">

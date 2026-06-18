@@ -18,6 +18,7 @@ import {
   getProductSpecDisplayRows,
   warrantyLabel,
 } from '@/lib/product-specs'
+import { formatCouponLabel } from '@/lib/product-coupon'
 import { workshopTypeLabel } from '@/lib/teknisi-registration'
 
 function formatPrice(n: number) {
@@ -105,12 +106,44 @@ function ImageGallery({
 function ProductDetailBody({ detail }: { detail: ApprovalProductDetail }) {
   return (
     <>
+      {detail.pendingChangeSummary ? (
+        <div className="mb-4 rounded-xl border border-amber-200/80 bg-amber-50/90 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-amber-800">
+            Perubahan diajukan teknisi
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-amber-950">
+            {detail.pendingChangeSummary}
+          </p>
+        </div>
+      ) : detail.listingStatus === 'PENDING' ? (
+        <div className="mb-4 rounded-xl border border-surface-200 bg-surface-50 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-surface-600">
+            Perubahan diajukan teknisi
+          </p>
+          <p className="mt-1 text-xs text-surface-600">
+            Ringkasan perubahan belum tercatat untuk pengajuan ini. Minta teknisi menyimpan ulang
+            perubahan, atau bandingkan data di bawah dengan versi sebelumnya.
+          </p>
+        </div>
+      ) : null}
       <ImageGallery images={detail.images} primaryUrl={detail.image} alt={detail.name} />
       <div className="mt-4 rounded-xl border border-surface-100 bg-surface-50/50 p-3">
         <DetailRow label="Nama produk" value={detail.name} />
         <DetailRow label="Kategori" value={detail.category} />
         <DetailRow label="Harga" value={formatPrice(detail.price)} />
         <DetailRow label="Stok" value={detail.stock.toLocaleString('id-ID')} />
+        {detail.couponCode &&
+        detail.couponDiscountType &&
+        detail.couponDiscountValue != null ? (
+          <DetailRow
+            label="Kupon diskon"
+            value={`${detail.couponCode} · ${formatCouponLabel({
+              code: detail.couponCode,
+              discountType: detail.couponDiscountType,
+              discountValue: detail.couponDiscountValue,
+            })}`}
+          />
+        ) : null}
         {getProductSpecDisplayRows(detail.categoryValue, {
           color: detail.color,
           ram: detail.ram,

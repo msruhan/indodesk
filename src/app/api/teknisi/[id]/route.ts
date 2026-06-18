@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess } from '@/lib/api-auth'
+import { getPublicFeatureFlags } from '@/lib/platform-settings'
 import { serializePublicTeknisiDetail } from '@/lib/teknisi-public-detail'
 import { getTeknisiPlatformStats } from '@/lib/teknisi-platform-stats'
 
@@ -40,7 +41,8 @@ export async function GET(
     }).catch(() => {})
 
     const platformStats = await getTeknisiPlatformStats(id)
-    return apiSuccess(serializePublicTeknisiDetail(profile, platformStats))
+    const featureFlags = await getPublicFeatureFlags()
+    return apiSuccess(serializePublicTeknisiDetail(profile, platformStats, featureFlags))
   } catch (e) {
     console.error('[TEKNISI_DETAIL_GET]', e)
     return apiError('Gagal memuat profil teknisi', 500)

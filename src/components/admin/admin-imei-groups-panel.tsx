@@ -74,7 +74,7 @@ function AddGroupModal({
         <div className="flex items-start justify-between">
           <div>
             <h3 className="text-lg font-semibold text-ink">Tambah Service Group</h3>
-            <p className="mt-0.5 text-xs text-surface-500">Grup untuk mengelompokkan layanan IMEI</p>
+            <p className="mt-0.5 text-xs text-surface-500">Grup untuk mengelompokkan layanan digital</p>
           </div>
           <button onClick={onClose} className="rounded-lg p-1.5 text-surface-400 hover:bg-surface-100 hover:text-ink">
             <X className="h-4 w-4" />
@@ -244,7 +244,7 @@ export function AdminImeiGroupsPanel() {
               <FolderKanban className="mx-auto h-6 w-6 text-surface-300" />
               <p className="mt-3 text-sm font-semibold text-ink">Belum ada service group</p>
               <p className="mt-1 text-xs text-surface-500">
-                Buat group untuk mengelompokkan layanan IMEI.
+                Buat group untuk mengelompokkan layanan digital.
               </p>
             </div>
           )}

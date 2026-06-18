@@ -38,6 +38,7 @@ const statusBadgeVariant: Record<
   paid: 'warning',
   processing: 'info',
   shipped: 'info',
+  disputed: 'danger',
   completed: 'success',
   cancelled: 'danger',
   refunded: 'danger',

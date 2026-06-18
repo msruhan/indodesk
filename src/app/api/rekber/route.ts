@@ -8,23 +8,22 @@ import { holdRekberFunds } from '@/lib/rekber-wallet'
 import {
   buildRekberStats,
   serializeRekber,
-  type RekberParty,
 } from '@/lib/rekber-serializer'
+import { REKBER_INCLUDE } from '@/lib/rekber-includes'
+import { requireEmailVerifiedUser } from '@/lib/require-email-verified'
 
 export const dynamic = 'force-dynamic'
 
-const PARTY_SELECT = {
-  id: true,
-  name: true,
-  email: true,
-  image: true,
-} satisfies Record<keyof RekberParty, true>
-
-const createSchema = z.object({
-  sellerId: z.string().min(1),
-  amount: z.number().int().positive(),
-  description: z.string().min(5).max(2000),
-})
+const createSchema = z
+  .object({
+    sellerId: z.string().min(1).optional(),
+    sellerEmail: z.string().email().optional(),
+    amount: z.number().int().positive(),
+    description: z.string().min(5).max(2000),
+  })
+  .refine((d) => Boolean(d.sellerId?.trim() || d.sellerEmail?.trim()), {
+    message: 'Penjual wajib dipilih (sellerId atau sellerEmail)',
+  })
 
 export async function GET() {
   const { session, error } = await requireApiAuth()
@@ -35,11 +34,7 @@ export async function GET() {
       where: {
         OR: [{ buyerId: session.user.id }, { sellerId: session.user.id }],
       },
-      include: {
-        buyer: { select: PARTY_SELECT },
-        seller: { select: PARTY_SELECT },
-        inspectionOrder: { select: { orderCode: true } },
-      },
+      include: REKBER_INCLUDE,
       orderBy: { createdAt: 'desc' },
     })
 
@@ -61,6 +56,9 @@ export async function POST(req: Request) {
   const { session, error } = await requireApiRole(['USER', 'TEKNISI'])
   if (error) return error
 
+  const emailGate = await requireEmailVerifiedUser(session.user.id)
+  if (!emailGate.ok) return emailGate.error
+
   let body: unknown
   try {
     body = await req.json()
@@ -73,7 +71,21 @@ export async function POST(req: Request) {
     return apiError(parsed.error.issues[0]?.message ?? 'Data tidak valid')
   }
 
-  const { sellerId, amount, description } = parsed.data
+  const { amount, description } = parsed.data
+  let sellerId = parsed.data.sellerId?.trim() ?? ''
+
+  if (parsed.data.sellerEmail) {
+    const byEmail = await prisma.user.findUnique({
+      where: { email: parsed.data.sellerEmail.trim().toLowerCase() },
+      select: { id: true },
+    })
+    if (!byEmail) return apiError('Seller tidak ditemukan', 404)
+    sellerId = byEmail.id
+  }
+
+  if (!sellerId) {
+    return apiError('Penjual tidak ditemukan', 404)
+  }
 
   if (sellerId === session.user.id) {
     return apiError('Tidak dapat membuat rekber dengan diri sendiri sebagai penjual')
@@ -84,7 +96,7 @@ export async function POST(req: Request) {
       where: { id: sellerId },
       select: { id: true, name: true, role: true },
     })
-    if (!seller) return apiError('Penjual tidak ditemukan', 404)
+    if (!seller) return apiError('Seller tidak ditemukan', 404)
 
     const fee = calculateRekberFee(amount)
     const orderCode = generateRekberOrderCode()
@@ -99,11 +111,7 @@ export async function POST(req: Request) {
         description: description.trim(),
         status: 'PENDING',
       },
-      include: {
-        buyer: { select: PARTY_SELECT },
-        seller: { select: PARTY_SELECT },
-        inspectionOrder: { select: { orderCode: true } },
-      },
+      include: REKBER_INCLUDE,
     })
 
     void logOrderEvent({

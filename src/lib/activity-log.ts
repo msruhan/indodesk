@@ -18,6 +18,7 @@
 
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
+import { buildActivityLogChronology } from '@/lib/activity-log-narrative'
 
 export type ActivityCategory =
   | 'AUTH'
@@ -209,6 +210,7 @@ export async function evaluateLoginFailure(opts: {
     const high = Math.max(recentByEmail, recentByIp)
 
     if (high >= crit) {
+      const bruteMeta = { email: opts.email, attempts: high, windowMinutes: window }
       await logSecurityEvent({
         action: 'auth.suspicious.brute_force',
         severity: 'CRITICAL',
@@ -220,12 +222,27 @@ export async function evaluateLoginFailure(opts: {
         ip: opts.ip,
         userAgent: opts.userAgent,
         metadata: {
-          email: opts.email,
-          attempts: high,
-          windowMinutes: window,
+          ...bruteMeta,
+          chronology: buildActivityLogChronology({
+            action: 'auth.suspicious.brute_force',
+            category: 'SECURITY',
+            severity: 'CRITICAL',
+            summary: `Aktivitas mencurigakan: ${high} percobaan login gagal dari ${opts.email}`,
+            actorEmail: opts.email,
+            ip: opts.ip,
+            metadata: bruteMeta,
+            createdAt: new Date().toISOString(),
+          }),
         },
       })
+      const { notifyAdminsSecurityEvent } = await import('@/lib/security-notifications')
+      void notifyAdminsSecurityEvent({
+        title: 'Brute-force login terdeteksi',
+        body: `${high} percobaan gagal untuk ${opts.email} dalam ${window} menit. Periksa Log Keamanan.`,
+        severity: 'CRITICAL',
+      })
     } else if (high >= warn) {
+      const repeatMeta = { email: opts.email, attempts: high, windowMinutes: window }
       await logSecurityEvent({
         action: 'auth.suspicious.repeated_failed',
         severity: 'WARNING',
@@ -235,9 +252,17 @@ export async function evaluateLoginFailure(opts: {
         ip: opts.ip,
         userAgent: opts.userAgent,
         metadata: {
-          email: opts.email,
-          attempts: high,
-          windowMinutes: window,
+          ...repeatMeta,
+          chronology: buildActivityLogChronology({
+            action: 'auth.suspicious.repeated_failed',
+            category: 'SECURITY',
+            severity: 'WARNING',
+            summary: `Beberapa percobaan login gagal untuk ${opts.email}`,
+            actorEmail: opts.email,
+            ip: opts.ip,
+            metadata: repeatMeta,
+            createdAt: new Date().toISOString(),
+          }),
         },
       })
     }

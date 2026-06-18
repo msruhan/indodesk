@@ -1,17 +1,21 @@
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { prisma } from '@/lib/db'
-import { parseTelegramLinkToken } from '@/lib/telegram'
+import { consumeTelegramLinkToken } from '@/lib/telegram/link-token'
 
 export const dynamic = 'force-dynamic'
 
 /**
  * POST /api/teknisi/telegram/verify-manual
- * Manual verification for development (bypass webhook)
+ * Manual verification for development (bypass webhook).
  * Body: { token: string, chatId: string, username?: string }
  */
 export async function POST(request: Request) {
   const { session, error } = await requireApiRole(['TEKNISI'])
   if (error) return error
+
+  if (process.env.NODE_ENV === 'production') {
+    return apiError('Manual verify tidak tersedia di production', 403)
+  }
 
   try {
     const body = await request.json()
@@ -21,45 +25,27 @@ export async function POST(request: Request) {
       return apiError('Token dan Chat ID diperlukan', 400)
     }
 
-    // Parse token to get userId
-    const userId = parseTelegramLinkToken(token)
+    const userId = await consumeTelegramLinkToken(String(token))
     if (!userId) {
-      return apiError('Token tidak valid', 400)
+      return apiError('Token tidak valid atau sudah kedaluwarsa', 400)
     }
 
-    // Verify token belongs to current user
     if (userId !== session.user.id) {
       return apiError('Token tidak sesuai dengan user yang login', 403)
     }
 
-    // Check if token exists and not expired
-    const verification = await prisma.telegramVerification.findFirst({
-      where: {
-        userId,
-        code: token,
-        expiresAt: {
-          gt: new Date(),
-        },
-      },
-    })
-
-    if (!verification) {
-      return apiError('Token tidak ditemukan atau sudah expired', 400)
-    }
-
-    // Update teknisi profile
     await prisma.teknisiProfile.update({
       where: { userId },
       data: {
-        telegramChatId: chatId,
+        telegramChatId: String(chatId),
         telegramUsername: username || null,
         telegramLinkedAt: new Date(),
       },
     })
 
-    // Delete used token
-    await prisma.telegramVerification.delete({
-      where: { id: verification.id },
+    await prisma.user.update({
+      where: { id: userId },
+      data: { telegramLinkedAt: new Date() },
     })
 
     return apiSuccess({

@@ -35,11 +35,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   try {
-    const existing = await prisma.remoteSession.findFirst({
-      where: { id, teknisiId: session.user.id },
+    const existing = await prisma.remoteSession.findUnique({
+      where: { id },
       include: { user: { select: USER_SELECT } },
     })
     if (!existing) return apiError('Request remote tidak ditemukan', 404)
+    if (existing.teknisiId !== session.user.id) {
+      return apiError('Akses ditolak', 403)
+    }
 
     const now = new Date()
     let data: {

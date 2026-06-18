@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { adminResetUserTwoFactor } from '@/lib/admin-reset-2fa'
+import { verifyAdminStepUp, StepUpAuthError } from '@/lib/wallet/admin-step-up'
+import { adminStepUpSchema } from '@/lib/wallet/admin-step-up-schema'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,6 +20,26 @@ export async function POST(
     select: { id: true, name: true, email: true, role: true },
   })
   if (!admin) return apiError('Admin tidak ditemukan', 401)
+
+  let body: unknown
+  try {
+    body = await req.json()
+  } catch {
+    body = {}
+  }
+  const parsed = adminStepUpSchema.safeParse(body)
+  if (!parsed.success) {
+    return apiError(parsed.error.issues[0]?.message ?? 'Konfirmasi admin wajib')
+  }
+
+  try {
+    await verifyAdminStepUp(session.user.id, parsed.data)
+  } catch (e) {
+    if (e instanceof StepUpAuthError) {
+      return apiError(e.message, 401, { code: e.code })
+    }
+    throw e
+  }
 
   try {
     const result = await adminResetUserTwoFactor(id, admin, req)

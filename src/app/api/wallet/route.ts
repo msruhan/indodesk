@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiAuth } from '@/lib/api-auth'
 import { SESSION_STALE_CODE } from '@/lib/api-constants'
+import { getBuyerEscrowSummary, getSellerPendingEarnings } from '@/lib/marketplace-wallet'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,10 +24,18 @@ export async function GET() {
       })
     }
 
+    const balance = Number(wallet.balance)
+    const escrow = await getBuyerEscrowSummary(session.user.id)
+    const pendingEarnings = await getSellerPendingEarnings(session.user.id)
+
     return apiSuccess({
       id: wallet.id,
       userId: wallet.userId,
       balance: wallet.balance.toString(),
+      heldBalance: String(escrow.heldBalance),
+      totalBalance: String(balance + escrow.heldBalance),
+      pendingHolds: escrow.pendingHolds,
+      pendingEarnings: String(pendingEarnings),
       createdAt: wallet.createdAt,
       updatedAt: wallet.updatedAt,
     })

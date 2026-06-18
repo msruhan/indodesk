@@ -8,6 +8,10 @@ export async function GET(_req: Request, context: RouteContext) {
   const { path } = await context.params
   const key = path.join('/')
 
+  if (key.startsWith('private/')) {
+    return new Response('Not found', { status: 404 })
+  }
+
   if (!key || key.includes('..')) {
     return new Response('Bad request', { status: 400 })
   }

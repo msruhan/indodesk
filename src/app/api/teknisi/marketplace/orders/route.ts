@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { serializeMarketplaceOrder } from '@/lib/marketplace-order-serializer'
+import { MARKETPLACE_ORDER_INCLUDE } from '@/lib/marketplace-order-includes'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,11 +19,7 @@ export async function GET() {
   try {
     const rows = await prisma.order.findMany({
       where: { sellerId: session.user.id },
-      include: {
-        buyer: { select: PARTY_SELECT },
-        seller: { select: PARTY_SELECT },
-        items: { include: { product: { select: { id: true, name: true } } } },
-      },
+      include: MARKETPLACE_ORDER_INCLUDE,
       orderBy: { createdAt: 'desc' },
     })
 
@@ -38,6 +35,7 @@ export async function GET() {
       paid: items.filter((i) => i.status === 'paid').length,
       processing: items.filter((i) => i.status === 'processing').length,
       shipped: items.filter((i) => i.status === 'shipped').length,
+      disputed: items.filter((i) => i.status === 'disputed').length,
       completed: items.filter((i) => i.status === 'completed').length,
     }
 

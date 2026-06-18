@@ -1,8 +1,8 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { getSession } from 'next-auth/react'
 import { useAuth, type UserRole } from '@/contexts/auth-context'
 import {
@@ -17,7 +17,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { authFieldIconClass } from '@/components/ui/auth-field-icon'
 import { Zap, Mail, Lock, Shield } from '@/lib/icons'
-import { GoogleSignInButton } from '@/components/auth/google-sign-in-button'
+import { GoogleAuthDivider } from '@/components/auth/google-auth-divider'
+import { loginOAuthErrorMessage } from '@/lib/auth/login-oauth-errors'
 import { AuroraBackground } from '@/components/motion'
 import { motion } from 'framer-motion'
 
@@ -25,16 +26,114 @@ function isSafeCallbackUrl(url: string): boolean {
   return url.startsWith('/') && !url.startsWith('//')
 }
 
+function ResetPasswordForm({ token }: { token: string }) {
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleReset = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (password !== confirm) {
+      setError('Konfirmasi password tidak sama')
+      return
+    }
+    setLoading(true)
+    setError(null)
+    setMessage(null)
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, password }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        setError(json.error ?? 'Gagal reset password')
+        return
+      }
+      setMessage(json.data?.message ?? 'Password berhasil diubah. Silakan login.')
+    } catch {
+      setError('Gagal menghubungi server')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleReset} className="space-y-4">
+      {error && (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {error}
+        </div>
+      )}
+      {message && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          {message}{' '}
+          <Link href="/login" className="font-medium underline">
+            Login
+          </Link>
+        </div>
+      )}
+      <Input
+        type="password"
+        placeholder="Password baru"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        required
+        minLength={10}
+      />
+      <Input
+        type="password"
+        placeholder="Ulangi password baru"
+        value={confirm}
+        onChange={(e) => setConfirm(e.target.value)}
+        required
+        minLength={10}
+      />
+      <Button type="submit" className="w-full" disabled={loading}>
+        {loading ? 'Menyimpan…' : 'Simpan password baru'}
+      </Button>
+    </form>
+  )
+}
+
+function OAuthErrorSync({ onError }: { onError: (message: string) => void }) {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
+
+  useEffect(() => {
+    const code = searchParams.get('error')
+    const message = loginOAuthErrorMessage(code)
+    if (!message) return
+    onError(message)
+    const next = new URLSearchParams(searchParams.toString())
+    next.delete('error')
+    const qs = next.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+  }, [searchParams, router, pathname, onError])
+
+  return null
+}
+
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { login } = useAuth()
+  const resetToken = searchParams.get('resetToken')
+  const idleLogout = searchParams.get('reason') === 'idle'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [totp, setTotp] = useState('')
   const [needs2FA, setNeeds2FA] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const handleOAuthError = useCallback((message: string) => {
+    setError(message)
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -92,18 +191,29 @@ function LoginForm() {
             </div>
             <div>
               <CardTitle className="text-2xl font-semibold tracking-tightest">
-                {needs2FA ? 'Verifikasi 2FA' : 'Masuk ke akun Anda'}
+                {resetToken ? 'Reset password' : needs2FA ? 'Verifikasi 2FA' : 'Masuk ke akun Anda'}
               </CardTitle>
               <CardDescription className="mt-1 text-surface-600">
-                {needs2FA
-                  ? 'Masukkan kode 6 digit dari Google Authenticator'
-                  : 'Platform ekosistem teknisi handphone Indonesia'}
+                {resetToken
+                  ? 'Buat password baru untuk akun Anda'
+                  : needs2FA
+                    ? 'Kode 6 digit dari Authenticator, atau kode cadangan (XXXX-XXXX)'
+                    : 'Platform ekosistem teknisi handphone Indonesia'}
               </CardDescription>
             </div>
           </CardHeader>
 
           <CardContent>
+            <OAuthErrorSync onError={handleOAuthError} />
+            {resetToken ? (
+              <ResetPasswordForm token={resetToken} />
+            ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
+              {idleLogout && !error && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  Sesi berakhir karena tidak ada aktivitas selama 2 jam. Silakan login kembali.
+                </div>
+              )}
               {error && (
                 <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                   {error}
@@ -146,6 +256,14 @@ function LoginForm() {
                         required
                       />
                     </div>
+                    <div className="text-right">
+                      <Link
+                        href="/lupa-password"
+                        className="text-xs text-primary-700 hover:underline"
+                      >
+                        Lupa password?
+                      </Link>
+                    </div>
                   </div>
                 </>
               ) : (
@@ -157,12 +275,10 @@ function LoginForm() {
                     <Shield className={authFieldIconClass} strokeWidth={2} aria-hidden />
                     <Input
                       id="totp"
-                      inputMode="numeric"
-                      maxLength={6}
-                      placeholder="000000"
+                      placeholder="000000 atau XXXX-XXXX"
                       value={totp}
-                      onChange={(e) => setTotp(e.target.value.replace(/\D/g, ''))}
-                      className="pl-11 text-center tracking-[0.3em]"
+                      onChange={(e) => setTotp(e.target.value)}
+                      className="pl-11 text-center tracking-widest"
                       required
                       autoFocus
                     />
@@ -185,22 +301,16 @@ function LoginForm() {
                 {isLoading ? 'Memproses…' : needs2FA ? 'Verifikasi & Masuk' : 'Masuk'}
               </Button>
             </form>
+            )}
 
-            {!needs2FA && (
-              <div className="mt-4 space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="h-px flex-1 bg-surface-200" />
-                  <span className="text-[11px] font-medium text-surface-500">atau</span>
-                  <div className="h-px flex-1 bg-surface-200" />
-                </div>
-                <GoogleSignInButton
-                  callbackUrl={
-                    searchParams.get('callbackUrl') && isSafeCallbackUrl(searchParams.get('callbackUrl')!)
-                      ? searchParams.get('callbackUrl')!
-                      : undefined
-                  }
-                />
-              </div>
+            {!resetToken && !needs2FA && (
+              <GoogleAuthDivider
+                callbackUrl={
+                  searchParams.get('callbackUrl') && isSafeCallbackUrl(searchParams.get('callbackUrl')!)
+                    ? searchParams.get('callbackUrl')!
+                    : '/auth/continue'
+                }
+              />
             )}
           </CardContent>
 

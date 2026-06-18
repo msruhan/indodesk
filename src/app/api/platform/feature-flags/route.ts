@@ -3,6 +3,7 @@ import {
   DEFAULT_PUBLIC_FEATURE_FLAGS,
   getPublicFeatureFlags,
 } from '@/lib/platform-settings'
+import { isGoogleAuthEnabled } from '@/lib/google-auth-enabled'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,10 +15,16 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   try {
     const flags = await getPublicFeatureFlags()
-    return NextResponse.json({ success: true, data: flags })
+    return NextResponse.json({
+      success: true,
+      data: { ...flags, googleAuthEnabled: isGoogleAuthEnabled },
+    })
   } catch (e) {
     console.error('[PUBLIC_FEATURE_FLAGS_GET]', e)
     // Fallback ke default supaya client tidak macet bila DB belum siap.
-    return NextResponse.json({ success: true, data: DEFAULT_PUBLIC_FEATURE_FLAGS })
+    return NextResponse.json({
+      success: true,
+      data: { ...DEFAULT_PUBLIC_FEATURE_FLAGS, googleAuthEnabled: isGoogleAuthEnabled },
+    })
   }
 }

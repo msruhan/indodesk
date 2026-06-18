@@ -16,7 +16,15 @@ import {
   Package,
   RefreshCw,
 } from '@/lib/icons'
+import { isTerminalTrackingStatus } from '@/lib/shipping-courier'
+import { MarketplaceOrderReviewForm } from '@/components/orders/marketplace-order-review-form'
+import {
+  MarketplaceComplaintForm,
+  formatBuyerActionDeadline,
+} from '@/components/orders/marketplace-complaint-form'
+import { MarketplaceComplaintReturnForm } from '@/components/orders/marketplace-complaint-return-form'
 import type { OrderTrackingDto } from '@/lib/order-tracking-sync'
+import type { ReturnTrackingDto } from '@/lib/return-tracking-sync'
 import type { MarketplaceOrderDto } from '@/lib/marketplace-order-serializer'
 
 type MarketplaceOrderDetailViewProps = {
@@ -31,14 +39,22 @@ export function MarketplaceOrderDetailView({
 
   const [order, setOrder] = useState<MarketplaceOrderDto | null>(null)
   const [tracking, setTracking] = useState<OrderTrackingDto | null>(null)
+  const [returnTracking, setReturnTracking] = useState<ReturnTrackingDto | null>(null)
   const [loading, setLoading] = useState(true)
+  const [confirmLoading, setConfirmLoading] = useState(false)
+  const [confirmError, setConfirmError] = useState<string | null>(null)
+  const [showComplaintForm, setShowComplaintForm] = useState(false)
+  const [actionLoading, setActionLoading] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [ordersRes, trackingRes] = await Promise.all([
+      const [ordersRes, trackingRes, returnTrackingRes] = await Promise.all([
         fetch('/api/user/marketplace/orders').then((r) => r.json()),
         fetch(`/api/user/marketplace/orders/${orderId}/tracking`).then((r) => r.json()),
+        fetch(`/api/user/marketplace/orders/${orderId}/complaint/return/tracking`).then((r) =>
+          r.json(),
+        ),
       ])
       if (ordersRes.success) {
         const found = (ordersRes.data as MarketplaceOrderDto[]).find((o) => o.id === orderId)
@@ -46,6 +62,9 @@ export function MarketplaceOrderDetailView({
       }
       if (trackingRes.success) {
         setTracking(trackingRes.data?.tracking ?? null)
+      }
+      if (returnTrackingRes.success) {
+        setReturnTracking(returnTrackingRes.data?.tracking ?? null)
       }
     } catch {
       /* ignore */
@@ -82,8 +101,82 @@ export function MarketplaceOrderDetailView({
   }
 
   const statusSteps = ['pending', 'paid', 'processing', 'shipped', 'completed'] as const
-  const currentStepIdx = statusSteps.indexOf(order.status as (typeof statusSteps)[number])
-  const isShipped = order.status === 'shipped' || order.status === 'completed'
+  const progressStatus =
+    order.status === 'disputed' ? 'shipped' : order.status
+  const currentStepIdx = statusSteps.indexOf(progressStatus as (typeof statusSteps)[number])
+  const isShipped =
+    order.status === 'shipped' || order.status === 'disputed' || order.status === 'completed'
+  const trackingDelivered =
+    isTerminalTrackingStatus(tracking?.summaryStatus ?? order.tracking?.summaryStatus)
+  const isOrderCompleted = order.status === 'completed'
+
+  const handleConfirmReceipt = async () => {
+    setConfirmLoading(true)
+    setConfirmError(null)
+    try {
+      const res = await fetch(`/api/user/marketplace/orders/${orderId}/confirm`, {
+        method: 'POST',
+      })
+      const json = await res.json()
+      if (!res.ok || !json.success) {
+        setConfirmError(json.error ?? 'Konfirmasi gagal')
+        return
+      }
+      setOrder(json.data as MarketplaceOrderDto)
+      await load()
+    } catch {
+      setConfirmError('Konfirmasi gagal')
+    } finally {
+      setConfirmLoading(false)
+    }
+  }
+
+  const handleEscalate = async () => {
+    setActionLoading(true)
+    setConfirmError(null)
+    try {
+      const res = await fetch(`/api/user/marketplace/orders/${orderId}/complaint/escalate`, {
+        method: 'POST',
+      })
+      const json = await res.json()
+      if (!res.ok || !json.success) {
+        setConfirmError(json.error ?? 'Eskalasi gagal')
+        return
+      }
+      setOrder(json.data as MarketplaceOrderDto)
+      await load()
+    } catch {
+      setConfirmError('Eskalasi gagal')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const deadlineLabel = formatBuyerActionDeadline(order.buyerActionDeadline)
+  const returnDeadlineLabel = formatBuyerActionDeadline(order.complaint?.returnDeadline ?? null)
+  const sellerConfirmLabel = formatBuyerActionDeadline(
+    order.complaint?.sellerConfirmDeadline ?? null,
+  )
+
+  const returnTrackingForMap: OrderTrackingDto | null = returnTracking
+    ? {
+        courier: returnTracking.courier,
+        trackingNumber: returnTracking.trackingNumber,
+        summaryStatus: returnTracking.summaryStatus,
+        summaryDesc: null,
+        lastEventAt: returnTracking.events[0]?.occurredAt ?? null,
+        lastSyncedAt: returnTracking.lastSyncedAt,
+        trackingActive: returnTracking.trackingActive,
+        events: returnTracking.events,
+      }
+    : null
+
+  const returnDelivered = isTerminalTrackingStatus(returnTracking?.summaryStatus)
+
+  const pendingReviewCount =
+    isOrderCompleted && order.canReview
+      ? order.items.filter((i) => !order.reviewedProductIds.includes(i.productId)).length
+      : 0
 
   return (
     <div className="space-y-6">
@@ -98,6 +191,8 @@ export function MarketplaceOrderDetailView({
           variant={
             order.status === 'completed'
               ? 'success'
+              : order.status === 'disputed'
+                ? 'danger'
               : order.status === 'shipped'
                 ? 'info'
                 : 'warning'
@@ -107,13 +202,149 @@ export function MarketplaceOrderDetailView({
         </Badge>
       </div>
 
+      {pendingReviewCount > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <strong>Beri rating produk</strong> — {pendingReviewCount} item di pesanan ini belum
+          dinilai. Form ulasan ada di bagian bawah halaman.
+        </div>
+      )}
+
       <StatusProgressBar steps={statusSteps} currentIdx={currentStepIdx} />
 
       {isShipped && tracking && (
-        <ShippingVisualization tracking={tracking} isDelivered={order.status === 'completed'} />
+        <ShippingVisualization
+          tracking={tracking}
+          isDelivered={isOrderCompleted || trackingDelivered}
+        />
       )}
 
-      {tracking && tracking.events.length > 0 && <TrackingTimeline tracking={tracking} />}
+      {(order.canConfirmReceipt || order.canFileComplaint) && (
+        <Card className="border-primary-200 bg-primary-50/40">
+          <CardContent className="space-y-3 p-4">
+            <p className="text-sm font-semibold text-ink">Paket sudah sampai?</p>
+            <p className="text-xs text-surface-600">
+              Konfirmasi jika pesanan sesuai, atau ajukan komplain jika ada masalah.
+              {deadlineLabel && (
+                <span className="mt-1 block text-primary-700">
+                  Otomatis selesai {deadlineLabel} jika tidak ada tindakan.
+                </span>
+              )}
+            </p>
+            {confirmError && <p className="text-xs text-rose-600">{confirmError}</p>}
+            {showComplaintForm ? (
+              <MarketplaceComplaintForm
+                orderId={orderId}
+                onSuccess={() => {
+                  setShowComplaintForm(false)
+                  void load()
+                }}
+                onCancel={() => setShowComplaintForm(false)}
+              />
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  disabled={confirmLoading}
+                  onClick={() => void handleConfirmReceipt()}
+                >
+                  {confirmLoading ? 'Memproses…' : 'Pesanan Sesuai'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-rose-200 text-rose-700 hover:bg-rose-50"
+                  onClick={() => setShowComplaintForm(true)}
+                >
+                  Komplain
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {order.complaint && (
+        <Card className="border-amber-200 bg-amber-50/40">
+          <CardContent className="space-y-2 p-4">
+            <p className="text-sm font-semibold text-ink">Status komplain</p>
+            <p className="text-xs text-surface-600">{order.complaint.statusLabel}</p>
+            <p className="text-xs text-surface-700">{order.complaint.reason}</p>
+            {returnDeadlineLabel && order.complaint.status === 'AWAITING_RETURN' && (
+              <p className="text-xs font-medium text-amber-800">
+                Batas kirim retur: {returnDeadlineLabel}
+              </p>
+            )}
+            {sellerConfirmLabel && order.complaint.status === 'AWAITING_SELLER_CONFIRM' && (
+              <p className="text-xs text-surface-600">
+                Menunggu penjual memeriksa barang retur (auto-refund {sellerConfirmLabel})
+              </p>
+            )}
+            {order.complaint.sellerResponse && (
+              <p className="rounded-lg bg-white/80 p-2 text-xs text-surface-700">
+                <span className="font-medium">Respons penjual:</span> {order.complaint.sellerResponse}
+              </p>
+            )}
+            {order.canSubmitReturn && order.complaint && (
+              <MarketplaceComplaintReturnForm
+                orderId={orderId}
+                complaint={order.complaint}
+                onSuccess={() => void load()}
+              />
+            )}
+            {order.canEscalateComplaint && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={actionLoading}
+                onClick={() => void handleEscalate()}
+              >
+                Eskalasi ke Admin
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {returnTrackingForMap && (
+        <ShippingVisualization
+          tracking={returnTrackingForMap}
+          isDelivered={returnDelivered}
+          title="Pengiriman retur"
+        />
+      )}
+
+      {order.status === 'completed' &&
+        order.items.map((item) => {
+          const reviewed = order.reviewedProductIds.includes(item.productId)
+          if (reviewed) {
+            return (
+              <p
+                key={item.productId}
+                className="rounded-xl border border-surface-200 bg-white px-3 py-2 text-xs text-surface-600"
+              >
+                Review terkirim — {item.name}
+              </p>
+            )
+          }
+          return (
+            <MarketplaceOrderReviewForm
+              key={item.productId}
+              productId={item.productId}
+              productName={item.name}
+              orderId={order.id}
+              onSubmitted={() => void load()}
+            />
+          )
+        })}
+
+      {returnTrackingForMap && returnTrackingForMap.events.length > 0 && (
+        <TrackingTimeline tracking={returnTrackingForMap} title="Riwayat retur" />
+      )}
+
+      {tracking && tracking.events.length > 0 && (
+        <TrackingTimeline tracking={tracking} />
+      )}
 
       <Card>
         <CardContent className="p-4 space-y-3">
@@ -143,6 +374,12 @@ export function MarketplaceOrderDetailView({
             <p className="text-xs text-surface-500">
               Kurir: {tracking.courier} · Resi:{' '}
               <span className="font-mono">{tracking.trackingNumber}</span>
+            </p>
+          )}
+          {order.shippingAddress && (
+            <p className="text-xs text-surface-500">
+              Alamat: {order.shippingAddress}
+              {order.shippingPhone ? ` · ${order.shippingPhone}` : ''}
             </p>
           )}
         </CardContent>
@@ -224,9 +461,11 @@ const ShippingMapDynamic = dynamic(
 function ShippingVisualization({
   tracking,
   isDelivered,
+  title = 'Pengiriman pesanan',
 }: {
   tracking: OrderTrackingDto
   isDelivered: boolean
+  title?: string
 }) {
   return (
     <motion.div
@@ -241,7 +480,7 @@ function ShippingVisualization({
           </div>
           <div>
             <p className="text-xs font-semibold text-ink">
-              {isDelivered ? 'Paket telah sampai!' : 'Paket sedang dalam perjalanan'}
+              {isDelivered ? `${title} — sampai!` : `${title} — dalam perjalanan`}
             </p>
             <p className="text-[10px] text-surface-500">
               {tracking.courier} · {tracking.trackingNumber}
@@ -276,7 +515,13 @@ function ShippingVisualization({
   )
 }
 
-function TrackingTimeline({ tracking }: { tracking: OrderTrackingDto }) {
+function TrackingTimeline({
+  tracking,
+  title = 'Riwayat Perjalanan',
+}: {
+  tracking: OrderTrackingDto
+  title?: string
+}) {
   const events = tracking.events
 
   const formatWhen = (iso: string) => {
@@ -295,7 +540,7 @@ function TrackingTimeline({ tracking }: { tracking: OrderTrackingDto }) {
       <CardContent className="p-4">
         <div className="mb-3 flex items-center justify-between">
           <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-surface-500">
-            Riwayat Perjalanan
+            {title}
           </p>
           <span className="text-[10px] text-surface-500">{events.length} update</span>
         </div>

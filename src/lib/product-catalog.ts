@@ -1,24 +1,11 @@
-import type { ProductCategory, ProductListingStatus } from '@prisma/client'
+import type { ProductListingStatus } from '@prisma/client'
+import {
+  PRODUCT_CATEGORY_OPTIONS,
+  PRODUCT_CATEGORY_SLUG,
+  categoryLabel,
+} from '@/lib/product-category-config'
 
-export const PRODUCT_CATEGORY_OPTIONS: { value: ProductCategory; label: string }[] = [
-  { value: 'HANDPHONE', label: 'Handphone' },
-  { value: 'LAPTOP', label: 'Laptop' },
-  { value: 'AKSESORIS', label: 'Aksesoris' },
-  { value: 'SOFTWARE', label: 'Software' },
-  { value: 'LAINNYA', label: 'Lainnya' },
-]
-
-export const PRODUCT_CATEGORY_SLUG: Record<ProductCategory, string> = {
-  HANDPHONE: 'handphone',
-  LAPTOP: 'laptop',
-  AKSESORIS: 'aksesoris',
-  SOFTWARE: 'software',
-  LAINNYA: 'lainnya',
-}
-
-export function categoryLabel(category: ProductCategory): string {
-  return PRODUCT_CATEGORY_OPTIONS.find((c) => c.value === category)?.label ?? category
-}
+export { PRODUCT_CATEGORY_OPTIONS, PRODUCT_CATEGORY_SLUG, categoryLabel }
 
 export type ProductCardStatus = 'approved' | 'pending' | 'draft' | 'rejected'
 

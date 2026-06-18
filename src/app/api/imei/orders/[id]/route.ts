@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiAuth } from '@/lib/api-auth'
+import { maybeAdvanceImeiOrderFulfillment } from '@/lib/imei-order-stress-fulfillment'
 import { ImeiOrderStatus } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
@@ -14,8 +15,8 @@ export async function GET(
 
   try {
     const { id } = await context.params
-    const order = await prisma.imeiOrder.findFirst({
-      where: { id, userId: session.user.id },
+    const existing = await prisma.imeiOrder.findUnique({
+      where: { id },
       include: {
         service: {
           select: {
@@ -27,6 +28,27 @@ export async function GET(
         },
       },
     })
+    if (!existing) return apiError('Order tidak ditemukan', 404)
+    if (existing.userId !== session.user.id) {
+      return apiError('Akses ditolak', 403)
+    }
+
+    const advanced = await maybeAdvanceImeiOrderFulfillment(id)
+    const order =
+      advanced ??
+      (await prisma.imeiOrder.findUnique({
+        where: { id },
+        include: {
+          service: {
+            select: {
+              id: true,
+              title: true,
+              description: true,
+              group: { select: { id: true, title: true } },
+            },
+          },
+        },
+      }))
     if (!order) return apiError('Order tidak ditemukan', 404)
     return apiSuccess(order)
   } catch (e) {
@@ -48,10 +70,11 @@ export async function DELETE(
 
   try {
     const { id } = await context.params
-    const order = await prisma.imeiOrder.findFirst({
-      where: { id, userId: session.user.id },
-    })
+    const order = await prisma.imeiOrder.findUnique({ where: { id } })
     if (!order) return apiError('Order tidak ditemukan', 404)
+    if (order.userId !== session.user.id) {
+      return apiError('Akses ditolak', 403)
+    }
     if (order.status !== ImeiOrderStatus.PENDING) {
       return apiError('Order yang sedang diproses atau selesai tidak bisa dibatalkan')
     }
@@ -79,7 +102,7 @@ export async function DELETE(
             type: 'REFUND',
             amount: order.price,
             balance: newBalance,
-            description: `Refund order IMEI #${order.orderCode}`,
+            description: `Refund order Digital #${order.orderCode}`,
             referenceId: order.id,
           },
         })

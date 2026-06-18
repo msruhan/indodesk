@@ -130,8 +130,8 @@ export default function TeknisiDashboardPage() {
                 )}
               />
               {marketplacePending > 0
-                ? `${marketplacePending} pesanan perlu diproses — buka Pesanan`
-                : 'Tidak ada pesanan aktif — lihat Pesanan'}
+                ? `${marketplacePending} pesanan perlu diproses — buka Pesanan Masuk`
+                : 'Tidak ada pesanan aktif — lihat Pesanan Masuk'}
             </Link>
             <span>
               Rating {profile.rating.toFixed(1)} dari {profile.reviewCount} review

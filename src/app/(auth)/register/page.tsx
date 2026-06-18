@@ -47,7 +47,7 @@ export default function RegisterPage() {
       return
     }
 
-    router.push('/user/akun')
+    router.push('/user/akun?verify=sent')
   }
 
   return (

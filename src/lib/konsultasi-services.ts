@@ -4,6 +4,7 @@ import {
   parseConsultationServicesFromProfile,
   type ProfileConsultationService,
 } from '@/lib/teknisi-profile-content'
+import type { PublicFeatureFlags } from '@/lib/platform-settings-shared'
 
 export type TeknisiServiceKind = 'consultation' | 'inspection-online' | 'inspection-offline'
 
@@ -13,6 +14,7 @@ export type TeknisiConsultationService = {
   duration: string
   description: string
   popular: boolean
+  requiresRemote: boolean
   kind: TeknisiServiceKind
 }
 
@@ -26,6 +28,7 @@ function toPublicService(
     duration: item.duration,
     description: item.description,
     popular: item.popular,
+    requiresRemote: item.requiresRemote,
     kind: 'consultation',
   }
 }
@@ -49,6 +52,7 @@ export function buildTeknisiInspectionServices(
       description:
         'Pemeriksaan kondisi HP/Laptop via video call. Teknisi membimbing pengecekan fisik, performa, dan keaslian.',
       popular: false,
+      requiresRemote: false,
       kind: 'inspection-online',
     })
   }
@@ -61,6 +65,7 @@ export function buildTeknisiInspectionServices(
       description:
         'Teknisi datang ke lokasi untuk inspeksi langsung. Cek fisik, performa, baterai, hingga laporan tertulis.',
       popular: false,
+      requiresRemote: false,
       kind: 'inspection-offline',
     })
   }
@@ -109,4 +114,20 @@ export function findConsultationService(
       (s) => s.name.toLowerCase() === normalized && s.price === price,
     ) ?? null
   )
+}
+
+export function filterServicesByFeatureFlags(
+  services: TeknisiConsultationService[],
+  flags: Pick<PublicFeatureFlags, 'remoteServiceEnabled' | 'inspectionServiceEnabled'>,
+): TeknisiConsultationService[] {
+  return services.filter((service) => {
+    if (service.requiresRemote && !flags.remoteServiceEnabled) return false
+    if (
+      (service.kind === 'inspection-online' || service.kind === 'inspection-offline') &&
+      !flags.inspectionServiceEnabled
+    ) {
+      return false
+    }
+    return true
+  })
 }

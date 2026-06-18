@@ -5,11 +5,13 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
 import { SearchInput } from '@/components/ui/search-input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { MetricCard } from '@/components/dashboard'
+import { DashboardMonthFilter, MetricCard } from '@/components/dashboard'
+import { useDashboardPeriod } from '@/contexts/dashboard-period-context'
+import { useSyncPeriodToDateInputs } from '@/hooks/use-sync-period-to-date-inputs'
 import { DataPagination } from '@/components/ui/data-pagination'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useClientPagination } from '@/hooks/use-client-pagination'
 import { cn } from '@/lib/utils'
 import { formatIdr, formatDateTime } from '@/lib/format'
@@ -19,7 +21,6 @@ import {
   Clock,
   CreditCard,
   DollarSign,
-  Eye,
   Laptop,
   Package,
   RefreshCw,
@@ -43,6 +44,7 @@ type TransactionItem = {
   seller: { id: string; name: string; email: string } | null
   title: string
   amount: string
+  platformRevenue: string | null
   status: string
   normalizedStatus: NormalizedStatus
   createdAt: string
@@ -67,7 +69,7 @@ type TabKey = 'all' | TransactionType
 const tabConfig: Array<{ key: TabKey; label: string; icon: typeof Sparkles }> = [
   { key: 'all', label: 'Semua', icon: Sparkles },
   { key: 'marketplace', label: 'Marketplace', icon: ShoppingBag },
-  { key: 'imei', label: 'IMEI', icon: Smartphone },
+  { key: 'imei', label: 'Digital', icon: Smartphone },
   { key: 'server', label: 'Server', icon: Laptop },
   { key: 'topup', label: 'Top Up', icon: Zap },
   { key: 'rekber', label: 'Rekber', icon: Shield },
@@ -75,7 +77,7 @@ const tabConfig: Array<{ key: TabKey; label: string; icon: typeof Sparkles }> = 
 
 const typeConfig: Record<TransactionType, { label: string; icon: typeof Sparkles; tone: string }> = {
   marketplace: { label: 'Marketplace', icon: ShoppingBag, tone: 'bg-primary-50 text-primary-700 ring-primary-200/70' },
-  imei: { label: 'IMEI', icon: Smartphone, tone: 'bg-blue-50 text-blue-700 ring-blue-200/70' },
+  imei: { label: 'Digital', icon: Smartphone, tone: 'bg-blue-50 text-blue-700 ring-blue-200/70' },
   server: { label: 'Server', icon: Laptop, tone: 'bg-amber-50 text-amber-700 ring-amber-200/70' },
   topup: { label: 'Top Up', icon: Zap, tone: 'bg-violet-50 text-violet-700 ring-violet-200/70' },
   rekber: { label: 'Rekber', icon: Shield, tone: 'bg-emerald-50 text-emerald-700 ring-emerald-200/70' },
@@ -105,6 +107,7 @@ function formatPrice(price: number | string) {
 const emptyStats: TransactionStats = { totalAll: 0, totalMarketplace: 0, totalImei: 0, totalServer: 0, totalTopup: 0, totalRekber: 0, pendingCount: 0, successCount: 0, revenueToday: '0' }
 
 export function AdminTransactionsView() {
+  const { period } = useDashboardPeriod()
   const [tab, setTab] = useState<TabKey>('all')
   const [items, setItems] = useState<TransactionItem[]>([])
   const [stats, setStats] = useState<TransactionStats>(emptyStats)
@@ -115,6 +118,7 @@ export function AdminTransactionsView() {
   const [statusFilter, setStatusFilter] = useState<'all' | NormalizedStatus>('all')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
+  useSyncPeriodToDateInputs(period, setFrom, setTo)
   const [selectedItem, setSelectedItem] = useState<TransactionItem | null>(null)
 
   const load = useCallback(async () => {
@@ -168,18 +172,21 @@ export function AdminTransactionsView() {
             Monitoring seluruh order dan transaksi platform.
           </p>
         </div>
-        <Button variant="outline" size="sm" className="h-9" onClick={() => void load()} disabled={loading}>
-          <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <DashboardMonthFilter />
+          <Button variant="outline" size="sm" className="h-9" onClick={() => void load()} disabled={loading}>
+            <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Metrics */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
         <MetricCard title="Total Transaksi" value={stats.totalAll.toLocaleString('id-ID')} icon={Package} footnote="Seluruh platform" tone="primary" compact />
-        <MetricCard title="Revenue Hari Ini" value={formatPrice(stats.revenueToday)} icon={DollarSign} footnote="IMEI + Server" tone="primary" compact />
+        <MetricCard title="Revenue Hari Ini" value={formatPrice(stats.revenueToday)} icon={DollarSign} footnote="Digital + Server" tone="primary" compact />
         <MetricCard title="Pending" value={stats.pendingCount.toLocaleString('id-ID')} icon={Clock} footnote="Menunggu diproses" tone={stats.pendingCount > 0 ? 'warning' : 'neutral'} compact />
-        <MetricCard title="Sukses" value={stats.successCount.toLocaleString('id-ID')} icon={TrendingUp} footnote="IMEI + Server berhasil" tone="primary" compact />
+        <MetricCard title="Sukses" value={stats.successCount.toLocaleString('id-ID')} icon={TrendingUp} footnote="Digital + Server berhasil" tone="primary" compact />
       </div>
 
       {/* Type breakdown */}
@@ -230,11 +237,6 @@ export function AdminTransactionsView() {
               className="flex-1 sm:max-w-md"
               inputClassName="h-9 text-xs"
             />
-            <div className="flex items-center gap-2">
-              <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-9 text-xs" />
-              <span className="text-[11px] text-surface-500">—</span>
-              <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-9 text-xs" />
-            </div>
           </div>
 
           {/* Status chips */}
@@ -290,12 +292,20 @@ export function AdminTransactionsView() {
 }
 
 
+function formatPlatformRevenue(value: string | null, normalizedStatus: NormalizedStatus) {
+  if (value == null) return '—'
+  const num = Number(value)
+  if (!Number.isFinite(num) || num <= 0) return '—'
+  const pending = normalizedStatus !== 'success'
+  return pending ? `${formatPrice(num)}*` : formatPrice(num)
+}
+
 function TransactionList({ items, loading, onSelect }: { items: TransactionItem[]; loading: boolean; onSelect: (item: TransactionItem) => void }) {
   if (loading) {
     return (
       <div className="space-y-2">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="h-20 animate-pulse rounded-2xl border border-surface-200/70 bg-surface-50" />
+          <div key={i} className="h-12 animate-pulse rounded-lg bg-surface-100" />
         ))}
       </div>
     )
@@ -314,69 +324,84 @@ function TransactionList({ items, loading, onSelect }: { items: TransactionItem[
   }
 
   return (
-    <div className="space-y-2">
-      {items.map((item, idx) => (
-        <TransactionCard key={`${item.type}-${item.id}`} item={item} idx={idx} onSelect={onSelect} />
-      ))}
+    <div className="overflow-x-auto rounded-2xl border border-surface-200/70 bg-white shadow-soft-xs">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="min-w-[130px]">Tanggal</TableHead>
+            <TableHead className="min-w-[120px]">Kode Order</TableHead>
+            <TableHead className="min-w-[90px]">Tipe</TableHead>
+            <TableHead className="min-w-[90px]">Status</TableHead>
+            <TableHead className="min-w-[180px]">Produk / Layanan</TableHead>
+            <TableHead className="min-w-[120px]">User</TableHead>
+            <TableHead className="min-w-[120px]">Seller</TableHead>
+            <TableHead className="min-w-[110px] text-right">Nominal</TableHead>
+            <TableHead className="min-w-[110px] text-right">Pendapatan</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {items.map((item) => {
+            const type = typeConfig[item.type]
+            const status = statusConfig[item.normalizedStatus]
+            const StatusIcon = status.icon
+            return (
+              <TableRow
+                key={`${item.type}-${item.id}`}
+                className="cursor-pointer hover:bg-primary-50/40"
+                onClick={() => onSelect(item)}
+              >
+                <TableCell className="align-top text-xs text-surface-600">
+                  {formatDateTime(item.createdAt)}
+                </TableCell>
+                <TableCell className="align-top font-mono text-xs font-semibold text-ink">
+                  {item.orderCode}
+                </TableCell>
+                <TableCell className="align-top">
+                  <span className={cn('inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ring-inset', type.tone)}>
+                    {type.label}
+                  </span>
+                </TableCell>
+                <TableCell className="align-top">
+                  <Badge variant={status.variant} className="px-2 py-0.5 text-[10px]">
+                    <StatusIcon className="h-3 w-3" />
+                    {status.label}
+                  </Badge>
+                </TableCell>
+                <TableCell className="align-top text-xs text-surface-700">{item.title}</TableCell>
+                <TableCell className="align-top text-xs">
+                  <p className="font-semibold text-ink">{item.user.name}</p>
+                  <p className="text-[10px] text-surface-500">{item.user.role}</p>
+                </TableCell>
+                <TableCell className="align-top text-xs text-surface-700">
+                  {item.seller?.name ?? '—'}
+                </TableCell>
+                <TableCell className="align-top text-right text-xs font-bold tabular-nums text-primary-700">
+                  {formatPrice(item.amount)}
+                </TableCell>
+                <TableCell
+                  className={cn(
+                    'align-top text-right text-xs font-semibold tabular-nums',
+                    item.platformRevenue && Number(item.platformRevenue) > 0
+                      ? 'text-emerald-700'
+                      : 'text-surface-400',
+                  )}
+                  title={
+                    item.platformRevenue && item.normalizedStatus !== 'success'
+                      ? 'Estimasi — terkumpul penuh saat transaksi selesai'
+                      : undefined
+                  }
+                >
+                  {formatPlatformRevenue(item.platformRevenue, item.normalizedStatus)}
+                </TableCell>
+              </TableRow>
+            )
+          })}
+        </TableBody>
+      </Table>
+      <p className="border-t border-surface-100 px-4 py-2 text-[10px] text-surface-500">
+        * Pendapatan estimasi — belum final sampai transaksi sukses/selesai.
+      </p>
     </div>
-  )
-}
-
-function TransactionCard({ item, idx, onSelect }: { item: TransactionItem; idx: number; onSelect: (item: TransactionItem) => void }) {
-  const type = typeConfig[item.type]
-  const status = statusConfig[item.normalizedStatus]
-  const TypeIcon = type.icon
-  const StatusIcon = status.icon
-
-  return (
-    <motion.button
-      type="button"
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: idx * 0.02, duration: 0.25 }}
-      onClick={() => onSelect(item)}
-      className="group/tx w-full text-left rounded-2xl border border-surface-200/70 bg-white p-4 shadow-soft-xs transition-all duration-300 hover:-translate-y-0.5 hover:border-primary-200/70 hover:shadow-soft-md"
-    >
-      <div className="flex items-start gap-3">
-        <span className={cn('inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ring-1 ring-inset', type.tone)}>
-          <TypeIcon className="h-[18px] w-[18px]" />
-        </span>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-[12px] font-semibold text-ink">{item.orderCode}</span>
-            <Badge variant={status.variant} className="px-2 py-0.5 text-[10px]">
-              <StatusIcon className="h-3 w-3" />
-              {status.label}
-            </Badge>
-            <span className="rounded-full bg-surface-100 px-2 py-0.5 text-[10px] font-medium text-surface-600">
-              {type.label}
-            </span>
-            <span className="ml-auto text-[10px] text-surface-500">{formatDateTime(item.createdAt)}</span>
-          </div>
-
-          <p className="mt-1.5 line-clamp-1 text-[13px] font-medium text-surface-700">{item.title}</p>
-
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-surface-500">
-            <span className="inline-flex items-center gap-1">
-              <span className="font-medium text-surface-600">User:</span>
-              <span className="font-semibold text-ink">{item.user.name}</span>
-            </span>
-            {item.seller && (
-              <span className="inline-flex items-center gap-1">
-                <span className="font-medium text-surface-600">Seller:</span>
-                <span className="font-semibold text-ink">{item.seller.name}</span>
-              </span>
-            )}
-            <span className="ml-auto text-sm font-bold tabular-nums text-primary-700">
-              {formatPrice(item.amount)}
-            </span>
-          </div>
-        </div>
-
-        <Eye className="h-4 w-4 flex-shrink-0 text-surface-400 opacity-0 transition-opacity group-hover/tx:opacity-100" />
-      </div>
-    </motion.button>
   )
 }
 
@@ -456,6 +481,22 @@ function DrawerBody({ item }: { item: TransactionItem }) {
         <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary-700">Nominal</p>
         <p className="mt-1 text-2xl font-bold text-primary-700 tabular-nums">{formatPrice(item.amount)}</p>
       </div>
+
+      {item.platformRevenue != null && Number(item.platformRevenue) > 0 && (
+        <div className="rounded-2xl border border-emerald-200/60 bg-emerald-50/40 p-4 text-center">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-700">
+            Pendapatan Platform
+          </p>
+          <p className="mt-1 text-xl font-bold text-emerald-700 tabular-nums">
+            {formatPlatformRevenue(item.platformRevenue, item.normalizedStatus)}
+          </p>
+          {item.type === 'marketplace' && item.meta.buyerFee && item.meta.sellerFee && (
+            <p className="mt-1 text-[10px] text-emerald-800">
+              Fee pembeli {formatPrice(item.meta.buyerFee)} + fee penjual {formatPrice(item.meta.sellerFee)}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Title */}
       <div className="rounded-2xl border border-surface-200/70 bg-white p-3 shadow-soft-xs">

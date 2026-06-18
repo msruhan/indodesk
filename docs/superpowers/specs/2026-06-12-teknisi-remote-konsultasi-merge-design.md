@@ -1,7 +1,7 @@
 # Merge Remote ke Konsultasi (Dashboard Teknisi) — Design Spec
 
 **Tanggal**: 2026-06-12  
-**Status**: Draft — menunggu review  
+**Status**: Approved  
 **Author**: Brainstorming session  
 **Prasyarat**: [2026-06-12-konsultasi-remote-payment-design.md](./2026-06-12-konsultasi-remote-payment-design.md)
 

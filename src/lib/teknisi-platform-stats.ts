@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 
 import { calculateTeknisiPerformanceScore, type PerformanceScoreResult } from '@/lib/teknisi-performance-score'
+import { fetchTeknisiUnifiedReviewStats } from '@/lib/teknisi-unified-reviews'
 
 export type RatingDistributionRow = {
   star: number
@@ -43,7 +44,7 @@ function formatResponseMinutes(avgMinutes: number): string {
 
 /** Statistik performa teknisi dihitung dari data sesi & ulasan di platform. */
 export async function getTeknisiPlatformStats(teknisiId: string): Promise<TeknisiPlatformStatsDto> {
-  const [konsultasi, remote, reviews, profile] = await Promise.all([
+  const [konsultasi, remote, unifiedReviews, profile] = await Promise.all([
     prisma.konsultasiSession.findMany({
       where: { teknisiId },
       select: { status: true, createdAt: true, startedAt: true },
@@ -52,10 +53,7 @@ export async function getTeknisiPlatformStats(teknisiId: string): Promise<Teknis
       where: { teknisiId },
       select: { status: true, createdAt: true, acceptedAt: true },
     }),
-    prisma.teknisiReview.findMany({
-      where: { teknisiId },
-      select: { rating: true },
-    }),
+    fetchTeknisiUnifiedReviewStats(teknisiId),
     prisma.teknisiProfile.findUnique({
       where: { userId: teknisiId },
       select: { rating: true, reviewCount: true, totalView: true },
@@ -96,10 +94,10 @@ export async function getTeknisiPlatformStats(teknisiId: string): Promise<Teknis
       ? Math.round((completedSessions / totalSessions) * 100)
       : 0
 
-  const reviewCount = reviews.length
+  const reviewCount = unifiedReviews.stats.reviewCount
   const averageRating =
     reviewCount > 0
-      ? Math.round((reviews.reduce((s, r) => s + r.rating, 0) / reviewCount) * 10) / 10
+      ? unifiedReviews.stats.averageRating
       : profile
         ? Number(profile.rating)
         : 0
@@ -109,7 +107,9 @@ export async function getTeknisiPlatformStats(teknisiId: string): Promise<Teknis
       ? `${averageRating} · ${reviewCount} ulasan`
       : 'Belum ada ulasan'
 
-  const ratingDistribution = buildRatingDistribution(reviews)
+  const ratingDistribution = buildRatingDistribution(
+    unifiedReviews.ratings.map((rating) => ({ rating })),
+  )
 
   const completedByUser = await prisma.konsultasiSession.groupBy({
     by: ['userId'],

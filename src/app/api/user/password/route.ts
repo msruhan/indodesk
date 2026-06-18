@@ -3,17 +3,27 @@ import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiAuth } from '@/lib/api-auth'
 import { extractRequestContext, logAccountEvent, logSecurityEvent } from '@/lib/activity-log'
+import { validatePasswordPolicy } from '@/lib/password-policy'
+import { bumpSessionVersion } from '@/lib/session-version'
+import { RATE_LIMITS, withRateLimit, rateLimitResponse } from '@/lib/rate-limit-store'
 
 export const dynamic = 'force-dynamic'
 
 const schema = z.object({
   currentPassword: z.string().min(1, 'Password lama wajib diisi'),
-  newPassword: z.string().min(8, 'Password baru minimal 8 karakter').max(128),
+  newPassword: z.string().min(10, 'Password baru minimal 10 karakter').max(128),
 })
 
 export async function POST(req: Request) {
   const { session, error } = await requireApiAuth()
   if (error) return error
+
+  const rl = await withRateLimit(
+    req,
+    ['user', 'password', session.user.id],
+    RATE_LIMITS.sensitiveUser,
+  )
+  if (!rl.allowed) return rateLimitResponse(rl, { req, key: `user:password:${session.user.id}` })
 
   try {
     const body = await req.json()
@@ -21,6 +31,9 @@ export async function POST(req: Request) {
     if (!parsed.success) {
       return apiError(parsed.error.issues[0]?.message ?? 'Data tidak valid')
     }
+
+    const policy = validatePasswordPolicy(parsed.data.newPassword)
+    if (!policy.ok) return apiError(policy.message)
 
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
@@ -50,8 +63,10 @@ export async function POST(req: Request) {
       data: {
         password: hashed,
         passwordChangedAt: new Date(),
+        mustChangePassword: false,
       },
     })
+    await bumpSessionVersion(session.user.id)
 
     const ctx = extractRequestContext(req)
     void logAccountEvent({

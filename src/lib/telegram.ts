@@ -41,23 +41,46 @@ export function isTelegramEnabled(): boolean {
 }
 
 /**
- * Generate link token for Telegram verification
- * Token format: userId-timestamp-random
+ * Set webhook untuk menerima update dari Telegram (optional secret_token).
  */
-export function generateTelegramLinkToken(userId: string): string {
-  const timestamp = Date.now()
-  const random = Math.random().toString(36).substring(2, 10)
-  return `${userId}-${timestamp}-${random}`
+export async function setTelegramWebhook(
+  webhookUrl: string,
+  secretToken?: string,
+): Promise<{ success: boolean; error?: string }> {
+  if (!TELEGRAM_BOT_TOKEN) {
+    return { success: false, error: 'Bot token tidak dikonfigurasi' }
+  }
+
+  try {
+    const body: Record<string, unknown> = {
+      url: webhookUrl,
+      allowed_updates: ['message'],
+    }
+    if (secretToken?.trim()) {
+      body.secret_token = secretToken.trim()
+    }
+
+    const response = await fetch(`${TELEGRAM_API_BASE}/bot${TELEGRAM_BOT_TOKEN}/setWebhook`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+
+    const data = await response.json()
+
+    if (!response.ok || !data.ok) {
+      return { success: false, error: data.description || 'Gagal set webhook' }
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('[Telegram] Error set webhook:', error)
+    return { success: false, error: 'Network error' }
+  }
 }
 
-/**
- * Parse link token to get userId
- */
-export function parseTelegramLinkToken(token: string): string | null {
-  const parts = token.split('-')
-  if (parts.length !== 3) return null
-  return parts[0]
-}
+/** @deprecated Use issueTelegramLinkToken from @/lib/telegram/link-token */
+export { issueTelegramLinkToken as generateTelegramLinkToken } from '@/lib/telegram/link-token'
 
 /**
  * Kirim pesan teks ke chat Telegram
@@ -82,6 +105,8 @@ export async function sendTelegramMessage(
   }
 
   try {
+    console.log(`[Telegram] Sending message to chat ${chatId}...`)
+    
     const response = await fetch(`${TELEGRAM_API_BASE}/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -99,6 +124,7 @@ export async function sendTelegramMessage(
       return { success: false, error: data.description || 'Gagal mengirim pesan' }
     }
 
+    console.log(`[Telegram] ✅ Message sent successfully to chat ${chatId}`)
     return { success: true }
   } catch (error) {
     console.error('[Telegram] Error kirim pesan:', error)
@@ -113,37 +139,6 @@ export async function sendTelegramMessage(
 export function generateTelegramBotLink(verificationCode: string): string {
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'IndoTekniziiBot'
   return `https://t.me/${botUsername}?start=${verificationCode}`
-}
-
-/**
- * Set webhook untuk menerima update dari Telegram
- */
-export async function setTelegramWebhook(webhookUrl: string): Promise<{ success: boolean; error?: string }> {
-  if (!TELEGRAM_BOT_TOKEN) {
-    return { success: false, error: 'Bot token tidak dikonfigurasi' }
-  }
-
-  try {
-    const response = await fetch(`${TELEGRAM_API_BASE}/bot${TELEGRAM_BOT_TOKEN}/setWebhook`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        url: webhookUrl,
-        allowed_updates: ['message'],
-      }),
-    })
-
-    const data = await response.json()
-
-    if (!response.ok || !data.ok) {
-      return { success: false, error: data.description || 'Gagal set webhook' }
-    }
-
-    return { success: true }
-  } catch (error) {
-    console.error('[Telegram] Error set webhook:', error)
-    return { success: false, error: 'Network error' }
-  }
 }
 
 /**

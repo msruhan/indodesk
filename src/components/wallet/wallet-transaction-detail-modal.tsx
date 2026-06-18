@@ -10,11 +10,14 @@ import {
   categoryMeta,
   formatTransactionAmount,
   formatTransactionDate,
+  formatIdr,
   type UnifiedTransaction,
 } from '@/lib/wallet-transactions'
 import {
+  Headphones,
   Package,
   RefreshCw,
+  Scales,
   ShoppingBag,
   Unlock,
   Wallet,
@@ -28,6 +31,8 @@ const categoryIcons = {
   topup: RefreshCw,
   imei: Unlock,
   server: Package,
+  konsultasi: Headphones,
+  inspeksi: Scales,
 } as const
 
 function statusVariant(
@@ -165,6 +170,12 @@ export function WalletTransactionDetailModal({
                     label="Tanggal"
                     value={formatTransactionDate(transaction.createdAt)}
                   />
+                  {transaction.balanceBefore != null && (
+                    <DetailRow label="Saldo sebelum" value={formatIdr(transaction.balanceBefore)} />
+                  )}
+                  {transaction.balanceAfter != null && (
+                    <DetailRow label="Saldo sesudah" value={formatIdr(transaction.balanceAfter)} />
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-2 border-t border-surface-100 px-6 py-4">

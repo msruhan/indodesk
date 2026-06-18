@@ -31,3 +31,31 @@ export async function debitUserForTopup(
     },
   })
 }
+
+export async function refundTopupToBuyer(
+  tx: TxClient,
+  userId: string,
+  amount: PrismaNamespace.Decimal,
+  orderId: string,
+  description: string,
+) {
+  const wallet = await tx.wallet.findUnique({ where: { userId } })
+  if (!wallet) throw new Error('WALLET_NOT_FOUND')
+
+  const newBalance = wallet.balance.add(amount)
+  await tx.wallet.update({
+    where: { id: wallet.id },
+    data: { balance: newBalance },
+  })
+
+  await tx.walletLedger.create({
+    data: {
+      walletId: wallet.id,
+      type: 'REFUND',
+      amount,
+      balance: newBalance,
+      description,
+      referenceId: orderId,
+    },
+  })
+}

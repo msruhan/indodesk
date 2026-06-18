@@ -9,6 +9,8 @@ export const PLATFORM_SETTING_KEYS = [
   'support_email',
   'support_phone',
   'admin_email',
+  'buyer_fee_percent',
+  'seller_fee_percent',
   'fee_percent',
   'maintenance_mode',
   'imei_service_enabled',
@@ -23,7 +25,8 @@ export type PlatformSettingsDto = {
   supportEmail: string
   supportPhone: string
   adminEmail: string
-  feePercent: number
+  buyerFeePercent: number
+  sellerFeePercent: number
   maintenanceMode: boolean
   /**
    * Apakah menu "Layanan Perangkat" (IMEI/Server services) ditampilkan untuk
@@ -32,14 +35,13 @@ export type PlatformSettingsDto = {
    */
   imeiServiceEnabled: boolean
   /**
-   * Apakah menu "Remote" (remote assistance) ditampilkan untuk pengunjung,
-   * USER, dan TEKNISI. ADMIN tetap dapat mengakses panel admin terkait.
+   * Apakah halaman publik /remote (IndoDesk) dan pemesanan konsultasi remote
+   * (requiresRemote) diizinkan. Sesi remote dikelola di Konsultasi, bukan menu terpisah.
    */
   remoteServiceEnabled: boolean
   /**
-   * Apakah menu "Inspeksi" (pre-purchase inspection) ditampilkan untuk
-   * pengunjung, USER, dan TEKNISI. ADMIN tetap dapat mengakses panel admin
-   * terkait.
+   * Apakah menu "Inspeksi" ditampilkan di navigasi publik dan sidebar user/teknisi.
+   * ADMIN tetap dapat mengakses panel admin terkait.
    */
   inspectionServiceEnabled: boolean
 }
@@ -49,7 +51,8 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettingsDto = {
   supportEmail: 'support@indoteknizi.com',
   supportPhone: '0800-1234-5678',
   adminEmail: 'admin@indoteknizi.com',
-  feePercent: 2.5,
+  buyerFeePercent: 2,
+  sellerFeePercent: 2.5,
   maintenanceMode: false,
   imeiServiceEnabled: true,
   remoteServiceEnabled: true,
@@ -64,12 +67,15 @@ export type PublicFeatureFlags = {
   imeiServiceEnabled: boolean
   remoteServiceEnabled: boolean
   inspectionServiceEnabled: boolean
+  /** Login / daftar via Google OAuth (dari env AUTH_GOOGLE_*). */
+  googleAuthEnabled: boolean
 }
 
 export const DEFAULT_PUBLIC_FEATURE_FLAGS: PublicFeatureFlags = {
   imeiServiceEnabled: DEFAULT_PLATFORM_SETTINGS.imeiServiceEnabled,
   remoteServiceEnabled: DEFAULT_PLATFORM_SETTINGS.remoteServiceEnabled,
   inspectionServiceEnabled: DEFAULT_PLATFORM_SETTINGS.inspectionServiceEnabled,
+  googleAuthEnabled: false,
 }
 
 type Role = 'ADMIN' | 'TEKNISI' | 'USER' | null | undefined
@@ -89,11 +95,10 @@ export function canAccessImeiService(role: Role, flags: PublicFeatureFlags): boo
 }
 
 /**
- * Role yang diizinkan melihat menu "Remote".
+ * Role yang diizinkan melihat halaman IndoDesk (/remote) dan memesan konsultasi remote.
  *
- * - ADMIN selalu boleh (untuk akses panel monitoring & log).
- * - Selain ADMIN, mengikuti `remoteServiceEnabled`. Bila flag mati, fitur
- *   menjadi tidak terlihat di navigasi publik (mis. saat maintenance).
+ * - ADMIN selalu boleh.
+ * - Selain ADMIN, mengikuti `remoteServiceEnabled`.
  */
 export function canAccessRemoteService(role: Role, flags: PublicFeatureFlags): boolean {
   if (role === 'ADMIN') return true

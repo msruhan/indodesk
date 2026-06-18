@@ -1,6 +1,6 @@
 'use client'
 
-import { useLayoutEffect, useState, useSyncExternalStore } from 'react'
+import { useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
@@ -22,6 +22,8 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { useCart } from '@/contexts/cart-context'
 import type { CartItem } from '@/lib/cart'
+import { calcCartCouponDiscount } from '@/lib/product-coupon'
+import { floorIdr } from '@/lib/marketplace-fees'
 import { BackButton } from '@/components/shared/back-button'
 import {
   ArrowRight,
@@ -93,31 +95,95 @@ const typeBadgeColor = {
 export default function CartPage() {
   const router = useRouter()
   const { status: sessionStatus } = useSession()
-  const { items, updateQuantity, removeItem, hydrated } = useCart()
+  const { items, updateQuantity, removeItem, hydrated, syncProducts } = useCart()
   const [walletBalance, setWalletBalance] = useState<number | null>(null)
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const [checkoutSuccess, setCheckoutSuccess] = useState<string[] | null>(null)
   const [promoCode, setPromoCode] = useState('')
+  const [appliedPromoCode, setAppliedPromoCode] = useState('')
   const [promoApplied, setPromoApplied] = useState(false)
+  const [promoError, setPromoError] = useState<string | null>(null)
+  const [promoLoading, setPromoLoading] = useState(false)
+  const [shippingAddress, setShippingAddress] = useState('')
+  const [shippingPhone, setShippingPhone] = useState('')
+  const [addressError, setAddressError] = useState<string | null>(null)
+  const [buyerFeePercent, setBuyerFeePercent] = useState(2)
 
   const marketplaceItems = items.filter((i) => i.type !== 'topup')
+  const marketplaceItemIds = marketplaceItems.map((i) => i.id).join(',')
   const hasTopupOnly = items.length > 0 && marketplaceItems.length === 0
+  const requiresShipping =
+    marketplaceItems.length > 0 &&
+    !marketplaceItems.every((i) => i.type === 'software')
+  const profilePrefilled = useRef(false)
 
   useLayoutEffect(() => {
     if (sessionStatus !== 'authenticated') return
     void (async () => {
       try {
-        const res = await fetch('/api/wallet')
-        const json = await res.json()
-        if (res.ok && json.success) {
-          setWalletBalance(Number(json.data?.balance ?? 0))
+        const [walletRes, profileRes] = await Promise.all([
+          fetch('/api/wallet'),
+          profilePrefilled.current ? Promise.resolve(null) : fetch('/api/user/profile'),
+        ])
+        const walletJson = walletRes ? await walletRes.json() : null
+        if (walletRes?.ok && walletJson?.success) {
+          setWalletBalance(Number(walletJson.data?.balance ?? 0))
+        }
+        if (profileRes) {
+          const profileJson = await profileRes.json()
+          if (profileRes.ok && profileJson.success && !profilePrefilled.current) {
+            profilePrefilled.current = true
+            const addr = profileJson.data?.address
+            if (typeof addr === 'string' && addr.trim()) {
+              setShippingAddress(addr.trim())
+            }
+            const phone = profileJson.data?.phone
+            if (typeof phone === 'string' && phone.trim()) {
+              setShippingPhone(phone.trim())
+            }
+          }
         }
       } catch {
         /* ignore */
       }
     })()
   }, [sessionStatus])
+
+  useLayoutEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch('/api/platform/marketplace-fees')
+        const json = await res.json()
+        if (res.ok && json.success && json.data?.buyerFeePercent != null) {
+          setBuyerFeePercent(Number(json.data.buyerFeePercent))
+        }
+      } catch {
+        /* ignore */
+      }
+    })()
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!hydrated || marketplaceItems.length === 0) return
+    void (async () => {
+      try {
+        const res = await fetch('/api/marketplace/cart-sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            productIds: [...new Set(marketplaceItems.map((i) => i.id))],
+          }),
+        })
+        const json = await res.json()
+        if (res.ok && json.success && Array.isArray(json.data?.products)) {
+          syncProducts(json.data.products)
+        }
+      } catch {
+        /* ignore */
+      }
+    })()
+  }, [hydrated, marketplaceItemIds, syncProducts])
 
   const handleCheckout = async () => {
     if (marketplaceItems.length === 0) {
@@ -130,6 +196,13 @@ export default function CartPage() {
       return
     }
 
+    const addr = shippingAddress.trim()
+    if (requiresShipping && addr.length < 10) {
+      setAddressError('Alamat pengiriman wajib diisi (minimal 10 karakter)')
+      return
+    }
+    setAddressError(null)
+
     setCheckoutLoading(true)
     setCheckoutError(null)
     try {
@@ -141,6 +214,14 @@ export default function CartPage() {
             productId: i.id,
             quantity: i.quantity,
           })),
+          requiresShipping,
+          ...(requiresShipping
+            ? {
+                shippingAddress: addr,
+                shippingPhone: shippingPhone.trim() || undefined,
+              }
+            : {}),
+          ...(promoApplied && appliedPromoCode ? { couponCode: appliedPromoCode } : {}),
         }),
       })
       const json = await res.json()
@@ -165,12 +246,66 @@ export default function CartPage() {
   }
 
   const subtotal = marketplaceItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const discount = 0
+  const discount = promoApplied
+    ? calcCartCouponDiscount(marketplaceItems, appliedPromoCode)
+    : 0
   const total = subtotal - discount
+  const buyerFee =
+    marketplaceItems.length > 0 ? floorIdr((total * buyerFeePercent) / 100) : 0
+  const checkoutTotal = total + buyerFee
+  const addressInvalid = requiresShipping && shippingAddress.trim().length < 10
 
-  const applyPromo = () => {
-    if (promoCode.toUpperCase() === 'TEKNIZI10') {
+  const applyPromo = async () => {
+    const code = promoCode.trim()
+    if (!code) {
+      setPromoError('Masukkan kode kupon')
+      return
+    }
+    if (marketplaceItems.length === 0) {
+      setPromoError('Tidak ada produk di keranjang')
+      return
+    }
+
+    setPromoLoading(true)
+    setPromoError(null)
+    try {
+      const res = await fetch('/api/marketplace/coupon-preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          couponCode: code,
+          items: marketplaceItems.map((i) => ({
+            productId: i.id,
+            quantity: i.quantity,
+          })),
+        }),
+      })
+      const json = await res.json()
+      const discount =
+        res.ok && json.success ? Number(json.data?.discount ?? 0) : calcCartCouponDiscount(marketplaceItems, code)
+
+      if (discount <= 0) {
+        setPromoApplied(false)
+        setAppliedPromoCode('')
+        setPromoError('Kode kupon tidak cocok dengan produk di keranjang')
+        return
+      }
+      setPromoError(null)
+      setAppliedPromoCode(code.toUpperCase())
       setPromoApplied(true)
+    } catch {
+      const savings = calcCartCouponDiscount(marketplaceItems, code)
+      if (savings <= 0) {
+        setPromoApplied(false)
+        setAppliedPromoCode('')
+        setPromoError('Kode kupon tidak cocok dengan produk di keranjang')
+        return
+      }
+      setPromoError(null)
+      setAppliedPromoCode(code.toUpperCase())
+      setPromoApplied(true)
+    } finally {
+      setPromoLoading(false)
     }
   }
 
@@ -371,39 +506,91 @@ export default function CartPage() {
                     Ringkasan Pesanan
                   </h2>
 
+                  {requiresShipping && (
+                    <div className="mb-4 space-y-2">
+                      <p className="text-xs font-semibold text-ink">Alamat pengiriman</p>
+                      <textarea
+                        aria-label="Alamat pengiriman"
+                        value={shippingAddress}
+                        onChange={(e) => {
+                          setShippingAddress(e.target.value)
+                          if (addressError) setAddressError(null)
+                        }}
+                        placeholder="Nama penerima, jalan, RT/RW, kelurahan, kota, kode pos"
+                        rows={3}
+                        className={cn(
+                          'w-full rounded-xl border bg-white px-3 py-2 text-xs text-ink placeholder:text-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-100',
+                          addressError
+                            ? 'border-rose-300 focus:border-rose-400'
+                            : 'border-surface-200 focus:border-primary-400',
+                        )}
+                      />
+                      <Input
+                        value={shippingPhone}
+                        onChange={(e) => setShippingPhone(e.target.value)}
+                        placeholder="No. HP penerima (opsional)"
+                        className="h-9 text-xs"
+                      />
+                      {addressError && (
+                        <p className="text-[11px] text-rose-600">{addressError}</p>
+                      )}
+                    </div>
+                  )}
+
                   {/* Promo code */}
                   <div className="mb-4">
                     {promoApplied ? (
                       <div className="flex items-center gap-2 rounded-xl border border-primary-200 bg-primary-50/60 px-3 py-2">
                         <CheckCircle className="h-4 w-4 text-primary-600" />
                         <div className="min-w-0 flex-1">
-                          <p className="text-[12px] font-semibold text-primary-700">TEKNIZI10 · Diskon 10%</p>
+                          <p className="text-[12px] font-semibold text-primary-700">
+                            {appliedPromoCode} · Kupon produk diterapkan
+                          </p>
                           <p className="text-[10px] text-primary-600">Hemat {formatPrice(discount)}</p>
                         </div>
                         <button
                           type="button"
-                          onClick={() => { setPromoApplied(false); setPromoCode('') }}
+                          onClick={() => {
+                            setPromoApplied(false)
+                            setAppliedPromoCode('')
+                            setPromoCode('')
+                            setPromoError(null)
+                          }}
                           className="rounded-full p-1 text-primary-600 hover:bg-primary-100"
                         >
                           <X className="h-3 w-3" />
                         </button>
                       </div>
                     ) : (
-                      <div className="flex gap-2">
-                        <Input
-                          value={promoCode}
-                          onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                          placeholder="Kode promo"
-                          className="h-9 flex-1 text-xs uppercase"
-                          onKeyDown={(e) => e.key === 'Enter' && applyPromo()}
-                        />
-                        <Button variant="outline" size="sm" className="h-9" onClick={applyPromo}>
-                          Pakai
-                        </Button>
+                      <div>
+                        <div className="flex gap-2">
+                          <Input
+                            value={promoCode}
+                            onChange={(e) => {
+                              setPromoCode(e.target.value.toUpperCase())
+                              setPromoError(null)
+                            }}
+                            placeholder="Kode kupon produk"
+                            className="h-9 flex-1 text-xs uppercase"
+                            onKeyDown={(e) => e.key === 'Enter' && applyPromo()}
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-9"
+                            onClick={() => void applyPromo()}
+                            disabled={promoLoading}
+                          >
+                            {promoLoading ? '...' : 'Pakai'}
+                          </Button>
+                        </div>
+                        {promoError && (
+                          <p className="mt-1.5 text-[10px] text-rose-600">{promoError}</p>
+                        )}
                       </div>
                     )}
                     <p className="mt-1.5 text-[10px] text-surface-400">
-                      Promo akan tersedia setelah integrasi payment gateway.
+                      Masukkan kode kupon dari teknisi penjual (jika ada).
                     </p>
                   </div>
 
@@ -414,7 +601,7 @@ export default function CartPage() {
                       <span
                         className={cn(
                           'font-semibold tabular-nums',
-                          walletBalance < total ? 'text-rose-600' : 'text-ink',
+                          walletBalance < checkoutTotal ? 'text-rose-600' : 'text-ink',
                         )}
                       >
                         {formatPrice(walletBalance)}
@@ -441,18 +628,20 @@ export default function CartPage() {
                       </div>
                     )}
                     <div className="flex justify-between">
-                      <span className="text-surface-500">Biaya layanan</span>
-                      <span className="font-medium text-primary-700">Gratis</span>
+                      <span className="text-surface-500">Fee platform ({buyerFeePercent}%)</span>
+                      <span className="font-medium text-ink tabular-nums">
+                        {buyerFee > 0 ? formatPrice(buyerFee) : 'Gratis'}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between border-t border-surface-100 pt-2">
-                      <span className="text-sm font-bold text-ink">Total</span>
+                      <span className="text-sm font-bold text-ink">Total dibayar</span>
                       <motion.span
-                        key={total}
+                        key={checkoutTotal}
                         initial={{ scale: 0.95, opacity: 0.7 }}
                         animate={{ scale: 1, opacity: 1 }}
                         className="text-lg font-bold tracking-tight text-primary-700 tabular-nums"
                       >
-                        {formatPrice(total)}
+                        {formatPrice(checkoutTotal)}
                       </motion.span>
                     </div>
                   </div>
@@ -465,14 +654,15 @@ export default function CartPage() {
                     disabled={
                       checkoutLoading ||
                       marketplaceItems.length === 0 ||
-                      (walletBalance != null && walletBalance < total)
+                      addressInvalid ||
+                      (walletBalance != null && walletBalance < checkoutTotal)
                     }
                     onClick={() => void handleCheckout()}
                   >
                     {checkoutLoading ? 'Memproses…' : 'Bayar dari saldo'}
                     <ArrowRight className="h-4 w-4" />
                   </Button>
-                  {walletBalance != null && walletBalance < total && (
+                  {walletBalance != null && walletBalance < checkoutTotal && (
                     <p className="mt-2 text-center text-[11px] text-rose-600">
                       Saldo tidak cukup.{' '}
                       <Link href="/topup" className="underline">
@@ -522,6 +712,7 @@ export default function CartPage() {
                 disabled={
                   checkoutLoading ||
                   marketplaceItems.length === 0 ||
+                  addressInvalid ||
                   (walletBalance != null && walletBalance < total)
                 }
                 onClick={() => void handleCheckout()}

@@ -30,15 +30,30 @@ import {
 } from '@/lib/icons'
 import Link from 'next/link'
 import type { MarketplaceProductDto } from '@/lib/marketplace-product-serializer'
+import { CompareButton } from '@/components/marketplace/compare-button'
 
-type ProductCategory = 'all' | 'handphone' | 'laptop' | 'aksesoris' | 'software' | 'lainnya'
+type ProductCategory =
+  | 'all'
+  | 'iphone'
+  | 'android'
+  | 'ipad'
+  | 'macbook'
+  | 'laptop'
+  | 'pc'
+  | 'aksesoris'
+  | 'software'
+  | 'lainnya'
 
 const PLACEHOLDER_IMAGE = '/api/placeholder/300/300'
 
 const categories = [
   { id: 'all', label: 'Semua', icon: Filter },
-  { id: 'handphone', label: 'Handphone', icon: Smartphone },
+  { id: 'iphone', label: 'iPhone', icon: Smartphone },
+  { id: 'android', label: 'Android', icon: Smartphone },
+  { id: 'ipad', label: 'iPad', icon: Smartphone },
+  { id: 'macbook', label: 'Macbook', icon: Laptop },
   { id: 'laptop', label: 'Laptop', icon: Laptop },
+  { id: 'pc', label: 'PC', icon: Laptop },
   { id: 'aksesoris', label: 'Aksesoris', icon: Headphones },
   { id: 'software', label: 'Software', icon: Code },
   { id: 'lainnya', label: 'Lainnya', icon: Package },
@@ -295,7 +310,17 @@ export function MarketplaceHubPage({ placement }: MarketplaceHubPageProps) {
                     alt={product.name}
                     className="w-full h-full object-cover"
                   />
-                  <div className="absolute top-1 right-1">
+                  <div className="absolute top-1 right-1 flex items-center gap-1">
+                    <CompareButton
+                      product={{
+                        id: product.id,
+                        name: product.name,
+                        image: product.image,
+                        price: product.price,
+                        category: product.categoryValue,
+                      }}
+                      variant="icon"
+                    />
                     <Badge variant="outline" className="bg-white/90 text-[10px] px-1.5 py-0.5 capitalize">
                       {product.categorySlug}
                     </Badge>

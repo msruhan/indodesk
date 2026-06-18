@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
+import { decryptImeiApiKey } from '@/lib/crypto/imei-api-secret'
 import { DhruFusionClient } from '@/lib/dhru-fusion'
 
 export const dynamic = 'force-dynamic'
@@ -28,7 +29,7 @@ export async function GET(
     const client = new DhruFusionClient({
       host: api.host,
       username: api.username,
-      apiKey: api.apiKey,
+      apiKey: decryptImeiApiKey(api.apiKey),
     })
 
     const info = await client.accountInfo()
@@ -50,7 +51,7 @@ export async function GET(
       lowBalance,
       hint: lowBalance
         ? 'Saldo API reseller kosong atau nol. Top-up di panel luteam.store — meskipun harga layanan $0, Dhru sering tetap menolak placeimeiorder (CreditprocessError).'
-        : 'Saldo API tersedia. Jika order masih gagal, cek IMEI valid atau limit layanan.',
+        : 'Saldo API tersedia. Jika order masih gagal, cek nomor digital valid atau limit layanan.',
     })
   } catch (e) {
     console.error('[ADMIN_IMEI_API_ACCOUNT]', e)

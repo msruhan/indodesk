@@ -5,8 +5,12 @@ import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/auth-context'
+import { useHydrated } from '@/hooks/use-hydrated'
 import { Home } from '@/lib/icons'
 import { LogOut, Zap, type IconType } from '@/lib/icons-types'
+
+const ACTIVE_PILL_CLASS =
+  'absolute inset-0 rounded-xl bg-gradient-to-r from-primary-50 to-primary-50/40 ring-1 ring-inset ring-primary-200/60 shadow-soft-xs'
 
 export interface SidebarNavItem {
   icon: IconType
@@ -70,6 +74,7 @@ export function RoleSidebar({
 }: RoleSidebarProps) {
   const pathname = usePathname()
   const { logout } = useAuth()
+  const hydrated = useHydrated()
   const groupedItems = items.reduce<Array<{ section?: string; items: SidebarNavItem[] }>>((groups, item) => {
     const last = groups[groups.length - 1]
     if (last && last.section === item.section) {
@@ -97,13 +102,16 @@ export function RoleSidebar({
         )}
         aria-current={isActive ? 'page' : undefined}
       >
-        {isActive && (
-          <motion.span
-            layoutId="role-sidebar-active"
-            className="absolute inset-0 rounded-xl bg-gradient-to-r from-primary-50 to-primary-50/40 ring-1 ring-inset ring-primary-200/60 shadow-soft-xs"
-            transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-          />
-        )}
+        {isActive &&
+          (hydrated ? (
+            <motion.span
+              layoutId="role-sidebar-active"
+              className={ACTIVE_PILL_CLASS}
+              transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+            />
+          ) : (
+            <span className={ACTIVE_PILL_CLASS} />
+          ))}
         <span className="relative z-10 flex w-full items-center gap-3">
           <span
             className={cn(

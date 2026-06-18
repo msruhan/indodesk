@@ -14,6 +14,7 @@ import {
   type ApprovalQueueItem,
   type ApprovalStats,
 } from '@/lib/approval-queue'
+import { notifyProductPublishedIfTransition } from '@/lib/telegram/notify'
 
 export const dynamic = 'force-dynamic'
 
@@ -177,8 +178,12 @@ export async function POST(req: Request) {
         data: {
           listingStatus: nextStatus as ProductListingStatus,
           isPublished: action === 'approve',
+          pendingChangeSummary: null,
         },
       })
+      if (action === 'approve') {
+        void notifyProductPublishedIfTransition(id, product.isPublished)
+      }
     } else if (entityType === 'store') {
       const store = await prisma.teknisiStore.findUnique({ where: { id } })
       if (!store) return apiError('Toko tidak ditemukan', 404)

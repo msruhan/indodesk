@@ -4,12 +4,12 @@ import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useConfirm } from '@/components/ui/confirm-dialog'
-import type { TeknisiRemoteDto } from '@/lib/teknisi-layanan-serializer'
+import type { TeknisiKonsultasiDto } from '@/lib/teknisi-layanan-serializer'
 
 const POLL_MS = 15_000
 
 /**
- * Popup notifikasi saat ada permintaan remote baru (status menunggu).
+ * Popup notifikasi saat ada konsultasi remote baru (pending, pembayaran aman).
  * Hanya menampilkan request yang belum pernah ditampilkan di sesi ini.
  */
 export function TeknisiRemoteRequestNotifier() {
@@ -26,14 +26,16 @@ export function TeknisiRemoteRequestNotifier() {
     const poll = async () => {
       if (showingRef.current) return
       try {
-        const res = await fetch('/api/teknisi/remote', { cache: 'no-store' })
+        const res = await fetch('/api/teknisi/konsultasi', { cache: 'no-store' })
         const json = (await res.json()) as {
           success?: boolean
-          data?: { items: TeknisiRemoteDto[] }
+          data?: { items: TeknisiKonsultasiDto[] }
         }
         if (!json.success || !json.data?.items) return
 
-        const waiting = json.data.items.filter((item) => item.status === 'waiting')
+        const waiting = json.data.items.filter(
+          (item) => item.requiresRemote && item.status === 'pending' && item.canStart,
+        )
 
         if (!initializedRef.current) {
           for (const item of waiting) {
@@ -48,17 +50,17 @@ export function TeknisiRemoteRequestNotifier() {
           seenIdsRef.current.add(req.id)
           showingRef.current = true
 
-          const goToRemote = await confirm({
-            title: 'Permintaan remote baru',
-            description: `${req.userName} membutuhkan bantuan remote.\nKode sesi: ${req.remoteId}`,
+          const goToKonsultasi = await confirm({
+            title: 'Konsultasi remote baru',
+            description: `${req.userName} — ${req.service}\nIndoDesk ID: ${req.remoteId ?? '—'}`,
             variant: 'notification',
-            confirmLabel: 'Lihat request',
+            confirmLabel: 'Lihat konsultasi',
             cancelLabel: 'Nanti',
           })
 
           showingRef.current = false
-          if (goToRemote) {
-            router.push('/teknisi/remote')
+          if (goToKonsultasi) {
+            router.push('/teknisi/konsultasi?filter=remote')
             break
           }
         }

@@ -5,12 +5,14 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
 import { SearchInput } from '@/components/ui/search-input'
 import { CategoryFilterDropdown } from '@/components/ui/category-filter-dropdown'
-import { MetricCard } from '@/components/dashboard'
+import { DashboardMonthFilter, MetricCard } from '@/components/dashboard'
+import { useDashboardPeriod } from '@/contexts/dashboard-period-context'
+import { useSyncPeriodToDateInputs } from '@/hooks/use-sync-period-to-date-inputs'
 import { DataPagination } from '@/components/ui/data-pagination'
 import { DEFAULT_PAGE_SIZE, type PageSizeOption } from '@/lib/pagination'
+import { buildActivityLogChronology } from '@/lib/activity-log-narrative'
 import { cn } from '@/lib/utils'
 import {
   AlertCircle,
@@ -112,6 +114,7 @@ function formatLogTime(iso: string) {
 }
 
 export function AdminLogsView() {
+  const { period } = useDashboardPeriod()
   const [items, setItems] = useState<LogItem[]>([])
   const [stats, setStats] = useState<LogStats>({ total: 0, totalToday: 0, totalWeek: 0, warnings24h: 0, criticals24h: 0 })
   const [loading, setLoading] = useState(true)
@@ -122,6 +125,7 @@ export function AdminLogsView() {
   const [severityFilter, setSeverityFilter] = useState<'all' | ActivitySeverity>('all')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
+  useSyncPeriodToDateInputs(period, setFrom, setTo)
   const [selectedItem, setSelectedItem] = useState<LogItem | null>(null)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState<PageSizeOption>(DEFAULT_PAGE_SIZE)
@@ -187,10 +191,13 @@ export function AdminLogsView() {
             Audit trail seluruh aktivitas platform — login, order, deposit, chat, dan keamanan.
           </p>
         </div>
-        <Button variant="outline" size="sm" className="h-9" onClick={() => void load()} disabled={loading}>
-          <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <DashboardMonthFilter />
+          <Button variant="outline" size="sm" className="h-9" onClick={() => void load()} disabled={loading}>
+            <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Metrics */}
@@ -274,11 +281,6 @@ export function AdminLogsView() {
             options={severityOptions}
             className="w-full sm:w-auto"
           />
-          <div className="flex items-center gap-2">
-            <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-9 text-xs" />
-            <span className="text-[11px] text-surface-500">—</span>
-            <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-9 text-xs" />
-          </div>
         </div>
       </div>
 
@@ -419,6 +421,22 @@ function LogCard({ item, idx, onSelect }: { item: LogItem; idx: number; onSelect
 }
 
 function LogDetailDrawer({ item, onClose }: { item: LogItem | null; onClose: () => void }) {
+  const chronology = item
+    ? buildActivityLogChronology({
+        action: item.action,
+        category: item.category,
+        severity: item.severity,
+        summary: item.summary,
+        detail: item.detail,
+        actorName: item.actorName,
+        actorEmail: item.actorEmail,
+        actorRole: item.actorRole,
+        ip: item.ip,
+        metadata: item.metadata,
+        createdAt: item.createdAt,
+      })
+    : null
+
   return (
     <AnimatePresence>
       {item && (
@@ -474,6 +492,14 @@ function LogDetailDrawer({ item, onClose }: { item: LogItem | null; onClose: () 
                 <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.16em] text-surface-500">Ringkasan</p>
                 <p className="text-[13px] leading-relaxed text-ink">{item.summary}</p>
               </div>
+
+              {/* Chronology */}
+              {chronology && (
+                <div className="rounded-2xl border border-amber-200/80 bg-amber-50/60 p-3">
+                  <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.16em] text-amber-800">Kronologi</p>
+                  <p className="text-[13px] leading-relaxed text-amber-950">{chronology}</p>
+                </div>
+              )}
 
               {/* Detail */}
               {item.detail && (

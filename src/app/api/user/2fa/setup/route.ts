@@ -1,6 +1,10 @@
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiAuth } from '@/lib/api-auth'
-import { buildTotpUri, generateTotpSecret, normalizeTotpSecret, totpQrDataUrl } from '@/lib/totp'
+import {
+  encryptTotpSecretForStorage,
+  readTotpSecretPlain,
+} from '@/lib/crypto/totp-secret'
+import { buildTotpUri, generateTotpSecret, totpQrDataUrl } from '@/lib/totp'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,15 +24,16 @@ export async function POST() {
     }
 
     // Jangan buat secret baru jika setup belum selesai — hindari mismatch dengan QR yang sudah di-scan
-    let secret = user.twoFactorSecret
-      ? normalizeTotpSecret(user.twoFactorSecret)
-      : null
+    let secret = readTotpSecretPlain(user.twoFactorSecret)
 
     if (!secret) {
       secret = generateTotpSecret()
       await prisma.user.update({
         where: { id: session.user.id },
-        data: { twoFactorSecret: secret, twoFactorEnabled: false },
+        data: {
+          twoFactorSecret: encryptTotpSecretForStorage(secret),
+          twoFactorEnabled: false,
+        },
       })
     }
 

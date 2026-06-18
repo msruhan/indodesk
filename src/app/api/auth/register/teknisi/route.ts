@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { hash } from 'bcryptjs'
 import { prisma } from '@/lib/db'
 import { extractRequestContext, logAccountEvent } from '@/lib/activity-log'
-import { checkRateLimit, getClientIp, RATE_LIMITS } from '@/lib/rate-limit'
+import { getClientIp, RATE_LIMITS, withRateLimit, rateLimitResponse } from '@/lib/rate-limit-store'
 import {
   buildApplicationData,
   teknisiRegisterSchema,
@@ -10,15 +10,9 @@ import {
 
 export async function POST(req: Request) {
   const ip = getClientIp(req)
-  const rl = checkRateLimit(`register-teknisi:${ip}`, RATE_LIMITS.auth)
+  const rl = await withRateLimit(req, ['auth', 'register-teknisi', ip], RATE_LIMITS.auth)
   if (!rl.allowed) {
-    return NextResponse.json(
-      { success: false, error: 'Terlalu banyak percobaan. Coba lagi nanti.' },
-      {
-        status: 429,
-        headers: { 'Retry-After': String(Math.ceil((rl.resetAt - Date.now()) / 1000)) },
-      },
-    )
+    return rateLimitResponse(rl)
   }
 
   try {
@@ -39,8 +33,12 @@ export async function POST(req: Request) {
     const existing = await prisma.user.findUnique({ where: { email } })
     if (existing) {
       return NextResponse.json(
-        { success: false, error: 'Email sudah terdaftar' },
-        { status: 409 },
+        {
+          success: true,
+          message:
+            'Jika email belum terdaftar, pendaftaran teknisi telah diterima. Periksa inbox untuk verifikasi.',
+        },
+        { status: 201 },
       )
     }
 

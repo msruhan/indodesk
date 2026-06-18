@@ -14,8 +14,9 @@ import { formatIDR } from '@/lib/topup-utils'
 
 export default function CekTransaksiPage() {
   const router = useRouter()
-  const { history } = useTopup()
+  const { history, getOrder } = useTopup()
   const [code, setCode] = useState('')
+  const [pollToken, setPollToken] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -30,13 +31,23 @@ export default function CekTransaksiPage() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`/api/topup/orders/${encodeURIComponent(trimmed)}`)
+      const stored = getOrder(trimmed)
+      const token = pollToken.trim() || stored?.pollToken
+      const query = token ? `?token=${encodeURIComponent(token)}` : ''
+      const res = await fetch(`/api/topup/orders/${encodeURIComponent(trimmed)}${query}`)
       const json = await res.json()
       if (!res.ok || !json.success) {
-        setError(json.error ?? 'Kode order tidak ditemukan')
+        setError(
+          json.code === 'TOPUP_POLL_FORBIDDEN'
+            ? 'Akses ditolak. Login sebagai pemilik order atau masukkan kode akses dari halaman order.'
+            : (json.error ?? 'Kode order tidak ditemukan'),
+        )
         return
       }
-      router.push(`/topup/order/${trimmed}`)
+      const dest = token
+        ? `/topup/order/${trimmed}?token=${encodeURIComponent(token)}`
+        : `/topup/order/${trimmed}`
+      router.push(dest)
     } catch {
       setError('Gagal memeriksa order')
     } finally {
@@ -92,6 +103,18 @@ export default function CekTransaksiPage() {
                 )}
               </AnimatePresence>
             </div>
+            <div className="flex-1">
+              <Input
+                value={pollToken}
+                onChange={(e) => {
+                  setPollToken(e.target.value)
+                  setError(null)
+                }}
+                placeholder="Kode akses (opsional jika sudah login)"
+                className="h-11 font-mono text-sm"
+                autoComplete="off"
+              />
+            </div>
             <Button
               type="submit"
               variant="primary"
@@ -120,7 +143,11 @@ export default function CekTransaksiPage() {
               {history.slice(0, 5).map((entry) => (
                 <li key={entry.orderCode}>
                   <Link
-                    href={`/topup/order/${entry.orderCode}`}
+                    href={
+                      entry.pollToken
+                        ? `/topup/order/${entry.orderCode}?token=${encodeURIComponent(entry.pollToken)}`
+                        : `/topup/order/${entry.orderCode}`
+                    }
                     className="flex items-center gap-3 rounded-2xl border border-surface-200/70 bg-white px-3 py-2.5 transition-all hover:border-primary-300 hover:shadow-soft-xs"
                   >
                     <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-700">

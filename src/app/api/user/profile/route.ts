@@ -20,7 +20,13 @@ export async function GET() {
       where: { id: session.user.id },
     })
     if (!user) return apiError('User tidak ditemukan', 404)
-    return apiSuccess(serializeUserProfile(user))
+
+    const googleAccount = await prisma.account.findFirst({
+      where: { userId: user.id, provider: 'google' },
+      select: { id: true },
+    })
+
+    return apiSuccess(serializeUserProfile(user, { googleLinked: Boolean(googleAccount) }))
   } catch (e) {
     console.error('[USER_PROFILE_GET]', e)
     return apiError('Gagal mengambil profil', 500)
@@ -52,7 +58,12 @@ export async function PATCH(req: Request) {
       },
     })
 
-    return apiSuccess(serializeUserProfile(user))
+    const googleAccount = await prisma.account.findFirst({
+      where: { userId: user.id, provider: 'google' },
+      select: { id: true },
+    })
+
+    return apiSuccess(serializeUserProfile(user, { googleLinked: Boolean(googleAccount) }))
   } catch (e) {
     console.error('[USER_PROFILE_PATCH]', e)
     return apiError('Gagal memperbarui profil', 500)

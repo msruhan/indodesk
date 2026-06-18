@@ -1,22 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { sendTelegramMessage, TelegramNotificationTemplates, parseTelegramLinkToken, type TelegramUpdate } from '@/lib/telegram'
+import { consumeTelegramLinkToken } from '@/lib/telegram/link-token'
+import { sendTelegramMessage, TelegramNotificationTemplates, type TelegramUpdate } from '@/lib/telegram'
+import { validateTelegramWebhookSecret } from '@/lib/telegram/webhook-auth'
 
 /**
  * POST /api/telegram/webhook
- * Webhook untuk menerima update dari Telegram Bot
- * 
- * Setup:
- * 1. Deploy aplikasi ke production
- * 2. Set webhook: curl -X POST https://api.telegram.org/bot<TOKEN>/setWebhook \
- *    -H "Content-Type: application/json" \
- *    -d '{"url": "https://yourdomain.com/api/telegram/webhook"}'
+ * Webhook untuk menerima update dari Telegram Bot.
+ *
+ * Set webhook dengan secret_token (lihat scripts/setup-telegram-webhook.sh).
  */
 export async function POST(req: NextRequest) {
+  const authError = validateTelegramWebhookSecret(req)
+  if (authError) return authError
+
   try {
     const update: TelegramUpdate = await req.json()
 
-    // Handle message
     if (update.message?.text) {
       const message = update.message
       const chatId = message.chat.id
@@ -25,20 +25,18 @@ export async function POST(req: NextRequest) {
 
       if (!text) return NextResponse.json({ success: true })
 
-      // Handle /start command dengan verification token
       if (text.startsWith('/start ')) {
         const token = text.replace('/start ', '').trim()
-        const userId = parseTelegramLinkToken(token)
+        const userId = await consumeTelegramLinkToken(token)
 
         if (!userId) {
           await sendTelegramMessage(
             chatId,
-            '❌ Token verifikasi tidak valid.\n\nSilakan generate token baru dari dashboard IndoTeknizi.'
+            '❌ Token verifikasi tidak valid atau sudah kedaluwarsa.\n\nSilakan generate token baru dari dashboard IndoTeknizi.',
           )
           return NextResponse.json({ success: true })
         }
 
-        // Cari teknisi profile
         const profile = await prisma.teknisiProfile.findUnique({
           where: { userId },
           include: { user: true },
@@ -47,12 +45,11 @@ export async function POST(req: NextRequest) {
         if (!profile) {
           await sendTelegramMessage(
             chatId,
-            '❌ Profil teknisi tidak ditemukan.\n\nPastikan Anda sudah terdaftar sebagai teknisi.'
+            '❌ Profil teknisi tidak ditemukan.\n\nPastikan Anda sudah terdaftar sebagai teknisi.',
           )
           return NextResponse.json({ success: true })
         }
 
-        // Link Telegram ke teknisi profile
         await prisma.teknisiProfile.update({
           where: { userId },
           data: {
@@ -62,16 +59,17 @@ export async function POST(req: NextRequest) {
           },
         })
 
-        // Kirim konfirmasi
-        const welcomeMessage = TelegramNotificationTemplates.accountLinked(
-          profile.user.name
-        )
+        await prisma.user.update({
+          where: { id: userId },
+          data: { telegramLinkedAt: new Date() },
+        })
+
+        const welcomeMessage = TelegramNotificationTemplates.accountLinked(profile.user.name)
         await sendTelegramMessage(chatId, welcomeMessage, { parse_mode: 'Markdown' })
 
         return NextResponse.json({ success: true })
       }
 
-      // Handle /help command
       if (text === '/help') {
         await sendTelegramMessage(
           chatId,
@@ -87,12 +85,11 @@ Bot ini digunakan untuk mengirim notifikasi ke teknisi.
 
 Untuk menghubungkan akun, buka dashboard IndoTeknizi → Settings → Telegram, lalu klik "Hubungkan Telegram".
           `.trim(),
-          { parse_mode: 'Markdown' }
+          { parse_mode: 'Markdown' },
         )
         return NextResponse.json({ success: true })
       }
 
-      // Handle /status command
       if (text === '/status') {
         const profile = await prisma.teknisiProfile.findFirst({
           where: { telegramChatId: String(chatId) },
@@ -102,7 +99,7 @@ Untuk menghubungkan akun, buka dashboard IndoTeknizi → Settings → Telegram, 
         if (!profile) {
           await sendTelegramMessage(
             chatId,
-            '❌ Akun Telegram Anda belum terhubung dengan IndoTeknizi.\n\nSilakan hubungkan dari dashboard.'
+            '❌ Akun Telegram Anda belum terhubung dengan IndoTeknizi.\n\nSilakan hubungkan dari dashboard.',
           )
         } else {
           await sendTelegramMessage(
@@ -116,17 +113,13 @@ Untuk menghubungkan akun, buka dashboard IndoTeknizi → Settings → Telegram, 
 
 Anda akan menerima notifikasi untuk request baru dan update penting.
             `.trim(),
-            { parse_mode: 'Markdown' }
+            { parse_mode: 'Markdown' },
           )
         }
         return NextResponse.json({ success: true })
       }
 
-      // Default response untuk pesan lain
-      await sendTelegramMessage(
-        chatId,
-        'Gunakan /help untuk melihat perintah yang tersedia.'
-      )
+      await sendTelegramMessage(chatId, 'Gunakan /help untuk melihat perintah yang tersedia.')
     }
 
     return NextResponse.json({ success: true })
@@ -136,10 +129,6 @@ Anda akan menerima notifikasi untuk request baru dan update penting.
   }
 }
 
-/**
- * GET /api/telegram/webhook
- * Health check endpoint
- */
 export async function GET() {
   return NextResponse.json({ status: 'ok', service: 'telegram-webhook' })
 }

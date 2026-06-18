@@ -295,7 +295,7 @@ Diperbarui: **Mei 2026** — audit codebase `indoteknizi/` (sinkron post-S6).
 
 ### Banner
 
-- [x] `MarketplaceBanner` + API admin/public + `banner-slider`
+- [x] `MarketplaceBanner` + API admin/public + `banner-slider`buatkan 
 
 ### Notifikasi
 

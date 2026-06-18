@@ -1,9 +1,10 @@
 'use client'
 
+import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { HelpCircle, MessageCircle } from '@/lib/icons'
+import { HelpCircle, MessageCircle, AlertCircle } from '@/lib/icons'
 import type { HelpArticleDto } from '@/lib/help-serializer'
 import { TeknisiProductPublishFaq } from '@/components/help/teknisi-product-publish-faq'
 
@@ -23,6 +24,11 @@ const audienceTitles: Record<HelpAudience, { title: string; subtitle: string }> 
   user: { title: 'Help & Support', subtitle: 'Bantuan dan dukungan untuk user' },
   teknisi: { title: 'Help & Support', subtitle: 'Bantuan dan dukungan untuk teknisi' },
   admin: { title: 'Help & Support', subtitle: 'Bantuan dan dukungan untuk admin' },
+}
+
+const ticketHref: Partial<Record<HelpAudience, string>> = {
+  user: '/user/bantuan/tiket/new',
+  teknisi: '/teknisi/bantuan/tiket/new',
 }
 
 export function HelpSupportPage({ audience }: { audience: HelpAudience }) {
@@ -72,6 +78,26 @@ export function HelpSupportPage({ audience }: { audience: HelpAudience }) {
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2">
+          {ticketHref[audience] ? (
+            <Card className="md:col-span-2 border-primary-100 bg-primary-50/30">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <AlertCircle className="h-5 w-5 text-primary-600" />
+                  Ada kendala?
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-surface-600">
+                  Laporkan masalah layanan atau gangguan platform ke tim admin melalui tiket
+                  terstruktur.
+                </p>
+                <Button asChild size="sm">
+                  <Link href={ticketHref[audience]!}>Buka Tiket</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          ) : null}
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

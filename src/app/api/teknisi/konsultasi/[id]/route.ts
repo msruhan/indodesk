@@ -3,8 +3,8 @@ import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { logCommunicationEvent, logPaymentEvent } from '@/lib/activity-log'
 import {
-  creditTeknisiForKonsultasi,
-  refundUserForKonsultasi,
+  finalizeKonsultasiPaymentToTeknisi,
+  refundKonsultasiPayment,
 } from '@/lib/konsultasi-wallet'
 import { serializeTeknisiKonsultasi, type UserParty } from '@/lib/teknisi-layanan-serializer'
 
@@ -39,17 +39,22 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   try {
-    const existing = await prisma.konsultasiSession.findFirst({
-      where: { id, teknisiId: session.user.id },
+    const existing = await prisma.konsultasiSession.findUnique({
+      where: { id },
       include: { user: { select: USER_SELECT } },
     })
     if (!existing) return apiError('Konsultasi tidak ditemukan', 404)
+    if (existing.teknisiId !== session.user.id) {
+      return apiError('Akses ditolak', 403)
+    }
 
     const now = new Date()
     let data: {
       status: 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED'
       startedAt?: Date | null
       endedAt?: Date | null
+      remoteOtp?: null
+      paymentStatus?: 'CAPTURED' | 'RELEASED'
     }
 
     switch (parsed.data.action) {
@@ -57,19 +62,27 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         if (existing.status !== 'PENDING') {
           return apiError('Hanya konsultasi menunggu yang bisa dimulai')
         }
+        if (existing.paymentStatus !== 'SECURED') {
+          return apiError('Pembayaran belum dikonfirmasi')
+        }
         data = { status: 'ACTIVE', startedAt: now }
         break
       case 'complete':
         if (existing.status !== 'ACTIVE') {
           return apiError('Hanya konsultasi berjalan yang bisa diselesaikan')
         }
-        data = { status: 'COMPLETED', endedAt: now }
+        data = { status: 'COMPLETED', endedAt: now, remoteOtp: null, paymentStatus: 'CAPTURED' }
         break
       case 'cancel':
-        if (existing.status !== 'PENDING') {
-          return apiError('Hanya konsultasi menunggu yang bisa dibatalkan')
+        if (existing.status !== 'PENDING' && existing.status !== 'ACTIVE') {
+          return apiError('Konsultasi tidak dapat dibatalkan pada status ini')
         }
-        data = { status: 'CANCELLED', endedAt: now }
+        data = {
+          status: 'CANCELLED',
+          endedAt: now,
+          remoteOtp: null,
+          ...(existing.status === 'PENDING' ? { paymentStatus: 'RELEASED' as const } : {}),
+        }
         break
     }
 
@@ -81,41 +94,27 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       })
 
       if (parsed.data.action === 'complete') {
-        const alreadyCredited = await tx.walletLedger.findFirst({
-          where: {
-            type: 'EARNING',
-            referenceId: id,
-            wallet: { userId: session.user.id },
-          },
-        })
-        if (!alreadyCredited) {
-          await creditTeknisiForKonsultasi(
-            tx,
-            session.user.id,
-            existing.price,
-            id,
-            `Pendapatan konsultasi: ${existing.service}`,
-          )
-        }
+        await finalizeKonsultasiPaymentToTeknisi(
+          tx,
+          session.user.id,
+          existing.userId,
+          existing.price,
+          id,
+          existing.service,
+          existing.paymentMethod,
+        )
       }
 
-      if (parsed.data.action === 'cancel') {
-        const alreadyRefunded = await tx.walletLedger.findFirst({
-          where: {
-            type: 'REFUND',
-            referenceId: id,
-            wallet: { userId: existing.userId },
-          },
-        })
-        if (!alreadyRefunded) {
-          await refundUserForKonsultasi(
-            tx,
-            existing.userId,
-            existing.price,
-            id,
-            `Refund konsultasi dibatalkan: ${existing.service}`,
-          )
-        }
+      if (parsed.data.action === 'cancel' && existing.status === 'PENDING') {
+        await refundKonsultasiPayment(
+          tx,
+          existing.userId,
+          existing.price,
+          id,
+          existing.service,
+          existing.paymentMethod,
+          existing.paymentStatus,
+        )
       }
 
       return row

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { z } from 'zod'
+import { walletTransaction } from '@/lib/wallet/transaction'
 
 export const dynamic = 'force-dynamic'
 
@@ -89,7 +90,7 @@ export async function POST(req: Request) {
 
     const { userId, amount, type, reason } = parsed.data
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await walletTransaction(async (tx) => {
       // Get or create wallet inside transaction
       let wallet = await tx.wallet.findUnique({
         where: { userId },

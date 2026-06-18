@@ -31,6 +31,8 @@ import {
   type SpendingCategory,
   type SpendingLedgerDto,
 } from '@/lib/admin-saldo'
+import { AdminWithdrawPanel } from '@/components/admin/admin-withdraw-panel'
+import { AdminWalletSecurityPanel } from '@/components/admin/admin-wallet-security-panel'
 import {
   CheckCircle,
   CreditCard,
@@ -39,13 +41,14 @@ import {
   History,
   Plus,
   RefreshCw,
+  Shield,
   TrendingDown,
   TrendingUp,
   Users,
   Wallet,
 } from '@/lib/icons'
 
-type SubTab = 'balances' | 'deposits' | 'spending'
+type SubTab = 'balances' | 'deposits' | 'spending' | 'withdraw' | 'security'
 
 type WalletRow = {
   id: string
@@ -82,6 +85,14 @@ export function AdminSaldoPanel() {
               <TrendingDown className="h-3.5 w-3.5" />
               Pemotongan
             </TabsTrigger>
+            <TabsTrigger value="withdraw" className="shrink-0 px-3 text-xs sm:px-4">
+              <Wallet className="h-3.5 w-3.5" />
+              Penarikan
+            </TabsTrigger>
+            <TabsTrigger value="security" className="shrink-0 px-3 text-xs sm:px-4">
+              <Shield className="h-3.5 w-3.5" />
+              Keamanan
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -93,6 +104,12 @@ export function AdminSaldoPanel() {
         </TabsContent>
         <TabsContent value="spending" className="mt-4">
           <SpendingView />
+        </TabsContent>
+        <TabsContent value="withdraw" className="mt-4">
+          <AdminWithdrawPanel />
+        </TabsContent>
+        <TabsContent value="security" className="mt-4">
+          <AdminWalletSecurityPanel />
         </TabsContent>
       </Tabs>
     </div>
@@ -529,7 +546,7 @@ function DepositsView() {
 
 const SPENDING_FILTERS: Array<{ id: 'all' | SpendingCategory; label: string }> = [
   { id: 'all', label: 'Semua' },
-  { id: 'imei', label: 'IMEI' },
+  { id: 'imei', label: 'Digital' },
   { id: 'server', label: 'Server' },
   { id: 'shop', label: 'Marketplace' },
   { id: 'topup', label: 'Top Up' },

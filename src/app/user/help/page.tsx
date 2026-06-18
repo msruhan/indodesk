@@ -1,5 +1,5 @@
-import { HelpSupportPage } from '@/components/help/help-support-page'
+import { redirect } from 'next/navigation'
 
-export default function UserHelpPage() {
-  return <HelpSupportPage audience="user" />
+export default function UserHelpRedirectPage() {
+  redirect('/user/bantuan')
 }

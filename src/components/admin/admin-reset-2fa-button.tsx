@@ -3,6 +3,10 @@
 import { useState } from 'react'
 import { Shield } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import {
+  fetchAdminTwoFactorEnabled,
+  requestAdminStepUpCredentials,
+} from '@/lib/admin-step-up-client'
 
 type Props = {
   userId: string
@@ -33,9 +37,17 @@ export function AdminReset2FaButton({
     const msg = `Reset 2FA untuk "${userName}"?\n\nStatus: ${label}.\n\nUser/teknisi bisa login tanpa kode authenticator dan harus mengaktifkan 2FA baru jika diperlukan.`
     if (!confirm(msg)) return
 
+    const twoFa = await fetchAdminTwoFactorEnabled()
+    const stepUp = await requestAdminStepUpCredentials(twoFa)
+    if (!stepUp) return
+
     setLoading(true)
     try {
-      const res = await fetch(apiPath, { method: 'POST' })
+      const res = await fetch(apiPath, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(stepUp),
+      })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'Gagal reset 2FA')
       onSuccess?.()

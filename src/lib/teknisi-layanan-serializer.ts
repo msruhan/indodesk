@@ -3,7 +3,12 @@ import { formatMonitoringRelativeTime } from '@/lib/admin-monitoring'
 
 export type UserParty = Pick<User, 'id' | 'name' | 'email' | 'image'>
 
-export type TeknisiKonsultasiStatus = 'pending' | 'active' | 'completed' | 'cancelled'
+export type TeknisiKonsultasiStatus =
+  | 'awaiting_payment'
+  | 'pending'
+  | 'active'
+  | 'completed'
+  | 'cancelled'
 
 export type TeknisiKonsultasiDto = {
   id: string
@@ -16,9 +21,18 @@ export type TeknisiKonsultasiDto = {
   amount: number
   status: TeknisiKonsultasiStatus
   statusLabel: string
+  paymentStatus: string
+  device: string | null
+  clientOs: string | null
+  requiresRemote: boolean
+  remoteId: string | null
+  remoteOtp: string | null
+  note: string | null
   rating: number | null
+  review: string | null
   date: string
   createdAt: string
+  canStart: boolean
 }
 
 export type TeknisiRemoteUiStatus = 'waiting' | 'active' | 'rejected' | 'completed'
@@ -40,6 +54,7 @@ export type TeknisiRemoteDto = {
 
 export type TeknisiKonsultasiStats = {
   total: number
+  awaitingPayment: number
   pending: number
   active: number
   completed: number
@@ -55,6 +70,8 @@ export type TeknisiRemoteStats = {
 
 export function mapKonsultasiUiStatus(dbStatus: string): TeknisiKonsultasiStatus {
   switch (dbStatus) {
+    case 'AWAITING_PAYMENT':
+      return 'awaiting_payment'
     case 'PENDING':
       return 'pending'
     case 'ACTIVE':
@@ -70,6 +87,8 @@ export function mapKonsultasiUiStatus(dbStatus: string): TeknisiKonsultasiStatus
 
 export function konsultasiStatusLabel(status: TeknisiKonsultasiStatus): string {
   switch (status) {
+    case 'awaiting_payment':
+      return 'Menunggu bayar'
     case 'pending':
       return 'Menunggu'
     case 'active':
@@ -125,9 +144,21 @@ export function serializeTeknisiKonsultasi(
     amount: Number(session.price),
     status,
     statusLabel: konsultasiStatusLabel(status),
+    paymentStatus: session.paymentStatus,
+    device: session.device,
+    clientOs: session.clientOs,
+    requiresRemote: session.requiresRemote,
+    remoteId: session.remoteId,
+    remoteOtp:
+      session.requiresRemote && (status === 'pending' || status === 'active')
+        ? session.remoteOtp
+        : null,
+    note: session.note,
     rating: session.rating,
+    review: session.review,
     date: formatMonitoringRelativeTime(session.updatedAt),
     createdAt: session.createdAt.toISOString(),
+    canStart: session.status === 'PENDING' && session.paymentStatus === 'SECURED',
   }
 }
 
@@ -155,6 +186,7 @@ export function serializeTeknisiRemote(
 export function buildKonsultasiStats(items: TeknisiKonsultasiDto[]): TeknisiKonsultasiStats {
   return {
     total: items.length,
+    awaitingPayment: items.filter((i) => i.status === 'awaiting_payment').length,
     pending: items.filter((i) => i.status === 'pending').length,
     active: items.filter((i) => i.status === 'active').length,
     completed: items.filter((i) => i.status === 'completed').length,

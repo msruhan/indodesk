@@ -3,18 +3,14 @@ import { hash } from 'bcryptjs'
 import { prisma } from '@/lib/db'
 import { registerSchema } from '@/lib/validations/auth'
 import { extractRequestContext, logAccountEvent } from '@/lib/activity-log'
-import { checkRateLimit, getClientIp, RATE_LIMITS } from '@/lib/rate-limit'
+import { sendEmailVerification } from '@/lib/email-verification'
+import { getClientIp, RATE_LIMITS, withRateLimit, rateLimitResponse } from '@/lib/rate-limit-store'
 
 export async function POST(req: Request) {
   // Rate limit: 10 registrations per 15 minutes per IP
   const ip = getClientIp(req)
-  const rl = checkRateLimit(`register:${ip}`, RATE_LIMITS.auth)
-  if (!rl.allowed) {
-    return NextResponse.json(
-      { success: false, error: 'Terlalu banyak percobaan. Coba lagi nanti.' },
-      { status: 429, headers: { 'Retry-After': String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } },
-    )
-  }
+  const rl = await withRateLimit(req, ['auth', 'register', ip], RATE_LIMITS.auth)
+  if (!rl.allowed) return rateLimitResponse(rl)
 
   try {
     const body = await req.json()
@@ -30,12 +26,16 @@ export async function POST(req: Request) {
     const { name, email, password } = parsed.data
     const role = 'USER' as const
 
-    // Check if email already exists
+    // Check if email already exists (anti-enumeration: same response shape)
     const existing = await prisma.user.findUnique({ where: { email } })
     if (existing) {
       return NextResponse.json(
-        { success: false, error: 'Email sudah terdaftar' },
-        { status: 409 },
+        {
+          success: true,
+          message:
+            'Jika email belum terdaftar, akun telah dibuat. Periksa inbox untuk verifikasi email.',
+        },
+        { status: 201 },
       )
     }
 
@@ -73,6 +73,10 @@ export async function POST(req: Request) {
       ip: ctx.ip,
       userAgent: ctx.userAgent,
       metadata: { role: user.role },
+    })
+
+    void sendEmailVerification(user.id, user.email).catch((e) => {
+      console.error('[REGISTER_SEND_VERIFICATION]', e)
     })
 
     return NextResponse.json({ success: true, data: user }, { status: 201 })

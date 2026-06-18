@@ -18,6 +18,7 @@ import { Navbar } from '@/components/landing'
 import { BottomNav, MobileSafeAreaSpacer } from '@/components/mobile'
 import { cn } from '@/lib/utils'
 import type { PublicStoreDetailDto, PublicStoreProductDto } from '@/lib/teknisi-store-serializer'
+import { categoryLabel } from '@/lib/product-category-config'
 import type { StoreJourneyIcon, StoreJourneyMilestone } from '@/lib/store-content'
 import { summarizeOperatingHours } from '@/lib/store-operating-hours'
 import {
@@ -57,14 +58,6 @@ const compactNumber = (n: number) =>
 const ease = [0.22, 1, 0.36, 1] as const
 const fadeUp = { hidden: { opacity: 0, y: 24 }, show: { opacity: 1, y: 0, transition: { duration: 0.65, ease } } }
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } } }
-
-const categoryLabel: Record<string, string> = {
-  HANDPHONE: 'Handphone',
-  LAPTOP: 'Laptop',
-  AKSESORIS: 'Aksesoris',
-  SOFTWARE: 'Software',
-  LAINNYA: 'Lainnya',
-}
 
 type Props = { storeId: string }
 
@@ -793,7 +786,7 @@ function ProductCard({ product, idx }: { product: PublicStoreProductDto; idx: nu
         </div>
         <div className="p-3">
           <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-primary-700">
-            {categoryLabel[product.category] ?? product.category}
+            {categoryLabel(product.category)}
           </p>
           <p className="mt-1 line-clamp-2 text-[12px] font-bold leading-snug text-ink">{product.name}</p>
           <p className="mt-2 text-[14px] font-black tabular-nums text-primary-700">{formatPrice(product.price)}</p>

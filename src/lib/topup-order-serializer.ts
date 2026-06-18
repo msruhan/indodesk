@@ -25,6 +25,8 @@ export type PublicTopupOrderDto = {
   createdAt: string
   paidAt: string | null
   fulfilledAt: string | null
+  /** Kode voucher / serial dari provider (mock: disimpan di providerOrderId). */
+  fulfillmentCode: string | null
 }
 
 export function prismaTopupStatusToUi(status: TopupOrder['status']): OrderStatus {
@@ -70,5 +72,9 @@ export function serializeTopupOrder(
     createdAt: order.createdAt.toISOString(),
     paidAt: order.paidAt?.toISOString() ?? null,
     fulfilledAt: order.fulfilledAt?.toISOString() ?? null,
+    fulfillmentCode:
+      order.status === 'COMPLETED' && order.providerOrderId
+        ? order.providerOrderId
+        : null,
   }
 }

@@ -1,0 +1,21 @@
+# Contoh Caddyfile multi-site: Nexus + IndoTeknizi di VPS yang sama.
+# Lokasi di server: /opt/nexus-server/deploy/Caddyfile
+#
+# Ganti domain dan hostname container sesuai `docker ps`.
+# IndoTeknizi app harus join network yang sama dengan Caddy (lihat docker-compose.production.yml).
+
+# --- Nexus (customer shop) ---
+nexus.example.com {
+	reverse_proxy app:3000
+}
+
+# --- IndoTeknizi (marketplace) ---
+# Nama host = service name di compose project "indoteknizi" pada network proxy.
+indoteknizi.com {
+	reverse_proxy indoteknizi-app-1:3000
+}
+
+# Opsional: www redirect
+www.indoteknizi.com {
+	redir https://indoteknizi.com{uri} permanent
+}

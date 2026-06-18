@@ -102,8 +102,9 @@ export async function POST(req: Request) {
     if (!parsed.success) return apiError(parsed.error.issues[0].message)
 
     const userId = session.user.id
-    const service = await prisma.serverService.findFirst({ where: { id: parsed.data.serviceId, status: 'ACTIVE' } })
-    if (!service) return apiError('Layanan tidak ditemukan atau tidak aktif', 404)
+    const service = await prisma.serverService.findFirst({ where: { id: parsed.data.serviceId } })
+    if (!service) return apiError('Service tidak ditemukan', 404)
+    if (service.status !== 'ACTIVE') return apiError('Service tidak aktif', 400)
 
     const fieldDefs = parseServerFieldDefs(service.requiredFields)
     const validation = validateServerOrderFields(fieldDefs, parsed.data.requiredFields)

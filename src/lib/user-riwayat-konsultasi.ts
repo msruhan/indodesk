@@ -7,6 +7,7 @@ function mapKonsultasiStatus(status: UserKonsultasiDto['status']): RiwayatTxStat
     case 'completed':
       return 'completed'
     case 'pending':
+    case 'awaiting_payment':
       return 'pending'
     case 'active':
       return 'in-progress'

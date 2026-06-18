@@ -9,12 +9,13 @@ import {
   resolveProductImagesFromForm,
 } from '@/lib/product-image-api'
 import {
-  applyContentEditReviewReset,
-  hasMeaningfulProductContentChange,
+  queueProductContentReview,
   type ProductContentPatch,
 } from '@/lib/product-listing-review'
+import { couponInputToDb, parseCouponFromForm } from '@/lib/product-coupon'
 import { serializeTeknisiProduct } from '@/lib/product-serializer'
 import {
+  parseBenchmarkFieldsFromForm,
   parseProductSpecsFromForm,
   specsToDb,
   validateProductSpecs,
@@ -50,14 +51,6 @@ function assertCanTogglePublish(existing: Product) {
   return null
 }
 
-function maybeQueueReviewAfterContentEdit(
-  existing: Product,
-  data: Record<string, unknown>,
-  patch: ProductContentPatch,
-) {
-  if (!hasMeaningfulProductContentChange(existing, patch)) return
-  applyContentEditReviewReset(data)
-}
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { session, error } = await requireApiRole(['TEKNISI'])
@@ -95,6 +88,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       const togglePublish = form.get('togglePublish')
       const hasImagePayload =
         form.has('imageOrder') || form.has('existingImages') || form.getAll('images').length > 0
+      const has3uToolsPayload =
+        form.has('3utools_imageOrder') || form.getAll('3utools_images').length > 0
 
       const data: Record<string, unknown> = {}
       const patch: ProductContentPatch = {}
@@ -155,13 +150,49 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         data.image = resolved.image
       }
 
+      if (has3uToolsPayload) {
+        const resolved3u = await resolveProductImagesFromForm(
+          form,
+          session.user.id,
+          undefined,
+          '3utools_',
+        )
+        data.threeUtoolsImages = resolved3u.images as object
+        if (resolved3u.images.length > 0) {
+          data.verified3uTools = true
+        }
+      }
+
+      // Benchmark fields (kondisi + 3uTools data)
+      const resolvedCategory =
+        typeof form.get('category') === 'string' && form.get('category')
+          ? (form.get('category') as ProductCategory)
+          : existing.category
+      const benchmarkData = parseBenchmarkFieldsFromForm(form, resolvedCategory)
+      Object.assign(data, benchmarkData)
+
+      if (form.has('couponEnabled')) {
+        const productPrice =
+          typeof price === 'string' && price ? Number(price) : Number(existing.price)
+        try {
+          const couponDb = couponInputToDb(parseCouponFromForm(form), productPrice)
+          Object.assign(data, couponDb)
+          patch.couponCode = couponDb.couponCode
+          patch.couponDiscountType = couponDb.couponDiscountType
+          patch.couponDiscountValue =
+            couponDb.couponDiscountValue != null ? Number(couponDb.couponDiscountValue) : null
+        } catch (e) {
+          return apiError(e instanceof Error ? e.message : 'Kupon tidak valid')
+        }
+      }
+
       if (togglePublish === 'true') {
         const publishError = assertCanTogglePublish(existing)
         if (publishError) return publishError
         data.isPublished = !existing.isPublished
       }
 
-      maybeQueueReviewAfterContentEdit(existing, data, patch)
+      queueProductContentReview(existing, data, patch)
 
       const product = await prisma.product.update({
         where: { id },
@@ -186,7 +217,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       data.isPublished = !existing.isPublished
     }
 
-    maybeQueueReviewAfterContentEdit(existing, data, patch)
+    queueProductContentReview(existing, data, patch)
 
     const product = await prisma.product.update({
       where: { id },

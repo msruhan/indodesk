@@ -1,6 +1,7 @@
 'use client'
 
 import { SessionProvider } from 'next-auth/react'
+import { CspNonceProvider } from '@/components/csp-nonce-provider'
 import { Toaster } from 'sonner'
 import { AuthProvider } from '@/contexts/auth-context'
 import { SidebarProvider } from '@/contexts/sidebar-context'
@@ -8,24 +9,33 @@ import { TopupProvider } from '@/contexts/topup-context'
 import { WalletProvider } from '@/contexts/wallet-context'
 import { ChatProvider } from '@/contexts/chat-context'
 import { CartProvider } from '@/contexts/cart-context'
+import { CompareProvider } from '@/contexts/compare-context'
 import { FeatureFlagsProvider } from '@/contexts/feature-flags-context'
 import { ConfirmDialogProvider } from '@/components/ui/confirm-dialog'
 import { ChatFloatingWidget } from '@/components/chat/chat-floating-widget'
+import { CompareBar } from '@/components/marketplace/compare-bar'
 import { TeknisiPresenceSync } from '@/components/teknisi/teknisi-presence-sync'
 import { TeknisiRemoteRequestNotifier } from '@/components/teknisi/teknisi-remote-request-notifier'
+import { SessionIdleGuard } from '@/components/auth/session-idle-guard'
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({
+  children,
+  cspNonce,
+}: {
+  children: React.ReactNode
+  cspNonce?: string
+}) {
   return (
-    <SessionProvider
-      refetchOnWindowFocus={false}
-      refetchInterval={5 * 60}
-    >
+    <CspNonceProvider nonce={cspNonce}>
+    <SessionProvider refetchOnWindowFocus={false} refetchInterval={0}>
       <AuthProvider>
+        <SessionIdleGuard />
         <FeatureFlagsProvider>
           <SidebarProvider>
             <WalletProvider>
               <TopupProvider>
                 <CartProvider>
+                  <CompareProvider>
                   <ChatProvider>
                     <ConfirmDialogProvider>
                       <Toaster position="top-right" richColors />
@@ -33,8 +43,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
                       <TeknisiRemoteRequestNotifier />
                       {children}
                       <ChatFloatingWidget />
+                      <CompareBar />
                     </ConfirmDialogProvider>
                   </ChatProvider>
+                  </CompareProvider>
                 </CartProvider>
               </TopupProvider>
             </WalletProvider>
@@ -42,5 +54,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
         </FeatureFlagsProvider>
       </AuthProvider>
     </SessionProvider>
+    </CspNonceProvider>
   )
 }

@@ -11,11 +11,11 @@ import { cn } from '@/lib/utils'
 import {
   CheckCircle,
   Clock,
-  Laptop,
   MessageCircle,
   Package,
   Shield,
   CheckSquare,
+  Laptop,
   ShoppingBag,
   Smartphone,
   TrendingUp,
@@ -39,10 +39,6 @@ import {
   rekberToRiwayatTransaction,
 } from '@/lib/user-riwayat-rekber'
 import {
-  fetchUserRemoteRiwayat,
-  remoteToRiwayatTransaction,
-} from '@/lib/user-riwayat-remote'
-import {
   fetchUserMarketplaceRiwayat,
   marketplaceOrderToRiwayatTransaction,
 } from '@/lib/user-riwayat-marketplace'
@@ -57,6 +53,7 @@ import {
 import { useDashboardPeriod } from '@/contexts/dashboard-period-context'
 import { DataPagination } from '@/components/ui/data-pagination'
 import { useClientPagination } from '@/hooks/use-client-pagination'
+import { DashboardMonthFilter } from '@/components/dashboard'
 import { isDateInPeriod } from '@/lib/dashboard-period'
 
 const tabs: { id: RiwayatTransactionType; label: string }[] = [
@@ -68,7 +65,6 @@ const tabs: { id: RiwayatTransactionType; label: string }[] = [
   { id: 'konsultasi', label: 'Konsultasi' },
   { id: 'inspeksi', label: 'Inspeksi' },
   { id: 'rekber', label: 'Rekber' },
-  { id: 'remote', label: 'Remote' },
 ]
 
 const statusConfig = {
@@ -78,7 +74,10 @@ const statusConfig = {
   failed: { label: 'Gagal', variant: 'danger' as const, icon: XCircle, color: 'text-rose-600' },
 }
 
-const typeConfig = {
+const typeConfig: Record<
+  Exclude<RiwayatTransactionType, 'semua'>,
+  { icon: typeof ShoppingBag; bg: string; text: string }
+> = {
   belanja: { icon: ShoppingBag, bg: 'bg-primary-50', text: 'text-primary-700' },
   topup: { icon: Zap, bg: 'bg-violet-50', text: 'text-violet-700' },
   konsultasi: { icon: MessageCircle, bg: 'bg-accent-50', text: 'text-accent-700' },
@@ -123,14 +122,13 @@ export default function UserRiwayatPage() {
     ;(async () => {
       setOrdersLoading(true)
       try {
-        const [imei, server, konsultasi, inspeksi, rekber, remote, belanja, topup] =
+        const [imei, server, konsultasi, inspeksi, rekber, belanja, topup] =
           await Promise.all([
           fetchUserImeiRiwayatOrders(),
           fetchUserServerRiwayatOrders(),
           fetchUserKonsultasiRiwayat(),
           fetchUserInspeksiRiwayat(),
           fetchUserRekberRiwayat(),
-          fetchUserRemoteRiwayat(),
           fetchUserMarketplaceRiwayat(),
           fetchUserTopupRiwayat(),
         ])
@@ -141,7 +139,6 @@ export default function UserRiwayatPage() {
           ...konsultasi.map(konsultasiToRiwayatTransaction),
           ...inspeksi.map(inspeksiToRiwayatTransaction),
           ...rekber.map(rekberToRiwayatTransaction),
-          ...remote.map(remoteToRiwayatTransaction),
           ...belanja.map(marketplaceOrderToRiwayatTransaction),
           ...topup.map(topupOrderToRiwayatTransaction),
         ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -277,20 +274,18 @@ export default function UserRiwayatPage() {
         .filter((t) => t.type === 'rekber' && t.status === 'completed')
         .reduce((s, t) => s + t.amount, 0),
     },
-    {
-      tab: 'remote' as const,
-      label: 'Remote',
-      count: periodTransactions.filter((t) => t.type === 'remote').length,
-      icon: Laptop,
-      color: 'amber' as const,
-      amount: periodTransactions
-        .filter((t) => t.type === 'remote' && t.status === 'completed')
-        .reduce((s, t) => s + t.amount, 0),
-    },
   ]
 
   return (
     <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tightest text-ink sm:text-2xl">Riwayat Transaksi</h1>
+          <p className="mt-0.5 text-[13px] text-surface-500">Semua pengeluaran dan aktivitas layanan Anda</p>
+        </div>
+        <DashboardMonthFilter />
+      </div>
+
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -409,7 +404,7 @@ export default function UserRiwayatPage() {
                         variant={tx.type === 'server' ? 'warning' : 'info'}
                         className="shrink-0 px-1 py-0 text-[8px]"
                       >
-                        {tx.type === 'perangkat' ? 'IMEI' : 'Server'}
+                        {tx.type === 'perangkat' ? 'Digital' : 'Server'}
                       </Badge>
                     )}
                   </div>

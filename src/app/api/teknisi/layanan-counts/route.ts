@@ -8,13 +8,9 @@ export async function GET() {
   if (error) return error
 
   try {
-    const [konsultasiPending, remoteWaiting, marketplacePending, inspectionPending] =
-      await Promise.all([
+    const [konsultasiPending, marketplacePending, inspectionPending] = await Promise.all([
       prisma.konsultasiSession.count({
         where: { teknisiId: session.user.id, status: 'PENDING' },
-      }),
-      prisma.remoteSession.count({
-        where: { teknisiId: session.user.id, status: 'WAITING' },
       }),
       prisma.order.count({
         where: {
@@ -29,7 +25,6 @@ export async function GET() {
 
     return apiSuccess({
       konsultasiPending,
-      remoteWaiting,
       marketplacePending,
       inspectionPending,
     })

@@ -3,16 +3,11 @@ import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { logAdminEvent, logPaymentEvent } from '@/lib/activity-log'
 import { refundRekberToBuyer, releaseRekberToSeller } from '@/lib/rekber-wallet'
-import { serializeRekber, type RekberParty } from '@/lib/rekber-serializer'
+import { walletTransaction } from '@/lib/wallet/transaction'
+import { serializeRekber } from '@/lib/rekber-serializer'
+import { REKBER_INCLUDE } from '@/lib/rekber-includes'
 
 export const dynamic = 'force-dynamic'
-
-const PARTY_SELECT = {
-  id: true,
-  name: true,
-  email: true,
-  image: true,
-} satisfies Record<keyof RekberParty, true>
 
 const resolveSchema = z.object({
   action: z.enum(['release', 'refund']),
@@ -43,15 +38,15 @@ export async function POST(
   try {
     const existing = await prisma.rekberTransaction.findUnique({
       where: { id },
-      include: {
-        buyer: { select: PARTY_SELECT },
-        seller: { select: PARTY_SELECT },
-      },
+      include: REKBER_INCLUDE,
     })
     if (!existing) return apiError('Rekber tidak ditemukan', 404)
 
-    if (!['HELD', 'DISPUTED'].includes(existing.status)) {
-      return apiError('Hanya rekber ditahan atau dispute yang bisa diselesaikan admin')
+    if (existing.status === 'RELEASED' || existing.status === 'REFUNDED') {
+      return apiError('State tidak valid', 409, { code: 'INVALID_STATE' })
+    }
+    if (!['HELD', 'PROCESSING', 'SHIPPED', 'DISPUTED'].includes(existing.status)) {
+      return apiError('Hanya rekber aktif atau dispute yang bisa diselesaikan admin')
     }
 
     const amount = existing.amount
@@ -67,7 +62,7 @@ export async function POST(
     }
 
     if (parsed.data.action === 'release') {
-      const updated = await prisma.$transaction(async (tx) => {
+      const updated = await walletTransaction(async (tx) => {
         await releaseRekberToSeller(
           tx,
           existing.sellerId,
@@ -82,10 +77,7 @@ export async function POST(
             releasedAt: new Date(),
             note: adminNote ?? existing.note,
           },
-          include: {
-            buyer: { select: PARTY_SELECT },
-            seller: { select: PARTY_SELECT },
-          },
+          include: REKBER_INCLUDE,
         })
       })
 
@@ -107,7 +99,7 @@ export async function POST(
       return apiSuccess(serializeRekber(updated, { viewerRole: 'ADMIN' }))
     }
 
-    const updated = await prisma.$transaction(async (tx) => {
+    const updated = await walletTransaction(async (tx) => {
       await refundRekberToBuyer(
         tx,
         existing.buyerId,
@@ -122,10 +114,7 @@ export async function POST(
           refundedAt: new Date(),
           note: adminNote ?? existing.note,
         },
-        include: {
-          buyer: { select: PARTY_SELECT },
-          seller: { select: PARTY_SELECT },
-        },
+        include: REKBER_INCLUDE,
       })
     })
 

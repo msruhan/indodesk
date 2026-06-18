@@ -9,7 +9,9 @@ import {
 } from '@/lib/inspection-pricing'
 import { debitUserForInspection } from '@/lib/inspection-wallet'
 import { serializeInspectionOrder } from '@/lib/inspection-serializer'
+import { notifyInspeksiNew } from '@/lib/telegram/notify'
 import { createInspectionSchema } from '@/lib/validations/inspection'
+import { getPublicFeatureFlags } from '@/lib/platform-settings'
 
 export const dynamic = 'force-dynamic'
 
@@ -46,6 +48,11 @@ export async function GET() {
 export async function POST(req: Request) {
   const { session, error } = await requireApiRole(['USER'])
   if (error) return error
+
+  const flags = await getPublicFeatureFlags()
+  if (!flags.inspectionServiceEnabled) {
+    return apiError('Layanan inspeksi sedang tidak tersedia', 403)
+  }
 
   let body: unknown
   try {
@@ -140,6 +147,8 @@ export async function POST(req: Request) {
       actor,
       target: { type: 'inspection', id: created.id, label: orderCode },
     })
+
+    void notifyInspeksiNew(created.id)
 
     return apiSuccess(serializeInspectionOrder(created, 'USER'), 201)
   } catch (e) {

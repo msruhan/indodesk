@@ -4,8 +4,6 @@ import { randomBytes } from 'crypto'
 import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { isR2PublicUrl } from '@/lib/image-url-utils'
 
-const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
-
 function getR2Config() {
   const accountId = process.env.R2_ACCOUNT_ID
   const accessKeyId = process.env.R2_ACCESS_KEY_ID
@@ -52,13 +50,32 @@ export function extensionFromMime(type: string): string {
   return 'bin'
 }
 
+/** @deprecated Use upload pipeline — kept for callers that pre-validate size only */
 export function validateImageFile(file: File, maxBytes: number): void {
-  if (!ALLOWED_TYPES.has(file.type)) {
-    throw new Error('Format gambar harus JPEG, PNG, WebP, atau GIF')
-  }
   if (file.size > maxBytes) {
     throw new Error(`Ukuran gambar maksimal ${Math.round(maxBytes / (1024 * 1024))} MB`)
   }
+}
+
+export async function putPublicObject(
+  key: string,
+  body: Buffer,
+  contentType: string,
+): Promise<string> {
+  const cfg = getR2Config()
+  if (!cfg) throw new Error('R2 belum dikonfigurasi')
+  if (key.includes('..')) throw new Error('Invalid key')
+
+  await getClient().send(
+    new PutObjectCommand({
+      Bucket: cfg.bucket,
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+    }),
+  )
+
+  return `${cfg.publicBaseUrl}/${key}`
 }
 
 export async function uploadFileToR2(
@@ -67,24 +84,15 @@ export async function uploadFileToR2(
   ownerId: string,
   maxBytes: number,
 ): Promise<string> {
-  validateImageFile(file, maxBytes)
-  const cfg = getR2Config()
-  if (!cfg) throw new Error('R2 belum dikonfigurasi')
-
-  const ext = extensionFromMime(file.type)
-  const key = `${folder}/${ownerId}-${randomBytes(8).toString('hex')}.${ext}`
-  const body = Buffer.from(await file.arrayBuffer())
-
-  await getClient().send(
-    new PutObjectCommand({
-      Bucket: cfg.bucket,
-      Key: key,
-      Body: body,
-      ContentType: file.type,
-    }),
-  )
-
-  return `${cfg.publicBaseUrl}/${key}`
+  const { processUploadUrl } = await import('@/lib/uploads/pipeline')
+  return processUploadUrl({
+    folder,
+    ownerId,
+    file,
+    maxBytes,
+    visibility: 'public',
+    localUrlPrefix: `/uploads/${folder}/`,
+  })
 }
 
 export async function deleteFileFromR2(publicUrl: string | null | undefined): Promise<void> {

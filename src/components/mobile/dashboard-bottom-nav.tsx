@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { useHydrated } from '@/hooks/use-hydrated'
 import { USER_BOTTOM_NAV_ITEMS } from '@/lib/user-bottom-nav'
 import { applyDashboardBottomNavSwap, homePathForRole, MARKETPLACE_PATH } from '@/lib/role-routes'
 import { useAuth, type UserRole } from '@/contexts/auth-context'
@@ -23,7 +24,7 @@ import {
   BarChart3,
   CheckSquare,
   Package,
-  Laptop,
+  MessageCircle,
 } from '@/lib/icons'
 
 type NavItem = {
@@ -81,10 +82,10 @@ const teknisiNav: NavItem[] = [
     activePrefixes: ['/teknisi/toko'],
   },
   {
-    icon: Laptop,
-    label: 'Remote',
-    href: '/teknisi/remote',
-    activePrefixes: ['/teknisi/remote'],
+    icon: MessageCircle,
+    label: 'Konsultasi',
+    href: '/teknisi/konsultasi',
+    activePrefixes: ['/teknisi/konsultasi'],
   },
   {
     icon: History,
@@ -168,6 +169,7 @@ function isNavItemActive(item: NavItem, pathname: string | null, tab: string | n
 function DashboardBottomNavContent({ tab }: { tab: string | null }) {
   const pathname = usePathname()
   const { user } = useAuth()
+  const hydrated = useHydrated()
   const isTeknisi = user?.role === 'TEKNISI'
 
   useLayoutEffect(() => {
@@ -223,20 +225,30 @@ function DashboardBottomNavContent({ tab }: { tab: string | null }) {
               )}
               aria-current={isActive ? 'page' : undefined}
             >
-              {isActive && (
+              {isActive ? (
+                hydrated ? (
+                  <motion.span
+                    layoutId="dashboard-bottom-active"
+                    className="absolute inset-x-1 top-1 h-10 rounded-xl bg-gradient-to-br from-primary-50 to-white ring-1 ring-inset ring-primary-200/60 shadow-soft-xs"
+                    transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+                  />
+                ) : (
+                  <span className="absolute inset-x-1 top-1 h-10 rounded-xl bg-gradient-to-br from-primary-50 to-white ring-1 ring-inset ring-primary-200/60 shadow-soft-xs" />
+                )
+              ) : null}
+              {hydrated ? (
                 <motion.span
-                  layoutId="dashboard-bottom-active"
-                  className="absolute inset-x-1 top-1 h-10 rounded-xl bg-gradient-to-br from-primary-50 to-white ring-1 ring-inset ring-primary-200/60 shadow-soft-xs"
-                  transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-                />
+                  className="relative z-10"
+                  animate={isActive ? { y: -0.5, scale: 1.05 } : { y: 0, scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 480, damping: 26 }}
+                >
+                  <item.icon className="h-[18px] w-[18px]" />
+                </motion.span>
+              ) : (
+                <span className="relative z-10">
+                  <item.icon className="h-[18px] w-[18px]" />
+                </span>
               )}
-              <motion.span
-                className="relative z-10"
-                animate={isActive ? { y: -0.5, scale: 1.05 } : { y: 0, scale: 1 }}
-                transition={{ type: 'spring', stiffness: 480, damping: 26 }}
-              >
-                <item.icon className="h-[18px] w-[18px]" />
-              </motion.span>
               <span
                 className={cn(
                   'relative z-10 text-[10px] leading-none',

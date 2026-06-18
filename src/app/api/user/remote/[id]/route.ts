@@ -17,6 +17,29 @@ const patchSchema = z.object({
   action: z.enum(['cancel']),
 })
 
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { session, error } = await requireApiAuth()
+  if (error) return error
+
+  const { id } = await params
+
+  try {
+    const existing = await prisma.remoteSession.findUnique({
+      where: { id },
+      include: { teknisi: { select: TEKNISI_SELECT } },
+    })
+    if (!existing) return apiError('Sesi remote tidak ditemukan', 404)
+    if (existing.userId !== session.user.id) {
+      return apiError('Akses ditolak', 403)
+    }
+
+    return apiSuccess(serializeUserRemote(existing))
+  } catch (e) {
+    console.error('[USER_REMOTE_GET_ID]', e)
+    return apiError('Gagal memuat sesi remote', 500)
+  }
+}
+
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { session, error } = await requireApiAuth()
   if (error) return error
@@ -36,11 +59,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   try {
-    const existing = await prisma.remoteSession.findFirst({
-      where: { id, userId: session.user.id },
+    const existing = await prisma.remoteSession.findUnique({
+      where: { id },
       include: { teknisi: { select: TEKNISI_SELECT } },
     })
     if (!existing) return apiError('Sesi remote tidak ditemukan', 404)
+    if (existing.userId !== session.user.id) {
+      return apiError('Akses ditolak', 403)
+    }
 
     if (existing.status !== 'WAITING') {
       return apiError('Hanya request menunggu yang bisa dibatalkan')

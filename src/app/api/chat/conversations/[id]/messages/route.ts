@@ -3,11 +3,15 @@ import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiAuth } from '@/lib/api-auth'
 import { getConversationForParticipant } from '@/lib/chat-access'
 import { serializeMessage } from '@/lib/chat-serializer'
+import { RATE_LIMITS, withRateLimit, rateLimitResponse } from '@/lib/rate-limit-store'
 
 export const dynamic = 'force-dynamic'
 
 const sendSchema = z.object({
-  body: z.string().min(1, 'Pesan tidak boleh kosong').max(5000),
+  body: z
+    .string()
+    .max(5000)
+    .refine((v) => v.trim().length >= 1, 'Pesan tidak boleh kosong'),
 })
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -36,6 +40,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { session, error } = await requireApiAuth()
   if (error) return error
+
+  const rl = await withRateLimit(req, ['chat', 'send', session.user.id], RATE_LIMITS.chatSend)
+  if (!rl.allowed) return rateLimitResponse(rl)
 
   const { id } = await params
 

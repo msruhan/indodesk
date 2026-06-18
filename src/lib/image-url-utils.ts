@@ -35,7 +35,12 @@ export function r2UrlToMediaProxyPath(url: string): string | null {
   return match ? `/api/media/${match[1]}` : null
 }
 
+export function isPrivateMediaApiUrl(url: string | null | undefined): boolean {
+  return Boolean(url?.startsWith('/api/media/private/'))
+}
+
 export function resolveDisplayImageUrl(url: string | null | undefined): string | null {
   if (!url) return null
+  if (isPrivateMediaApiUrl(url)) return url
   return r2UrlToMediaProxyPath(url) ?? url
 }

@@ -6,7 +6,6 @@ import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { GoogleSignInButton } from '@/components/auth/google-sign-in-button'
 import { Star, CheckCircle } from '@/lib/icons'
 import type { TeknisiReviewDto } from '@/lib/teknisi-review'
 import { TEKNISI_REVIEW_TAGS } from '@/lib/teknisi-review'
@@ -55,17 +54,17 @@ export function TeknisiReviewForm({ teknisiId, myReview, onSubmitted }: TeknisiR
           Login untuk memberikan ulasan terverifikasi.
         </p>
         <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-          <GoogleSignInButton
-            callbackUrl={typeof window !== 'undefined' ? window.location.href : undefined}
-            label="Google"
-            size="default"
-          />
           <Link
             href={`/login?callbackUrl=${encodeURIComponent(typeof window !== 'undefined' ? window.location.pathname : `/teknisi/${teknisiId}`)}`}
             className="flex-1"
           >
+            <Button variant="primary" size="default" className="w-full">
+              Login
+            </Button>
+          </Link>
+          <Link href="/register" className="flex-1">
             <Button variant="outline" size="default" className="w-full">
-              Email
+              Daftar
             </Button>
           </Link>
         </div>

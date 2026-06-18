@@ -1,9 +1,10 @@
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiAuth } from '@/lib/api-auth'
 import { scheduleImeiOrderFollowUp } from '@/lib/imei-order-scheduler'
+import { validateImeiOrderDeviceInput } from '@/lib/imei-order-input'
 import { normalizeSupplierCode } from '@/lib/imei-public'
 import { pollImeiOrderFromSupplier, submitImeiOrderToSupplier } from '@/lib/imei-order-worker'
-import { createImeiOrderSchema } from '@/lib/validations/imei'
+import { createImeiOrderBodySchema } from '@/lib/validations/imei'
 import { extractRequestContext, logOrderEvent } from '@/lib/activity-log'
 import type { Prisma } from '@prisma/client'
 
@@ -95,7 +96,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json()
-    const parsed = createImeiOrderSchema.safeParse(body)
+    const parsed = createImeiOrderBodySchema.safeParse(body)
     if (!parsed.success) return apiError(parsed.error.issues[0].message)
 
     const userId = session.user.id
@@ -103,21 +104,39 @@ export async function POST(req: Request) {
     // Verify service exists and is active
     const service = await prisma.imeiService.findFirst({
       where: { id: parsed.data.serviceId, status: 'ACTIVE' },
-      select: { id: true, apiId: true, price: true, title: true, requiresNetwork: true, requiresModel: true, requiresProvider: true, requiresPin: true, requiresKbh: true, requiresMep: true, requiresPrd: true, requiresSn: true },
+      select: {
+        id: true,
+        apiId: true,
+        price: true,
+        title: true,
+        requiresImei: true,
+        requiresNetwork: true,
+        requiresModel: true,
+        requiresProvider: true,
+        requiresPin: true,
+        requiresKbh: true,
+        requiresMep: true,
+        requiresPrd: true,
+        requiresSn: true,
+      },
     })
     if (!service) return apiError('Layanan tidak ditemukan atau tidak aktif', 404)
 
-    const activeSameImei = await prisma.imeiOrder.findFirst({
+    const deviceInput = validateImeiOrderDeviceInput(service, parsed.data)
+    if (deviceInput.error) return apiError(deviceInput.error)
+
+    const activeSameDevice = await prisma.imeiOrder.findFirst({
       where: {
-        imei: parsed.data.imei,
+        imei: deviceInput.imei,
         status: { in: ['PENDING', 'IN_PROCESS'] },
         service: { apiId: service.apiId },
       },
       select: { orderCode: true, service: { select: { title: true } } },
     })
-    if (activeSameImei) {
+    if (activeSameDevice) {
+      const label = service.requiresImei ? 'Digital' : 'Serial Number'
       return apiError(
-        `IMEI ini masih diproses di order ${activeSameImei.orderCode} (${activeSameImei.service.title}). Tunggu selesai atau batalkan di supplier sebelum order layanan lain.`,
+        `${label} ini masih diproses di order ${activeSameDevice.orderCode} (${activeSameDevice.service.title}). Tunggu selesai atau batalkan di supplier sebelum order layanan lain.`,
         409,
       )
     }
@@ -131,7 +150,6 @@ export async function POST(req: Request) {
       { key: 'kbh', label: 'KBH', flag: service.requiresKbh },
       { key: 'mep', label: 'MEP', flag: service.requiresMep },
       { key: 'prd', label: 'PRD', flag: service.requiresPrd },
-      { key: 'serialNumber', label: 'Serial Number', flag: service.requiresSn },
     ]
     for (const r of required) {
       if (r.flag && (!parsed.data[r.key] || `${parsed.data[r.key]}`.trim() === '')) {
@@ -166,7 +184,7 @@ export async function POST(req: Request) {
           orderCode,
           userId,
           serviceId: service.id,
-          imei: parsed.data.imei,
+          imei: deviceInput.imei,
           price: service.price,
           status: 'PENDING',
           network: parsed.data.network ?? null,
@@ -176,7 +194,7 @@ export async function POST(req: Request) {
           kbh: parsed.data.kbh ?? null,
           mep: parsed.data.mep ?? null,
           prd: parsed.data.prd ?? null,
-          serialNumber: parsed.data.serialNumber ?? null,
+          serialNumber: deviceInput.serialNumber,
           note: parsed.data.note ?? null,
         },
         include: {
@@ -190,7 +208,7 @@ export async function POST(req: Request) {
           type: 'PAYMENT',
           amount: service.price.neg(),
           balance: newBalance,
-          description: `Order IMEI ${service.title}`,
+          description: `Order Digital ${service.title}`,
           referenceId: created.id,
         },
       })
@@ -228,7 +246,7 @@ export async function POST(req: Request) {
     void logOrderEvent({
       action: 'order.imei.created',
       severity: 'SUCCESS',
-      summary: `Order IMEI baru: ${order.orderCode} — ${service.title}`,
+      summary: `Order Digital baru: ${order.orderCode} — ${service.title}`,
       actor: {
         id: userId,
         name: session.user.name ?? null,
@@ -242,7 +260,8 @@ export async function POST(req: Request) {
         orderCode: order.orderCode,
         serviceTitle: service.title,
         amount: service.price.toString(),
-        imei: parsed.data.imei,
+        imei: deviceInput.imei,
+        serialNumber: deviceInput.serialNumber,
       },
     })
 

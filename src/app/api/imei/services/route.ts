@@ -59,6 +59,6 @@ export async function GET(req: Request) {
     return apiSuccess({ services, groups })
   } catch (e) {
     console.error('[IMEI_SERVICES_GET]', e)
-    return apiError('Gagal mengambil layanan IMEI', 500)
+    return apiError('Gagal mengambil layanan digital', 500)
   }
 }

@@ -2,7 +2,9 @@ import { z } from 'zod'
 import { ProductCategory } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
+import { logAdminGovernance } from '@/lib/admin-audit'
 import { serializeAdminProduct } from '@/lib/admin-product-serializer'
+import { notifyProductPublishedIfTransition } from '@/lib/telegram/notify'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,7 +25,7 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { error } = await requireApiRole(['ADMIN'])
+  const { session, error } = await requireApiRole(['ADMIN'])
   if (error) return error
 
   const { id } = await params
@@ -62,6 +64,31 @@ export async function PATCH(
       include: { seller: { select: { id: true, name: true } } },
     })
 
+    const willPublish =
+      product.listingStatus === 'APPROVED' &&
+      product.isPublished &&
+      !(existing.listingStatus === 'APPROVED' && existing.isPublished)
+    if (willPublish) {
+      void notifyProductPublishedIfTransition(product.id, existing.isPublished)
+    }
+
+    logAdminGovernance({
+      req,
+      actor: session.user,
+      action: 'admin.product.update',
+      summary: `Produk diperbarui: ${product.name}`,
+      severity:
+        data.listingStatus === 'APPROVED' || data.listingStatus === 'REJECTED'
+          ? 'WARNING'
+          : 'INFO',
+      target: { type: 'product', id: product.id, label: product.name },
+      metadata: {
+        listingStatus: data.listingStatus,
+        isPublished: data.isPublished,
+        isActive: data.isActive,
+      },
+    })
+
     return apiSuccess(serializeAdminProduct(product))
   } catch (e) {
     console.error('[ADMIN_PRODUCTS_PATCH]', e)
@@ -70,10 +97,10 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { error } = await requireApiRole(['ADMIN'])
+  const { session, error } = await requireApiRole(['ADMIN'])
   if (error) return error
 
   const { id } = await params
@@ -82,6 +109,16 @@ export async function DELETE(
     if (!existing) return apiError('Produk tidak ditemukan', 404)
 
     await prisma.product.delete({ where: { id } })
+
+    logAdminGovernance({
+      req,
+      actor: session.user,
+      action: 'admin.product.delete',
+      summary: `Produk dihapus: ${existing.name}`,
+      severity: 'WARNING',
+      target: { type: 'product', id: existing.id, label: existing.name },
+    })
+
     return apiSuccess({ deleted: true })
   } catch (e) {
     console.error('[ADMIN_PRODUCTS_DELETE]', e)

@@ -34,6 +34,7 @@ export type TeknisiStoreDto = {
   jamWeekend: string | null
   operatingHours: StoreOperatingHours
   coverImage: string | null
+  gallery: string[]
   layanan: string[]
   journeyIntro: string | null
   journey: StoreJourneyMilestone[]
@@ -65,6 +66,7 @@ export function serializeTeknisiStore(
     jamWeekend,
     operatingHours: hours,
     coverImage: resolveDisplayImageUrl(store.coverImage),
+    gallery: store.gallery.map((url) => resolveDisplayImageUrl(url) ?? url),
     layanan: store.layanan,
     journeyIntro: store.journeyIntro,
     journey: journeyFromDb(store.journey),

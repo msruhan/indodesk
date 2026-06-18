@@ -25,7 +25,6 @@ import {
   mobileHeaderBarRowDesktopClass,
 } from '@/components/mobile/header-action-styles'
 import { HeaderCartLink } from '@/components/mobile/header-cart-link'
-import { DashboardMonthFilter } from '@/components/dashboard/dashboard-month-filter'
 import { useHeaderPopover } from '@/components/mobile/use-header-popover'
 
 function getChatHref(role: UserRole): string {
@@ -118,8 +117,6 @@ export function DashboardHeader() {
         </div>
 
         <div className={cn(headerActionsGroupClass, 'overflow-visible')}>
-          <DashboardMonthFilter className="hidden md:block" />
-
           <WalletBalanceButton />
 
           <Link

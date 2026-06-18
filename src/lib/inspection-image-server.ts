@@ -12,5 +12,6 @@ export async function saveInspectionPhoto(file: File, userId: string): Promise<s
     file,
     ownerId: userId,
     maxBytes: MAX_BYTES,
+    visibility: 'private',
   })
 }

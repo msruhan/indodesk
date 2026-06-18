@@ -3,8 +3,10 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Shield, Clock, CheckCircle, AlertCircle, XCircle } from '@/lib/icons'
+import { Shield, Clock, CheckCircle, AlertCircle, XCircle, ArrowRight, Package } from '@/lib/icons'
 import type { RekberDto, RekberStats } from '@/lib/rekber-serializer'
+import { RekberSellerFulfillment } from '@/components/rekber/rekber-seller-fulfillment'
+import type { ShippingCourier } from '@prisma/client'
 
 const formatPrice = (n: number) =>
   new Intl.NumberFormat('id-ID', {
@@ -19,6 +21,8 @@ const statusConfig: Record<
 > = {
   pending: { label: 'Menunggu bayar', className: 'bg-amber-50 text-amber-800', icon: Clock },
   held: { label: 'Dana ditahan', className: 'bg-blue-50 text-blue-800', icon: Shield },
+  processing: { label: 'Diproses', className: 'bg-indigo-50 text-indigo-800', icon: Package },
+  shipped: { label: 'Dikirim', className: 'bg-violet-50 text-violet-800', icon: ArrowRight },
   released: { label: 'Selesai', className: 'bg-primary-50 text-primary-800', icon: CheckCircle },
   disputed: { label: 'Dispute', className: 'bg-rose-50 text-rose-800', icon: AlertCircle },
   refunded: { label: 'Refund', className: 'bg-surface-100 text-surface-700', icon: XCircle },
@@ -30,8 +34,14 @@ type Props = {
   loading?: boolean
   actingId?: string | null
   onRefresh?: () => void
-  onUserAction?: (id: string, action: 'fund' | 'release' | 'dispute' | 'cancel') => void
+  onUserAction?: (id: string, action: 'fund' | 'release' | 'cancel') => void
+  onOpenComplaint?: (id: string) => void
+  onRespondComplaint?: (id: string) => void
+  onEscalateComplaint?: (id: string) => void
+  onWithdrawComplaint?: (id: string) => void
   onAdminResolve?: (id: string, action: 'release' | 'refund') => void
+  onAdvance?: (id: string) => void
+  onSetShipment?: (id: string, courier: ShippingCourier, trackingNumber: string) => void
   showStats?: boolean
 }
 
@@ -42,7 +52,13 @@ export function RekberTransactionList({
   actingId,
   onRefresh,
   onUserAction,
+  onOpenComplaint,
+  onRespondComplaint,
+  onEscalateComplaint,
+  onWithdrawComplaint,
   onAdminResolve,
+  onAdvance,
+  onSetShipment,
   showStats = true,
 }: Props) {
   return (
@@ -121,6 +137,30 @@ export function RekberTransactionList({
                         </span>
                       </div>
                       <p className="mt-1 text-xs text-surface-400">{r.dateLabel}</p>
+                      {r.complaint && (
+                        <div className="mt-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">
+                          <p className="font-semibold">Komplain: {r.complaint.statusLabel}</p>
+                          <p className="mt-1 line-clamp-2">{r.complaint.reason}</p>
+                        </div>
+                      )}
+                      {r.tracking && r.role === 'buyer' && (
+                        <div className="mt-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-900">
+                          <p className="font-semibold">
+                            {r.tracking.courierLabel} ·{' '}
+                            <span className="font-mono">{r.tracking.trackingNumber}</span>
+                          </p>
+                          {r.tracking.summaryDesc && <p className="mt-0.5">{r.tracking.summaryDesc}</p>}
+                        </div>
+                      )}
+                      {onAdvance && onSetShipment && onRefresh && (
+                        <RekberSellerFulfillment
+                          rekber={r}
+                          busy={busy}
+                          onRefresh={onRefresh}
+                          onAdvance={onAdvance}
+                          onSetShipment={onSetShipment}
+                        />
+                      )}
                     </div>
 
                     <div className="flex flex-wrap gap-2">
@@ -144,14 +184,46 @@ export function RekberTransactionList({
                           Konfirmasi terima
                         </Button>
                       )}
-                      {r.canDispute && onUserAction && (
+                      {r.canComplain && onOpenComplaint && (
                         <Button
                           size="sm"
                           variant="outline"
                           disabled={busy}
-                          onClick={() => onUserAction(r.id, 'dispute')}
+                          onClick={() => onOpenComplaint(r.id)}
                         >
-                          Dispute
+                          Ajukan komplain
+                        </Button>
+                      )}
+                      {r.canRespondComplaint && onRespondComplaint && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={busy}
+                          onClick={() => onRespondComplaint(r.id)}
+                        >
+                          Respons komplain
+                        </Button>
+                      )}
+                      {r.canEscalateComplaint && onEscalateComplaint && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-amber-700"
+                          disabled={busy}
+                          onClick={() => onEscalateComplaint(r.id)}
+                        >
+                          Eskalasi ke admin
+                        </Button>
+                      )}
+                      {r.canWithdrawComplaint && onWithdrawComplaint && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-surface-700"
+                          disabled={busy}
+                          onClick={() => onWithdrawComplaint(r.id)}
+                        >
+                          Tarik komplain
                         </Button>
                       )}
                       {r.canCancel && onUserAction && (
@@ -165,7 +237,11 @@ export function RekberTransactionList({
                           Batal
                         </Button>
                       )}
-                      {onAdminResolve && (r.status === 'held' || r.status === 'disputed') && (
+                      {onAdminResolve &&
+                        (r.status === 'held' ||
+                          r.status === 'processing' ||
+                          r.status === 'shipped' ||
+                          r.status === 'disputed') && (
                         <>
                           <Button
                             size="sm"

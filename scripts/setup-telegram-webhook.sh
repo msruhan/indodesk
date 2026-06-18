@@ -1,126 +1,86 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Telegram Webhook Setup (dev via ngrok or production URL)
+# Usage:
+#   TELEGRAM_BOT_TOKEN=... TELEGRAM_WEBHOOK_SECRET=... ./scripts/setup-telegram-webhook.sh
+#   WEBHOOK_BASE_URL=https://yourdomain.com ./scripts/setup-telegram-webhook.sh
 
-# Telegram Webhook Setup with ngrok
-# Usage: ./scripts/setup-telegram-webhook.sh
+set -euo pipefail
 
-BOT_TOKEN="8632013694:AAFthrm3CrM-h8vN_SeS7eMDQQPPe9S2EhA"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-echo "🚀 Telegram Webhook Setup dengan ngrok"
-echo "======================================="
-echo ""
+if [[ -f "$PROJECT_DIR/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$PROJECT_DIR/.env"
+  set +a
+fi
 
-# Check if dev server is running
-if ! curl -s http://localhost:3000 > /dev/null; then
-    echo "❌ Dev server tidak running!"
-    echo ""
-    echo "Buka terminal baru dan jalankan:"
-    echo "  cd indoteknizi"
-    echo "  npm run dev"
-    echo ""
-    echo "Lalu jalankan script ini lagi."
+BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
+WEBHOOK_SECRET="${TELEGRAM_WEBHOOK_SECRET:-}"
+WEBHOOK_BASE="${WEBHOOK_BASE_URL:-}"
+
+if [[ -z "$BOT_TOKEN" ]]; then
+  echo "❌ TELEGRAM_BOT_TOKEN belum diset (export atau isi di .env)"
+  exit 1
+fi
+
+if [[ -z "$WEBHOOK_SECRET" ]]; then
+  echo "⚠️  TELEGRAM_WEBHOOK_SECRET kosong — generate dengan: openssl rand -hex 32"
+  WEBHOOK_SECRET="$(openssl rand -hex 32)"
+  echo "   Simpan ke .env: TELEGRAM_WEBHOOK_SECRET=$WEBHOOK_SECRET"
+fi
+
+if [[ -z "$WEBHOOK_BASE" ]]; then
+  if ! curl -sf http://localhost:3000 >/dev/null 2>&1; then
+    echo "❌ Dev server tidak running dan WEBHOOK_BASE_URL tidak diset"
+    echo "   Jalankan: npm run dev   atau   export WEBHOOK_BASE_URL=https://yourdomain.com"
     exit 1
-fi
+  fi
 
-echo "✅ Dev server running"
-echo ""
-
-# Check if ngrok is installed
-if ! command -v ngrok &> /dev/null; then
-    echo "❌ ngrok belum terinstall!"
-    echo ""
-    echo "Install dengan:"
-    echo "  brew install ngrok/ngrok/ngrok"
+  if ! command -v ngrok >/dev/null 2>&1; then
+    echo "❌ ngrok diperlukan untuk tunnel lokal (brew install ngrok)"
     exit 1
-fi
+  fi
 
-echo "✅ ngrok terinstall ($(ngrok version))"
-echo ""
-
-echo "📝 Langkah-langkah:"
-echo "1. Script ini akan start ngrok di background"
-echo "2. Mendapatkan public URL dari ngrok"
-echo "3. Set webhook Telegram ke URL tersebut"
-echo "4. Anda bisa test linking flow seperti biasa"
-echo ""
-
-read -p "Lanjutkan? (y/n): " CONFIRM
-if [ "$CONFIRM" != "y" ]; then
-    echo "Dibatalkan."
-    exit 0
-fi
-
-echo ""
-echo "🔄 Starting ngrok..."
-
-# Start ngrok in background
-ngrok http 3000 > /dev/null &
-NGROK_PID=$!
-
-echo "   PID: $NGROK_PID"
-echo "   Waiting for ngrok to start..."
-sleep 3
-
-# Get ngrok public URL
-NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | python3 -c "import sys, json; print(json.load(sys.stdin)['tunnels'][0]['public_url'])" 2>/dev/null)
-
-if [ -z "$NGROK_URL" ]; then
-    echo ""
-    echo "❌ Gagal mendapatkan ngrok URL!"
-    echo "   Coba jalankan manual:"
-    echo "   ngrok http 3000"
-    kill $NGROK_PID 2>/dev/null
+  echo "🔄 Starting ngrok..."
+  ngrok http 3000 >/dev/null &
+  NGROK_PID=$!
+  sleep 3
+  WEBHOOK_BASE="$(curl -sf http://localhost:4040/api/tunnels | python3 -c "import sys,json; print(json.load(sys.stdin)['tunnels'][0]['public_url'])" 2>/dev/null || true)"
+  if [[ -z "$WEBHOOK_BASE" ]]; then
+    kill "$NGROK_PID" 2>/dev/null || true
+    echo "❌ Gagal mendapatkan URL ngrok"
     exit 1
+  fi
+  echo "✅ ngrok: $WEBHOOK_BASE (PID $NGROK_PID)"
+  echo "$NGROK_PID" >/tmp/ngrok-telegram.pid
 fi
 
-echo ""
-echo "✅ ngrok running!"
-echo "   Public URL: $NGROK_URL"
-echo ""
+WEBHOOK_URL="${WEBHOOK_BASE%/}/api/telegram/webhook"
+export WEBHOOK_URL WEBHOOK_SECRET
+echo "📤 setWebhook → $WEBHOOK_URL"
 
-# Set webhook
-WEBHOOK_URL="$NGROK_URL/api/telegram/webhook"
-echo "📤 Setting webhook..."
-echo "   URL: $WEBHOOK_URL"
-echo ""
-
-RESPONSE=$(curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/setWebhook" \
+PAYLOAD=$(python3 - <<PY
+import json, os
+print(json.dumps({
+  "url": os.environ["WEBHOOK_URL"],
+  "allowed_updates": ["message"],
+  "secret_token": os.environ["WEBHOOK_SECRET"],
+}))
+PY
+)
+RESPONSE=$(curl -sf -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook" \
   -H "Content-Type: application/json" \
-  -d "{\"url\": \"$WEBHOOK_URL\"}")
+  -d "$PAYLOAD")
 
-echo "📥 Response:"
 echo "$RESPONSE" | python3 -m json.tool
 
 if echo "$RESPONSE" | grep -q '"ok":true'; then
-    echo ""
-    echo "✅ Webhook berhasil di-set!"
-    echo ""
-    echo "🎯 Sekarang Anda bisa test:"
-    echo "1. Buka browser: http://localhost:3000"
-    echo "2. Login sebagai TEKNISI"
-    echo "3. Buka Settings → Pengaturan"
-    echo "4. Klik 'Hubungkan Telegram'"
-    echo "5. Klik 'Buka Telegram'"
-    echo "6. Bot akan otomatis merespon! ✅"
-    echo "7. Klik 'Cek Status' di browser"
-    echo "8. Status: 'Terhubung' ✅"
-    echo ""
-    echo "📊 Monitor ngrok traffic:"
-    echo "   http://localhost:4040"
-    echo ""
-    echo "⚠️  PENTING:"
-    echo "   - Jangan close terminal ini!"
-    echo "   - ngrok running di background (PID: $NGROK_PID)"
-    echo "   - Untuk stop: ./scripts/stop-telegram-webhook.sh"
-    echo ""
-    
-    # Save PID for cleanup
-    echo $NGROK_PID > /tmp/ngrok-telegram.pid
-    echo "$NGROK_URL" > /tmp/ngrok-telegram.url
-    
+  echo ""
+  echo "✅ Webhook OK. Pastikan server memakai TELEGRAM_WEBHOOK_SECRET yang sama."
+  echo "   Header dari Telegram: X-Telegram-Bot-Api-Secret-Token"
 else
-    echo ""
-    echo "❌ Gagal set webhook!"
-    echo "   Cek error message di atas."
-    kill $NGROK_PID 2>/dev/null
-    exit 1
+  echo "❌ Gagal set webhook"
+  exit 1
 fi

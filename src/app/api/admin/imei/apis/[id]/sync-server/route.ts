@@ -1,9 +1,11 @@
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
+import { decryptImeiApiKey } from '@/lib/crypto/imei-api-secret'
 import {
   DhruFusionClient,
   DhruFusionProClient,
   formatServerSyncError,
+  isClassicDhruApiKey,
   isServerProProduct,
   resolveProCategoryName,
 } from '@/lib/dhru-fusion'
@@ -58,10 +60,12 @@ export async function POST(
         alreadyImported: importedToolIds.has(svc.toolId),
       }))
 
+    const apiKey = decryptImeiApiKey(api.apiKey)
+
     const classicClient = new DhruFusionClient({
       host: api.host,
       username: api.username,
-      apiKey: api.apiKey,
+      apiKey,
     })
 
     // Classic DhruFusion first (most Indonesian suppliers e.g. luteam use this)
@@ -78,13 +82,19 @@ export async function POST(
       })
     }
 
-    // Pro API fallback (REST + Bearer) for hosts that only expose Pro
-    const proClient = new DhruFusionProClient({
-      host: api.host,
-      username: api.username,
-      apiKey: api.apiKey,
-    })
-    const proResult = await proClient.getProducts()
+    let proResult: Awaited<ReturnType<DhruFusionProClient['getProducts']>> = {
+      success: false,
+      error: 'Skipped — Classic API key format',
+    }
+
+    if (!isClassicDhruApiKey(apiKey)) {
+      const proClient = new DhruFusionProClient({
+        host: api.host,
+        username: api.username,
+        apiKey,
+      })
+      proResult = await proClient.getProducts()
+    }
     const serverProducts =
       proResult.success && proResult.products
         ? proResult.products.filter(isServerProProduct)

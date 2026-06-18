@@ -1,7 +1,7 @@
 # Split Tab Akun Teknisi (Profil · Jadwal · Portfolio) — Design Spec
 
 **Tanggal**: 2026-06-12  
-**Status**: Draft — menunggu review  
+**Status**: Approved — implemented  
 **Author**: Brainstorming session  
 
 ---

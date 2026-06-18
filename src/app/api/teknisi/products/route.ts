@@ -4,8 +4,11 @@ import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { resolveProductImagesFromForm } from '@/lib/product-image-api'
 import { serializeTeknisiProduct } from '@/lib/product-serializer'
+import { NEW_PRODUCT_CHANGE_SUMMARY } from '@/lib/product-listing-review'
+import { couponInputToDb, parseCouponFromForm } from '@/lib/product-coupon'
 import {
   categoryRequiresSpecs,
+  parseBenchmarkFieldsFromForm,
   parseCompletenessJson,
   parseProductSpecsFromForm,
   specsToDb,
@@ -69,6 +72,24 @@ export async function POST(req: Request) {
       if (specsError) return apiError(specsError)
 
       const { images, image } = await resolveProductImagesFromForm(form, session.user.id)
+      const { images: threeUtoolsImages } = await resolveProductImagesFromForm(
+        form,
+        session.user.id,
+        undefined,
+        '3utools_',
+      )
+      const benchmarkData = parseBenchmarkFieldsFromForm(form, parsed.data.category)
+      // Auto-verify jika ada screenshot 3uTools
+      if (threeUtoolsImages.length > 0) {
+        benchmarkData.verified3uTools = true
+      }
+
+      let couponData
+      try {
+        couponData = couponInputToDb(parseCouponFromForm(form), parsed.data.price)
+      } catch (e) {
+        return apiError(e instanceof Error ? e.message : 'Kupon tidak valid')
+      }
 
       const product = await prisma.product.create({
         data: {
@@ -79,10 +100,14 @@ export async function POST(req: Request) {
           description: parsed.data.description ?? null,
           image,
           images: images as object,
+          threeUtoolsImages: threeUtoolsImages as object,
           stock: parsed.data.stock ?? 1,
           ...specsToDb(specs),
+          ...benchmarkData,
+          ...couponData,
           listingStatus: 'PENDING',
           isPublished: false,
+          pendingChangeSummary: NEW_PRODUCT_CHANGE_SUMMARY,
         },
       })
 
@@ -120,6 +145,7 @@ export async function POST(req: Request) {
           ...specsToDb(specs),
           listingStatus: 'PENDING',
           isPublished: false,
+          pendingChangeSummary: NEW_PRODUCT_CHANGE_SUMMARY,
         },
       })
       return apiSuccess(serializeTeknisiProduct(product), 201)
@@ -136,6 +162,7 @@ export async function POST(req: Request) {
         stock: parsed.data.stock ?? 1,
         listingStatus: 'PENDING',
         isPublished: false,
+        pendingChangeSummary: NEW_PRODUCT_CHANGE_SUMMARY,
       },
     })
 

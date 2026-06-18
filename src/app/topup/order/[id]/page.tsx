@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Navbar } from '@/components/landing'
 import { BottomNav, MobileSafeAreaSpacer } from '@/components/mobile'
@@ -17,7 +17,8 @@ import type { OrderStatus } from '@/data/topup-types'
 
 export default function OrderTrackingPage() {
   const params = useParams<{ id: string }>()
-  const { saveOrder } = useTopup()
+  const searchParams = useSearchParams()
+  const { saveOrder, getOrder } = useTopup()
   const { findProduct } = useTopupCatalog()
   const [order, setOrder] = useState<PublicTopupOrderDto | null>(null)
   const [loading, setLoading] = useState(true)
@@ -25,8 +26,13 @@ export default function OrderTrackingPage() {
   const [copied, setCopied] = useState(false)
 
   const load = useCallback(async () => {
+    const historyEntry = getOrder(params.id)
+    const pollToken =
+      searchParams.get('token')?.trim() || historyEntry?.pollToken || undefined
+    const query = pollToken ? `?token=${encodeURIComponent(pollToken)}` : ''
+
     try {
-      const res = await fetch(`/api/topup/orders/${encodeURIComponent(params.id)}`)
+      const res = await fetch(`/api/topup/orders/${encodeURIComponent(params.id)}${query}`)
       const json = await res.json()
       if (!res.ok || !json.success) {
         setError(json.error ?? 'Order tidak ditemukan')
@@ -38,6 +44,7 @@ export default function OrderTrackingPage() {
       setOrder(data)
       saveOrder({
         orderCode: data.orderCode,
+        pollToken: pollToken ?? historyEntry?.pollToken,
         productSlug: data.productSlug,
         productName: data.productName,
         denominationLabel: data.denominationLabel,
@@ -53,7 +60,7 @@ export default function OrderTrackingPage() {
     } finally {
       setLoading(false)
     }
-  }, [params.id, saveOrder])
+  }, [params.id, saveOrder, getOrder, searchParams])
 
   useEffect(() => {
     void load()
@@ -61,10 +68,12 @@ export default function OrderTrackingPage() {
     return () => window.clearInterval(interval)
   }, [load])
 
+  const displayCode = order?.fulfillmentCode ?? order?.orderCode
+
   const copyCode = async () => {
     if (!order) return
     try {
-      await navigator.clipboard.writeText(order.orderCode)
+      await navigator.clipboard.writeText(displayCode ?? order.orderCode)
       setCopied(true)
       window.setTimeout(() => setCopied(false), 1500)
     } catch {
@@ -168,9 +177,12 @@ export default function OrderTrackingPage() {
           <div className="relative mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-surface-200/70 bg-surface-50/60 px-3 py-2.5">
             <div className="min-w-0">
               <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-surface-500">
-                Kode order
+                {order.fulfillmentCode ? 'Kode produk' : 'Kode order'}
               </p>
-              <p className="mt-0.5 truncate font-mono text-sm font-bold text-ink">{order.orderCode}</p>
+              <p className="mt-0.5 truncate font-mono text-sm font-bold text-ink">{displayCode}</p>
+              {order.fulfillmentCode ? (
+                <p className="mt-0.5 text-[10px] text-surface-500">Order: {order.orderCode}</p>
+              ) : null}
             </div>
             <Button variant="outline" size="sm" className="h-9 flex-shrink-0" onClick={() => void copyCode()}>
               <Copy className="h-3.5 w-3.5" />

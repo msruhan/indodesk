@@ -11,6 +11,7 @@ import { BottomNav, MobileSafeAreaSpacer } from '@/components/mobile'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { cn } from '@/lib/utils'
 import type { PublicStoreProductDto } from '@/lib/teknisi-store-serializer'
+import { categoryLabel } from '@/lib/product-category-config'
 import {
   ArrowRight,
   ChevronLeft,
@@ -24,14 +25,6 @@ const formatPrice = (n: number) =>
     currency: 'IDR',
     minimumFractionDigits: 0,
   }).format(n)
-
-const categoryLabel: Record<string, string> = {
-  HANDPHONE: 'Handphone',
-  LAPTOP: 'Laptop',
-  AKSESORIS: 'Aksesoris',
-  SOFTWARE: 'Software',
-  LAINNYA: 'Lainnya',
-}
 
 const ease = [0.22, 1, 0.36, 1] as const
 
@@ -187,7 +180,7 @@ export function TokoProdukView({ storeId }: Props) {
                         : 'border-surface-200/70 bg-white text-surface-600 hover:border-primary-200 hover:text-primary-700',
                     )}
                   >
-                    {cat === 'all' ? 'Semua' : categoryLabel[cat] ?? cat}
+                    {cat === 'all' ? 'Semua' : categoryLabel(cat)}
                   </button>
                 ))}
               </div>
@@ -265,7 +258,7 @@ function ProductCard({ product, idx }: { product: PublicStoreProductDto; idx: nu
         </div>
         <div className="p-3">
           <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-primary-700">
-            {categoryLabel[product.category] ?? product.category}
+            {categoryLabel(product.category)}
           </p>
           <p className="mt-1 line-clamp-2 text-[12px] font-bold leading-snug text-ink">{product.name}</p>
           <p className="mt-2 text-[14px] font-black tabular-nums text-primary-700">

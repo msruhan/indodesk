@@ -1,6 +1,23 @@
 /** Unified wallet & order activity for saldo dashboard. */
 
-export type TransactionCategory = 'wallet' | 'shop' | 'topup' | 'imei' | 'server'
+import type { InspectionOrderStatus } from '@prisma/client'
+import {
+  inspectionStatusLabel,
+  mapInspectionUiStatus,
+} from '@/lib/inspection-labels'
+import {
+  konsultasiStatusLabel,
+  mapKonsultasiUiStatus,
+} from '@/lib/teknisi-layanan-serializer'
+
+export type TransactionCategory =
+  | 'wallet'
+  | 'shop'
+  | 'topup'
+  | 'imei'
+  | 'server'
+  | 'konsultasi'
+  | 'inspeksi'
 
 export type TransactionFilter = 'all' | TransactionCategory
 
@@ -12,6 +29,10 @@ export interface UnifiedTransaction {
   subtitle: string | null
   /** Negative = keluar (debit), positive = masuk (credit) */
   amount: number
+  /** Saldo wallet sebelum transaksi ini (jika tercatat di ledger) */
+  balanceBefore: number | null
+  /** Saldo wallet sesudah transaksi ini (jika tercatat di ledger) */
+  balanceAfter: number | null
   status: string
   statusLabel: string
   createdAt: string
@@ -78,6 +99,14 @@ export function labelForLedgerType(type: string) {
   return ledgerTypeLabels[type] ?? type
 }
 
+export function labelForKonsultasiStatus(status: string) {
+  return konsultasiStatusLabel(mapKonsultasiUiStatus(status))
+}
+
+export function labelForInspeksiStatus(status: string) {
+  return inspectionStatusLabel(mapInspectionUiStatus(status as InspectionOrderStatus))
+}
+
 export const transactionFilterOptions: { id: TransactionFilter; label: string }[] = [
   { id: 'all', label: 'Semua' },
   { id: 'wallet', label: 'Saldo' },
@@ -85,6 +114,8 @@ export const transactionFilterOptions: { id: TransactionFilter; label: string }[
   { id: 'topup', label: 'Topup' },
   { id: 'imei', label: 'Perangkat' },
   { id: 'server', label: 'Server' },
+  { id: 'konsultasi', label: 'Konsultasi' },
+  { id: 'inspeksi', label: 'Inspeksi' },
 ]
 
 export const categoryMeta: Record<
@@ -96,6 +127,8 @@ export const categoryMeta: Record<
   topup: { label: 'Topup', color: 'text-violet-700', bg: 'bg-violet-50' },
   imei: { label: 'Perangkat', color: 'text-blue-700', bg: 'bg-blue-50' },
   server: { label: 'Server', color: 'text-amber-700', bg: 'bg-amber-50' },
+  konsultasi: { label: 'Konsultasi', color: 'text-indigo-700', bg: 'bg-indigo-50' },
+  inspeksi: { label: 'Inspeksi', color: 'text-rose-700', bg: 'bg-rose-50' },
 }
 
 export function formatTransactionAmount(amount: number) {
@@ -136,4 +169,11 @@ export function formatIdr(amount: number) {
     currency: 'IDR',
     minimumFractionDigits: 0,
   }).format(amount)
+}
+
+export function balancesFromLedgerAmounts(amount: number, balanceAfter: number) {
+  return {
+    balanceBefore: balanceAfter - amount,
+    balanceAfter,
+  }
 }

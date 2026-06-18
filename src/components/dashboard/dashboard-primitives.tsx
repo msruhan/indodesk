@@ -266,10 +266,6 @@ export function DataToolbar({
               placeholder={placeholder}
               inputClassName="rounded-full bg-white pl-10"
             />
-            <Button type="button" variant="outline" size="sm">
-              <Filter className="h-4 w-4" />
-              Filter
-            </Button>
             {filters}
           </div>
           <div className="flex items-center justify-between gap-3">

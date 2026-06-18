@@ -31,9 +31,9 @@ export function AdminImeiView() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold tracking-tightest text-ink sm:text-2xl">IMEI & Server Service</h1>
+        <h1 className="text-xl font-semibold tracking-tightest text-ink sm:text-2xl">Digital & Server Service</h1>
         <p className="mt-0.5 text-[13px] text-surface-500">
-          Kelola API supplier, layanan IMEI, server service, dan order masuk.
+          Kelola API supplier, layanan digital, server service, dan order masuk.
         </p>
       </div>
 
@@ -44,13 +44,13 @@ export function AdminImeiView() {
               API Manager
             </TabsTrigger>
             <TabsTrigger value="groups" className="shrink-0 px-3 text-xs sm:px-4">
-              IMEI Groups
+              Digital Groups
             </TabsTrigger>
             <TabsTrigger value="services" className="shrink-0 px-3 text-xs sm:px-4">
-              IMEI Services
+              Digital Services
             </TabsTrigger>
             <TabsTrigger value="orders" className="shrink-0 px-3 text-xs sm:px-4">
-              IMEI Orders
+              Digital Orders
             </TabsTrigger>
             <TabsTrigger value="server-services" className="shrink-0 px-3 text-xs sm:px-4">
               Server Services

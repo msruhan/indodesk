@@ -7,7 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { SearchInput } from '@/components/ui/search-input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { MetricCard } from '@/components/dashboard'
+import { DashboardMonthFilter, MetricCard } from '@/components/dashboard'
+import { useDashboardPeriod } from '@/contexts/dashboard-period-context'
+import { isDateInPeriod } from '@/lib/dashboard-period'
 import { cn } from '@/lib/utils'
 import {
   formatMonitoringTime,
@@ -512,6 +514,7 @@ function RemotePanel({ detail }: { detail: MonitoringDetailDto }) {
 
 
 export function AdminMonitoringView() {
+  const { period } = useDashboardPeriod()
   const [tab, setTab] = useState<TabKey>('all')
   const [items, setItems] = useState<MonitoringActivityItem[]>([])
   const [stats, setStats] = useState<MonitoringStats>(emptyStats)
@@ -628,18 +631,23 @@ export function AdminMonitoringView() {
     setDetailError(null)
   }, [])
 
+  const periodItems = useMemo(
+    () => items.filter((i) => isDateInPeriod(i.updatedAt, period)),
+    [items, period],
+  )
+
   const filteredItems = useMemo(() => {
-    if (tab === 'all') return items
-    return items.filter((i) => i.channel === tab)
-  }, [items, tab])
+    if (tab === 'all') return periodItems
+    return periodItems.filter((i) => i.channel === tab)
+  }, [periodItems, tab])
 
   const counts = useMemo(() => {
-    const result: Record<TabKey, number> = { all: items.length, chat: 0, konsultasi: 0, remote: 0 }
-    for (const i of items) {
+    const result: Record<TabKey, number> = { all: periodItems.length, chat: 0, konsultasi: 0, remote: 0 }
+    for (const i of periodItems) {
       result[i.channel] += 1
     }
     return result
-  }, [items])
+  }, [periodItems])
 
   const tabDescription = tabConfig.find((t) => t.key === tab)?.description ?? ''
 
@@ -654,6 +662,7 @@ export function AdminMonitoringView() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <DashboardMonthFilter />
           <Button variant="outline" size="sm" className="h-9" onClick={() => void loadList(false)} disabled={loading}>
             <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
             Refresh

@@ -11,6 +11,8 @@ import { openTeknisiChat } from '@/lib/open-teknisi-chat'
 import type { MarketplaceProductDto } from '@/lib/marketplace-product-serializer'
 import { MOCK_MARKETPLACE_PRODUCTS } from '@/lib/marketplace-mock-products'
 import { ProductPublicSpecs } from '@/components/marketplace/product-public-specs'
+import { Product3uToolsSection } from '@/components/marketplace/product-3utools-section'
+import { CompareButton } from '@/components/marketplace/compare-button'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -70,6 +72,15 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<MarketplaceProductDto | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [reviews, setReviews] = useState<
+    Array<{
+      id: string
+      rating: number
+      comment: string
+      dateLabel: string
+      author: { name: string; image: string | null }
+    }>
+  >([])
 
   useEffect(() => {
     void (async () => {
@@ -98,6 +109,37 @@ export default function ProductDetailPage() {
     })()
   }, [routeId])
 
+  useEffect(() => {
+    if (!routeId) return
+    void (async () => {
+      try {
+        const res = await fetch(`/api/marketplace/products/${routeId}/reviews`)
+        const data = await res.json()
+        if (data.success && Array.isArray(data.data?.items)) {
+          setReviews(
+            data.data.items.map(
+              (r: {
+                id: string
+                rating: number
+                comment: string
+                dateLabel: string
+                author: { name: string; image: string | null }
+              }) => ({
+                id: r.id,
+                rating: r.rating,
+                comment: r.comment,
+                dateLabel: r.dateLabel,
+                author: r.author,
+              }),
+            ),
+          )
+        }
+      } catch {
+        /* ignore */
+      }
+    })()
+  }, [routeId])
+
   const handleBuyNow = useCallback(() => {
     if (!product) return
     if (product.stock <= 0) {
@@ -117,6 +159,7 @@ export default function ProductDetailPage() {
         id: product.seller.id,
         storeName: product.seller.storeName,
       },
+      coupon: product.coupon,
     })
     router.push('/cart')
   }, [product, addItem, router])
@@ -202,25 +245,6 @@ export default function ProductDetailPage() {
         : [
             'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=1100&q=85',
           ]
-
-  const reviews = [
-    {
-      id: 1,
-      userName: 'Budi Santoso',
-      rating: 5,
-      comment: 'Barang sesuai deskripsi, kondisi rapi, dan seller responsif. Proses transaksi aman.',
-      date: '2 hari yang lalu',
-      badge: 'Verified purchase',
-    },
-    {
-      id: 2,
-      userName: 'Siti Nurhaliza',
-      rating: 4,
-      comment: 'Kondisi barang bagus, harga juga oke. Seller ramah dan fast response.',
-      date: '5 hari yang lalu',
-      badge: 'COD',
-    },
-  ]
 
   const formatPrice = (price: number) =>
     new Intl.NumberFormat('id-ID', {
@@ -398,6 +422,11 @@ export default function ProductDetailPage() {
                 <h2 className="mt-1 text-xl font-bold tracking-tight text-black sm:text-2xl">{display.reviewCount} ulasan terverifikasi</h2>
               </motion.div>
               <div className="grid gap-3 md:grid-cols-2">
+                {reviews.length === 0 ? (
+                  <p className="text-sm text-surface-500 md:col-span-2">
+                    Belum ada ulasan. Ulasan muncul setelah pembeli menyelesaikan pesanan.
+                  </p>
+                ) : null}
                 {reviews.map((review) => (
                   <motion.article
                     key={review.id}
@@ -407,16 +436,21 @@ export default function ProductDetailPage() {
                   >
                     <div className="mb-4 flex items-center gap-3">
                       <img
-                        src={`https://i.pravatar.cc/150?img=${review.id + 30}`}
-                        alt={review.userName}
+                        src={
+                          review.author.image ??
+                          `https://i.pravatar.cc/150?u=${encodeURIComponent(review.author.name)}`
+                        }
+                        alt={review.author.name}
                         className="h-11 w-11 rounded-2xl border border-surface-200 object-cover"
                       />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <h3 className="truncate text-sm font-bold text-black">{review.userName}</h3>
-                          <Badge variant="outline" className="px-2 py-0.5 text-[10px]">{review.badge}</Badge>
+                          <h3 className="truncate text-sm font-bold text-black">{review.author.name}</h3>
+                          <Badge variant="outline" className="px-2 py-0.5 text-[10px]">
+                            Verified purchase
+                          </Badge>
                         </div>
-                        <p className="text-xs text-surface-500">{review.date}</p>
+                        <p className="text-xs text-surface-500">{review.dateLabel}</p>
                       </div>
                     </div>
                     <div className="mb-3 flex">
@@ -532,8 +566,29 @@ export default function ProductDetailPage() {
                     <MessageCircle className="h-5 w-5" />
                   </Button>
                 </div>
+
+                {/* Tombol Bandingkan — hanya untuk kategori HP/Tablet/Laptop */}
+                <div className="mt-2">
+                  <CompareButton
+                    product={{
+                      id: product.id,
+                      name: product.name,
+                      image: product.image,
+                      price: product.price,
+                      category: product.categoryValue,
+                    }}
+                    variant="full"
+                    className="w-full"
+                  />
+                </div>
               </CardContent>
             </Card>
+            </motion.div>
+
+            <motion.div variants={reveal}>
+            {product.threeUtoolsImages && product.threeUtoolsImages.length > 0 && (
+              <Product3uToolsSection images={product.threeUtoolsImages} />
+            )}
             </motion.div>
 
             <motion.div variants={reveal}>

@@ -51,7 +51,7 @@ export default function TopupDetailPage() {
         denominationSku: sameProduct ? prev.denominationSku ?? desired ?? null : desired ?? null,
         accountId: sameProduct ? prev.accountId : '',
         serverId: sameProduct ? prev.serverId : '',
-        paymentMethodId: sameProduct ? prev.paymentMethodId : null,
+        paymentMethodId: sameProduct ? (prev.paymentMethodId ?? 'saldo') : 'saldo',
         promoCode: sameProduct ? prev.promoCode : '',
       }
     })
@@ -121,9 +121,10 @@ export default function TopupDetailPage() {
         return
       }
 
-      const order = json.data.order
+      const { order, pollToken } = json.data
       saveOrder({
         orderCode: order.orderCode,
+        pollToken,
         productSlug: order.productSlug,
         productName: order.productName,
         denominationLabel: order.denominationLabel,
@@ -139,7 +140,9 @@ export default function TopupDetailPage() {
         submittedAt: new Date().toISOString(),
         orderCode: order.orderCode,
       }))
-      router.push(`/topup/order/${order.orderCode}`)
+      router.push(
+        `/topup/order/${order.orderCode}?token=${encodeURIComponent(pollToken)}`,
+      )
     } catch {
       setSubmitError('Checkout gagal')
     } finally {

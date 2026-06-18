@@ -4,9 +4,13 @@ import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { PlatformSettingsDto } from '@/lib/platform-settings-shared'
+import { AdminStepUpFields } from '@/components/admin/admin-step-up-fields'
 
 export function AdminPlatformSettingsForm() {
   const [form, setForm] = useState<PlatformSettingsDto | null>(null)
+  const [adminConfirmPassword, setAdminConfirmPassword] = useState('')
+  const [adminTotp, setAdminTotp] = useState('')
+  const [adminTwoFa, setAdminTwoFa] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -32,6 +36,12 @@ export function AdminPlatformSettingsForm() {
 
   useEffect(() => {
     void load()
+    void fetch('/api/user/2fa')
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.success) setAdminTwoFa(Boolean(json.data?.enabled))
+      })
+      .catch(() => {})
   }, [load])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -44,7 +54,11 @@ export function AdminPlatformSettingsForm() {
       const res = await fetch('/api/admin/platform/settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          confirmPassword: adminTwoFa ? undefined : adminConfirmPassword || undefined,
+          totp: adminTwoFa ? adminTotp || undefined : undefined,
+        }),
       })
       const json = await res.json()
       if (!res.ok || !json.success) {
@@ -52,6 +66,8 @@ export function AdminPlatformSettingsForm() {
         return
       }
       setForm(json.data)
+      setAdminConfirmPassword('')
+      setAdminTotp('')
       setMessage('Pengaturan berhasil disimpan.')
     } catch {
       setError('Gagal menyimpan')
@@ -110,19 +126,6 @@ export function AdminPlatformSettingsForm() {
             onChange={(e) => setForm((f) => f && { ...f, supportPhone: e.target.value })}
           />
         </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-surface-700">Fee Platform (%)</label>
-          <Input
-            type="number"
-            min={0}
-            max={100}
-            step={0.1}
-            value={form.feePercent}
-            onChange={(e) =>
-              setForm((f) => f && { ...f, feePercent: Number(e.target.value) || 0 })
-            }
-          />
-        </div>
       </div>
       <label className="flex items-center gap-2 text-sm text-surface-700">
         <input
@@ -135,6 +138,13 @@ export function AdminPlatformSettingsForm() {
       </label>
       {error ? <p className="text-sm text-rose-600">{error}</p> : null}
       {message ? <p className="text-sm text-primary-700">{message}</p> : null}
+      <AdminStepUpFields
+        confirmPassword={adminConfirmPassword}
+        totp={adminTotp}
+        onConfirmPasswordChange={setAdminConfirmPassword}
+        onTotpChange={setAdminTotp}
+        twoFactorEnabled={adminTwoFa}
+      />
       <div className="flex gap-2">
         <Button type="submit" disabled={saving}>
           {saving ? 'Menyimpan…' : 'Simpan Perubahan'}

@@ -30,7 +30,12 @@ export async function POST(req: Request) {
       data: { image: imageUrl },
     })
 
-    return apiSuccess(serializeUserProfile(user))
+    const googleAccount = await prisma.account.findFirst({
+      where: { userId: user.id, provider: 'google' },
+      select: { id: true },
+    })
+
+    return apiSuccess(serializeUserProfile(user, { googleLinked: Boolean(googleAccount) }))
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Gagal mengunggah foto'
     console.error('[USER_PROFILE_AVATAR_POST]', e)

@@ -1,13 +1,20 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
+import { walletTransaction } from '@/lib/wallet/transaction'
 import type { ActivityActor } from '@/lib/activity-log'
 import { logOrderEvent, logPaymentEvent } from '@/lib/activity-log'
+import { notifyMarketplaceOrderNew } from '@/lib/telegram/notify'
 import { generateMarketplaceOrderCode } from '@/lib/marketplace-order-config'
-import {
-  creditSellerForMarketplace,
-  debitBuyerForMarketplace,
-} from '@/lib/marketplace-wallet'
+import { computeMarketplaceFees } from '@/lib/marketplace-fees'
+import { getPlatformSettings } from '@/lib/platform-settings'
+import { holdBuyerForMarketplace } from '@/lib/marketplace-wallet'
 import { serializeMarketplaceOrder } from '@/lib/marketplace-order-serializer'
+import {
+  calcLineCouponDiscount,
+  couponFromProduct,
+  normalizeCouponCode,
+  type ProductCouponConfig,
+} from '@/lib/product-coupon'
 
 export type CheckoutLineInput = {
   productId: string
@@ -27,6 +34,7 @@ type ResolvedLine = {
   productId: string
   quantity: number
   unitPrice: Prisma.Decimal
+  coupon: ProductCouponConfig | null
   product: {
     id: string
     name: string
@@ -45,15 +53,30 @@ function groupLinesBySeller(lines: ResolvedLine[]): Map<string, ResolvedLine[]> 
   return map
 }
 
+export type MarketplaceCheckoutOptions = {
+  shippingAddress?: string | null
+  shippingPhone?: string | null
+  requiresShipping?: boolean
+  couponCode?: string | null
+}
+
 export async function processMarketplaceCheckout(
   buyerId: string,
   buyerName: string | null | undefined,
   buyerEmail: string | null | undefined,
   buyerRole: 'USER' | 'TEKNISI' | 'ADMIN',
   lines: CheckoutLineInput[],
+  options: MarketplaceCheckoutOptions = {},
 ) {
   if (lines.length === 0) {
     throw new Error('EMPTY_CART')
+  }
+
+  const address = options.shippingAddress?.trim() ?? ''
+  if (options.requiresShipping) {
+    if (address.length < 10) {
+      throw new Error('SHIPPING_ADDRESS_REQUIRED')
+    }
   }
 
   const productIds = [...new Set(lines.map((l) => l.productId))]
@@ -70,6 +93,9 @@ export async function processMarketplaceCheckout(
       sellerId: true,
       stock: true,
       price: true,
+      couponCode: true,
+      couponDiscountType: true,
+      couponDiscountValue: true,
     },
   })
 
@@ -90,6 +116,7 @@ export async function processMarketplaceCheckout(
       productId: line.productId,
       quantity: line.quantity,
       unitPrice: product.price,
+      coupon: couponFromProduct(product),
       product: {
         id: product.id,
         name: product.name,
@@ -100,16 +127,49 @@ export async function processMarketplaceCheckout(
   }
 
   const sellerGroups = groupLinesBySeller(resolved)
+  const enteredCoupon = options.couponCode?.trim()
+    ? normalizeCouponCode(options.couponCode)
+    : ''
+
   let grandTotal = new Prisma.Decimal(0)
+  let totalCouponDiscount = 0
   for (const group of sellerGroups.values()) {
     for (const line of group) {
-      grandTotal = grandTotal.add(line.unitPrice.mul(line.quantity))
+      const lineSubtotal = Number(line.unitPrice) * line.quantity
+      const lineDiscount = calcLineCouponDiscount(lineSubtotal, line.coupon, enteredCoupon)
+      totalCouponDiscount += lineDiscount
+      grandTotal = grandTotal.add(new Prisma.Decimal(lineSubtotal - lineDiscount))
     }
+  }
+
+  if (enteredCoupon && totalCouponDiscount <= 0) {
+    throw new Error('INVALID_COUPON')
+  }
+
+  const platformSettings = await getPlatformSettings()
+
+  let grandHoldTotal = new Prisma.Decimal(0)
+  for (const group of sellerGroups.values()) {
+    let subtotal = new Prisma.Decimal(0)
+    let discount = new Prisma.Decimal(0)
+    for (const line of group) {
+      const lineSubtotal = line.unitPrice.mul(line.quantity)
+      subtotal = subtotal.add(lineSubtotal)
+      const lineDiscount = calcLineCouponDiscount(
+        Number(lineSubtotal),
+        line.coupon,
+        enteredCoupon,
+      )
+      discount = discount.add(new Prisma.Decimal(lineDiscount))
+    }
+    const total = subtotal.sub(discount)
+    const fees = computeMarketplaceFees(Number(total), platformSettings)
+    grandHoldTotal = grandHoldTotal.add(fees.buyerHoldAmount)
   }
 
   const wallet = await prisma.wallet.findUnique({ where: { userId: buyerId } })
   if (!wallet) throw new Error('WALLET_NOT_FOUND')
-  if (wallet.balance.lessThan(grandTotal)) throw new Error('INSUFFICIENT_BALANCE')
+  if (wallet.balance.lessThan(grandHoldTotal)) throw new Error('INSUFFICIENT_BALANCE')
 
   const actor: ActivityActor = {
     id: buyerId,
@@ -118,15 +178,25 @@ export async function processMarketplaceCheckout(
     role: buyerRole,
   }
 
-  const createdOrders = await prisma.$transaction(async (tx) => {
+  const createdOrders = await walletTransaction(async (tx) => {
     const orders = []
     let debitReferenceId: string | null = null
 
     for (const [sellerId, groupLines] of sellerGroups) {
       let subtotal = new Prisma.Decimal(0)
+      let discount = new Prisma.Decimal(0)
       for (const line of groupLines) {
-        subtotal = subtotal.add(line.unitPrice.mul(line.quantity))
+        const lineSubtotal = line.unitPrice.mul(line.quantity)
+        subtotal = subtotal.add(lineSubtotal)
+        const lineDiscount = calcLineCouponDiscount(
+          Number(lineSubtotal),
+          line.coupon,
+          enteredCoupon,
+        )
+        discount = discount.add(new Prisma.Decimal(lineDiscount))
       }
+      const total = subtotal.sub(discount)
+      const fees = computeMarketplaceFees(Number(total), platformSettings)
 
       const orderCode = generateMarketplaceOrderCode()
       const order = await tx.order.create({
@@ -135,10 +205,19 @@ export async function processMarketplaceCheckout(
           buyerId,
           sellerId,
           subtotal,
-          discount: 0,
-          fee: 0,
-          total: subtotal,
+          discount,
+          fee: fees.buyerFeeAmount,
+          total,
+          buyerFeeAmount: fees.buyerFeeAmount,
+          sellerFeeAmount: fees.sellerFeeAmount,
+          buyerHoldAmount: fees.buyerHoldAmount,
+          sellerNetAmount: fees.sellerNetAmount,
+          settlementVersion: 2,
           status: 'PAID',
+          ...(address ? { shippingAddress: address } : {}),
+          ...(options.shippingPhone?.trim()
+            ? { shippingPhone: options.shippingPhone.trim() }
+            : {}),
           items: {
             create: groupLines.map((line) => ({
               productId: line.productId,
@@ -165,19 +244,12 @@ export async function processMarketplaceCheckout(
         if (updated.count === 0) throw new Error('OUT_OF_STOCK')
       }
 
-      await debitBuyerForMarketplace(
+      await holdBuyerForMarketplace(
         tx,
         buyerId,
-        subtotal,
+        fees.buyerHoldAmount,
         order.id,
-        `Pembelian marketplace ${orderCode}`,
-      )
-      await creditSellerForMarketplace(
-        tx,
-        sellerId,
-        subtotal,
-        order.id,
-        `Penjualan marketplace ${orderCode}`,
+        orderCode,
       )
 
       orders.push(order)
@@ -188,7 +260,13 @@ export async function processMarketplaceCheckout(
         summary: `Checkout ${orderCode}: ${buyerName ?? 'User'} → ${order.seller.name}`,
         actor,
         target: { type: 'marketplace_order', id: order.id, label: orderCode },
-        metadata: { total: subtotal.toString() },
+        metadata: {
+          total: total.toString(),
+          discount: discount.toString(),
+          buyerHold: fees.buyerHoldAmount.toString(),
+          buyerFee: fees.buyerFeeAmount.toString(),
+          sellerFee: fees.sellerFeeAmount.toString(),
+        },
       })
 
       void logOrderEvent({
@@ -198,13 +276,15 @@ export async function processMarketplaceCheckout(
         actor,
         target: { type: 'marketplace_order', id: order.id, label: orderCode },
       })
+
+      void notifyMarketplaceOrderNew(order.id)
     }
 
     if (debitReferenceId) {
-      await debitBuyerForMarketplace(
+      await holdBuyerForMarketplace(
         tx,
         buyerId,
-        grandTotal,
+        grandHoldTotal,
         debitReferenceId,
         `Checkout marketplace (${orders.length} pesanan)`,
       )

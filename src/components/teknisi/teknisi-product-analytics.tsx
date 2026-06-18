@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { DashboardPanel } from '@/components/dashboard'
+import { categoryLabel } from '@/lib/product-category-config'
 import { cn } from '@/lib/utils'
 import {
   ArrowRight,
@@ -39,14 +40,6 @@ type Summary = {
 
 const formatPrice = (n: number) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n)
-
-const categoryLabel: Record<string, string> = {
-  HANDPHONE: 'Handphone',
-  LAPTOP: 'Laptop',
-  AKSESORIS: 'Aksesoris',
-  SOFTWARE: 'Software',
-  LAINNYA: 'Lainnya',
-}
 
 export function TeknisiProductAnalytics() {
   const [summary, setSummary] = useState<Summary | null>(null)
@@ -173,7 +166,7 @@ function ProductRow({ product, idx }: { product: ProductAnalytic; idx: number })
         <div className="min-w-0">
           <p className="truncate text-[13px] font-bold text-ink">{product.name}</p>
           <div className="mt-0.5 flex items-center gap-2 text-[10px] text-surface-500">
-            <span>{categoryLabel[product.category] ?? product.category}</span>
+            <span>{categoryLabel(product.category)}</span>
             <span className="text-surface-300">·</span>
             <span className="font-semibold tabular-nums text-primary-700">{formatPrice(product.price)}</span>
             <span className="text-surface-300">·</span>

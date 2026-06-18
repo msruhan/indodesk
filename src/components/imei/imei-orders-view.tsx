@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Input } from '@/components/ui/input'
-import { USER_IMEI_ORDERS_PATH } from '@/lib/user-imei-orders-path'
 import { searchInputIconClass } from '@/components/ui/search-input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -129,8 +128,12 @@ function OrderDetailSheet({ order, onClose }: { order: PublicImeiOrder; onClose:
           <div className="rounded-xl bg-surface-50 p-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <p className="text-[10px] text-surface-500">Nomor perangkat</p>
-                <p className="mt-0.5 font-mono text-xs font-semibold text-ink">{order.imei}</p>
+                <p className="text-[10px] text-surface-500">
+                  {order.serialNumber ? 'Serial Number' : 'Nomor perangkat'}
+                </p>
+                <p className="mt-0.5 font-mono text-xs font-semibold text-ink">
+                  {order.serialNumber ?? order.imei}
+                </p>
               </div>
               <div>
                 <p className="text-[10px] text-surface-500">Harga</p>
@@ -198,17 +201,29 @@ function OrderDetailSheet({ order, onClose }: { order: PublicImeiOrder; onClose:
   )
 }
 
-export function ImeiOrdersView() {
+type ImeiOrdersViewProps = {
+  /** e.g. `/user/orders` or `/teknisi/orders` — detail page at `{basePath}/imei` */
+  ordersBasePath?: string
+}
+
+export function ImeiOrdersView({ ordersBasePath = '/user/orders' }: ImeiOrdersViewProps) {
+  const imeiOrdersPath = `${ordersBasePath}/imei`
   const router = useRouter()
   const searchParams = useSearchParams()
   const orderTab: CatalogTab = searchParams.get('tab') === 'server' ? 'server' : 'imei'
+  const requestedOrderCode = searchParams.get('q')?.trim() ?? ''
 
   const [query, setQuery] = useState(() => searchParams.get('q')?.trim() ?? '')
+  const [didAutoOpenFromQuery, setDidAutoOpenFromQuery] = useState(false)
 
   useEffect(() => {
     const q = searchParams.get('q')?.trim()
     if (q) setQuery(q)
   }, [searchParams])
+
+  useEffect(() => {
+    setDidAutoOpenFromQuery(false)
+  }, [orderTab, requestedOrderCode])
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [selectedOrder, setSelectedOrder] = useState<PublicImeiOrder | null>(null)
   const [selectedServerOrder, setSelectedServerOrder] = useState<PublicServerOrder | null>(null)
@@ -222,9 +237,9 @@ export function ImeiOrdersView() {
     setSelectedOrder(null)
     setSelectedServerOrder(null)
     if (tab === 'server') {
-      router.push(`${USER_IMEI_ORDERS_PATH}?tab=server`)
+      router.push(`${imeiOrdersPath}?tab=server`)
     } else {
-      router.push(USER_IMEI_ORDERS_PATH)
+      router.push(imeiOrdersPath)
     }
   }
 
@@ -293,6 +308,28 @@ export function ImeiOrdersView() {
   const filteredImei = useMemo(() => orders, [orders])
   const filteredServer = useMemo(() => serverOrders, [serverOrders])
   const listCount = orderTab === 'server' ? filteredServer.length : filteredImei.length
+
+  useEffect(() => {
+    if (!requestedOrderCode || didAutoOpenFromQuery || loading) return
+    if (orderTab === 'server') {
+      const match = serverOrders.find(
+        (order) => order.orderCode.toLowerCase() === requestedOrderCode.toLowerCase(),
+      )
+      if (match) {
+        setSelectedServerOrder(match)
+        setDidAutoOpenFromQuery(true)
+      }
+      return
+    }
+
+    const match = orders.find(
+      (order) => order.orderCode.toLowerCase() === requestedOrderCode.toLowerCase(),
+    )
+    if (match) {
+      setSelectedOrder(match)
+      setDidAutoOpenFromQuery(true)
+    }
+  }, [didAutoOpenFromQuery, loading, orderTab, orders, requestedOrderCode, serverOrders])
 
   // Stats across both tabs (always reflect overall pipeline)
   const allOrders = useMemo(
@@ -407,7 +444,7 @@ export function ImeiOrdersView() {
       <div>
         <TabPills
           options={[
-            { id: 'imei', label: 'Layanan Perangkat', count: filteredImei.length },
+            { id: 'imei', label: 'Digital Services', count: filteredImei.length },
             { id: 'server', label: 'Server Services', count: filteredServer.length },
           ]}
           value={orderTab}

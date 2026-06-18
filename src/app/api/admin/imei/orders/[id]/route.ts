@@ -107,7 +107,7 @@ export async function PATCH(
               type: 'REFUND',
               amount: order.price,
               balance: newBalance,
-              description: `Refund order IMEI #${order.orderCode}`,
+              description: `Refund order Digital #${order.orderCode}`,
               referenceId: order.id,
             },
           })

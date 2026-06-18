@@ -1,6 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {},
+  serverExternalPackages: ['pdfkit', '@aws-sdk/client-s3', '@aws-sdk/s3-request-presigner'],
+  typescript: {
+    // Local iteration: SKIP_TYPECHECK=1 npm run build  (use npm run typecheck separately)
+    ignoreBuildErrors: process.env.SKIP_TYPECHECK === '1',
+  },
+  experimental: {
+    optimizePackageImports: ['framer-motion', '@phosphor-icons/react'],
+  },
   // Enable gzip/brotli compression for smaller response sizes
   compress: true,
   // Optimize production builds
@@ -26,15 +33,6 @@ const nextConfig = {
       source: '/api/imei/services/:path*',
       headers: [
         { key: 'Cache-Control', value: 'public, max-age=60, stale-while-revalidate=300' },
-      ],
-    },
-    {
-      // Security headers
-      source: '/:path*',
-      headers: [
-        { key: 'X-Content-Type-Options', value: 'nosniff' },
-        { key: 'X-Frame-Options', value: 'DENY' },
-        { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
       ],
     },
   ],

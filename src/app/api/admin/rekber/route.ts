@@ -1,15 +1,9 @@
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
-import { buildRekberStats, serializeRekber, type RekberParty } from '@/lib/rekber-serializer'
+import { buildRekberStats, serializeRekber } from '@/lib/rekber-serializer'
+import { REKBER_INCLUDE } from '@/lib/rekber-includes'
 
 export const dynamic = 'force-dynamic'
-
-const PARTY_SELECT = {
-  id: true,
-  name: true,
-  email: true,
-  image: true,
-} satisfies Record<keyof RekberParty, true>
 
 export async function GET() {
   const { session, error } = await requireApiRole(['ADMIN'])
@@ -17,10 +11,7 @@ export async function GET() {
 
   try {
     const rows = await prisma.rekberTransaction.findMany({
-      include: {
-        buyer: { select: PARTY_SELECT },
-        seller: { select: PARTY_SELECT },
-      },
+      include: REKBER_INCLUDE,
       orderBy: { createdAt: 'desc' },
     })
 

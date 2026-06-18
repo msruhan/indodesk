@@ -1,6 +1,11 @@
 import type { TeknisiPortfolioCase, TeknisiProfile, TeknisiStore, User } from '@prisma/client'
 import { resolveDisplayImageUrl } from '@/lib/image-url-utils'
-import { buildTeknisiAllServices, type TeknisiConsultationService } from '@/lib/konsultasi-services'
+import {
+  buildTeknisiAllServices,
+  filterServicesByFeatureFlags,
+  type TeknisiConsultationService,
+} from '@/lib/konsultasi-services'
+import type { PublicFeatureFlags } from '@/lib/platform-settings-shared'
 import { profileContentFromDb, type TeknisiProfileContent } from '@/lib/teknisi-profile-content'
 import { resolveTeknisiBadgeFromProfile } from '@/lib/teknisi-badge'
 import type { PublicTeknisiDto } from '@/lib/teknisi-public'
@@ -46,6 +51,7 @@ type ProfileRow = TeknisiProfile & {
 export function serializePublicTeknisiDetail(
   profile: ProfileRow,
   platformStats: TeknisiPlatformStatsDto,
+  featureFlags?: Pick<PublicFeatureFlags, 'remoteServiceEnabled' | 'inspectionServiceEnabled'>,
 ): PublicTeknisiDetailDto {
   const base = {
     id: profile.userId,
@@ -94,7 +100,9 @@ export function serializePublicTeknisiDetail(
     completionRate: profile.completionRate,
     isVerified: profile.isVerified,
     ...profileContentFromDb(profile),
-    services: buildTeknisiAllServices(profile),
+    services: featureFlags
+      ? filterServicesByFeatureFlags(buildTeknisiAllServices(profile), featureFlags)
+      : buildTeknisiAllServices(profile),
     linkedStore,
     portfolio: (profile.user.teknisiPortfolioCases ?? [])
       .sort((a, b) => a.sortOrder - b.sortOrder)

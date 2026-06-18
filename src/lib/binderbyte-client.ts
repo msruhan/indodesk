@@ -55,6 +55,7 @@ export class BinderbyteError extends Error {
 }
 
 export function isBinderbyteConfigured(): boolean {
+  if (isStressTestMode()) return true
   return Boolean(process.env.BINDERBYTE_API_KEY?.trim())
 }
 
@@ -98,8 +99,7 @@ export async function trackShipment(
   const params = new URLSearchParams({
     api_key: apiKey,
     courier: toBinderbyteCourier(courier),
-    /** BinderByte API memakai `number`, bukan `awb` */
-    number: normalizedAwb,
+    awb: normalizedAwb,
   })
 
   const res = await fetch(`${TRACK_URL}?${params.toString()}`, {

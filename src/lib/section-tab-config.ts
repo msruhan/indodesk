@@ -19,14 +19,14 @@ import {
 
 const IMEI_TAB: SectionTab = {
   href: '/imei',
-  label: 'Layanan',
+  label: 'Digital',
   icon: Smartphone,
   matchPrefixes: ['/imei'],
 }
 
 const REMOTE_TAB: SectionTab = {
   href: '/remote',
-  label: 'Remote',
+  label: 'IndoDesk',
   icon: Laptop,
   matchPrefixes: ['/remote'],
 }

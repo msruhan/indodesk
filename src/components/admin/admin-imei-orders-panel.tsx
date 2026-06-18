@@ -107,7 +107,7 @@ function OrderDetailModal({ order, onClose, onUpdate }: { order: ImeiOrderItem; 
 
           <div className="grid grid-cols-2 gap-2">
             <div className="rounded-xl bg-surface-50 p-3">
-              <p className="text-[10px] text-surface-500">IMEI</p>
+              <p className="text-[10px] text-surface-500">Digital</p>
               <p className="mt-0.5 font-mono text-xs font-semibold text-ink">{order.imei}</p>
             </div>
             <div className="rounded-xl bg-surface-50 p-3">
@@ -251,7 +251,7 @@ export function AdminImeiOrdersPanel() {
         </select>
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-surface-400" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari order (IMEI, nama, ID)..." className="h-9 pl-9 text-xs" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari order (digital, nama, ID)..." className="h-9 pl-9 text-xs" />
         </div>
       </div>
 

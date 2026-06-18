@@ -8,6 +8,10 @@ export interface WalletData {
   id: string
   userId: string
   balance: string
+  heldBalance?: string
+  totalBalance?: string
+  pendingHolds?: Array<{ orderId: string; orderCode: string; amount: string }>
+  pendingEarnings?: string
   createdAt: string
   updatedAt: string
 }

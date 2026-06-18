@@ -102,6 +102,13 @@ function shopStatusMessage(
         tone: 'primary' as NotificationTone,
         icon: 'package' as NotificationIconKey,
       }
+    case 'DISPUTED':
+      return {
+        title: 'Komplain pesanan marketplace',
+        body: `${orderCode} — ${productName} sedang dalam proses komplain.`,
+        tone: 'warning' as NotificationTone,
+        icon: 'bell' as NotificationIconKey,
+      }
     case 'COMPLETED':
       return {
         title: 'Transaksi marketplace sukses',
@@ -303,7 +310,7 @@ export async function fetchOrderNotificationsForUser(userId: string): Promise<Pl
     prisma.order.findMany({
       where: {
         buyerId: userId,
-        status: { in: ['PAID', 'PROCESSING', 'SHIPPED', 'COMPLETED', 'CANCELLED', 'REFUNDED'] },
+        status: { in: ['PAID', 'PROCESSING', 'SHIPPED', 'DISPUTED', 'COMPLETED', 'CANCELLED', 'REFUNDED'] },
       },
       orderBy: { updatedAt: 'desc' },
       take: ORDER_LIMIT,

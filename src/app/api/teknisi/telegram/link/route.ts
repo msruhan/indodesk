@@ -1,5 +1,6 @@
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
-import { generateTelegramLinkToken, isTelegramEnabled } from '@/lib/telegram'
+import { isTelegramEnabled } from '@/lib/telegram'
+import { issueTelegramLinkToken } from '@/lib/telegram/link-token'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,7 +17,7 @@ export async function POST() {
   }
 
   try {
-    const token = generateTelegramLinkToken(session.user.id)
+    const token = await issueTelegramLinkToken(session.user.id)
     const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'YourBot'
 
     return apiSuccess({

@@ -14,7 +14,7 @@ export type UserDashboardDto = {
   spendingByMonth: Array<{ month: string; amount: number }>
   recentActivity: Array<{
     id: string
-    type: 'belanja' | 'konsultasi' | 'rekber' | 'remote' | 'inspeksi'
+    type: 'belanja' | 'konsultasi' | 'rekber' | 'inspeksi'
     title: string
     subtitle: string
     amount: number
@@ -26,7 +26,7 @@ export type UserDashboardDto = {
 
 function mapKonsultasiStatus(s: string): UserDashboardDto['recentActivity'][0]['status'] {
   if (s === 'COMPLETED') return 'completed'
-  if (s === 'PENDING') return 'pending'
+  if (s === 'PENDING' || s === 'AWAITING_PAYMENT') return 'pending'
   if (s === 'ACTIVE') return 'in-progress'
   return 'failed'
 }
@@ -41,7 +41,6 @@ export async function getUserDashboardData(userId: string): Promise<UserDashboar
     marketplaceOrders,
     konsultasi,
     rekber,
-    remote,
     inspections,
     ledgerPayments,
   ] = await Promise.all([
@@ -63,12 +62,6 @@ export async function getUserDashboardData(userId: string): Promise<UserDashboar
       orderBy: { createdAt: 'desc' },
       take: 10,
     }),
-    prisma.remoteSession.findMany({
-      where: { userId },
-      include: { teknisi: { select: { name: true } } },
-      orderBy: { createdAt: 'desc' },
-      take: 10,
-    }),
     prisma.inspectionOrder.findMany({
       where: { userId },
       include: { teknisi: { select: { name: true } } },
@@ -87,7 +80,9 @@ export async function getUserDashboardData(userId: string): Promise<UserDashboar
   const totalSpent = ledgerPayments.reduce((s, l) => s + Math.abs(Number(l.amount)), 0)
   const totalOrders = marketplaceOrders.length
   const activeKonsultasi = konsultasi.filter((k) => k.status === 'PENDING' || k.status === 'ACTIVE').length
-  const activeRekber = rekber.filter((r) => r.status === 'PENDING' || r.status === 'HELD').length
+  const activeRekber = rekber.filter((r) =>
+    ['PENDING', 'HELD', 'PROCESSING', 'SHIPPED', 'DISPUTED'].includes(r.status),
+  ).length
   const activeInspeksi = inspections.filter((i) =>
     ['PAID', 'ACCEPTED', 'IN_PROGRESS', 'REPORT_SUBMITTED', 'DISPUTED'].includes(i.status),
   ).length
@@ -153,24 +148,6 @@ export async function getUserDashboardData(userId: string): Promise<UserDashboar
               : ('in-progress' as const),
       date: formatNotificationTimeLabel(r.createdAt),
       href: getUserActivityHref('rekber'),
-      sortAt: r.createdAt,
-    })),
-    ...remote.map((r) => ({
-      id: r.id,
-      type: 'remote' as const,
-      title: r.description ?? 'Remote session',
-      subtitle: r.teknisi.name ?? 'Teknisi',
-      amount: 0,
-      status:
-        r.status === 'COMPLETED'
-          ? ('completed' as const)
-          : r.status === 'WAITING'
-            ? ('pending' as const)
-            : r.status === 'REJECTED'
-              ? ('failed' as const)
-              : ('in-progress' as const),
-      date: formatNotificationTimeLabel(r.createdAt),
-      href: getUserActivityHref('remote'),
       sortAt: r.createdAt,
     })),
   ]

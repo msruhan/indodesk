@@ -1,6 +1,7 @@
 import { UserRole, type User } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { extractRequestContext, logAdminEvent } from '@/lib/activity-log'
+import { bumpSessionVersion } from '@/lib/session-version'
 
 const RESETTABLE_ROLES = new Set<UserRole>([UserRole.USER, UserRole.TEKNISI])
 
@@ -33,6 +34,7 @@ export async function adminResetUserTwoFactor(
     where: { id: target.id },
     data: { twoFactorEnabled: false, twoFactorSecret: null },
   })
+  await bumpSessionVersion(target.id)
 
   const { ip, userAgent } = extractRequestContext(req)
   void logAdminEvent({

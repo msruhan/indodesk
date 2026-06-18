@@ -1,6 +1,7 @@
 'use client'
 
 import { RekberTransactionList } from '@/components/rekber/rekber-transaction-list'
+import { AdminRekberPackagingPanel } from '@/components/admin/admin-rekber-packaging-panel'
 import { useRekberList } from '@/hooks/use-rekber-list'
 
 export default function AdminRekberPage() {
@@ -15,6 +16,8 @@ export default function AdminRekberPage() {
         </h1>
         <p className="mt-1 text-sm text-surface-500">Kelola semua transaksi rekening bersama</p>
       </div>
+
+      <AdminRekberPackagingPanel />
 
       {error && (
         <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">

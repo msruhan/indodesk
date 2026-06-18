@@ -1,6 +1,12 @@
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { saveStoreCover, deleteStoreCover } from '@/lib/store-image'
+import {
+  deleteAllStoreGalleryImages,
+  deleteRemovedStoreGalleryImages,
+  galleryChanged,
+  resolveStoreGalleryFromForm,
+} from '@/lib/store-gallery-api'
 import { serializeTeknisiStore } from '@/lib/teknisi-store-serializer'
 import {
   parseStoreFormPayload,
@@ -40,6 +46,7 @@ function hasContentFieldUpdate(data: Record<string, unknown>) {
     'journey',
     'journeyIntro',
     'coverImage',
+    'gallery',
   ].some((k) => data[k] !== undefined)
 }
 
@@ -71,6 +78,7 @@ export async function POST(req: Request) {
     const contentType = req.headers.get('content-type') ?? ''
     let parsedPayload: ReturnType<typeof parseStoreFormPayload>
     let coverImage: string | null = null
+    let gallery: string[] = []
 
     if (contentType.includes('multipart/form-data')) {
       const form = await req.formData()
@@ -83,6 +91,7 @@ export async function POST(req: Request) {
       if (file instanceof File && file.size > 0) {
         coverImage = await saveStoreCover(file, session.user.id)
       }
+      gallery = await resolveStoreGalleryFromForm(form, session.user.id)
     } else {
       const body = await req.json()
       const parsed = storeFieldsSchema.safeParse(body)
@@ -97,6 +106,7 @@ export async function POST(req: Request) {
         userId: session.user.id,
         ...parsedPayload,
         coverImage,
+        gallery,
         listingStatus: 'PENDING',
         isPublished: false,
       },
@@ -150,13 +160,19 @@ export async function PATCH(req: Request) {
         }
         const payload = parseStoreFormPayload(parsed.data)
         Object.assign(data, payload)
-      }
 
-      const file = form.get('cover')
-      if (file instanceof File && file.size > 0) {
-        const coverImage = await saveStoreCover(file, session.user.id)
-        await deleteStoreCover(existing.coverImage)
-        data.coverImage = coverImage
+        const file = form.get('cover')
+        if (file instanceof File && file.size > 0) {
+          const coverImage = await saveStoreCover(file, session.user.id)
+          await deleteStoreCover(existing.coverImage)
+          data.coverImage = coverImage
+        }
+
+        const gallery = await resolveStoreGalleryFromForm(form, session.user.id, existing.gallery)
+        if (galleryChanged(existing.gallery, gallery)) {
+          await deleteRemovedStoreGalleryImages(existing.gallery, gallery)
+          data.gallery = gallery
+        }
       }
     } else {
       const body = await req.json()
@@ -215,6 +231,7 @@ export async function DELETE() {
     if (!existing) return apiError('Toko tidak ditemukan', 404)
 
     await deleteStoreCover(existing.coverImage)
+    await deleteAllStoreGalleryImages(existing.gallery)
     await prisma.teknisiStore.delete({ where: { userId: session.user.id } })
 
     return apiSuccess({ deleted: true })

@@ -32,6 +32,8 @@ export type UnifiedTransactionDto = {
   title: string
   /** Nominal (IDR) */
   amount: string
+  /** Pendapatan platform (fee admin) — null jika tidak berlaku */
+  platformRevenue: string | null
   /** Status asli dari model */
   status: string
   /** Status yang dinormalisasi untuk badge */
@@ -63,6 +65,32 @@ function normalizeStatus(type: TransactionType, status: string): UnifiedTransact
   if (['REJECTED', 'FAILED', 'DISPUTED'].includes(s)) return 'failed'
   if (['IN_PROCESS', 'PROCESSING', 'SHIPPED', 'FULFILLING', 'HELD', 'ACCEPTED'].includes(s)) return 'processing'
   return 'pending'
+}
+
+function marketplacePlatformRevenue(
+  status: string,
+  buyerFee: { toString(): string },
+  sellerFee: { toString(): string },
+): string | null {
+  if (['CANCELLED', 'REFUNDED'].includes(status.toUpperCase())) return '0'
+  const total = Number(buyerFee) + Number(sellerFee)
+  if (status.toUpperCase() === 'COMPLETED') return String(total)
+  return total > 0 ? String(total) : null
+}
+
+function rekberPlatformRevenue(status: string, fee: { toString(): string }): string | null {
+  if (['REFUNDED'].includes(status.toUpperCase())) return '0'
+  const amount = Number(fee)
+  if (amount <= 0) return null
+  if (['RELEASED', 'HELD'].includes(status.toUpperCase())) return String(amount)
+  return null
+}
+
+function topupPlatformRevenue(status: string, fee: { toString(): string }): string | null {
+  const amount = Number(fee)
+  if (amount <= 0) return null
+  if (status.toUpperCase() === 'COMPLETED') return String(amount)
+  return null
 }
 
 function buildDateFilter(from: string | null, to: string | null): Prisma.DateTimeFilter | undefined {
@@ -132,11 +160,16 @@ export async function GET(req: Request) {
           seller: o.seller,
           title: productNames || 'Marketplace order',
           amount: o.total.toString(),
+          platformRevenue: marketplacePlatformRevenue(o.status, o.buyerFeeAmount, o.sellerFeeAmount),
           status: o.status,
           normalizedStatus: normalizeStatus('marketplace', o.status),
           createdAt: o.createdAt.toISOString(),
           updatedAt: o.updatedAt.toISOString(),
-          meta: { note: o.note },
+          meta: {
+            note: o.note,
+            buyerFee: o.buyerFeeAmount.toString(),
+            sellerFee: o.sellerFeeAmount.toString(),
+          },
         })
       }
     }
@@ -173,6 +206,7 @@ export async function GET(req: Request) {
           seller: null,
           title: o.service.title,
           amount: o.price.toString(),
+          platformRevenue: null,
           status: o.status,
           normalizedStatus: normalizeStatus('imei', o.status),
           createdAt: o.createdAt.toISOString(),
@@ -213,6 +247,7 @@ export async function GET(req: Request) {
           seller: null,
           title: o.service.title,
           amount: o.price.toString(),
+          platformRevenue: null,
           status: o.status,
           normalizedStatus: normalizeStatus('server', o.status),
           createdAt: o.createdAt.toISOString(),
@@ -254,11 +289,12 @@ export async function GET(req: Request) {
           seller: null,
           title: `Top Up ${o.productSlug} (${o.denominationSku})`,
           amount: o.total.toString(),
+          platformRevenue: topupPlatformRevenue(o.status, o.fee),
           status: o.status,
           normalizedStatus: normalizeStatus('topup', o.status),
           createdAt: o.createdAt.toISOString(),
           updatedAt: o.updatedAt.toISOString(),
-          meta: { accountId: o.accountId, paymentMethod: o.paymentMethod },
+          meta: { accountId: o.accountId, paymentMethod: o.paymentMethod, fee: o.fee.toString() },
         })
       }
     }
@@ -294,6 +330,7 @@ export async function GET(req: Request) {
           seller: o.seller,
           title: o.description ?? 'Rekber transaction',
           amount: o.amount.toString(),
+          platformRevenue: rekberPlatformRevenue(o.status, o.fee),
           status: o.status,
           normalizedStatus: normalizeStatus('rekber', o.status),
           createdAt: o.createdAt.toISOString(),
