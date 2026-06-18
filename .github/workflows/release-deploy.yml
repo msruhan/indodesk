@@ -113,20 +113,36 @@ jobs:
               echo "${{ secrets.GHCR_READ_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
             fi
 
-            cd "$INSTALL_DIR"
+            run_root() {
+              if [[ "$(id -u)" -eq 0 ]]; then
+                "$@"
+              else
+                sudo "$@"
+              fi
+            }
+
+            run_root mkdir -p "$INSTALL_DIR/deploy"
             DEPLOY_SCRIPT="$INSTALL_DIR/deploy/vps-deploy.sh"
-            if [[ ! -f "$DEPLOY_SCRIPT" && -f "$INSTALL_DIR/vps-deploy.sh" ]]; then
-              mv "$INSTALL_DIR/vps-deploy.sh" "$DEPLOY_SCRIPT"
+            if ! run_root test -f "$DEPLOY_SCRIPT" && run_root test -f "$INSTALL_DIR/vps-deploy.sh"; then
+              run_root mv "$INSTALL_DIR/vps-deploy.sh" "$DEPLOY_SCRIPT"
             fi
-            if [[ ! -f "$DEPLOY_SCRIPT" ]]; then
+            if ! run_root test -f "$DEPLOY_SCRIPT"; then
               echo "ERROR: deploy script not found under $INSTALL_DIR"
-              ls -la "$INSTALL_DIR" "$INSTALL_DIR/deploy" 2>/dev/null || true
+              run_root ls -la "$INSTALL_DIR" "$INSTALL_DIR/deploy" 2>/dev/null || true
               exit 1
             fi
-            chmod +x "$DEPLOY_SCRIPT"
-            export BANTOO_IMAGE="$IMAGE"
+            run_root chmod +x "$DEPLOY_SCRIPT"
+
+            HEALTH_ARGS=()
             if [[ -n "${{ secrets.PRODUCTION_HEALTH_URL }}" ]]; then
-              bash "$DEPLOY_SCRIPT" --image "$IMAGE" --health-url "${{ secrets.PRODUCTION_HEALTH_URL }}"
+              HEALTH_ARGS=(--health-url "${{ secrets.PRODUCTION_HEALTH_URL }}")
+            fi
+
+            if [[ "$(id -u)" -eq 0 ]]; then
+              cd "$INSTALL_DIR"
+              export BANTOO_IMAGE="$IMAGE"
+              bash "$DEPLOY_SCRIPT" --image "$IMAGE" "${HEALTH_ARGS[@]}"
             else
-              bash "$DEPLOY_SCRIPT" --image "$IMAGE"
+              sudo env BANTOO_IMAGE="$IMAGE" INSTALL_DIR="$INSTALL_DIR" \
+                bash -lc "cd \"$INSTALL_DIR\" && bash deploy/vps-deploy.sh --image \"$IMAGE\" ${HEALTH_ARGS[*]:-}"
             fi
