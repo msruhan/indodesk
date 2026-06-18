@@ -11,7 +11,7 @@ set -euo pipefail
 
 INSTALL_DIR="/opt/indoteknizi"
 NEXUS_DIR="/opt/nexus-server"
-DOMAIN="indoteknizi.com"
+DOMAIN="bantoo.in"
 LOAD_IMAGE=""
 DO_START=0
 IMAGE_NAME="indoteknizi:local"

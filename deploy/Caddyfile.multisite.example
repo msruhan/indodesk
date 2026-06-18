@@ -9,13 +9,11 @@ nexus.example.com {
 	reverse_proxy app:3000
 }
 
-# --- IndoTeknizi (marketplace) ---
-# Nama host = service name di compose project "indoteknizi" pada network proxy.
-indoteknizi.com {
+# --- Bantoo (marketplace) ---
+bantoo.in {
 	reverse_proxy indoteknizi-app-1:3000
 }
 
-# Opsional: www redirect
-www.indoteknizi.com {
-	redir https://indoteknizi.com{uri} permanent
+www.bantoo.in {
+	redir https://bantoo.in{uri} permanent
 }
