@@ -121,8 +121,13 @@ for i in $(seq 1 30); do
 done
 
 log "Running prisma migrate deploy ..."
+PG_URL="postgresql://indoteknizi:${POSTGRES_PASSWORD}@postgres:5432/indoteknizi?schema=public"
+MIGRATE_ARGS=(run --rm -e "DATABASE_URL=${PG_URL}" -e "DIRECT_URL=${PG_URL}")
+if [[ -f "$INSTALL_DIR/prisma.config.ts" ]]; then
+  MIGRATE_ARGS+=(-v "$INSTALL_DIR/prisma.config.ts:/app/prisma.config.ts:ro")
+fi
 "${COMPOSE[@]}" -f docker-compose.production.yml --env-file .env.production \
-  run --rm --no-deps app npm run db:setup:production
+  "${MIGRATE_ARGS[@]}" app npm run db:setup:production
 
 APP_CONTAINER="$(docker ps --format '{{.Names}}' | grep '^indoteknizi-app' | head -1)"
 if [[ -z "$APP_CONTAINER" ]]; then
