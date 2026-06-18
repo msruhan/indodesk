@@ -108,7 +108,7 @@ export function Footer() {
 
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-surface-200/70 pt-7 sm:flex-row">
           <p className="text-xs text-surface-500">
-            © {new Date().getFullYear()} IndoTeknizi. Crafted with care.
+            © {new Date().getFullYear()} Bandoo. Crafted with care.
           </p>
           <div className="flex items-center gap-5 text-xs text-surface-500">
             <Link href="#" className="transition-colors hover:text-ink">

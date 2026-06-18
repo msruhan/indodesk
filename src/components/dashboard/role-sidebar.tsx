@@ -151,12 +151,12 @@ export function RoleSidebar({
             />
 
             {/* Brand */}
-            <div className="flex h-16 items-center border-b border-surface-200/60 px-5">
+            <div className="flex h-14 items-center border-b border-surface-200/60 px-4">
               <Link
                 href={brand.href ?? '/'}
                 className="group/logo flex items-center transition-transform duration-450 group-hover/logo:scale-[1.02]"
               >
-                <BrandLogo variant="wordmark" scope={scope} wordmarkClassName="h-9" />
+                <BrandLogo variant="wordmark" size="compact" scope={scope} />
               </Link>
             </div>
 

@@ -3,12 +3,10 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import { searchInputIconClass } from '@/components/ui/search-input'
-import { FilterDropdown, type FilterDropdownOption } from '@/components/ui/filter-dropdown'
+import { SearchInput } from '@/components/ui/search-input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import {
   MessageCircle,
@@ -16,24 +14,17 @@ import {
   CheckCircle,
   Radio,
   RefreshCw,
-  Search,
-  Star,
-  XCircle,
   Laptop,
   Copy,
   Lock,
   Shield,
 } from '@/lib/icons'
-import { DashboardMonthFilter } from '@/components/dashboard'
+import { DashboardMonthFilter, FilterSelect, MetricCard } from '@/components/dashboard'
 import { KonsultasiDetailModal } from '@/components/teknisi/konsultasi-detail-modal'
 import { useDashboardPeriod } from '@/contexts/dashboard-period-context'
 import { isDateInPeriod } from '@/lib/dashboard-period'
 import { cn } from '@/lib/utils'
-import type {
-  TeknisiKonsultasiDto,
-  TeknisiKonsultasiStats,
-  TeknisiKonsultasiStatus,
-} from '@/lib/teknisi-layanan-serializer'
+import type { TeknisiKonsultasiDto } from '@/lib/teknisi-layanan-serializer'
 
 const formatPrice = (price: number) =>
   new Intl.NumberFormat('id-ID', {
@@ -56,9 +47,17 @@ function statusBadgeVariant(status: TeknisiKonsultasiDto['status']) {
   }
 }
 
-type StatusFilter = TeknisiKonsultasiStatus | 'all'
+type StatusTab = 'all' | 'pending' | 'active' | 'completed' | 'cancelled'
 type RatingFilter = 'all' | 'rated' | 'unrated'
 type RemoteFilter = 'all' | 'remote' | 'no-remote'
+
+const STATUS_TABS: Array<{ id: StatusTab; label: string }> = [
+  { id: 'all', label: 'Semua' },
+  { id: 'pending', label: 'Menunggu' },
+  { id: 'active', label: 'Berjalan' },
+  { id: 'completed', label: 'Selesai' },
+  { id: 'cancelled', label: 'Dibatalkan' },
+]
 
 async function copyText(label: string, value: string) {
   try {
@@ -69,34 +68,16 @@ async function copyText(label: string, value: string) {
   }
 }
 
-const statusConfig: Record<
-  TeknisiKonsultasiStatus,
-  { label: string; icon: typeof Clock }
-> = {
-  awaiting_payment: { label: 'Menunggu bayar', icon: Clock },
-  pending: { label: 'Menunggu', icon: Clock },
-  active: { label: 'Berjalan', icon: Radio },
-  completed: { label: 'Selesai', icon: CheckCircle },
-  cancelled: { label: 'Dibatalkan', icon: XCircle },
-}
-
 export default function TeknisiKonsultasiPage() {
-  const { period } = useDashboardPeriod()
+  const { period, label: periodLabel } = useDashboardPeriod()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [items, setItems] = useState<TeknisiKonsultasiDto[]>([])
-  const [stats, setStats] = useState<TeknisiKonsultasiStats>({
-    total: 0,
-    awaitingPayment: 0,
-    pending: 0,
-    active: 0,
-    completed: 0,
-  })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actingId, setActingId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [statusTab, setStatusTab] = useState<StatusTab>('all')
   const [ratingFilter, setRatingFilter] = useState<RatingFilter>('all')
   const [remoteFilter, setRemoteFilter] = useState<RemoteFilter>('all')
   const [detailKonsultasi, setDetailKonsultasi] = useState<TeknisiKonsultasiDto | null>(null)
@@ -112,7 +93,6 @@ export default function TeknisiKonsultasiPage() {
         return
       }
       setItems(json.data.items)
-      setStats(json.data.stats)
     } catch {
       setError('Gagal memuat konsultasi')
     } finally {
@@ -155,89 +135,51 @@ export default function TeknisiKonsultasiPage() {
     }
   }
 
-  const statusFilterOptions = useMemo((): FilterDropdownOption<StatusFilter>[] => {
-    const countFor = (status?: TeknisiKonsultasiStatus) =>
-      status ? items.filter((i) => i.status === status).length : items.length
+  const periodItems = useMemo(
+    () => items.filter((i) => isDateInPeriod(i.createdAt, period)),
+    [items, period],
+  )
 
-    return [
-      { id: 'all', label: 'Semua status', tone: 'neutral', icon: MessageCircle },
-      {
-        id: 'pending',
-        label: statusConfig.pending.label,
-        tone: 'warning',
-        icon: statusConfig.pending.icon,
-        count: countFor('pending'),
-      },
-      {
-        id: 'awaiting_payment',
-        label: statusConfig.awaiting_payment.label,
-        tone: 'warning',
-        icon: statusConfig.awaiting_payment.icon,
-        count: countFor('awaiting_payment'),
-      },
-      {
-        id: 'active',
-        label: statusConfig.active.label,
-        tone: 'info',
-        icon: statusConfig.active.icon,
-        count: countFor('active'),
-      },
-      {
-        id: 'completed',
-        label: statusConfig.completed.label,
-        tone: 'success',
-        icon: statusConfig.completed.icon,
-        count: countFor('completed'),
-      },
-      {
-        id: 'cancelled',
-        label: statusConfig.cancelled.label,
-        tone: 'danger',
-        icon: statusConfig.cancelled.icon,
-        count: countFor('cancelled'),
-      },
-    ]
-  }, [items])
+  const displayStats = useMemo(
+    () => ({
+      total: periodItems.length,
+      pending: periodItems.filter(
+        (i) => i.status === 'pending' || i.status === 'awaiting_payment',
+      ).length,
+      active: periodItems.filter((i) => i.status === 'active').length,
+      completed: periodItems.filter((i) => i.status === 'completed').length,
+    }),
+    [periodItems],
+  )
 
-  const remoteFilterOptions = useMemo((): FilterDropdownOption<RemoteFilter>[] => {
-    const remoteCount = items.filter((i) => i.requiresRemote).length
-    const noRemoteCount = items.filter((i) => !i.requiresRemote).length
+  const remoteFilterOptions = useMemo(
+    () => [
+      { id: 'all' as const, label: 'Semua tipe' },
+      { id: 'remote' as const, label: 'Termasuk remote' },
+      { id: 'no-remote' as const, label: 'Tanpa remote' },
+    ],
+    [],
+  )
 
-    return [
-      { id: 'all', label: 'Semua tipe', tone: 'neutral', icon: MessageCircle },
-      {
-        id: 'remote',
-        label: 'Termasuk remote',
-        tone: 'info',
-        icon: Laptop,
-        count: remoteCount,
-      },
-      {
-        id: 'no-remote',
-        label: 'Tanpa remote',
-        tone: 'neutral',
-        icon: MessageCircle,
-        count: noRemoteCount,
-      },
-    ]
-  }, [items])
-
-  const ratingFilterOptions = useMemo((): FilterDropdownOption<RatingFilter>[] => {
-    const rated = items.filter((i) => i.rating != null).length
-    const unrated = items.filter((i) => i.status === 'completed' && i.rating == null).length
-
-    return [
-      { id: 'all', label: 'Semua rating', tone: 'neutral', icon: Star },
-      { id: 'rated', label: 'Sudah dinilai', tone: 'success', icon: Star, count: rated },
-      { id: 'unrated', label: 'Belum dinilai', tone: 'warning', icon: Star, count: unrated },
-    ]
-  }, [items])
+  const ratingFilterOptions = useMemo(
+    () => [
+      { id: 'all' as const, label: 'Semua rating' },
+      { id: 'rated' as const, label: 'Sudah dinilai' },
+      { id: 'unrated' as const, label: 'Belum dinilai' },
+    ],
+    [],
+  )
 
   const filteredItems = useMemo(() => {
     const q = query.trim().toLowerCase()
     return items.filter((item) => {
       if (!isDateInPeriod(item.createdAt, period)) return false
-      if (statusFilter !== 'all' && item.status !== statusFilter) return false
+      if (statusTab === 'pending' && !['pending', 'awaiting_payment'].includes(item.status)) {
+        return false
+      }
+      if (statusTab === 'active' && item.status !== 'active') return false
+      if (statusTab === 'completed' && item.status !== 'completed') return false
+      if (statusTab === 'cancelled' && item.status !== 'cancelled') return false
       if (remoteFilter === 'remote' && !item.requiresRemote) return false
       if (remoteFilter === 'no-remote' && item.requiresRemote) return false
       if (ratingFilter === 'rated' && item.rating == null) return false
@@ -258,7 +200,7 @@ export default function TeknisiKonsultasiPage() {
         .toLowerCase()
       return haystack.includes(q)
     })
-  }, [items, period, query, statusFilter, remoteFilter, ratingFilter])
+  }, [items, period, query, statusTab, remoteFilter, ratingFilter])
 
   const pendingRemoteCount = useMemo(
     () => items.filter((i) => i.requiresRemote && i.status === 'pending').length,
@@ -267,25 +209,31 @@ export default function TeknisiKonsultasiPage() {
 
   const hasActiveFilters =
     query.trim() !== '' ||
-    statusFilter !== 'all' ||
+    statusTab !== 'all' ||
     remoteFilter !== 'all' ||
     ratingFilter !== 'all'
 
   const resetFilters = () => {
     setQuery('')
-    setStatusFilter('all')
+    setStatusTab('all')
     setRemoteFilter('all')
     setRatingFilter('all')
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tightest text-ink lg:text-3xl">Konsultasi</h1>
-          <p className="mt-1 text-sm text-surface-500">
+          <h1 className="text-xl font-semibold tracking-tightest text-ink sm:text-2xl">Konsultasi</h1>
+          <p className="mt-0.5 text-[13px] text-surface-500">
             Kelola konsultasi dari user, termasuk sesi remote IndoDesk
           </p>
+          {pendingRemoteCount > 0 && (
+            <span className="mt-2 inline-flex items-center gap-1 rounded-full border border-amber-200/80 bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-800">
+              <Laptop className="h-3.5 w-3.5" />
+              {pendingRemoteCount} remote menunggu
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <DashboardMonthFilter />
@@ -297,139 +245,129 @@ export default function TeknisiKonsultasiPage() {
       </div>
 
       {error && (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-700">
           {error}
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Konsultasi</CardTitle>
-            <MessageCircle className="h-4 w-4 text-primary-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-            <p className="text-xs text-surface-500">Semua waktu</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.pending}</div>
-            <p className="text-xs text-surface-500">
-              Menunggu
-              {pendingRemoteCount > 0 ? ` · ${pendingRemoteCount} remote` : ''}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Berjalan</CardTitle>
-            <Radio className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.active}</div>
-            <p className="text-xs text-surface-500">Sedang berjalan</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Selesai</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.completed}</div>
-            <p className="text-xs text-surface-500">Selesai</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+        <MetricCard
+          title="Total"
+          value={displayStats.total.toLocaleString('id-ID')}
+          icon={MessageCircle}
+          footnote={periodLabel}
+          tone="primary"
+          compact
+        />
+        <MetricCard
+          title="Menunggu"
+          value={displayStats.pending.toLocaleString('id-ID')}
+          icon={Clock}
+          footnote="Perlu dimulai"
+          tone={displayStats.pending > 0 ? 'warning' : 'neutral'}
+          compact
+        />
+        <MetricCard
+          title="Berjalan"
+          value={displayStats.active.toLocaleString('id-ID')}
+          icon={Radio}
+          footnote="Sedang berjalan"
+          tone="primary"
+          compact
+        />
+        <MetricCard
+          title="Selesai"
+          value={displayStats.completed.toLocaleString('id-ID')}
+          icon={CheckCircle}
+          footnote="Konsultasi tuntas"
+          tone="primary"
+          compact
+        />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Daftar Konsultasi</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {items.length > 0 && (
-            <>
-              <div className="mb-4 flex flex-col gap-2.5 lg:flex-row lg:items-center">
-                <div className="relative min-w-0 flex-1">
-                  <Search className={cn(searchInputIconClass, 'left-3.5')} strokeWidth={2} aria-hidden />
-                  <Input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Cari order, user, layanan..."
-                    className="h-10 rounded-full bg-white pl-10 text-[12.5px]"
-                    disabled={loading}
-                  />
-                </div>
-                <FilterDropdown
-                  options={statusFilterOptions}
-                  value={statusFilter}
-                  onChange={setStatusFilter}
-                  ariaLabel="Filter status konsultasi"
-                  label="Status"
-                  triggerIcon={Clock}
-                  placeholder="Semua status"
-                  className="w-full sm:w-[11.5rem]"
-                  align="right"
-                  disabled={loading}
-                />
-                <FilterDropdown
-                  options={remoteFilterOptions}
-                  value={remoteFilter}
-                  onChange={setRemoteFilter}
-                  ariaLabel="Filter tipe konsultasi"
-                  label="Tipe"
-                  triggerIcon={Laptop}
-                  placeholder="Semua tipe"
-                  className="w-full sm:w-[11.5rem]"
-                  align="right"
-                  disabled={loading}
-                />
-                <FilterDropdown
-                  options={ratingFilterOptions}
-                  value={ratingFilter}
-                  onChange={setRatingFilter}
-                  ariaLabel="Filter rating konsultasi"
-                  label="Rating"
-                  triggerIcon={Star}
-                  placeholder="Semua rating"
-                  className="w-full sm:w-[11.5rem]"
-                  align="right"
-                  disabled={loading}
-                />
-              </div>
-              <p className="mb-3 text-[11px] text-surface-500">
-                {loading ? 'Memuat…' : `${filteredItems.length} konsultasi`}
-              </p>
-            </>
-          )}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+        <div className="-mx-1 shrink-0 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="inline-flex w-max gap-1 rounded-full border border-surface-200/70 bg-white p-1 shadow-soft-xs">
+            {STATUS_TABS.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setStatusTab(t.id)}
+                className={cn(
+                  'rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors',
+                  statusTab === t.id
+                    ? 'bg-primary-600 text-white shadow-soft-sm'
+                    : 'text-surface-600 hover:text-primary-700',
+                )}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <SearchInput
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Cari order, user, layanan..."
+          className="min-w-0 w-full flex-1 sm:min-w-[16rem]"
+          inputClassName="h-9 text-xs"
+          disabled={loading}
+        />
+      </div>
 
-          {loading ? (
-            <div className="flex items-center justify-center gap-2 py-12 text-sm text-surface-500">
-              <RefreshCw className="h-4 w-4 animate-spin" />
-              Memuat...
-            </div>
-          ) : items.length === 0 ? (
-            <div className="py-12 text-center text-sm text-surface-500">
-              Belum ada konsultasi. Order dari user akan muncul di sini.
-            </div>
-          ) : filteredItems.length === 0 ? (
-            <div className="py-10 text-center">
-              <p className="text-sm text-surface-600">Tidak ada konsultasi yang cocok dengan filter.</p>
-              {hasActiveFilters && (
-                <Button variant="outline" size="sm" className="mt-3" onClick={resetFilters}>
-                  Reset filter
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className="-mx-2 overflow-x-auto px-2">
-              <Table>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <FilterSelect
+          options={remoteFilterOptions}
+          value={remoteFilter}
+          onChange={setRemoteFilter}
+          ariaLabel="Filter tipe konsultasi"
+          label="Tipe"
+          className="w-full sm:w-[11.5rem]"
+          disabled={loading}
+        />
+        <FilterSelect
+          options={ratingFilterOptions}
+          value={ratingFilter}
+          onChange={setRatingFilter}
+          ariaLabel="Filter rating konsultasi"
+          label="Rating"
+          className="w-full sm:w-[11.5rem]"
+          disabled={loading}
+        />
+      </div>
+
+      <p className="text-[12px] text-surface-500">
+        {loading ? 'Memuat…' : `${filteredItems.length} konsultasi ditampilkan`}
+      </p>
+
+      {loading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-20 animate-pulse rounded-2xl border border-surface-200/70 bg-surface-50" />
+          ))}
+        </div>
+      ) : periodItems.length === 0 ? (
+        <Card className="shadow-soft-xs">
+          <CardContent className="p-8 text-center">
+            <MessageCircle className="mx-auto mb-3 h-8 w-8 text-surface-400" />
+            <p className="text-sm font-semibold text-ink">Belum ada konsultasi</p>
+            <p className="mt-1 text-xs text-surface-500">Order dari user akan muncul di sini.</p>
+          </CardContent>
+        </Card>
+      ) : filteredItems.length === 0 ? (
+        <Card className="shadow-soft-xs">
+          <CardContent className="py-10 text-center">
+            <p className="text-sm text-surface-600">Tidak ada konsultasi yang cocok dengan filter.</p>
+            {hasActiveFilters && (
+              <Button variant="outline" size="sm" className="mt-3" onClick={resetFilters}>
+                Reset filter
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="-mx-2 overflow-x-auto px-2">
+          <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>ID Order</TableHead>
@@ -580,10 +518,8 @@ export default function TeknisiKonsultasiPage() {
                   })}
                 </TableBody>
               </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+      )}
 
       <KonsultasiDetailModal
         konsultasi={detailKonsultasi}
