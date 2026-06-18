@@ -53,7 +53,7 @@ import {
 import { useDashboardPeriod } from '@/contexts/dashboard-period-context'
 import { DataPagination } from '@/components/ui/data-pagination'
 import { useClientPagination } from '@/hooks/use-client-pagination'
-import { DashboardMonthFilter } from '@/components/dashboard'
+import { DashboardMonthFilter, dashboardHeroCardClass, DashboardHeroSheen } from '@/components/dashboard'
 import { isDateInPeriod } from '@/lib/dashboard-period'
 
 const tabs: { id: RiwayatTransactionType; label: string }[] = [
@@ -290,12 +290,11 @@ export default function UserRiwayatPage() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-600 via-primary-500 to-accent-500 p-5 text-white shadow-glow-primary sm:p-6"
+        className={cn(dashboardHeroCardClass, 'p-5 sm:p-6')}
       >
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.12)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.12)_50%,rgba(255,255,255,0.12)_75%,transparent_75%)] bg-[length:20px_20px] opacity-30" />
-        <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+        <DashboardHeroSheen />
 
-        <div className="relative flex h-full flex-col">
+        <div className="relative z-10 flex h-full flex-col">
           <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/70 capitalize">
             Total pengeluaran · {periodLabel}
           </p>

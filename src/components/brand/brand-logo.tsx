@@ -38,7 +38,7 @@ export function BrandLogo({
       <span className={cn('inline-flex flex-col items-start', className)}>
         <img
           src={BRAND_WORDMARK_SRC}
-          alt="Bandoo"
+          alt="Bantoo"
           width={180}
           height={46}
           className={cn(WORDMARK_SIZE_CLASS[size], wordmarkClassName)}
@@ -55,7 +55,7 @@ export function BrandLogo({
   return (
     <img
       src={BRAND_ICON_SRC}
-      alt="Bandoo"
+      alt="Bantoo"
       width={40}
       height={40}
       className={cn(

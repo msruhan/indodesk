@@ -506,3 +506,16 @@ export function FilterSelect<T extends string>({
     />
   )
 }
+
+/** Hero banner — same gradient as Button `variant="primary"`. */
+export const dashboardHeroCardClass =
+  'relative isolate overflow-hidden rounded-2xl bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700 text-white shadow-glow-primary'
+
+export function DashboardHeroSheen() {
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-x-0 top-0 z-0 h-1/2 rounded-t-2xl bg-gradient-to-b from-white/25 to-transparent opacity-70"
+    />
+  )
+}

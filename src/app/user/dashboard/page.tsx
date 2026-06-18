@@ -21,6 +21,7 @@ import {
   XCircle,
 } from '@/lib/icons'
 import { UserWalletBalanceCard } from '@/components/user/user-wallet-balance-card'
+import { dashboardHeroCardClass, DashboardHeroSheen } from '@/components/dashboard'
 import type { UserDashboardDto } from '@/lib/user-dashboard-data'
 
 const Chart = dynamic(() => import('react-apexcharts'), { ssr: false })
@@ -127,12 +128,11 @@ export default function UserDashboardPage() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-600 via-primary-500 to-accent-500 p-5 text-white shadow-glow-primary"
+        className={cn(dashboardHeroCardClass, 'p-5')}
       >
-        <motion.div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.12)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.12)_50%,rgba(255,255,255,0.12)_75%,transparent_75%)] bg-[length:20px_20px] opacity-30" aria-hidden />
-        <div className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-white/10 blur-2xl" />
+        <DashboardHeroSheen />
 
-        <div className="relative">
+        <div className="relative z-10">
           <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/70">
             Selamat datang kembali
           </p>

@@ -21,7 +21,7 @@ export async function onLoginSuccess(opts: {
     name: opts.name,
     email: opts.email,
     ip: opts.ip,
-    userAgent: opts.userAgent,
+    userAgent: formatLoginDeviceLabel(opts.userAgent),
   })
   await sendEmail({ ...payload, to: opts.email })
 }
@@ -34,4 +34,23 @@ function parseDeviceLabel(userAgent: string | null | undefined): string | null {
   if (/Mac OS/i.test(userAgent)) return 'macOS'
   if (/Linux/i.test(userAgent)) return 'Linux'
   return 'Browser'
+}
+
+function parseBrowserLabel(userAgent: string): string | null {
+  if (/Edg\//i.test(userAgent)) return 'Edge'
+  if (/OPR\//i.test(userAgent) || /Opera/i.test(userAgent)) return 'Opera'
+  if (/Firefox\//i.test(userAgent)) return 'Firefox'
+  if (/CriOS\//i.test(userAgent)) return 'Chrome'
+  if (/Chrome\//i.test(userAgent) && !/Edg\//i.test(userAgent)) return 'Chrome'
+  if (/Safari\//i.test(userAgent) && !/Chrome\//i.test(userAgent)) return 'Safari'
+  return null
+}
+
+/** Label singkat untuk email notifikasi login (mis. "macOS · Chrome"). */
+export function formatLoginDeviceLabel(userAgent: string | null | undefined): string | null {
+  if (!userAgent?.trim()) return null
+  const os = parseDeviceLabel(userAgent)
+  const browser = parseBrowserLabel(userAgent)
+  if (os && browser) return `${os} · ${browser}`
+  return os ?? browser
 }

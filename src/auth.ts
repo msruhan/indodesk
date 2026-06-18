@@ -14,6 +14,7 @@ import { setTeknisiPresence } from '@/lib/teknisi-presence'
 import { getCachedSessionVersion, setCachedSessionVersion } from '@/lib/session-version-cache'
 import { bumpSessionVersion } from '@/lib/session-version'
 import { isLoginEmailVerified } from '@/lib/auth/login-email-guard'
+import { getRequestContext } from '@/lib/request-context'
 
 import { isGoogleAuthEnabled } from '@/lib/google-auth-enabled'
 import { evaluateGoogleSignIn } from '@/lib/auth/google-oauth-policy'
@@ -129,10 +130,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         await setTeknisiPresence(actor.id, true)
       }
       if (actor.id && user.email) {
+        const reqCtx = getRequestContext()
         void onLoginSuccess({
           userId: actor.id,
           email: user.email,
           name: user.name ?? null,
+          ip: reqCtx?.ip ?? null,
+          userAgent: reqCtx?.userAgent ?? null,
         })
       }
       void logAuthEvent({

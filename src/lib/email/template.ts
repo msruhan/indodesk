@@ -48,7 +48,7 @@ export function escapeHtml(value: string): string {
 }
 
 export function getEmailBrandName(): string {
-  return process.env.NEXT_PUBLIC_PLATFORM_NAME?.trim() || 'Bandoo'
+  return process.env.NEXT_PUBLIC_PLATFORM_NAME?.trim() || 'Bantoo'
 }
 
 export function getEmailLogoUrl(): string {
@@ -105,7 +105,7 @@ function renderSecondaryLink(href: string, label: string): string {
     </p>`
 }
 
-/** Bungkus konten email dalam layout light theme Bandoo. */
+/** Bungkus konten email dalam layout light theme Bantoo. */
 export function renderEmailDocument(input: EmailTemplateInput): { html: string; text: string } {
   const brand = getEmailBrandName()
   const appUrl = getEmailAppUrl()

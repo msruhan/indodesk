@@ -28,5 +28,7 @@ export {
   TabPills,
   FilterPills,
   FilterSelect,
+  dashboardHeroCardClass,
+  DashboardHeroSheen,
 } from './dashboard-primitives'
 export type { TabPillItem, FilterPillItem, FilterSelectItem } from './dashboard-primitives'
