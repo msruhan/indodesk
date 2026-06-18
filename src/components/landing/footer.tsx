@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { Zap, Twitter, Linkedin, Github, Instagram } from '@/lib/icons'
+import { Twitter, Linkedin, Github, Instagram } from '@/lib/icons'
+import { BrandLogo } from '@/components/brand/brand-logo'
 
 const footerLinks = {
   product: {
@@ -62,11 +63,8 @@ export function Footer() {
         <div className="grid grid-cols-2 gap-8 md:grid-cols-6 lg:gap-12">
           {/* Brand */}
           <div className="col-span-2">
-            <Link href="/" className="flex items-center gap-2">
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary-500 via-primary-600 to-accent-600 shadow-glow-primary">
-                <Zap weight="fill" className="h-4.5 w-4.5 text-white" />
-              </span>
-              <span className="text-[15px] font-bold tracking-tight text-ink">IndoTeknizi</span>
+            <Link href="/" className="flex items-center">
+              <BrandLogo variant="wordmark" wordmarkClassName="h-8" />
             </Link>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-surface-600">
               Platform ekosistem teknisi handphone terintegrasi — marketplace, konsultasi online, dan

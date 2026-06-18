@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db'
-import { sendEmail } from '@/lib/email'
+import { buildSecurityAlertEmail, sendEmail } from '@/lib/email'
 import { getPlatformSettings } from '@/lib/platform-settings'
 
 type SecurityNotificationInput = {
@@ -32,12 +32,11 @@ export async function notifyAdminsSecurityEvent(input: SecurityNotificationInput
     const adminEmail = settings.adminEmail?.trim()
     if (!adminEmail) return
 
-    await sendEmail({
-      to: adminEmail,
-      subject: `[Keamanan IndoTeknizi] ${input.title}`,
-      html: `<p><strong>${input.title}</strong></p><p>${input.body}</p><p>Periksa Admin → Log / Saldo → Keamanan.</p>`,
-      text: `${input.title}\n\n${input.body}`,
+    const payload = buildSecurityAlertEmail({
+      title: input.title,
+      body: input.body,
     })
+    await sendEmail({ ...payload, to: adminEmail })
   } catch (e) {
     console.error('[SECURITY_NOTIFICATION_EMAIL]', e)
   }

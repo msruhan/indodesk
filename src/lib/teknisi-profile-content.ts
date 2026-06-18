@@ -133,39 +133,23 @@ export function profileContentFromDb(
     secondarySkills?: string[]
     operatingHours?: unknown
     consultationServices?: unknown
-    specialty?: string[]
-    price?: unknown
   },
 ): TeknisiProfileContent {
-  const specialty = profile.specialty ?? []
-  const basePrice = Number(profile.price) || 0
-  const services = parseConsultationServices(profile.consultationServices)
-
   return {
     tagline: profile.tagline?.trim() || null,
     issuesHandled: profile.issuesHandled?.trim() || null,
     brandFocus: profile.brandFocus?.trim() || null,
     workApproach: profile.workApproach?.trim() || null,
-    serviceScope:
-      profile.serviceScope && profile.serviceScope.length > 0
-        ? profile.serviceScope
-        : DEFAULT_SERVICE_SCOPE,
-    languages:
-      profile.languages && profile.languages.length > 0
-        ? profile.languages
-        : ['Indonesia'],
+    serviceScope: profile.serviceScope ?? [],
+    languages: profile.languages ?? [],
     secondarySkills: profile.secondarySkills ?? [],
     operatingHours: operatingHoursFromDb(profile.operatingHours),
-    consultationServices:
-      services.length > 0 ? services : defaultConsultationServices(specialty, basePrice),
+    consultationServices: parseConsultationServices(profile.consultationServices),
   }
 }
 
-export function resolveProfileTagline(
-  tagline: string | null | undefined,
-  specialty: string[],
-): string {
-  return tagline?.trim() || buildDefaultTagline(specialty)
+export function resolveProfileTagline(tagline: string | null | undefined): string | null {
+  return tagline?.trim() || null
 }
 
 export function allProfileSkills(specialty: string[], secondarySkills: string[]): string[] {

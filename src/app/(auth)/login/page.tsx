@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { authFieldIconClass } from '@/components/ui/auth-field-icon'
 import { Zap, Mail, Lock, Shield } from '@/lib/icons'
+import { BrandLogo } from '@/components/brand/brand-logo'
 import { GoogleAuthDivider } from '@/components/auth/google-auth-divider'
 import { loginOAuthErrorMessage } from '@/lib/auth/login-oauth-errors'
 import { AuroraBackground } from '@/components/motion'
@@ -97,6 +98,71 @@ function ResetPasswordForm({ token }: { token: string }) {
       </Button>
     </form>
   )
+}
+
+function VerifyStatusBanner() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
+  const [banner, setBanner] = useState<{
+    tone: 'info' | 'success' | 'error'
+    text: string
+  } | null>(null)
+
+  useEffect(() => {
+    const verify = searchParams.get('verify')
+    if (!verify) return
+
+    const message = (() => {
+      switch (verify) {
+        case 'sent':
+          return {
+            tone: 'info' as const,
+            text: 'Kami telah mengirim email verifikasi. Klik tautan di inbox Anda untuk mengaktifkan akun.',
+          }
+        case 'success':
+          return {
+            tone: 'success' as const,
+            text: 'Email berhasil diverifikasi. Akun Anda sudah aktif — silakan login.',
+          }
+        case 'teknisi_pending':
+          return {
+            tone: 'success' as const,
+            text: 'Email berhasil diverifikasi. Pendaftaran teknisi Anda sedang ditinjau admin — Anda dapat login setelah disetujui.',
+          }
+        case 'invalid':
+          return {
+            tone: 'error' as const,
+            text: 'Tautan verifikasi tidak valid atau sudah kedaluwarsa.',
+          }
+        case 'missing':
+          return {
+            tone: 'error' as const,
+            text: 'Tautan verifikasi tidak lengkap.',
+          }
+        default:
+          return null
+      }
+    })()
+
+    if (message) setBanner(message)
+
+    const next = new URLSearchParams(searchParams.toString())
+    next.delete('verify')
+    const qs = next.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+  }, [searchParams, router, pathname])
+
+  if (!banner) return null
+
+  const className =
+    banner.tone === 'success'
+      ? 'rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800'
+      : banner.tone === 'error'
+        ? 'rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700'
+        : 'rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-primary-900'
+
+  return <div className={className}>{banner.text}</div>
 }
 
 function OAuthErrorSync({ onError }: { onError: (message: string) => void }) {
@@ -186,8 +252,8 @@ function LoginForm() {
       >
         <Card tone="glass" className="overflow-hidden">
           <CardHeader className="space-y-4 text-center">
-            <div className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-500 via-primary-600 to-accent-600 shadow-glow-primary">
-              <Zap weight="fill" className="h-6 w-6 text-white" />
+            <div className="mx-auto">
+              <BrandLogo variant="wordmark" wordmarkClassName="mx-auto h-10" className="items-center" />
             </div>
             <div>
               <CardTitle className="text-2xl font-semibold tracking-tightest">
@@ -205,6 +271,7 @@ function LoginForm() {
 
           <CardContent>
             <OAuthErrorSync onError={handleOAuthError} />
+            <VerifyStatusBanner />
             {resetToken ? (
               <ResetPasswordForm token={resetToken} />
             ) : (

@@ -123,7 +123,7 @@ export function rekberStatusLabel(status: RekberUiStatus): string {
   }
 }
 
-function buildTimeline(row: RekberTransaction): RekberTimelineEvent[] {
+function buildTimeline(row: Pick<RekberRow, 'status' | 'createdAt' | 'heldAt' | 'processedAt' | 'shippedAt' | 'releasedAt' | 'disputedAt' | 'refundedAt'>): RekberTimelineEvent[] {
   const ui = mapRekberUiStatus(row.status)
   const events: RekberTimelineEvent[] = [
     { status: 'pending', label: 'Dibuat', at: row.createdAt.toISOString() },
@@ -157,7 +157,7 @@ function canUploadPackaging(
   return false
 }
 
-function buildTracking(row: RekberTransaction): RekberTrackingDto | null {
+function buildTracking(row: Pick<RekberRow, 'trackingNumber' | 'shippingCourier' | 'trackingSummaryStatus' | 'trackingSummaryDesc' | 'trackingLastEventAt' | 'trackingLastSyncedAt' | 'trackingActive'>): RekberTrackingDto | null {
   if (!row.trackingNumber) return null
   const courier = row.shippingCourier as ShippingCourier | null
   return {
@@ -166,11 +166,11 @@ function buildTracking(row: RekberTransaction): RekberTrackingDto | null {
       ? (SHIPPING_COURIER_OPTIONS.find((o) => o.value === courier)?.label ?? courier)
       : null,
     trackingNumber: row.trackingNumber,
-    summaryStatus: row.trackingSummaryStatus,
-    summaryDesc: row.trackingSummaryDesc,
+    summaryStatus: row.trackingSummaryStatus ?? null,
+    summaryDesc: row.trackingSummaryDesc ?? null,
     lastEventAt: row.trackingLastEventAt?.toISOString() ?? null,
     lastSyncedAt: row.trackingLastSyncedAt?.toISOString() ?? null,
-    trackingActive: row.trackingActive,
+    trackingActive: row.trackingActive ?? false,
   }
 }
 
@@ -179,7 +179,34 @@ type SerializeOpts = {
   viewerRole?: 'USER' | 'TEKNISI' | 'ADMIN'
 }
 
-type RekberRow = RekberTransaction & {
+type RekberRow = {
+  id: string
+  orderCode: string
+  buyerId: string
+  sellerId: string
+  amount: RekberTransaction['amount']
+  fee: RekberTransaction['fee']
+  status: RekberStatus
+  description: string | null
+  note: string | null
+  createdAt: Date
+  updatedAt: Date
+  heldAt: Date | null
+  releasedAt: Date | null
+  disputedAt: Date | null
+  refundedAt: Date | null
+  inspectionOrderId: string | null
+  processedAt?: Date | null
+  shippedAt?: Date | null
+  shippingCourier?: RekberTransaction['shippingCourier']
+  trackingNumber?: string | null
+  trackingSummaryStatus?: string | null
+  trackingSummaryDesc?: string | null
+  trackingLastEventAt?: Date | null
+  trackingLastSyncedAt?: Date | null
+  trackingNextSyncAt?: Date | null
+  trackingActive?: boolean
+  trackingSyncFailures?: number
   buyer: RekberParty
   seller: RekberParty
   inspectionOrder?: { orderCode: string } | null

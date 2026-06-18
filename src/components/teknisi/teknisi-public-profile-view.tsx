@@ -228,9 +228,11 @@ export function TeknisiPublicProfileView({ teknisiId }: Props) {
                   <PerformanceLedger teknisi={teknisi} />
                 </motion.div>
 
-                <motion.div variants={fadeUp}>
-                  <ServicesMenu services={teknisi.services} onSelect={openBooking} />
-                </motion.div>
+                {teknisi.services.length > 0 && (
+                  <motion.div variants={fadeUp}>
+                    <ServicesMenu services={teknisi.services} onSelect={openBooking} />
+                  </motion.div>
+                )}
 
                 {teknisi.portfolio.length > 0 && (
                   <motion.div variants={fadeUp}>
@@ -390,6 +392,11 @@ function FloatingSparkles() {
    ========================================================================== */
 function AboutSection({ teknisi }: { teknisi: PublicTeknisiDetailDto }) {
   const summary = getProfileSummaryFields(teknisi)
+  const summaryCards = [
+    { label: 'Issue handled', value: summary.issuesHandled },
+    { label: 'Brand focus', value: summary.brandFocus },
+    { label: 'Work approach', value: summary.workApproach },
+  ].filter((item): item is { label: string; value: string } => Boolean(item.value))
   const scopeItems = [
     ...teknisi.serviceScope,
     ...(teknisi.languages.length > 0
@@ -401,57 +408,62 @@ function AboutSection({ teknisi }: { teknisi: PublicTeknisiDetailDto }) {
     <SectionCard eyebrow="Profil Profesional" title="Tentang Teknisi">
       <div className="grid gap-5 lg:grid-cols-[1.25fr_0.75fr]">
         <div className="space-y-4">
-          <p className="text-sm leading-relaxed text-surface-600">
-            {teknisi.description ??
-              `${teknisi.name} adalah teknisi spesialis ${teknisi.specialty.join(', ')} dengan pendekatan diagnosis yang rapi, komunikasi transparan, dan prioritas pada keamanan data pelanggan.`}
-          </p>
-          <div className="grid gap-3">
-            {[
-              { label: 'Issue handled', value: summary.issuesHandled },
-              { label: 'Brand focus', value: summary.brandFocus },
-              { label: 'Work approach', value: summary.workApproach },
-            ].map((item, idx) => (
-              <motion.div
-                key={item.label}
-                initial={{ opacity: 0, y: 12 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-30px' }}
-                transition={{ delay: idx * 0.06 }}
-                whileHover={{ y: -3 }}
-                className="rounded-2xl border border-surface-200/70 bg-gradient-to-br from-surface-50/80 to-white p-4 transition-shadow hover:shadow-soft-sm"
-              >
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-primary-700">
-                  {item.label}
-                </p>
-                <p className="mt-1 text-sm font-semibold leading-snug text-ink">{item.value}</p>
-              </motion.div>
-            ))}
-          </div>
+          {teknisi.description ? (
+            <p className="text-sm leading-relaxed text-surface-600">{teknisi.description}</p>
+          ) : (
+            <p className="text-sm leading-relaxed text-surface-500">
+              {teknisi.specialty.length > 0
+                ? `${teknisi.name} adalah teknisi spesialis ${teknisi.specialty.join(', ')}.`
+                : `${teknisi.name} belum melengkapi deskripsi profil.`}
+            </p>
+          )}
+          {summaryCards.length > 0 && (
+            <div className="grid gap-3">
+              {summaryCards.map((item, idx) => (
+                <motion.div
+                  key={item.label}
+                  initial={{ opacity: 0, y: 12 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: '-30px' }}
+                  transition={{ delay: idx * 0.06 }}
+                  whileHover={{ y: -3 }}
+                  className="rounded-2xl border border-surface-200/70 bg-gradient-to-br from-surface-50/80 to-white p-4 transition-shadow hover:shadow-soft-sm"
+                >
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-primary-700">
+                    {item.label}
+                  </p>
+                  <p className="mt-1 text-sm font-semibold leading-snug text-ink">{item.value}</p>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
-        <motion.div
-          whileHover={{ y: -3 }}
-          className="relative overflow-hidden rounded-2xl border border-primary-100 bg-gradient-to-br from-primary-50 via-white to-accent-50 p-5 shadow-soft-xs"
-        >
-          <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-gradient-to-br from-primary-300 to-accent-300 opacity-20 blur-2xl" />
-          <p className="relative text-[10px] font-bold uppercase tracking-[0.16em] text-primary-700">
-            Service Scope
-          </p>
-          <div className="relative mt-4 space-y-3">
-            {scopeItems.map((item, idx) => (
-              <motion.div
-                key={item}
-                initial={{ opacity: 0, x: -8 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.15 + idx * 0.06 }}
-                className="flex gap-2 text-sm text-surface-700"
-              >
-                <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary-600" />
-                <span>{item}</span>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
+        {scopeItems.length > 0 && (
+          <motion.div
+            whileHover={{ y: -3 }}
+            className="relative overflow-hidden rounded-2xl border border-primary-100 bg-gradient-to-br from-primary-50 via-white to-accent-50 p-5 shadow-soft-xs"
+          >
+            <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-gradient-to-br from-primary-300 to-accent-300 opacity-20 blur-2xl" />
+            <p className="relative text-[10px] font-bold uppercase tracking-[0.16em] text-primary-700">
+              Service Scope
+            </p>
+            <div className="relative mt-4 space-y-3">
+              {scopeItems.map((item, idx) => (
+                <motion.div
+                  key={item}
+                  initial={{ opacity: 0, x: -8 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.15 + idx * 0.06 }}
+                  className="flex gap-2 text-sm text-surface-700"
+                >
+                  <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary-600" />
+                  <span>{item}</span>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        )}
       </div>
     </SectionCard>
   )
@@ -610,14 +622,16 @@ function ProfileHero({
                   </motion.div>
                 )}
               </div>
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.7 }}
-                className="mt-2 max-w-2xl text-sm leading-relaxed text-surface-600"
-              >
-                {tagline}
-              </motion.p>
+              {tagline && (
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.7 }}
+                  className="mt-2 max-w-2xl text-sm leading-relaxed text-surface-600"
+                >
+                  {tagline}
+                </motion.p>
+              )}
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -1550,6 +1564,8 @@ function ServicesMenu({
   services: TeknisiConsultationService[]
   onSelect: (svc: TeknisiConsultationService) => void
 }) {
+  if (services.length === 0) return null
+
   const consultationServices = services.filter((s) => s.kind === 'consultation')
   const inspectionServices = services.filter((s) => s.kind !== 'consultation')
   const startingFromPrice = services[0]?.price ?? 0

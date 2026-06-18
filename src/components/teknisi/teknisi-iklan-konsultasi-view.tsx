@@ -140,10 +140,6 @@ export function TeknisiIklanKonsultasiView() {
     nextBasePrice: number,
   ) => {
     const normalized = nextServices.map(normalizeService).filter((s) => s.name)
-    if (normalized.length === 0) {
-      setFormError('Minimal satu layanan konsultasi dengan nama yang valid')
-      return false
-    }
 
     const res = await fetch('/api/teknisi/profile', {
       method: 'PATCH',

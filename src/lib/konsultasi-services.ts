@@ -1,6 +1,5 @@
 import type { TeknisiProfile } from '@prisma/client'
 import {
-  defaultConsultationServices,
   parseConsultationServicesFromProfile,
   type ProfileConsultationService,
 } from '@/lib/teknisi-profile-content'
@@ -73,15 +72,14 @@ export function buildTeknisiInspectionServices(
   return items
 }
 
-/** Daftar layanan konsultasi — dari profil teknisi atau turunan spesialisasi. */
+/** Daftar layanan konsultasi yang disimpan teknisi di profil. */
 export function buildTeknisiConsultationServices(
   profile: Pick<TeknisiProfile, 'specialty' | 'price' | 'consultationServices'>,
 ): TeknisiConsultationService[] {
   const base = Number(profile.price)
-  const custom = parseConsultationServicesFromProfile(profile.consultationServices)
-  const source =
-    custom.length > 0 ? custom : defaultConsultationServices(profile.specialty ?? [], base)
-  return source.map((s) => toPublicService(s, base))
+  return parseConsultationServicesFromProfile(profile.consultationServices).map((s) =>
+    toPublicService(s, base),
+  )
 }
 
 /** Gabungan layanan konsultasi + inspeksi untuk ditampilkan di "Bandingkan & Pilih". */

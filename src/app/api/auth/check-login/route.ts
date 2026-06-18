@@ -10,6 +10,7 @@ import {
   recordLoginFailure,
 } from '@/lib/lockout'
 import { getClientIp, RATE_LIMITS, withRateLimit, rateLimitResponse } from '@/lib/rate-limit-store'
+import { LOGIN_EMAIL_NOT_VERIFIED_MESSAGE } from '@/lib/auth/login-email-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -60,16 +61,13 @@ export async function POST(req: Request) {
         password: true,
         role: true,
         isActive: true,
+        emailVerified: true,
         twoFactorEnabled: true,
       },
     })
 
     if (!user?.password) {
       await recordLoginFailure({ email, ip: ctx.ip, userAgent: ctx.userAgent })
-      return apiError('Email atau password salah', 401)
-    }
-
-    if (!user.isActive) {
       return apiError('Email atau password salah', 401)
     }
 
@@ -90,9 +88,19 @@ export async function POST(req: Request) {
       return apiError('Email atau password salah', 401)
     }
 
+    if (!user.emailVerified) {
+      return apiError(LOGIN_EMAIL_NOT_VERIFIED_MESSAGE, 403, { code: 'EMAIL_NOT_VERIFIED' })
+    }
+
     const teknisiGuard = await checkTeknisiLoginGuard(user.id, user.role)
     if (!teknisiGuard.allowed) {
       return apiError(teknisiGuard.message, 403)
+    }
+
+    if (!user.isActive) {
+      return apiError('Akun tidak aktif. Hubungi dukungan IndoTeknizi.', 403, {
+        code: 'ACCOUNT_INACTIVE',
+      })
     }
 
     return apiSuccess({ requires2FA: user.twoFactorEnabled })

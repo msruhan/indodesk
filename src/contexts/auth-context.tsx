@@ -112,16 +112,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return { success: false, error: data.error || 'Registrasi gagal' }
         }
 
-        const loginResult = await signIn('credentials', {
-          email,
-          password,
-          redirect: false,
-        })
-
-        if (loginResult?.error) {
-          return { success: false, error: 'Registrasi berhasil tapi gagal login otomatis' }
-        }
-
         return { success: true }
       } catch {
         return { success: false, error: 'Terjadi kesalahan' }

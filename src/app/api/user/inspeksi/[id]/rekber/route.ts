@@ -4,6 +4,10 @@ import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { logOrderEvent } from '@/lib/activity-log'
 import { serializeInspectionOrder } from '@/lib/inspection-serializer'
+import {
+  INSPECTION_REKBER_LINK_SELECT,
+  INSPECTION_USER_ORDER_INCLUDE,
+} from '@/lib/inspection-includes'
 import { calculateRekberFee, generateRekberOrderCode } from '@/lib/rekber-config'
 import { serializeRekber, type RekberParty } from '@/lib/rekber-serializer'
 
@@ -16,16 +20,7 @@ const PARTY_SELECT = {
   image: true,
 } satisfies Record<keyof RekberParty, true>
 
-const includeOrder = {
-  teknisi: { select: PARTY_SELECT },
-  report: true,
-  rekber: {
-    include: {
-      buyer: { select: PARTY_SELECT },
-      seller: { select: PARTY_SELECT },
-    },
-  },
-} as const
+const includeOrder = INSPECTION_USER_ORDER_INCLUDE
 
 const createSchema = z.object({
   amount: z.number().int().min(10000),
@@ -56,7 +51,7 @@ export async function POST(
   try {
     const inspection = await prisma.inspectionOrder.findFirst({
       where: { id, userId: session.user.id },
-      include: { report: true, rekber: true },
+      include: { report: true, rekber: { select: INSPECTION_REKBER_LINK_SELECT } },
     })
 
     if (!inspection) return apiError('Inspeksi tidak ditemukan', 404)

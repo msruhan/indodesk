@@ -1,14 +1,9 @@
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { serializeInspectionOrder } from '@/lib/inspection-serializer'
+import { INSPECTION_USER_ORDER_INCLUDE } from '@/lib/inspection-includes'
 
 export const dynamic = 'force-dynamic'
-
-const includeOrder = {
-  teknisi: { select: { id: true, name: true, email: true, image: true } },
-  report: true,
-  rekber: true,
-} as const
 
 export async function GET(
   _req: Request,
@@ -21,7 +16,7 @@ export async function GET(
   try {
     const row = await prisma.inspectionOrder.findFirst({
       where: { id, userId: session.user.id },
-      include: includeOrder,
+      include: INSPECTION_USER_ORDER_INCLUDE,
     })
     if (!row) return apiError('Inspeksi tidak ditemukan', 404)
     return apiSuccess(serializeInspectionOrder(row, 'USER'))

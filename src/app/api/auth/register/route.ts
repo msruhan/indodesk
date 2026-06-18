@@ -49,6 +49,8 @@ export async function POST(req: Request) {
         email,
         password: hashedPassword,
         role,
+        isActive: false,
+        wallet: { create: { balance: 0 } },
       },
       select: {
         id: true,
@@ -56,11 +58,6 @@ export async function POST(req: Request) {
         email: true,
         role: true,
       },
-    })
-
-    // Create wallet for the new user
-    await prisma.wallet.create({
-      data: { userId: user.id, balance: 0 },
     })
 
     const ctx = extractRequestContext(req)
@@ -79,7 +76,14 @@ export async function POST(req: Request) {
       console.error('[REGISTER_SEND_VERIFICATION]', e)
     })
 
-    return NextResponse.json({ success: true, data: user }, { status: 201 })
+    return NextResponse.json(
+      {
+        success: true,
+        message:
+          'Jika email belum terdaftar, akun telah dibuat. Periksa inbox untuk verifikasi email.',
+      },
+      { status: 201 },
+    )
   } catch (error) {
     console.error('[REGISTER]', error)
     return NextResponse.json(

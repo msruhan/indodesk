@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
-import { sendEmail } from '@/lib/email'
+import { buildSmtpTestEmail, sendEmail } from '@/lib/email'
 import { getSmtpRuntimeConfig } from '@/lib/smtp-settings'
 
 export const dynamic = 'force-dynamic'
@@ -41,12 +41,8 @@ export async function POST(req: Request) {
   }
 
   try {
-    await sendEmail({
-      to,
-      subject: 'Tes SMTP IndoTeknizi',
-      html: `<p>Email ini dikirim dari panel admin IndoTeknizi untuk menguji konfigurasi SMTP.</p><p>Host: <strong>${cfg.host}</strong></p>`,
-      text: `Tes SMTP IndoTeknizi — host: ${cfg.host}`,
-    })
+    const payload = buildSmtpTestEmail(cfg.host)
+    await sendEmail({ ...payload, to })
     return apiSuccess({ sentTo: to })
   } catch (e) {
     console.error('[ADMIN_SMTP_TEST]', e)

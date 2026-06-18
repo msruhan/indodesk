@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiAuth } from '@/lib/api-auth'
 import { SESSION_STALE_CODE } from '@/lib/api-constants'
 import { getBuyerEscrowSummary, getSellerPendingEarnings } from '@/lib/marketplace-wallet'
+import { ensureUserWallet } from '@/lib/wallet/ensure-wallet'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,16 +14,7 @@ export async function GET() {
   if (error) return error
 
   try {
-    let wallet = await prisma.wallet.findUnique({
-      where: { userId: session.user.id },
-    })
-
-    // Create wallet if doesn't exist
-    if (!wallet) {
-      wallet = await prisma.wallet.create({
-        data: { userId: session.user.id, balance: 0 },
-      })
-    }
+    const wallet = await ensureUserWallet(session.user.id)
 
     const balance = Number(wallet.balance)
     const escrow = await getBuyerEscrowSummary(session.user.id)

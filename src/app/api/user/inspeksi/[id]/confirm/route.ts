@@ -3,6 +3,7 @@ import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { logPaymentEvent } from '@/lib/activity-log'
 import { creditTeknisiForInspection } from '@/lib/inspection-wallet'
 import { serializeInspectionOrder } from '@/lib/inspection-serializer'
+import { INSPECTION_USER_ORDER_INCLUDE } from '@/lib/inspection-includes'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,11 +28,7 @@ export async function POST(
       const row = await tx.inspectionOrder.update({
         where: { id },
         data: { status: 'COMPLETED', completedAt: new Date() },
-        include: {
-          teknisi: { select: { id: true, name: true, email: true, image: true } },
-          report: true,
-          rekber: true,
-        },
+        include: INSPECTION_USER_ORDER_INCLUDE,
       })
 
       const alreadyCredited = await tx.walletLedger.findFirst({

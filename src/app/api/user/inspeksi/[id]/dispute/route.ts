@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { serializeInspectionOrder } from '@/lib/inspection-serializer'
+import { INSPECTION_USER_ORDER_INCLUDE } from '@/lib/inspection-includes'
 import { disputeInspectionSchema } from '@/lib/validations/inspection'
 
 export const dynamic = 'force-dynamic'
@@ -40,11 +41,7 @@ export async function POST(
         status: 'DISPUTED',
         cancelReason: parsed.data.reason.trim(),
       },
-      include: {
-        teknisi: { select: { id: true, name: true, email: true, image: true } },
-        report: true,
-        rekber: true,
-      },
+      include: INSPECTION_USER_ORDER_INCLUDE,
     })
 
     return apiSuccess(serializeInspectionOrder(updated, 'USER'))

@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
 import {
   Card,
@@ -15,12 +14,12 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { authFieldIconClass } from '@/components/ui/auth-field-icon'
-import { Zap, Mail, Lock, User, Wrench } from '@/lib/icons'
+import { Mail, Lock, User, Wrench } from '@/lib/icons'
+import { BrandLogo } from '@/components/brand/brand-logo'
 import { AuroraBackground } from '@/components/motion'
 import { motion } from 'framer-motion'
 
 export default function RegisterPage() {
-  const router = useRouter()
   const { register } = useAuth()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -28,6 +27,7 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [submitted, setSubmitted] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -47,7 +47,44 @@ export default function RegisterPage() {
       return
     }
 
-    router.push('/user/akun?verify=sent')
+    setSubmitted(true)
+    setIsLoading(false)
+  }
+
+  if (submitted) {
+    return (
+      <div className="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
+        <AuroraBackground intensity="vivid" />
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative w-full max-w-md"
+        >
+          <Card tone="glass" className="overflow-hidden">
+            <CardHeader className="space-y-3 text-center">
+              <div className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100">
+                <Mail className="h-7 w-7 text-emerald-600" />
+              </div>
+              <CardTitle className="text-xl font-semibold">Periksa Email Anda</CardTitle>
+              <CardDescription className="text-surface-600">
+                Kami telah mengirim tautan verifikasi ke <strong>{email}</strong>. Klik tautan
+                tersebut untuk mengaktifkan akun, lalu login.
+              </CardDescription>
+            </CardHeader>
+            <CardFooter className="flex flex-col gap-3 pb-8">
+              <Link href="/login?verify=sent" className="w-full">
+                <Button variant="primary" size="lg" className="w-full">
+                  Ke halaman login
+                </Button>
+              </Link>
+              <Link href="/" className="text-center text-sm text-surface-500 hover:text-ink">
+                ← Kembali ke beranda
+              </Link>
+            </CardFooter>
+          </Card>
+        </motion.div>
+      </div>
+    )
   }
 
   return (
@@ -62,8 +99,8 @@ export default function RegisterPage() {
       >
         <Card tone="glass" className="overflow-hidden">
           <CardHeader className="space-y-4 text-center">
-            <div className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-500 via-primary-600 to-accent-600 shadow-glow-primary">
-              <Zap weight="fill" className="h-6 w-6 text-white" />
+            <div className="mx-auto">
+              <BrandLogo variant="wordmark" wordmarkClassName="mx-auto h-10" className="items-center" />
             </div>
             <div>
               <CardTitle className="text-2xl font-semibold tracking-tightest">
@@ -175,7 +212,8 @@ export default function RegisterPage() {
                 <div>
                   <p className="text-sm font-medium text-ink">Anda teknisi handphone?</p>
                   <p className="mt-1 text-xs text-surface-600">
-                    Daftar melalui formulir khusus teknisi. Akun akan aktif setelah disetujui admin.
+                    Daftar melalui formulir khusus teknisi. Verifikasi email dulu, lalu tunggu
+                    persetujuan admin.
                   </p>
                   <Link
                     href="/register/teknisi"

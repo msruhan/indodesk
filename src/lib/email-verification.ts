@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { prisma } from '@/lib/db'
-import { sendEmail } from '@/lib/email'
+import { sendEmail, buildEmailVerificationEmail } from '@/lib/email'
 
 const TOKEN_TTL_MS = 24 * 60 * 60 * 1000
 
@@ -27,17 +27,20 @@ export async function sendEmailVerification(userId: string, email: string): Prom
   const baseUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000').replace(/\/$/, '')
   const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${token}`
 
+  const payload = buildEmailVerificationEmail(verifyUrl)
+
   await sendEmail({
+    ...payload,
     to: email,
-    subject: 'Verifikasi email IndoTeknizi',
-    html: `<p>Klik tautan berikut untuk verifikasi email (berlaku 24 jam):</p><p><a href="${verifyUrl}">${verifyUrl}</a></p>`,
-    text: `Verifikasi email: ${verifyUrl}`,
   })
 }
 
 export async function confirmEmailVerification(
   tokenPlain: string,
-): Promise<{ ok: true; userId: string } | { ok: false; message: string }> {
+): Promise<
+  | { ok: true; userId: string; role: 'ADMIN' | 'TEKNISI' | 'USER' }
+  | { ok: false; message: string }
+> {
   const tokenHash = hashToken(tokenPlain.trim())
   const row = await prisma.emailVerificationToken.findUnique({
     where: { tokenHash },
@@ -48,10 +51,18 @@ export async function confirmEmailVerification(
     return { ok: false, message: 'Token verifikasi tidak valid atau kedaluwarsa' }
   }
 
+  const user = await prisma.user.findUnique({
+    where: { id: row.userId },
+    select: { role: true },
+  })
+
   await prisma.$transaction([
     prisma.user.update({
       where: { id: row.userId },
-      data: { emailVerified: new Date() },
+      data: {
+        emailVerified: new Date(),
+        ...(user?.role === 'USER' ? { isActive: true } : {}),
+      },
     }),
     prisma.emailVerificationToken.update({
       where: { id: row.id },
@@ -59,5 +70,5 @@ export async function confirmEmailVerification(
     }),
   ])
 
-  return { ok: true, userId: row.userId }
+  return { ok: true, userId: row.userId, role: user?.role ?? 'USER' }
 }

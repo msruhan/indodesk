@@ -8,11 +8,6 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import type { TeknisiAccountProfileDto } from '@/lib/teknisi-profile-serializer'
-import {
-  DEFAULT_BRAND_FOCUS,
-  DEFAULT_ISSUES_HANDLED,
-  DEFAULT_WORK_APPROACH,
-} from '@/lib/teknisi-profile-content'
 import { isR2PublicUrl } from '@/lib/image-url-utils'
 import { InspectionServiceToggle } from './inspection-service-toggle'
 import { Plus, Trash2, ChevronUp, ChevronDown, X } from '@/lib/icons'
@@ -57,9 +52,9 @@ function profileToForm(p: TeknisiAccountProfileDto) {
     location: p.location ?? '',
     description: p.description ?? '',
     tagline: p.tagline ?? '',
-    issuesHandled: p.issuesHandled ?? DEFAULT_ISSUES_HANDLED,
-    brandFocus: p.brandFocus ?? DEFAULT_BRAND_FOCUS,
-    workApproach: p.workApproach ?? DEFAULT_WORK_APPROACH,
+    issuesHandled: p.issuesHandled ?? '',
+    brandFocus: p.brandFocus ?? '',
+    workApproach: p.workApproach ?? '',
     responseTime: p.responseTime ?? '',
     price: String(p.price),
     specialty: mergeSkillTags(p.specialty, p.secondarySkills),
@@ -570,6 +565,7 @@ export function TeknisiProfileForm({
             rows={2}
             value={form.issuesHandled}
             onChange={(e) => patchForm('issuesHandled', e.target.value)}
+            placeholder="Contoh: bootloop, layar mati, water damage, performa lambat"
           />
         </div>
         <div>
@@ -579,6 +575,7 @@ export function TeknisiProfileForm({
             rows={2}
             value={form.brandFocus}
             onChange={(e) => patchForm('brandFocus', e.target.value)}
+            placeholder="Contoh: Android, iPhone, laptop consumer"
           />
         </div>
         <div>
@@ -588,6 +585,7 @@ export function TeknisiProfileForm({
             rows={2}
             value={form.workApproach}
             onChange={(e) => patchForm('workApproach', e.target.value)}
+            placeholder="Contoh: diagnosis awal, estimasi, eksekusi, quality check"
           />
         </div>
       </section>

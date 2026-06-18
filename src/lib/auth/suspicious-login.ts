@@ -1,4 +1,4 @@
-import { sendEmail } from '@/lib/email'
+import { buildSuspiciousLoginEmail, sendEmail } from '@/lib/email'
 import { createUserSession } from '@/lib/auth/session-store'
 
 export async function onLoginSuccess(opts: {
@@ -17,19 +17,13 @@ export async function onLoginSuccess(opts: {
 
   if (!isNewDevice) return
 
-  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000').replace(/\/$/, '')
-  await sendEmail({
-    to: opts.email,
-    subject: 'Login dari perangkat baru — IndoTeknizi',
-    html: `<p>Halo ${opts.name ?? 'Pengguna'},</p>
-<p>Kami mendeteksi login ke akun Anda dari perangkat atau lokasi yang belum dikenal.</p>
-<ul>
-<li>IP: ${opts.ip ?? 'tidak diketahui'}</li>
-<li>Perangkat: ${opts.userAgent ?? 'tidak diketahui'}</li>
-</ul>
-<p>Jika ini bukan Anda, segera ganti password di <a href="${baseUrl}/user/settings">${baseUrl}/user/settings</a>.</p>`,
-    text: `Login baru terdeteksi untuk ${opts.email}. IP: ${opts.ip ?? 'unknown'}. Jika bukan Anda, ganti password segera.`,
+  const payload = buildSuspiciousLoginEmail({
+    name: opts.name,
+    email: opts.email,
+    ip: opts.ip,
+    userAgent: opts.userAgent,
   })
+  await sendEmail({ ...payload, to: opts.email })
 }
 
 function parseDeviceLabel(userAgent: string | null | undefined): string | null {

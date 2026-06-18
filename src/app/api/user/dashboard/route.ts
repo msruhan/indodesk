@@ -14,7 +14,8 @@ export async function GET() {
       userName: session.user.name ?? 'User',
     })
   } catch (e) {
-    console.error('[USER_DASHBOARD_GET]', e)
+    const message = e instanceof Error ? e.message : String(e)
+    console.error('[USER_DASHBOARD_GET]', message, e)
     return apiError('Gagal memuat dashboard', 500)
   }
 }

@@ -7,6 +7,7 @@ import {
   buildApplicationData,
   teknisiRegisterSchema,
 } from '@/lib/teknisi-registration'
+import { sendEmailVerification } from '@/lib/email-verification'
 
 export async function POST(req: Request) {
   const ip = getClientIp(req)
@@ -53,6 +54,7 @@ export async function POST(req: Request) {
         password: hashedPassword,
         role: 'TEKNISI',
         phone,
+        isActive: false,
         wallet: { create: { balance: 0 } },
         teknisiProfile: {
           create: {
@@ -86,13 +88,17 @@ export async function POST(req: Request) {
       metadata: { role: user.role, verificationStatus: 'PENDING' },
     })
 
+    void sendEmailVerification(user.id, user.email).catch((e) => {
+      console.error('[REGISTER_TEKNISI_SEND_VERIFICATION]', e)
+    })
+
     return NextResponse.json(
       {
         success: true,
         data: {
           id: user.id,
           message:
-            'Pendaftaran berhasil. Tim admin akan meninjau aplikasi Anda. Anda dapat login setelah disetujui.',
+            'Pendaftaran berhasil. Kami telah mengirim email verifikasi — klik tautan di inbox Anda. Setelah email dikonfirmasi, tim admin akan meninjau aplikasi Anda.',
         },
       },
       { status: 201 },

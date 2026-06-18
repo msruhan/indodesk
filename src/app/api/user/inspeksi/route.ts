@@ -9,6 +9,7 @@ import {
 } from '@/lib/inspection-pricing'
 import { debitUserForInspection } from '@/lib/inspection-wallet'
 import { serializeInspectionOrder } from '@/lib/inspection-serializer'
+import { INSPECTION_USER_ORDER_INCLUDE } from '@/lib/inspection-includes'
 import { notifyInspeksiNew } from '@/lib/telegram/notify'
 import { createInspectionSchema } from '@/lib/validations/inspection'
 import { getPublicFeatureFlags } from '@/lib/platform-settings'
@@ -22,12 +23,6 @@ const TEKNISI_SELECT = {
   image: true,
 } as const
 
-const includeOrder = {
-  teknisi: { select: TEKNISI_SELECT },
-  report: true,
-  rekber: true,
-} as const
-
 export async function GET() {
   const { session, error } = await requireApiRole(['USER'])
   if (error) return error
@@ -35,7 +30,7 @@ export async function GET() {
   try {
     const rows = await prisma.inspectionOrder.findMany({
       where: { userId: session.user.id },
-      include: includeOrder,
+      include: INSPECTION_USER_ORDER_INCLUDE,
       orderBy: { createdAt: 'desc' },
     })
     return apiSuccess(rows.map((r) => serializeInspectionOrder(r, 'USER')))
@@ -111,7 +106,7 @@ export async function POST(req: Request) {
           platformFee: new Prisma.Decimal(fees.platformFee),
           teknisiEarning: new Prisma.Decimal(fees.teknisiEarning),
         },
-        include: includeOrder,
+        include: INSPECTION_USER_ORDER_INCLUDE,
       })
 
       await debitUserForInspection(

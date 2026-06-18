@@ -7,7 +7,8 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/auth-context'
 import { useHydrated } from '@/hooks/use-hydrated'
 import { Home } from '@/lib/icons'
-import { LogOut, Zap, type IconType } from '@/lib/icons-types'
+import { LogOut, type IconType } from '@/lib/icons-types'
+import { BrandLogo } from '@/components/brand/brand-logo'
 
 const ACTIVE_PILL_CLASS =
   'absolute inset-0 rounded-xl bg-gradient-to-r from-primary-50 to-primary-50/40 ring-1 ring-inset ring-primary-200/60 shadow-soft-xs'
@@ -65,7 +66,7 @@ function resolveActiveNavHref(
  * - Single source for Admin / Teknisi / User
  */
 export function RoleSidebar({
-  brand = { label: 'IndoTeknizi', href: '/' },
+  brand = { label: 'Bantoo', href: '/' },
   items,
   bottomItems,
   profile,
@@ -151,21 +152,11 @@ export function RoleSidebar({
 
             {/* Brand */}
             <div className="flex h-16 items-center border-b border-surface-200/60 px-5">
-              <Link href={brand.href ?? '/'} className="group/logo flex items-center gap-2.5">
-                <span className="relative inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary-500 via-primary-600 to-accent-600 shadow-glow-primary transition-transform duration-450 group-hover/logo:scale-[1.06]">
-                  <Zap weight="fill" className="h-4 w-4 text-white" />
-                  <span className="pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-br from-white/40 to-transparent" />
-                </span>
-                <span className="flex flex-col leading-none">
-                  <span className="text-[15px] font-bold tracking-tight text-ink">
-                    {brand.label}
-                  </span>
-                  {scope && (
-                    <span className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary-700">
-                      {scope}
-                    </span>
-                  )}
-                </span>
+              <Link
+                href={brand.href ?? '/'}
+                className="group/logo flex items-center transition-transform duration-450 group-hover/logo:scale-[1.02]"
+              >
+                <BrandLogo variant="wordmark" scope={scope} />
               </Link>
             </div>
 

@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import { tryPrismaQuery } from '@/lib/try-prisma-query'
 import {
   CHANNEL_COLORS,
   CHANNEL_LABELS,
@@ -36,27 +37,37 @@ function dayRanges(now: Date, days: number) {
 }
 
 async function sumMarketplaceFees(where: object): Promise<number> {
-  const agg = await prisma.order.aggregate({
-    _sum: { buyerFeeAmount: true, sellerFeeAmount: true },
-    where,
-  })
-  return sumDecimalPair(agg._sum.buyerFeeAmount, agg._sum.sellerFeeAmount)
+  return tryPrismaQuery('marketplace-fees', async () => {
+    const agg = await prisma.order.aggregate({
+      _sum: { buyerFeeAmount: true, sellerFeeAmount: true },
+      where,
+    })
+    return sumDecimalPair(agg._sum.buyerFeeAmount, agg._sum.sellerFeeAmount)
+  }, 0)
 }
 
 async function sumRekberFees(where: object): Promise<number> {
-  const agg = await prisma.rekberTransaction.aggregate({
-    _sum: { fee: true },
-    where,
-  })
-  return Number(agg._sum.fee ?? 0)
+  return tryPrismaQuery('rekber-fees', async () => {
+    const agg = await prisma.rekberTransaction.aggregate({
+      _sum: { fee: true },
+      where,
+    })
+    return Number(agg._sum.fee ?? 0)
+  }, 0)
 }
 
 async function sumInspectionFees(where: object): Promise<number> {
-  const agg = await prisma.inspectionOrder.aggregate({
-    _sum: { platformFee: true },
-    where,
-  })
-  return Number(agg._sum.platformFee ?? 0)
+  return tryPrismaQuery('inspection-fees', async () => {
+    const agg = await prisma.inspectionOrder.aggregate({
+      _sum: { platformFee: true },
+      where,
+    })
+    return Number(agg._sum.platformFee ?? 0)
+  }, 0)
+}
+
+async function countQuery(label: string, fn: () => Promise<number>): Promise<number> {
+  return tryPrismaQuery(label, fn, 0)
 }
 
 export async function getPlatformRevenueSummary(): Promise<PlatformRevenueSummary> {
@@ -92,25 +103,44 @@ export async function getPlatformRevenueSummary(): Promise<PlatformRevenueSummar
     sumMarketplaceFees({ status: 'COMPLETED', completedAt: { gte: startOfToday } }),
     sumMarketplaceFees({ status: 'COMPLETED', completedAt: { gte: startOf30d } }),
     sumMarketplaceFees({ status: { in: [...MARKETPLACE_ESTIMATED_STATUSES] } }),
-    prisma.order.count({ where: { status: 'COMPLETED' } }),
-    prisma.order.count({ where: { status: { in: [...MARKETPLACE_ESTIMATED_STATUSES] } } }),
+    countQuery('marketplace-completed', () =>
+      prisma.order.count({ where: { status: 'COMPLETED' } }),
+    ),
+    countQuery('marketplace-estimated', () =>
+      prisma.order.count({ where: { status: { in: [...MARKETPLACE_ESTIMATED_STATUSES] } } }),
+    ),
     sumRekberFees({ status: 'RELEASED' }),
     sumRekberFees({ status: 'RELEASED', releasedAt: { gte: startOfToday } }),
     sumRekberFees({ status: 'RELEASED', releasedAt: { gte: startOf30d } }),
     sumRekberFees({ status: { in: [...REKBER_ESTIMATED_STATUSES] } }),
-    prisma.rekberTransaction.count({ where: { status: 'RELEASED' } }),
-    prisma.rekberTransaction.count({ where: { status: { in: [...REKBER_ESTIMATED_STATUSES] } } }),
+    countQuery('rekber-released', () =>
+      prisma.rekberTransaction.count({ where: { status: 'RELEASED' } }),
+    ),
+    countQuery('rekber-estimated', () =>
+      prisma.rekberTransaction.count({ where: { status: { in: [...REKBER_ESTIMATED_STATUSES] } } }),
+    ),
     sumInspectionFees({ status: 'COMPLETED' }),
     sumInspectionFees({ status: 'COMPLETED', completedAt: { gte: startOfToday } }),
     sumInspectionFees({ status: 'COMPLETED', completedAt: { gte: startOf30d } }),
     sumInspectionFees({ status: { in: [...INSPECTION_ESTIMATED_STATUSES] } }),
-    prisma.inspectionOrder.count({ where: { status: 'COMPLETED' } }),
-    prisma.inspectionOrder.count({ where: { status: { in: [...INSPECTION_ESTIMATED_STATUSES] } } }),
-    prisma.konsultasiSession.count({ where: { status: 'COMPLETED' } }),
-    prisma.konsultasiSession.aggregate({
-      _sum: { price: true },
-      where: { status: 'COMPLETED' },
-    }),
+    countQuery('inspection-completed', () =>
+      prisma.inspectionOrder.count({ where: { status: 'COMPLETED' } }),
+    ),
+    countQuery('inspection-estimated', () =>
+      prisma.inspectionOrder.count({ where: { status: { in: [...INSPECTION_ESTIMATED_STATUSES] } } }),
+    ),
+    countQuery('konsultasi-completed', () =>
+      prisma.konsultasiSession.count({ where: { status: 'COMPLETED' } }),
+    ),
+    tryPrismaQuery(
+      'konsultasi-gmv',
+      () =>
+        prisma.konsultasiSession.aggregate({
+          _sum: { price: true },
+          where: { status: 'COMPLETED' },
+        }),
+      { _sum: { price: null } },
+    ),
     ...dailyRanges.flatMap((range) => [
       sumMarketplaceFees({ status: 'COMPLETED', completedAt: range }),
       sumRekberFees({ status: 'RELEASED', releasedAt: range }),
@@ -193,45 +223,90 @@ export async function getPlatformRevenueSummary(): Promise<PlatformRevenueSummar
     recentInspectionCompleted,
     recentInspectionProgress,
   ] = await Promise.all([
-    prisma.order.findMany({
-      where: { status: 'COMPLETED', OR: [{ buyerFeeAmount: { gt: 0 } }, { sellerFeeAmount: { gt: 0 } }] },
-      orderBy: { completedAt: 'desc' },
-      take: 8,
-      select: { id: true, orderCode: true, buyerFeeAmount: true, sellerFeeAmount: true, completedAt: true },
-    }),
-    prisma.order.findMany({
-      where: {
-        status: { in: [...MARKETPLACE_ESTIMATED_STATUSES] },
-        OR: [{ buyerFeeAmount: { gt: 0 } }, { sellerFeeAmount: { gt: 0 } }],
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 5,
-      select: { id: true, orderCode: true, buyerFeeAmount: true, sellerFeeAmount: true, createdAt: true },
-    }),
-    prisma.rekberTransaction.findMany({
-      where: { status: 'RELEASED', fee: { gt: 0 } },
-      orderBy: { releasedAt: 'desc' },
-      take: 8,
-      select: { id: true, orderCode: true, fee: true, releasedAt: true },
-    }),
-    prisma.rekberTransaction.findMany({
-      where: { status: { in: [...REKBER_ESTIMATED_STATUSES] }, fee: { gt: 0 } },
-      orderBy: { updatedAt: 'desc' },
-      take: 5,
-      select: { id: true, orderCode: true, fee: true, updatedAt: true },
-    }),
-    prisma.inspectionOrder.findMany({
-      where: { status: 'COMPLETED' },
-      orderBy: { completedAt: 'desc' },
-      take: 8,
-      select: { id: true, orderCode: true, platformFee: true, completedAt: true },
-    }),
-    prisma.inspectionOrder.findMany({
-      where: { status: { in: [...INSPECTION_ESTIMATED_STATUSES] } },
-      orderBy: { updatedAt: 'desc' },
-      take: 5,
-      select: { id: true, orderCode: true, platformFee: true, updatedAt: true },
-    }),
+    tryPrismaQuery(
+      'recent-marketplace-completed',
+      () =>
+        prisma.order.findMany({
+          where: {
+            status: 'COMPLETED',
+            OR: [{ buyerFeeAmount: { gt: 0 } }, { sellerFeeAmount: { gt: 0 } }],
+          },
+          orderBy: { completedAt: 'desc' },
+          take: 8,
+          select: {
+            id: true,
+            orderCode: true,
+            buyerFeeAmount: true,
+            sellerFeeAmount: true,
+            completedAt: true,
+          },
+        }),
+      [],
+    ),
+    tryPrismaQuery(
+      'recent-marketplace-estimated',
+      () =>
+        prisma.order.findMany({
+          where: {
+            status: { in: [...MARKETPLACE_ESTIMATED_STATUSES] },
+            OR: [{ buyerFeeAmount: { gt: 0 } }, { sellerFeeAmount: { gt: 0 } }],
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+          select: {
+            id: true,
+            orderCode: true,
+            buyerFeeAmount: true,
+            sellerFeeAmount: true,
+            createdAt: true,
+          },
+        }),
+      [],
+    ),
+    tryPrismaQuery(
+      'recent-rekber-released',
+      () =>
+        prisma.rekberTransaction.findMany({
+          where: { status: 'RELEASED', fee: { gt: 0 } },
+          orderBy: { releasedAt: 'desc' },
+          take: 8,
+          select: { id: true, orderCode: true, fee: true, releasedAt: true },
+        }),
+      [],
+    ),
+    tryPrismaQuery(
+      'recent-rekber-held',
+      () =>
+        prisma.rekberTransaction.findMany({
+          where: { status: { in: [...REKBER_ESTIMATED_STATUSES] }, fee: { gt: 0 } },
+          orderBy: { updatedAt: 'desc' },
+          take: 5,
+          select: { id: true, orderCode: true, fee: true, updatedAt: true },
+        }),
+      [],
+    ),
+    tryPrismaQuery(
+      'recent-inspection-completed',
+      () =>
+        prisma.inspectionOrder.findMany({
+          where: { status: 'COMPLETED' },
+          orderBy: { completedAt: 'desc' },
+          take: 8,
+          select: { id: true, orderCode: true, platformFee: true, completedAt: true },
+        }),
+      [],
+    ),
+    tryPrismaQuery(
+      'recent-inspection-progress',
+      () =>
+        prisma.inspectionOrder.findMany({
+          where: { status: { in: [...INSPECTION_ESTIMATED_STATUSES] } },
+          orderBy: { updatedAt: 'desc' },
+          take: 5,
+          select: { id: true, orderCode: true, platformFee: true, updatedAt: true },
+        }),
+      [],
+    ),
   ])
 
   const recent: PlatformRevenueRecentRow[] = [

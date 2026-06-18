@@ -1,6 +1,11 @@
+import type { Wallet } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
+import { formatMonthShortId } from '@/lib/format'
 import { formatNotificationTimeLabel } from '@/lib/notification-display'
 import { getUserActivityHref } from '@/lib/user-activity-href'
+import { ensureUserWallet } from '@/lib/wallet/ensure-wallet'
+import { listRekberTransactions } from '@/lib/rekber-query'
 
 export type UserDashboardDto = {
   walletBalance: number
@@ -31,11 +36,29 @@ function mapKonsultasiStatus(s: string): UserDashboardDto['recentActivity'][0]['
   return 'failed'
 }
 
+async function loadDashboardPart<T>(
+  label: string,
+  loader: () => Promise<T>,
+  fallback: T,
+): Promise<T> {
+  try {
+    return await loader()
+  } catch (e) {
+    console.error(`[USER_DASHBOARD] ${label}`, e)
+    return fallback
+  }
+}
+
 export async function getUserDashboardData(userId: string): Promise<UserDashboardDto> {
   const now = new Date()
-
-  const wallet = await prisma.wallet.findUnique({ where: { userId } })
-  const balance = wallet ? Number(wallet.balance) : 0
+  const wallet = await loadDashboardPart('wallet', () => ensureUserWallet(userId), {
+    id: '',
+    userId,
+    balance: new Prisma.Decimal(0),
+    createdAt: now,
+    updatedAt: now,
+  } satisfies Wallet)
+  const balance = Number(wallet.balance)
 
   const [
     marketplaceOrders,
@@ -44,37 +67,49 @@ export async function getUserDashboardData(userId: string): Promise<UserDashboar
     inspections,
     ledgerPayments,
   ] = await Promise.all([
-    prisma.order.findMany({
-      where: { buyerId: userId },
-      include: { seller: { select: { name: true } }, items: { include: { product: true }, take: 1 } },
-      orderBy: { createdAt: 'desc' },
-      take: 10,
-    }),
-    prisma.konsultasiSession.findMany({
-      where: { userId },
-      include: { teknisi: { select: { name: true } } },
-      orderBy: { createdAt: 'desc' },
-      take: 10,
-    }),
-    prisma.rekberTransaction.findMany({
-      where: { buyerId: userId },
-      include: { seller: { select: { name: true } } },
-      orderBy: { createdAt: 'desc' },
-      take: 10,
-    }),
-    prisma.inspectionOrder.findMany({
-      where: { userId },
-      include: { teknisi: { select: { name: true } } },
-      orderBy: { createdAt: 'desc' },
-      take: 10,
-    }),
-    wallet
-      ? prisma.walletLedger.findMany({
-          where: { walletId: wallet.id, type: 'PAYMENT', amount: { lt: 0 } },
-          orderBy: { createdAt: 'desc' },
-          take: 200,
-        })
-      : Promise.resolve([]),
+    loadDashboardPart('orders', () =>
+      prisma.order.findMany({
+        where: { buyerId: userId },
+        include: {
+          seller: { select: { name: true } },
+          items: {
+            take: 1,
+            include: { product: { select: { name: true } } },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      }),
+    []),
+    loadDashboardPart('konsultasi', () =>
+      prisma.konsultasiSession.findMany({
+        where: { userId },
+        include: { teknisi: { select: { name: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      }),
+    []),
+    loadDashboardPart('rekber', () =>
+      listRekberTransactions({
+        where: { buyerId: userId },
+        take: 10,
+      }),
+    []),
+    loadDashboardPart('inspections', () =>
+      prisma.inspectionOrder.findMany({
+        where: { userId },
+        include: { teknisi: { select: { name: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      }),
+    []),
+    loadDashboardPart('ledger', () =>
+      prisma.walletLedger.findMany({
+        where: { walletId: wallet.id, type: 'PAYMENT', amount: { lt: 0 } },
+        orderBy: { createdAt: 'desc' },
+        take: 200,
+      }),
+    []),
   ])
 
   const totalSpent = ledgerPayments.reduce((s, l) => s + Math.abs(Number(l.amount)), 0)
@@ -90,7 +125,7 @@ export async function getUserDashboardData(userId: string): Promise<UserDashboar
   const spendingByMonth: Array<{ month: string; amount: number }> = []
   for (let i = 5; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    const label = d.toLocaleDateString('id-ID', { month: 'short' })
+    const label = formatMonthShortId(d)
     const start = new Date(d.getFullYear(), d.getMonth(), 1)
     const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999)
     const sum = ledgerPayments

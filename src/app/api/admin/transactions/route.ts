@@ -15,6 +15,7 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
+import { tryPrismaQuery } from '@/lib/try-prisma-query'
 
 export const dynamic = 'force-dynamic'
 
@@ -129,49 +130,56 @@ export async function GET(req: Request) {
 
     // --- Marketplace Orders ---
     if (type === 'all' || type === 'marketplace') {
-      const where: Prisma.OrderWhereInput = {}
-      if (statusParam) where.status = statusParam as Prisma.OrderWhereInput['status']
-      if (dateFilter) where.createdAt = dateFilter
-      if (q) {
-        where.OR = [
-          { orderCode: { contains: q, mode: 'insensitive' } },
-          { buyer: { name: { contains: q, mode: 'insensitive' } } },
-          { buyer: { email: { contains: q, mode: 'insensitive' } } },
-          { seller: { name: { contains: q, mode: 'insensitive' } } },
-        ]
-      }
-      const orders = await prisma.order.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        take: limit,
-        include: {
-          buyer: { select: { id: true, name: true, email: true, role: true } },
-          seller: { select: { id: true, name: true, email: true } },
-          items: { include: { product: { select: { name: true } } }, take: 3 },
+      const marketplaceItems = await tryPrismaQuery(
+        'admin-transactions-marketplace',
+        async () => {
+          const where: Prisma.OrderWhereInput = {}
+          if (statusParam) where.status = statusParam as Prisma.OrderWhereInput['status']
+          if (dateFilter) where.createdAt = dateFilter
+          if (q) {
+            where.OR = [
+              { orderCode: { contains: q, mode: 'insensitive' } },
+              { buyer: { name: { contains: q, mode: 'insensitive' } } },
+              { buyer: { email: { contains: q, mode: 'insensitive' } } },
+              { seller: { name: { contains: q, mode: 'insensitive' } } },
+            ]
+          }
+          const orders = await prisma.order.findMany({
+            where,
+            orderBy: { createdAt: 'desc' },
+            take: limit,
+            include: {
+              buyer: { select: { id: true, name: true, email: true, role: true } },
+              seller: { select: { id: true, name: true, email: true } },
+              items: { include: { product: { select: { name: true } } }, take: 3 },
+            },
+          })
+          return orders.map((o) => {
+            const productNames = o.items.map((i) => i.product.name).join(', ')
+            return {
+              id: o.id,
+              type: 'marketplace' as const,
+              orderCode: o.orderCode,
+              user: { ...o.buyer, role: o.buyer.role },
+              seller: o.seller,
+              title: productNames || 'Marketplace order',
+              amount: o.total.toString(),
+              platformRevenue: marketplacePlatformRevenue(o.status, o.buyerFeeAmount, o.sellerFeeAmount),
+              status: o.status,
+              normalizedStatus: normalizeStatus('marketplace', o.status),
+              createdAt: o.createdAt.toISOString(),
+              updatedAt: o.updatedAt.toISOString(),
+              meta: {
+                note: o.note,
+                buyerFee: o.buyerFeeAmount.toString(),
+                sellerFee: o.sellerFeeAmount.toString(),
+              },
+            }
+          })
         },
-      })
-      for (const o of orders) {
-        const productNames = o.items.map((i) => i.product.name).join(', ')
-        results.push({
-          id: o.id,
-          type: 'marketplace',
-          orderCode: o.orderCode,
-          user: { ...o.buyer, role: o.buyer.role },
-          seller: o.seller,
-          title: productNames || 'Marketplace order',
-          amount: o.total.toString(),
-          platformRevenue: marketplacePlatformRevenue(o.status, o.buyerFeeAmount, o.sellerFeeAmount),
-          status: o.status,
-          normalizedStatus: normalizeStatus('marketplace', o.status),
-          createdAt: o.createdAt.toISOString(),
-          updatedAt: o.updatedAt.toISOString(),
-          meta: {
-            note: o.note,
-            buyerFee: o.buyerFeeAmount.toString(),
-            sellerFee: o.sellerFeeAmount.toString(),
-          },
-        })
-      }
+        [] as UnifiedTransactionDto[],
+      )
+      results.push(...marketplaceItems)
     }
 
     // --- IMEI Orders ---
@@ -301,43 +309,48 @@ export async function GET(req: Request) {
 
     // --- Rekber ---
     if (type === 'all' || type === 'rekber') {
-      const where: Prisma.RekberTransactionWhereInput = {}
-      if (statusParam) where.status = statusParam as Prisma.RekberTransactionWhereInput['status']
-      if (dateFilter) where.createdAt = dateFilter
-      if (q) {
-        where.OR = [
-          { orderCode: { contains: q, mode: 'insensitive' } },
-          { buyer: { name: { contains: q, mode: 'insensitive' } } },
-          { seller: { name: { contains: q, mode: 'insensitive' } } },
-          { description: { contains: q, mode: 'insensitive' } },
-        ]
-      }
-      const orders = await prisma.rekberTransaction.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        take: limit,
-        include: {
-          buyer: { select: { id: true, name: true, email: true, role: true } },
-          seller: { select: { id: true, name: true, email: true } },
+      const rekberItems = await tryPrismaQuery(
+        'admin-transactions-rekber',
+        async () => {
+          const where: Prisma.RekberTransactionWhereInput = {}
+          if (statusParam) where.status = statusParam as Prisma.RekberTransactionWhereInput['status']
+          if (dateFilter) where.createdAt = dateFilter
+          if (q) {
+            where.OR = [
+              { orderCode: { contains: q, mode: 'insensitive' } },
+              { buyer: { name: { contains: q, mode: 'insensitive' } } },
+              { seller: { name: { contains: q, mode: 'insensitive' } } },
+              { description: { contains: q, mode: 'insensitive' } },
+            ]
+          }
+          const orders = await prisma.rekberTransaction.findMany({
+            where,
+            orderBy: { createdAt: 'desc' },
+            take: limit,
+            include: {
+              buyer: { select: { id: true, name: true, email: true, role: true } },
+              seller: { select: { id: true, name: true, email: true } },
+            },
+          })
+          return orders.map((o) => ({
+            id: o.id,
+            type: 'rekber' as const,
+            orderCode: o.orderCode,
+            user: { ...o.buyer, role: o.buyer.role },
+            seller: o.seller,
+            title: o.description ?? 'Rekber transaction',
+            amount: o.amount.toString(),
+            platformRevenue: rekberPlatformRevenue(o.status, o.fee),
+            status: o.status,
+            normalizedStatus: normalizeStatus('rekber', o.status),
+            createdAt: o.createdAt.toISOString(),
+            updatedAt: o.updatedAt.toISOString(),
+            meta: { fee: o.fee.toString(), note: o.note },
+          }))
         },
-      })
-      for (const o of orders) {
-        results.push({
-          id: o.id,
-          type: 'rekber',
-          orderCode: o.orderCode,
-          user: { ...o.buyer, role: o.buyer.role },
-          seller: o.seller,
-          title: o.description ?? 'Rekber transaction',
-          amount: o.amount.toString(),
-          platformRevenue: rekberPlatformRevenue(o.status, o.fee),
-          status: o.status,
-          normalizedStatus: normalizeStatus('rekber', o.status),
-          createdAt: o.createdAt.toISOString(),
-          updatedAt: o.updatedAt.toISOString(),
-          meta: { fee: o.fee.toString(), note: o.note },
-        })
-      }
+        [] as UnifiedTransactionDto[],
+      )
+      results.push(...rekberItems)
     }
 
     // Sort all by createdAt desc
@@ -349,17 +362,33 @@ export async function GET(req: Request) {
     startOfToday.setHours(0, 0, 0, 0)
 
     const [mktCount, imeiCount, serverCount, topupCount, rekberCount, pendingImei, pendingServer, successImei, successServer, todayImei, todayServer] = await Promise.all([
-      prisma.order.count(),
-      prisma.imeiOrder.count(),
-      prisma.serverOrder.count(),
-      prisma.topupOrder.count(),
-      prisma.rekberTransaction.count(),
-      prisma.imeiOrder.count({ where: { status: 'PENDING' } }),
-      prisma.serverOrder.count({ where: { status: 'PENDING' } }),
-      prisma.imeiOrder.count({ where: { status: 'SUCCESS' } }),
-      prisma.serverOrder.count({ where: { status: 'SUCCESS' } }),
-      prisma.imeiOrder.aggregate({ _sum: { price: true }, where: { createdAt: { gte: startOfToday } } }),
-      prisma.serverOrder.aggregate({ _sum: { price: true }, where: { createdAt: { gte: startOfToday } } }),
+      tryPrismaQuery('stats-marketplace', () => prisma.order.count(), 0),
+      tryPrismaQuery('stats-imei', () => prisma.imeiOrder.count(), 0),
+      tryPrismaQuery('stats-server', () => prisma.serverOrder.count(), 0),
+      tryPrismaQuery('stats-topup', () => prisma.topupOrder.count(), 0),
+      tryPrismaQuery('stats-rekber', () => prisma.rekberTransaction.count(), 0),
+      tryPrismaQuery('stats-imei-pending', () => prisma.imeiOrder.count({ where: { status: 'PENDING' } }), 0),
+      tryPrismaQuery('stats-server-pending', () => prisma.serverOrder.count({ where: { status: 'PENDING' } }), 0),
+      tryPrismaQuery('stats-imei-success', () => prisma.imeiOrder.count({ where: { status: 'SUCCESS' } }), 0),
+      tryPrismaQuery('stats-server-success', () => prisma.serverOrder.count({ where: { status: 'SUCCESS' } }), 0),
+      tryPrismaQuery(
+        'stats-imei-today',
+        () =>
+          prisma.imeiOrder.aggregate({
+            _sum: { price: true },
+            where: { createdAt: { gte: startOfToday } },
+          }),
+        { _sum: { price: null } },
+      ),
+      tryPrismaQuery(
+        'stats-server-today',
+        () =>
+          prisma.serverOrder.aggregate({
+            _sum: { price: true },
+            where: { createdAt: { gte: startOfToday } },
+          }),
+        { _sum: { price: null } },
+      ),
     ])
 
     const revenueToday = (

@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { buildRekberStats, serializeRekber } from '@/lib/rekber-serializer'
-import { REKBER_INCLUDE } from '@/lib/rekber-includes'
+import { listRekberTransactions } from '@/lib/rekber-query'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,10 +10,7 @@ export async function GET() {
   if (error) return error
 
   try {
-    const rows = await prisma.rekberTransaction.findMany({
-      include: REKBER_INCLUDE,
-      orderBy: { createdAt: 'desc' },
-    })
+    const rows = await listRekberTransactions()
 
     const items = rows.map((r) =>
       serializeRekber(r, { viewerId: session.user.id, viewerRole: 'ADMIN' }),

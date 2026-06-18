@@ -1,13 +1,17 @@
 import nodemailer from 'nodemailer'
 import type Transporter from 'nodemailer/lib/mailer'
 import { getSmtpRuntimeConfig } from '@/lib/smtp-settings'
+import type { EmailPayload } from '@/lib/email/types'
 
-export type EmailPayload = {
-  to: string
-  subject: string
-  html: string
-  text?: string
-}
+export type { EmailPayload } from '@/lib/email/types'
+export {
+  buildEmailVerificationEmail,
+  buildPasswordResetEmail,
+  buildWithdrawOtpEmail,
+  buildSuspiciousLoginEmail,
+  buildSecurityAlertEmail,
+  buildSmtpTestEmail,
+} from '@/lib/email/messages'
 
 class ConsoleEmailService {
   async send(payload: EmailPayload): Promise<void> {
@@ -56,47 +60,4 @@ export async function sendEmail(payload: EmailPayload): Promise<void> {
     return
   }
   await sendViaSmtp(cfg, payload)
-}
-
-export function buildPasswordResetEmail(resetUrl: string): EmailPayload {
-  return {
-    to: '',
-    subject: 'Reset password IndoTeknizi',
-    html: `<p>Klik tautan berikut untuk reset password (berlaku 30 menit):</p><p><a href="${resetUrl}">${resetUrl}</a></p>`,
-    text: `Reset password: ${resetUrl} (berlaku 30 menit)`,
-  }
-}
-
-export function buildWithdrawOtpEmail(opts: {
-  code: string
-  amount?: number
-  userName?: string | null
-}): EmailPayload {
-  const greeting = opts.userName ? `Halo ${opts.userName},` : 'Halo,'
-  const amountLine = opts.amount
-    ? `<p>Nominal penarikan: <strong>Rp ${opts.amount.toLocaleString('id-ID')}</strong></p>`
-    : ''
-  const html = `
-    <p>${greeting}</p>
-    <p>Gunakan kode OTP berikut untuk mengonfirmasi penarikan saldo IndoTeknizi:</p>
-    <p style="font-size:28px;font-weight:bold;letter-spacing:4px;margin:16px 0">${opts.code}</p>
-    ${amountLine}
-    <p>Kode berlaku <strong>10 menit</strong>. Jangan bagikan kode ini kepada siapa pun.</p>
-    <p style="color:#666;font-size:12px">Jika Anda tidak meminta penarikan, abaikan email ini dan segera ubah password akun.</p>
-  `
-  const text = [
-    greeting,
-    `Kode OTP penarikan saldo: ${opts.code}`,
-    opts.amount ? `Nominal: Rp ${opts.amount.toLocaleString('id-ID')}` : '',
-    'Berlaku 10 menit. Jangan bagikan kode ini.',
-  ]
-    .filter(Boolean)
-    .join('\n')
-
-  return {
-    to: '',
-    subject: 'Kode OTP penarikan saldo IndoTeknizi',
-    html,
-    text,
-  }
 }

@@ -13,6 +13,7 @@ import {
   canAccessRemoteService,
   canAccessInspectionService,
 } from '@/lib/platform-settings-shared'
+import { BrandLogo } from '@/components/brand/brand-logo'
 import {
   Menu,
   X,
@@ -202,14 +203,16 @@ export function Navbar() {
         ].join(' ')}
       >
         <motion.div className="relative flex h-14 items-center justify-between gap-4 px-4 sm:px-6 lg:h-16">
-          <Link href="/" className="relative z-10 flex shrink-0 items-center gap-2 group/logo">
-            <span className="relative inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary-500 via-primary-600 to-accent-600 shadow-glow-primary transition-transform duration-450 group-hover/logo:scale-[1.06]">
-              <Zap weight="fill" className="h-4.5 w-4.5 text-white" />
-              <span className="pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-br from-white/40 to-transparent opacity-60" />
-            </span>
-            <span className="text-[15px] font-bold tracking-tight text-ink">
-              IndoTeknizi
-            </span>
+          <Link href="/" className="relative z-10 flex shrink-0 items-center group/logo">
+            <BrandLogo
+              variant="icon"
+              iconClassName="sm:hidden transition-transform duration-450 group-hover/logo:scale-[1.06]"
+            />
+            <BrandLogo
+              variant="wordmark"
+              wordmarkClassName="hidden h-7 sm:block"
+              className="hidden sm:inline-flex"
+            />
           </Link>
 
           <div className="pointer-events-none absolute inset-0 hidden items-center justify-center lg:flex">

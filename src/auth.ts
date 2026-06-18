@@ -13,6 +13,7 @@ import { checkTeknisiLoginGuard } from '@/lib/teknisi-login-guard'
 import { setTeknisiPresence } from '@/lib/teknisi-presence'
 import { getCachedSessionVersion, setCachedSessionVersion } from '@/lib/session-version-cache'
 import { bumpSessionVersion } from '@/lib/session-version'
+import { isLoginEmailVerified } from '@/lib/auth/login-email-guard'
 
 import { isGoogleAuthEnabled } from '@/lib/google-auth-enabled'
 import { evaluateGoogleSignIn } from '@/lib/auth/google-oauth-policy'
@@ -45,9 +46,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (!user.id) return false
       const dbUser = await prisma.user.findUnique({
         where: { id: user.id },
-        select: { isActive: true, role: true, twoFactorEnabled: true, email: true },
+        select: { isActive: true, role: true, twoFactorEnabled: true, email: true, emailVerified: true },
       })
       if (!dbUser?.isActive) return false
+      if (!isLoginEmailVerified(dbUser)) return false
 
       const guard = await checkTeknisiLoginGuard(user.id, dbUser.role)
       return guard.allowed
@@ -225,18 +227,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null
         }
 
-        if (!user.isActive) {
-          return null
-        }
-
         const isValid = await compare(password, user.password)
         if (!isValid) {
           await recordLoginFailure({ email, ip: null, userAgent: null })
           return null
         }
 
+        if (!isLoginEmailVerified(user)) {
+          return null
+        }
+
         const teknisiGuard = await checkTeknisiLoginGuard(user.id, user.role)
         if (!teknisiGuard.allowed) {
+          return null
+        }
+
+        if (!user.isActive) {
           return null
         }
 

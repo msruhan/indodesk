@@ -92,10 +92,12 @@ type OrderWithRelations = InspectionOrder & {
   teknisi: UserParty
   user?: UserParty
   report: InspectionReport | null
-  rekber?: RekberTransaction | null
+  rekber?: Pick<RekberTransaction, 'id' | 'orderCode' | 'status'> | null
 }
 
-function serializeRekberLink(rekber: RekberTransaction): InspectionRekberLinkDto {
+function serializeRekberLink(
+  rekber: Pick<RekberTransaction, 'id' | 'orderCode' | 'status'>,
+): InspectionRekberLinkDto {
   const ui = mapRekberUiStatus(rekber.status)
   return {
     id: rekber.id,

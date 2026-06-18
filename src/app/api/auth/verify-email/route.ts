@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server'
 import { confirmEmailVerification } from '@/lib/email-verification'
-import { prisma } from '@/lib/db'
-import { accountPathForRole } from '@/lib/role-routes'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,19 +9,17 @@ export async function GET(req: Request) {
   const baseUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000').replace(/\/$/, '')
 
   if (!token) {
-    return NextResponse.redirect(`${baseUrl}/user/akun?verify=missing`)
+    return NextResponse.redirect(`${baseUrl}/login?verify=missing`)
   }
 
   const result = await confirmEmailVerification(token)
   if (!result.ok) {
-    return NextResponse.redirect(`${baseUrl}/user/akun?verify=invalid`)
+    return NextResponse.redirect(`${baseUrl}/login?verify=invalid`)
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: result.userId },
-    select: { role: true },
-  })
-  const accountPath = accountPathForRole(user?.role ?? 'USER')
+  if (result.role === 'TEKNISI') {
+    return NextResponse.redirect(`${baseUrl}/login?verify=teknisi_pending`)
+  }
 
-  return NextResponse.redirect(`${baseUrl}${accountPath}?verify=success`)
+  return NextResponse.redirect(`${baseUrl}/login?verify=success`)
 }

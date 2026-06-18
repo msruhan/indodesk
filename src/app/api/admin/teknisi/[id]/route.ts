@@ -75,6 +75,7 @@ export async function PATCH(
         ...(data.email !== undefined && { email: data.email.trim().toLowerCase() }),
         ...(data.phone !== undefined && { phone: data.phone?.trim() || null }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
+        ...(data.isVerified === true && data.isActive === undefined && { isActive: true }),
         ...(passwordHash && {
           password: passwordHash,
           passwordChangedAt: new Date(),

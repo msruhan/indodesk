@@ -9,6 +9,7 @@ import {
   buildRekberStats,
   serializeRekber,
 } from '@/lib/rekber-serializer'
+import { listRekberTransactions } from '@/lib/rekber-query'
 import { REKBER_INCLUDE } from '@/lib/rekber-includes'
 import { requireEmailVerifiedUser } from '@/lib/require-email-verified'
 
@@ -30,12 +31,10 @@ export async function GET() {
   if (error) return error
 
   try {
-    const rows = await prisma.rekberTransaction.findMany({
+    const rows = await listRekberTransactions({
       where: {
         OR: [{ buyerId: session.user.id }, { sellerId: session.user.id }],
       },
-      include: REKBER_INCLUDE,
-      orderBy: { createdAt: 'desc' },
     })
 
     const items = rows.map((r) =>
@@ -47,7 +46,8 @@ export async function GET() {
 
     return apiSuccess({ items, stats: buildRekberStats(items) })
   } catch (e) {
-    console.error('[REKBER_GET]', e)
+    const detail = e instanceof Error ? e.message : String(e)
+    console.error('[REKBER_GET]', detail, e)
     return apiError('Gagal memuat rekber', 500)
   }
 }

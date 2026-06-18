@@ -208,21 +208,31 @@ export async function POST(req: Request) {
       }
       const rejectionReason =
         action === 'reject' ? String(body.rejectionReason ?? '').trim() || null : null
-      await prisma.teknisiProfile.update({
-        where: { userId: id },
-        data:
-          action === 'approve'
-            ? {
-                isVerified: true,
-                verificationStatus: 'APPROVED',
-                rejectionReason: null,
-              }
-            : {
-                isVerified: false,
-                verificationStatus: 'REJECTED',
-                rejectionReason,
-              },
-      })
+      await prisma.$transaction([
+        prisma.teknisiProfile.update({
+          where: { userId: id },
+          data:
+            action === 'approve'
+              ? {
+                  isVerified: true,
+                  verificationStatus: 'APPROVED',
+                  rejectionReason: null,
+                }
+              : {
+                  isVerified: false,
+                  verificationStatus: 'REJECTED',
+                  rejectionReason,
+                },
+        }),
+        ...(action === 'approve'
+          ? [
+              prisma.user.update({
+                where: { id },
+                data: { isActive: true },
+              }),
+            ]
+          : []),
+      ])
     } else {
       return apiError('Jenis entitas tidak dikenali')
     }

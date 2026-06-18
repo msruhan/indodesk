@@ -86,7 +86,7 @@ export default function RegisterTeknisiPage() {
 
     setSuccessMessage(
       result.message ??
-        'Pendaftaran berhasil. Tim admin akan meninjau aplikasi Anda. Anda dapat login setelah disetujui.',
+        'Pendaftaran berhasil. Kami telah mengirim email verifikasi — klik tautan di inbox Anda. Setelah email dikonfirmasi, tim admin akan meninjau aplikasi Anda.',
     )
     setSubmitted(true)
     setIsLoading(false)
@@ -147,7 +147,7 @@ export default function RegisterTeknisiPage() {
                 Daftar sebagai Teknisi
               </CardTitle>
               <CardDescription className="mt-1 text-surface-600">
-                Lengkapi formulir verifikasi. Akun aktif setelah disetujui admin.
+                Lengkapi formulir verifikasi. Verifikasi email dulu, lalu tunggu persetujuan admin.
               </CardDescription>
             </div>
           </CardHeader>

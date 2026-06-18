@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { serializeRekberPackagingProof } from '@/lib/marketplace-packaging-proof-serializer'
 import { PACKAGING_ADMIN_SLA_HOURS } from '@/lib/validations/marketplace-packaging'
+import { tryPrismaQuery } from '@/lib/try-prisma-query'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,16 +17,21 @@ export async function GET(req: Request) {
 
   try {
     const cutoff = new Date(Date.now() - PACKAGING_ADMIN_SLA_HOURS * MS_PER_HOUR)
-    const rows = await prisma.rekberPackagingProof.findMany({
-      where: { status },
-      include: {
-        media: true,
-        rekber: { select: { orderCode: true, amount: true, status: true } },
-        seller: { select: { id: true, name: true, email: true } },
-      },
-      orderBy: { submittedAt: 'asc' },
-      take: 100,
-    })
+    const rows = await tryPrismaQuery(
+      'admin-rekber-packaging-proofs',
+      () =>
+        prisma.rekberPackagingProof.findMany({
+          where: { status },
+          include: {
+            media: true,
+            rekber: { select: { orderCode: true, amount: true, status: true } },
+            seller: { select: { id: true, name: true, email: true } },
+          },
+          orderBy: { submittedAt: 'asc' },
+          take: 100,
+        }),
+      [],
+    )
 
     return apiSuccess({
       items: rows.map((r) => ({

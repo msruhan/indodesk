@@ -41,6 +41,26 @@ export function formatIdrCompact(value: number | string): string {
   return idrFormatter.format(num)
 }
 
+/** Format bulan singkat tanpa bergantung locale OS (aman di Docker slim). */
+const MONTHS_SHORT_ID = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'Mei',
+  'Jun',
+  'Jul',
+  'Agu',
+  'Sep',
+  'Okt',
+  'Nov',
+  'Des',
+] as const
+
+export function formatMonthShortId(date: Date): string {
+  return MONTHS_SHORT_ID[date.getMonth()] ?? '—'
+}
+
 /** Format tanggal + waktu: 20 Mei 2026, 14.30 */
 export function formatDateTime(iso: string | Date): string {
   const d = typeof iso === 'string' ? new Date(iso) : iso
