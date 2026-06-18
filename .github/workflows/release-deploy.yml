@@ -77,15 +77,25 @@ jobs:
             sudo mkdir -p /opt/indoteknizi/deploy
             sudo chown -R "${USER}:${USER}" /opt/indoteknizi
 
-      - name: Sync deploy assets to VPS
+      - name: Sync compose and prisma config
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          source: "docker-compose.production.yml,prisma.config.ts,deploy/vps-deploy.sh"
+          source: "docker-compose.production.yml,prisma.config.ts"
           target: "/opt/indoteknizi"
-          strip_components: 0
+          overwrite: true
+
+      - name: Sync deploy script
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "deploy/vps-deploy.sh"
+          target: "/opt/indoteknizi/deploy"
+          overwrite: true
 
       - name: Deploy to VPS via SSH
         uses: appleboy/ssh-action@v1.2.0
@@ -104,10 +114,19 @@ jobs:
             fi
 
             cd "$INSTALL_DIR"
-            chmod +x deploy/vps-deploy.sh
+            DEPLOY_SCRIPT="$INSTALL_DIR/deploy/vps-deploy.sh"
+            if [[ ! -f "$DEPLOY_SCRIPT" && -f "$INSTALL_DIR/vps-deploy.sh" ]]; then
+              mv "$INSTALL_DIR/vps-deploy.sh" "$DEPLOY_SCRIPT"
+            fi
+            if [[ ! -f "$DEPLOY_SCRIPT" ]]; then
+              echo "ERROR: deploy script not found under $INSTALL_DIR"
+              ls -la "$INSTALL_DIR" "$INSTALL_DIR/deploy" 2>/dev/null || true
+              exit 1
+            fi
+            chmod +x "$DEPLOY_SCRIPT"
             export BANTOO_IMAGE="$IMAGE"
             if [[ -n "${{ secrets.PRODUCTION_HEALTH_URL }}" ]]; then
-              bash deploy/vps-deploy.sh --image "$IMAGE" --health-url "${{ secrets.PRODUCTION_HEALTH_URL }}"
+              bash "$DEPLOY_SCRIPT" --image "$IMAGE" --health-url "${{ secrets.PRODUCTION_HEALTH_URL }}"
             else
-              bash deploy/vps-deploy.sh --image "$IMAGE"
+              bash "$DEPLOY_SCRIPT" --image "$IMAGE"
             fi
