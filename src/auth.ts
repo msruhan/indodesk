@@ -223,72 +223,77 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const totp = (credentials.totp as string | undefined)?.trim() ?? ''
 
         try {
-          await checkLockout(email)
-        } catch (e) {
-          if (e instanceof AccountLockedError) return null
-          throw e
-        }
+          try {
+            await checkLockout(email)
+          } catch (e) {
+            if (e instanceof AccountLockedError) return null
+            throw e
+          }
 
-        const user = await prisma.user.findUnique({
-          where: { email },
-        })
-
-        if (!user || !user.password) {
-          await recordLoginFailure({ email, ip: null, userAgent: null })
-          return null
-        }
-
-        const isValid = await compare(password, user.password)
-        if (!isValid) {
-          await recordLoginFailure({ email, ip: null, userAgent: null })
-          return null
-        }
-
-        if (!isLoginEmailVerified(user)) {
-          return null
-        }
-
-        const teknisiGuard = await checkTeknisiLoginGuard(user.id, user.role)
-        if (!teknisiGuard.allowed) {
-          return null
-        }
-
-        if (!user.isActive) {
-          return null
-        }
-
-        if ((await isComingSoonEnabled()) && user.role !== 'ADMIN') {
-          return null
-        }
-
-        if (user.twoFactorEnabled) {
-          const ok2fa = await verifySecondFactor({
-            userId: user.id,
-            input: totp,
-            totpSecret: user.twoFactorSecret,
+          const user = await prisma.user.findUnique({
+            where: { email },
           })
-          if (!ok2fa) {
-            const lockedUntil = await recordSecondFactorFailure({ email })
-            void logAuthEvent({
-              action: 'auth.2fa.failed',
-              severity: 'WARNING',
-              summary: `2FA gagal untuk ${email}`,
-              actor: { id: user.id, name: user.name, email: user.email, role: user.role },
-              metadata: { email, lockedUntil: lockedUntil?.toISOString() ?? null },
-            })
+
+          if (!user || !user.password) {
+            await recordLoginFailure({ email, ip: null, userAgent: null })
             return null
           }
-        }
 
-        await clearLockout(email)
+          const isValid = await compare(password, user.password)
+          if (!isValid) {
+            await recordLoginFailure({ email, ip: null, userAgent: null })
+            return null
+          }
 
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          image: user.image,
-          role: user.role,
-          sessionVersion: user.sessionVersion,
+          if (!isLoginEmailVerified(user)) {
+            return null
+          }
+
+          const teknisiGuard = await checkTeknisiLoginGuard(user.id, user.role)
+          if (!teknisiGuard.allowed) {
+            return null
+          }
+
+          if (!user.isActive) {
+            return null
+          }
+
+          if ((await isComingSoonEnabled()) && user.role !== 'ADMIN') {
+            return null
+          }
+
+          if (user.twoFactorEnabled) {
+            const ok2fa = await verifySecondFactor({
+              userId: user.id,
+              input: totp,
+              totpSecret: user.twoFactorSecret,
+            })
+            if (!ok2fa) {
+              const lockedUntil = await recordSecondFactorFailure({ email })
+              void logAuthEvent({
+                action: 'auth.2fa.failed',
+                severity: 'WARNING',
+                summary: `2FA gagal untuk ${email}`,
+                actor: { id: user.id, name: user.name, email: user.email, role: user.role },
+                metadata: { email, lockedUntil: lockedUntil?.toISOString() ?? null },
+              })
+              return null
+            }
+          }
+
+          await clearLockout(email)
+
+          return {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            image: user.image,
+            role: user.role,
+            sessionVersion: user.sessionVersion,
+          }
+        } catch (e) {
+          console.error('[AUTH_CREDENTIALS_AUTHORIZE]', e)
+          return null
         }
       },
     }),

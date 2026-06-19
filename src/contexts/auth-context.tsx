@@ -30,6 +30,19 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+async function readJsonResponse(res: Response): Promise<Record<string, unknown>> {
+  const text = await res.text()
+  try {
+    return JSON.parse(text) as Record<string, unknown>
+  } catch {
+    throw new Error(
+      res.ok
+        ? 'Respons server tidak valid'
+        : `Server error (${res.status}). Coba lagi atau hubungi admin.`,
+    )
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -62,11 +75,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password }),
           })
-          const checkData = await checkRes.json()
+          const checkData = await readJsonResponse(checkRes)
           if (!checkData.success) {
-            return { success: false, error: checkData.error || 'Email atau password salah' }
+            return {
+              success: false,
+              error: (checkData.error as string | undefined) || 'Email atau password salah',
+            }
           }
-          if (checkData.data?.requires2FA) {
+          const checkPayload = checkData.data as { requires2FA?: boolean } | undefined
+          if (checkPayload?.requires2FA) {
             return { success: false, requires2FA: true }
           }
         }
@@ -78,7 +95,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           redirect: false,
         })
 
-        if (result?.error) {
+        if (!result) {
+          return { success: false, error: 'Gagal menghubungi server autentikasi. Coba lagi.' }
+        }
+
+        if (result.error) {
           return {
             success: false,
             error: totp ? 'Kode Google Authenticator tidak valid' : 'Email atau password salah',
@@ -86,8 +107,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         return { success: true }
-      } catch {
-        return { success: false, error: 'Terjadi kesalahan' }
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Terjadi kesalahan'
+        return { success: false, error: message }
       }
     },
     [],

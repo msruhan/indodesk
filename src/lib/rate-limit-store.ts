@@ -29,12 +29,17 @@ class UpstashRateLimitStore implements RateLimitStore {
   ) {}
 
   async check(key: string, config: RateLimitConfig): Promise<RateLimitResult> {
-    const limiter = this.limiterFactory(config.limit, config.windowSeconds)
-    const result = await limiter.limit(key)
-    return {
-      allowed: result.success,
-      remaining: result.remaining,
-      resetAt: result.reset,
+    try {
+      const limiter = this.limiterFactory(config.limit, config.windowSeconds)
+      const result = await limiter.limit(key)
+      return {
+        allowed: result.success,
+        remaining: result.remaining,
+        resetAt: result.reset,
+      }
+    } catch (e) {
+      console.error('[rate-limit] Upstash check failed — allowing request', e)
+      return { allowed: true, remaining: config.limit, resetAt: Date.now() + config.windowSeconds * 1000 }
     }
   }
 }

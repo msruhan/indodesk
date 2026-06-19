@@ -25,6 +25,7 @@ const schema = z.object({
 
 /** Pre-login check: validates credentials and reports if TOTP is required. */
 export async function POST(req: Request) {
+  try {
   const ip = getClientIp(req)
   let body: unknown
   try {
@@ -114,6 +115,10 @@ export async function POST(req: Request) {
     return apiSuccess({ requires2FA: user.twoFactorEnabled })
   } catch (e) {
     console.error('[AUTH_CHECK_LOGIN_POST]', e)
+    return apiError('Gagal memverifikasi login', 500)
+  }
+  } catch (e) {
+    console.error('[AUTH_CHECK_LOGIN_POST_OUTER]', e)
     return apiError('Gagal memverifikasi login', 500)
   }
 }
