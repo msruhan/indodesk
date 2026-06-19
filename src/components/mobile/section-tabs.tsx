@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { ChevronDown } from '@/lib/icons'
+import { BrandLogo } from '@/components/brand/brand-logo'
 import { PublicHeaderActions } from '@/components/mobile/public-header-actions'
 import {
   mobileHeaderBarRowClass,
@@ -185,6 +186,7 @@ export function SectionTabs({ tabs, layoutId, variant = 'merged' }: SectionTabsP
         className={cn(
           'fixed inset-x-0 top-0 z-50 overflow-visible pt-[env(safe-area-inset-top,0px)] lg:hidden',
           mobileHeaderBarRowClass,
+          'gap-2',
           isMerged
             ? cn('mobile-merged-header-bg', scrolled && 'is-scrolled')
             : cn(
@@ -193,11 +195,20 @@ export function SectionTabs({ tabs, layoutId, variant = 'merged' }: SectionTabsP
               ),
         )}
       >
-        {useDropdown ? (
-          <SectionTabDropdown tabs={tabs} isMerged={isMerged} isActive={isActive} />
-        ) : (
-          <SectionTabPills tabs={tabs} layoutId={layoutId} isMerged={isMerged} isActive={isActive} />
-        )}
+        <Link
+          href="/"
+          className="inline-flex shrink-0 items-center"
+          aria-label="Beranda Bantoo"
+        >
+          <BrandLogo variant="icon" iconClassName="h-[4.25rem] w-[4.25rem] scale-[1.45] sm:h-20 sm:w-20 sm:scale-[1.5]" />
+        </Link>
+        <div className="min-w-0 flex-1">
+          {useDropdown ? (
+            <SectionTabDropdown tabs={tabs} isMerged={isMerged} isActive={isActive} />
+          ) : (
+            <SectionTabPills tabs={tabs} layoutId={layoutId} isMerged={isMerged} isActive={isActive} />
+          )}
+        </div>
         <PublicHeaderActions />
       </div>
       <div className={mobileSectionTabsSpacerClass} aria-hidden />

@@ -11,6 +11,7 @@ import { ChatProvider } from '@/contexts/chat-context'
 import { CartProvider } from '@/contexts/cart-context'
 import { CompareProvider } from '@/contexts/compare-context'
 import { FeatureFlagsProvider } from '@/contexts/feature-flags-context'
+import { AdminStepUpDialogProvider } from '@/components/admin/admin-step-up-dialog-provider'
 import { ConfirmDialogProvider } from '@/components/ui/confirm-dialog'
 import { ChatFloatingWidget } from '@/components/chat/chat-floating-widget'
 import { CompareBar } from '@/components/marketplace/compare-bar'
@@ -38,12 +39,14 @@ export function Providers({
                   <CompareProvider>
                   <ChatProvider>
                     <ConfirmDialogProvider>
-                      <Toaster position="top-right" richColors />
-                      <TeknisiPresenceSync />
-                      <TeknisiRemoteRequestNotifier />
-                      {children}
-                      <ChatFloatingWidget />
-                      <CompareBar />
+                      <AdminStepUpDialogProvider>
+                        <Toaster position="top-right" richColors />
+                        <TeknisiPresenceSync />
+                        <TeknisiRemoteRequestNotifier />
+                        {children}
+                        <ChatFloatingWidget />
+                        <CompareBar />
+                      </AdminStepUpDialogProvider>
                     </ConfirmDialogProvider>
                   </ChatProvider>
                   </CompareProvider>

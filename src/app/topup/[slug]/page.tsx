@@ -55,7 +55,7 @@ export default function TopupDetailPage() {
         denominationSku: sameProduct ? prev.denominationSku ?? desired ?? null : desired ?? null,
         accountId: sameProduct ? prev.accountId : '',
         serverId: sameProduct ? prev.serverId : '',
-        paymentMethodId: sameProduct ? (prev.paymentMethodId ?? 'saldo') : 'saldo',
+        paymentMethodId: sameProduct ? (prev.paymentMethodId ?? 'tripay') : 'tripay',
         promoCode: sameProduct ? prev.promoCode : '',
       }
     })
@@ -69,10 +69,13 @@ export default function TopupDetailPage() {
       .then((json) => {
         if (json.success && Array.isArray(json.data)) {
           setPaymentMethods(json.data)
+          if (json.data.some((m: { id: string }) => m.id === 'tripay')) {
+            setDraft((prev) => ({ ...prev, paymentMethodId: 'tripay' }))
+          }
         }
       })
       .catch(() => undefined)
-  }, [sessionStatus])
+  }, [sessionStatus, setDraft])
 
   if (!loading && !product) return notFound()
   if (loading || !product) {
@@ -107,8 +110,8 @@ export default function TopupDetailPage() {
 
   const handleSubmit = async () => {
     if (!ready || !denom) return
-    const paymentMethod = draft.paymentMethodId ?? 'saldo'
-    if (paymentMethod !== 'saldo' && paymentMethod !== 'tripay') {
+    const paymentMethod = draft.paymentMethodId ?? 'tripay'
+    if (paymentMethod !== 'tripay') {
       setSubmitError('Metode pembayaran tidak tersedia.')
       return
     }

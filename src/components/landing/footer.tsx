@@ -10,7 +10,6 @@ import {
   canAccessInspectionService,
   canAccessRekberService,
 } from '@/lib/platform-settings-shared'
-import { homePathForRole } from '@/lib/role-routes'
 import { LEGAL_FOOTER_LINKS } from '@/lib/legal-content'
 import type { UserRole } from '@prisma/client'
 
@@ -35,13 +34,6 @@ const MITRA_LINKS: FooterLink[] = [
   { label: 'Karir', href: '/lowongan' },
   { label: 'Daftar Teknisi', href: '/register/teknisi' },
 ]
-
-function helpPathForRole(role: UserRole | null): string {
-  if (role === 'ADMIN') return '/admin/help/preview'
-  if (role === 'TEKNISI') return '/teknisi/bantuan'
-  if (role === 'USER') return '/user/bantuan'
-  return '/login?callbackUrl=/user/bantuan'
-}
 
 function filterLinks(
   links: FooterLink[],
@@ -71,26 +63,13 @@ export function Footer() {
 
   const exploreLinks = useMemo(() => filterLinks(EXPLORE_LINKS, gates), [gates])
 
-  const bottomLinks = useMemo(() => {
-    if (user && role) {
-      return [
-        { label: 'Dashboard', href: homePathForRole(role) },
-        { label: 'Bantuan', href: helpPathForRole(role) },
-      ]
-    }
-    return [
-      { label: 'Masuk', href: '/login' },
-      { label: 'Daftar', href: '/register' },
-    ]
-  }, [user, role])
-
   return (
     <footer className="relative overflow-hidden border-t border-surface-200/70 bg-gradient-to-b from-white to-surface-50/60">
       <div className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
           <div className="sm:col-span-2 lg:col-span-2">
             <Link href="/" className="inline-flex">
-              <BrandLogo variant="wordmark" wordmarkClassName="h-9 sm:h-10" />
+              <BrandLogo variant="wordmark" wordmarkClassName="h-16 sm:h-[4.5rem] scale-[1.15]" />
             </Link>
             <p className="mt-3 max-w-sm text-sm text-surface-600">
               Ekosistem teknisi handphone — jual, beli, konsultasi, transaksi aman.
@@ -152,18 +131,8 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-8 flex flex-col items-center justify-between gap-3 border-t border-surface-200/70 pt-6 sm:flex-row">
+        <div className="mt-8 border-t border-surface-200/70 pt-6 text-center sm:text-left">
           <p className="text-xs text-surface-500">© {new Date().getFullYear()} Bantoo</p>
-          <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-surface-500 sm:justify-end">
-            <Link href="/#pricing" className="transition-colors hover:text-ink">
-              Pricing
-            </Link>
-            {bottomLinks.map((link) => (
-              <Link key={link.label} href={link.href} className="transition-colors hover:text-ink">
-                {link.label}
-              </Link>
-            ))}
-          </div>
         </div>
       </div>
     </footer>

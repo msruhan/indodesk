@@ -218,16 +218,22 @@ export function Navbar() {
             : 'border border-transparent bg-white/40 backdrop-blur-md',
         ].join(' ')}
       >
-        <motion.div className="relative flex h-14 items-center justify-between gap-4 px-4 sm:px-6 lg:h-16">
-          <Link href="/" className="relative z-10 flex shrink-0 items-center group/logo">
+        <motion.div className="relative flex h-[4.75rem] items-center justify-between gap-4 px-4 sm:px-6 lg:h-24">
+          <Link
+            href="/"
+            className={cn(
+              'relative z-10 flex shrink-0 items-center group/logo',
+              'min-w-[4rem] overflow-visible',
+            )}
+          >
             <BrandLogo
               variant="icon"
-              iconClassName="sm:hidden transition-transform duration-450 group-hover/logo:scale-[1.06]"
+              iconClassName="h-[4.25rem] w-[4.25rem] scale-[1.45] transition-transform duration-450 group-hover/logo:scale-[1.5] sm:h-20 sm:w-20 md:hidden"
             />
             <BrandLogo
               variant="wordmark"
-              wordmarkClassName="hidden sm:block"
-              className="hidden sm:inline-flex"
+              wordmarkClassName="hidden h-[4.25rem] w-auto max-w-[20rem] scale-[1.18] object-contain md:block lg:h-20 lg:max-w-[22rem] lg:scale-[1.2]"
+              className="hidden md:inline-flex"
             />
           </Link>
 

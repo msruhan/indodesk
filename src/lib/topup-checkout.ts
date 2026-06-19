@@ -1,7 +1,5 @@
 import { Prisma, type TopupStatus } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import type { ActivityActor } from '@/lib/activity-log'
-import { logOrderEvent, logPaymentEvent } from '@/lib/activity-log'
 import { getTripayConfig } from '@/lib/tripay/config'
 import { CATALOG_TOPUP_PAYMENT_TTL_MS } from '@/lib/payments/payment-intent'
 import {
@@ -15,10 +13,9 @@ import {
   isValidMsisdn,
   normalizeMsisdn,
 } from '@/lib/topup-account-validation'
-import { debitUserForTopup, refundTopupToBuyer } from '@/lib/topup-wallet'
+import { refundTopupToBuyer } from '@/lib/topup-wallet'
 import { walletTransaction } from '@/lib/wallet/transaction'
 import { hasWalletLedgerByUser } from '@/lib/wallet/ledger-idempotency'
-import { generateTopupPollToken } from '@/lib/topup-poll-token'
 
 export type TopupCheckoutInput = {
   productSlug: string
@@ -87,7 +84,7 @@ async function resolveTopupCheckout(
   const subtotal = Number(subtotalDec)
   const { discount: discountNum } = calcTopupDiscount(subtotal, input.promoCode)
   const discountDec = new Prisma.Decimal(discountNum)
-  const feeDec = new Prisma.Decimal(input.paymentMethod === 'saldo' ? (method.fee ?? 0) : 0)
+  const feeDec = new Prisma.Decimal(method.fee ?? 0)
   const totalDec = subtotalDec.sub(discountDec).add(feeDec)
   if (totalDec.lessThan(0)) throw new Error('INVALID_TOTAL')
 
@@ -174,114 +171,39 @@ export async function processTopupCheckout(
     throw new Error('ADMIN_NOT_ALLOWED')
   }
 
-  if (input.paymentMethod !== 'saldo' && input.paymentMethod !== 'tripay') {
+  if (input.paymentMethod !== 'tripay') {
     throw new Error('PAYMENT_NOT_SUPPORTED')
   }
 
   const resolved = await resolveTopupCheckout(userId, input)
   const { product, denom, accountId, discountDec, feeDec, totalDec, orderCode } = resolved
 
-  const actor: ActivityActor = {
-    id: userId,
-    name: userName,
-    email: userEmail,
-    role: userRole,
-  }
-
-  if (input.paymentMethod === 'tripay') {
-    const paymentExpiresAt = new Date(Date.now() + CATALOG_TOPUP_PAYMENT_TTL_MS)
-    const order = await prisma.topupOrder.create({
-      data: {
-        orderCode,
-        userId,
-        productSlug: product.slug,
-        denominationSku: denom.sku,
-        accountId,
-        serverId: input.serverId?.trim() || null,
-        email: input.email?.trim() || null,
-        whatsapp: input.whatsapp?.trim() || null,
-        subtotal: resolved.subtotalDec,
-        discount: discountDec,
-        fee: feeDec,
-        total: totalDec,
-        paymentMethod: 'tripay',
-        status: 'PENDING_PAYMENT',
-        paymentExpiresAt,
-      },
-    })
-
-    return {
-      mode: 'needs_payment',
-      paymentGateway: 'tripay',
-      order: serializeTopupOrder({ ...order, product, denomination: denom }, product.name, denom.label),
-      orderId: order.id,
-      total: Number(totalDec),
-    }
-  }
-
-  const poll = generateTopupPollToken()
-
-  const order = await walletTransaction(async (tx) => {
-    const created = await tx.topupOrder.create({
-      data: {
-        orderCode,
-        userId,
-        productSlug: product.slug,
-        denominationSku: denom.sku,
-        accountId,
-        serverId: input.serverId?.trim() || null,
-        email: input.email?.trim() || null,
-        whatsapp: input.whatsapp?.trim() || null,
-        subtotal: resolved.subtotalDec,
-        discount: discountDec,
-        fee: feeDec,
-        total: totalDec,
-        paymentMethod: input.paymentMethod,
-        status: 'PROCESSING',
-        paidAt: new Date(),
-        pollTokenHash: poll.hash,
-      },
-    })
-
-    await debitUserForTopup(
-      tx,
+  const paymentExpiresAt = new Date(Date.now() + CATALOG_TOPUP_PAYMENT_TTL_MS)
+  const order = await prisma.topupOrder.create({
+    data: {
+      orderCode,
       userId,
-      totalDec,
-      created.id,
-      `Top up ${product.name} — ${denom.label}`,
-    )
-
-    await tx.topupCatalogProduct.update({
-      where: { id: product.id },
-      data: { ordersToday: { increment: 1 } },
-    })
-
-    return created
-  })
-
-  void logPaymentEvent({
-    action: 'topup.paid',
-    severity: 'SUCCESS',
-    summary: `Top up ${product.name} — ${order.orderCode}`,
-    actor,
-    target: { type: 'topup_order', id: order.id, label: order.orderCode },
-    metadata: { total: Number(order.total), productSlug: product.slug },
-  })
-  void logOrderEvent({
-    action: 'topup.order_created',
-    severity: 'INFO',
-    summary: `Order topup ${order.orderCode}`,
-    actor,
-    target: { type: 'topup_order', id: order.id, label: order.orderCode },
+      productSlug: product.slug,
+      denominationSku: denom.sku,
+      accountId,
+      serverId: input.serverId?.trim() || null,
+      email: input.email?.trim() || null,
+      whatsapp: input.whatsapp?.trim() || null,
+      subtotal: resolved.subtotalDec,
+      discount: discountDec,
+      fee: feeDec,
+      total: totalDec,
+      paymentMethod: 'tripay',
+      status: 'PENDING_PAYMENT',
+      paymentExpiresAt,
+    },
   })
 
   return {
-    mode: 'paid',
-    order: serializeTopupOrder(
-      { ...order, product, denomination: denom },
-      product.name,
-      denom.label,
-    ),
-    pollToken: poll.plain,
+    mode: 'needs_payment',
+    paymentGateway: 'tripay',
+    order: serializeTopupOrder({ ...order, product, denomination: denom }, product.name, denom.label),
+    orderId: order.id,
+    total: Number(totalDec),
   }
 }

@@ -10,25 +10,18 @@ export function generateTopupOrderCode(): string {
 
 export const TOPUP_PAYMENT_METHODS: PaymentMethod[] = [
   {
-    id: 'saldo',
-    kind: 'saldo',
-    label: 'Saldo Bantoo',
-    hint: 'Bayar instan dari saldo wallet',
-    fee: 0,
-    instant: true,
-  },
-  {
     id: 'tripay',
     kind: 'qris',
     label: 'QRIS / Virtual Account',
-    hint: 'Bayar langsung via Tripay (tanpa saldo wallet)',
+    hint: 'Bayar langsung via Tripay saat checkout',
     fee: 0,
   },
 ]
 
 /** Payment methods available for checkout (Tripay gated server-side). */
 export function getTopupPaymentMethodsForClient(tripayEnabled: boolean): PaymentMethod[] {
-  return TOPUP_PAYMENT_METHODS.filter((m) => m.id !== 'tripay' || tripayEnabled)
+  if (!tripayEnabled) return []
+  return TOPUP_PAYMENT_METHODS
 }
 
 export const TOPUP_PROMO_CODES: Record<

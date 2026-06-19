@@ -29,6 +29,10 @@ const ERROR_MAP: Record<string, { message: string; status: number }> = {
   OUT_OF_STOCK: { message: 'Stok produk tidak mencukupi', status: 409 },
   WALLET_NOT_FOUND: { message: 'Wallet tidak ditemukan', status: 400 },
   INSUFFICIENT_BALANCE: { message: 'Saldo tidak cukup. Top-up dulu ya.', status: 402 },
+  PAYMENT_GATEWAY_UNAVAILABLE: {
+    message: 'Metode pembayaran belum tersedia. Hubungi admin.',
+    status: 503,
+  },
   SHIPPING_ADDRESS_REQUIRED: {
     message: 'Alamat pengiriman wajib diisi (minimal 10 karakter)',
     status: 400,

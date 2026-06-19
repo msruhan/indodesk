@@ -15,6 +15,10 @@ export const metadata: Metadata = {
   title: 'Bantoo - Platform Ekosistem Digital',
   description:
     'Platform terpadu marketplace, transaksi aman, layanan teknisi, konsultasi online, dan layanan digital untuk ekosistem teknologi Indonesia.',
+  icons: {
+    icon: '/icon/iconbantoo.png',
+    apple: '/icon/iconbantoo.png',
+  },
 }
 
 export default async function RootLayout({

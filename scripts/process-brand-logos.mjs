@@ -3,7 +3,7 @@
  * Preserves interior white (e.g. infinity symbol on green icon).
  *
  * Reads from *.source.png (auto-backup on first run), writes transparent PNG
- * to the paths used by the app (icon-bandoo.png, icon-text-bandoo.png).
+ * to the paths used by the app (iconbantoo.png, iconbantootext.png).
  */
 import sharp from 'sharp'
 import { copyFileSync, existsSync, writeFileSync } from 'node:fs'
@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ICON_DIR = join(__dirname, '../public/icon')
 
-const OUTPUTS = ['icon-bandoo.png', 'icon-text-bandoo.png']
+const OUTPUTS = ['iconbantoo.png', 'iconbantootext.png']
 
 const WHITE_THRESHOLD = 248
 const FUZZ = 12

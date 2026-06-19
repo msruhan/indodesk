@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useWallet } from '@/contexts/wallet-context'
 import { useAuth } from '@/contexts/auth-context'
-import { Wallet, Plus, TrendingUp, X } from '@/lib/icons'
+import { Wallet, TrendingUp, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 export function WalletBalanceButton() {
@@ -13,7 +13,7 @@ export function WalletBalanceButton() {
   const { user } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
 
-  if (!user || user.role === 'ADMIN') return null
+  if (!user || user.role === 'ADMIN' || user.role === 'USER') return null
 
   const balance = wallet ? parseFloat(wallet.balance) : 0
   const formattedBalance = new Intl.NumberFormat('id-ID', {
@@ -49,7 +49,7 @@ export function WalletBalanceButton() {
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-xs font-medium text-surface-500">Saldo Anda</p>
+                  <p className="text-xs font-medium text-surface-500">Pendapatan tersedia</p>
                   <p className="mt-1 text-2xl font-bold text-ink">{formattedBalance}</p>
                 </div>
                 <button
@@ -60,22 +60,14 @@ export function WalletBalanceButton() {
                 </button>
               </div>
 
-              <div className="mt-4 space-y-2">
+              <div className="mt-4">
                 <Link
-                  href={user.role === 'TEKNISI' ? '/teknisi/saldo' : '/topup'}
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center gap-2 rounded-lg bg-primary-50 px-3 py-2 text-sm font-medium text-primary-700 transition-colors hover:bg-primary-100"
-                >
-                  <Plus className="h-4 w-4" />
-                  Topup Saldo
-                </Link>
-                <Link
-                  href={user.role === 'TEKNISI' ? '/teknisi/saldo' : '/user/riwayat'}
+                  href="/teknisi/saldo"
                   onClick={() => setIsOpen(false)}
                   className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-surface-600 transition-colors hover:bg-surface-100"
                 >
                   <TrendingUp className="h-4 w-4" />
-                  Riwayat Transaksi
+                  Kelola saldo & tarik
                 </Link>
               </div>
             </motion.div>

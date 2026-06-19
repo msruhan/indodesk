@@ -23,7 +23,7 @@ import {
   Sparkles,
 } from '@/lib/icons'
 
-const BANTOO_CARD_ICON = '/icon/icon-bandoo.source.png'
+const BANTOO_CARD_ICON = '/icon/iconbantoo.png'
 
 export function TeknisiDigitalIdCard({ teknisi }: { teknisi: TeknisiDigitalIdSource }) {
   const ref = useRef<HTMLDivElement>(null)

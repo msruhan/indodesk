@@ -1,15 +1,10 @@
-/** Client-side prompt for sensitive admin API calls (no secrets stored). */
+import { requestAdminStepUpViaDialog } from '@/lib/admin-step-up-bridge'
+
+/** Client-side dialog for sensitive admin API calls (no secrets stored). */
 export async function requestAdminStepUpCredentials(
   twoFactorEnabled: boolean,
 ): Promise<{ confirmPassword?: string; totp?: string } | null> {
-  if (twoFactorEnabled) {
-    const totp = window.prompt('Masukkan kode 2FA admin untuk melanjutkan:')
-    if (!totp?.trim()) return null
-    return { totp: totp.trim() }
-  }
-  const confirmPassword = window.prompt('Masukkan password admin untuk konfirmasi:')
-  if (!confirmPassword) return null
-  return { confirmPassword }
+  return requestAdminStepUpViaDialog(twoFactorEnabled)
 }
 
 export async function fetchAdminTwoFactorEnabled(): Promise<boolean> {

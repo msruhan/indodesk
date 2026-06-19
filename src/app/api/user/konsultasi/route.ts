@@ -2,15 +2,11 @@ import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
-import { logCommunicationEvent, logPaymentEvent } from '@/lib/activity-log'
 import { findConsultationService } from '@/lib/konsultasi-services'
-import { holdUserForKonsultasi } from '@/lib/konsultasi-wallet'
 import { getPublicFeatureFlags } from '@/lib/platform-settings'
-import { getPaymentGatewayProvider, KONSULTASI_PAYMENT_TTL_MS } from '@/lib/payment-gateway'
+import { KONSULTASI_PAYMENT_TTL_MS } from '@/lib/payment-gateway'
 import { getTripayConfig } from '@/lib/tripay/config'
-import { walletTransaction } from '@/lib/wallet/transaction'
 import { serializeUserKonsultasi } from '@/lib/user-konsultasi-serializer'
-import { notifyKonsultasiNew } from '@/lib/telegram/notify'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,14 +27,6 @@ const createSchema = z.object({
   remoteId: z.string().min(6).max(32).optional(),
   remoteOtp: z.string().min(4).max(32).optional(),
 })
-
-function appBaseUrl(req: Request): string {
-  const env = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '')
-  if (env) return env
-  const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host')
-  const proto = req.headers.get('x-forwarded-proto') ?? 'http'
-  return host ? `${proto}://${host}` : 'http://localhost:3000'
-}
 
 export async function GET() {
   const { session, error } = await requireApiRole(['USER'])
@@ -127,76 +115,9 @@ export async function POST(req: Request) {
     }
 
     const amount = new Prisma.Decimal(price)
-    const wallet = await prisma.wallet.findUnique({ where: { userId: session.user.id } })
-    const balance = wallet?.balance ?? new Prisma.Decimal(0)
-    const canHold = wallet != null && balance.greaterThanOrEqualTo(amount)
 
-    const actor = {
-      id: session.user.id,
-      name: session.user.name,
-      email: session.user.email,
-      role: 'USER' as const,
-    }
-    const teknisiLabel = profile.user.name ?? 'Teknisi'
-
-    if (canHold) {
-      const created = await walletTransaction(async (tx) => {
-        const sessionRow = await tx.konsultasiSession.create({
-          data: {
-            userId: session.user.id,
-            teknisiId,
-            service: matched.name,
-            note: note?.trim() || null,
-            device: device.trim(),
-            clientOs,
-            requiresRemote: matched.requiresRemote,
-            remoteId: matched.requiresRemote ? remoteId!.trim() : null,
-            remoteOtp: matched.requiresRemote ? remoteOtp!.trim() : null,
-            price: amount,
-            status: 'PENDING',
-            paymentMethod: 'WALLET_HOLD',
-            paymentStatus: 'SECURED',
-            paidAt: new Date(),
-          },
-          include: { teknisi: { select: TEKNISI_SELECT } },
-        })
-
-        await holdUserForKonsultasi(
-          tx,
-          session.user.id,
-          amount,
-          sessionRow.id,
-          `Hold konsultasi: ${matched.name}`,
-        )
-
-        return sessionRow
-      })
-
-      void logPaymentEvent({
-        action: 'konsultasi.payment',
-        severity: 'SUCCESS',
-        summary: `Hold saldo konsultasi ${matched.name} — ${teknisiLabel}`,
-        actor,
-        target: { type: 'konsultasi', id: created.id, label: matched.name },
-      })
-
-      void logCommunicationEvent({
-        action: 'konsultasi.created',
-        severity: 'INFO',
-        summary: `Konsultasi baru: ${matched.name} — ${teknisiLabel}`,
-        actor,
-        target: { type: 'konsultasi', id: created.id, label: matched.name },
-      })
-
-      void notifyKonsultasiNew(created.id)
-
-      return apiSuccess(
-        {
-          ...serializeUserKonsultasi(created),
-          needsPayment: false,
-        },
-        201,
-      )
+    if (!getTripayConfig().isConfigured) {
+      return apiError('Metode pembayaran belum tersedia. Hubungi admin.', 503)
     }
 
     const paymentExpiresAt = new Date(Date.now() + KONSULTASI_PAYMENT_TTL_MS)
@@ -220,57 +141,16 @@ export async function POST(req: Request) {
       include: { teknisi: { select: TEKNISI_SELECT } },
     })
 
-    const tripayReady = getTripayConfig().isConfigured
-
-    if (tripayReady) {
-      return apiSuccess(
-        {
-          ...serializeUserKonsultasi(pendingSession),
-          needsPayment: true,
-          paymentGateway: 'tripay',
-          sessionId: pendingSession.id,
-        },
-        201,
-      )
-    }
-
-    const pg = getPaymentGatewayProvider()
-    const payment = await pg.createPayment({
-      sessionId: pendingSession.id,
-      amount: price,
-      userId: session.user.id,
-      description: `Konsultasi: ${matched.name}`,
-      returnUrl: `${appBaseUrl(req)}/user/konsultasi?paySession=${pendingSession.id}`,
-    })
-
-    await prisma.konsultasiSession.update({
-      where: { id: pendingSession.id },
-      data: {
-        pgProvider: payment.provider,
-        pgExternalRef: payment.externalRef,
-        paymentExpiresAt: payment.expiresAt,
-      },
-    })
-
-    const refreshed = await prisma.konsultasiSession.findUniqueOrThrow({
-      where: { id: pendingSession.id },
-      include: { teknisi: { select: TEKNISI_SELECT } },
-    })
-
     return apiSuccess(
       {
-        ...serializeUserKonsultasi(refreshed),
+        ...serializeUserKonsultasi(pendingSession),
         needsPayment: true,
-        paymentGateway: 'stub',
-        redirectUrl: payment.redirectUrl,
-        pgExternalRef: payment.externalRef,
+        paymentGateway: 'tripay',
+        sessionId: pendingSession.id,
       },
       201,
     )
   } catch (e) {
-    if (e instanceof Error && e.message === 'INSUFFICIENT_BALANCE') {
-      return apiError('Saldo tidak cukup')
-    }
     console.error('[USER_KONSULTASI_POST]', e)
     return apiError('Gagal memesan konsultasi', 500)
   }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
@@ -44,26 +44,14 @@ export function KonsultasiBookingDialog({
   const [note, setNote] = useState('')
   const [remoteId, setRemoteId] = useState('')
   const [remoteOtp, setRemoteOtp] = useState('')
-  const [walletBalance, setWalletBalance] = useState<number | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [paySession, setPaySession] = useState<{ sessionId: string; price: number } | null>(null)
-
-  useEffect(() => {
-    if (!open || sessionStatus !== 'authenticated') return
-    void fetch('/api/wallet')
-      .then((r) => r.json())
-      .then((json) => {
-        if (json.success) setWalletBalance(Number(json.data.balance))
-      })
-      .catch(() => setWalletBalance(null))
-  }, [open, sessionStatus])
 
   if (!open) return null
 
   const requiresRemote = selected?.requiresRemote === true
   const price = selected?.price ?? 0
-  const hasEnoughBalance = walletBalance != null && walletBalance >= price
 
   const handleSubmit = async () => {
     if (!selected) return
@@ -117,11 +105,6 @@ export function KonsultasiBookingDialog({
           sessionId: json.data.sessionId as string,
           price: selected.price,
         })
-        return
-      }
-
-      if (json.data?.needsPayment && json.data?.redirectUrl) {
-        window.location.href = json.data.redirectUrl as string
         return
       }
 
@@ -293,11 +276,7 @@ export function KonsultasiBookingDialog({
         )}
 
         <p className="rounded-xl bg-surface-50 px-3 py-2 text-xs text-surface-600">
-          {walletBalance == null
-            ? 'Pembayaran diperlukan sebelum teknisi mulai sesi.'
-            : hasEnoughBalance
-              ? `Saldo ${formatPrice(walletBalance)} — ${formatPrice(price)} akan ditahan sampai sesi selesai atau dibatalkan.`
-              : `Saldo ${formatPrice(walletBalance)} tidak cukup. Anda akan diarahkan ke payment gateway untuk bayar ${formatPrice(price)}.`}
+          Bayar {formatPrice(price)} via QRIS atau Virtual Account sebelum teknisi mulai sesi.
         </p>
 
         <div className="mt-4 flex gap-2">
@@ -313,9 +292,7 @@ export function KonsultasiBookingDialog({
           >
             {submitting
               ? 'Memproses…'
-              : hasEnoughBalance
-                ? 'Pesan Sesi'
-                : `Bayar ${selected ? formatPrice(selected.price) : ''}`}
+              : `Bayar ${selected ? formatPrice(selected.price) : ''}`}
           </Button>
         </div>
           </>

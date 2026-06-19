@@ -83,7 +83,7 @@ export function Hero() {
   }, [])
 
   return (
-    <section className="relative min-h-[88vh] overflow-hidden pt-28 pb-16 sm:pt-32">
+    <section className="relative min-h-[88vh] overflow-hidden pt-32 pb-16 sm:pt-36">
       <AuroraBackground intensity="vivid" />
       <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-white via-white/70 to-transparent" />
 

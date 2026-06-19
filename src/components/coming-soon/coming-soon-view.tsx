@@ -106,7 +106,11 @@ export function ComingSoonView({
       />
 
       <header className="relative z-10 flex items-center justify-center px-6 pt-10 sm:pt-14">
-        <BrandLogo variant="wordmark" size="default" />
+        <BrandLogo
+          variant="wordmark"
+          size="default"
+          wordmarkClassName="h-20 scale-[1.2] sm:h-24 sm:scale-[1.25] sm:max-w-[24rem]"
+        />
       </header>
 
       <main className="relative z-10 mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-center px-6 py-10 text-center sm:py-14">

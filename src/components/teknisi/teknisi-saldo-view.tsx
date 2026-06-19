@@ -5,8 +5,7 @@ import { AnimatePresence } from 'framer-motion'
 import { useWallet } from '@/contexts/wallet-context'
 import { Button } from '@/components/ui/button'
 import { DashboardMonthFilter, MetricCard } from '@/components/dashboard'
-import { Download, Plus, TrendingUp, TrendingDown, Wallet } from '@/lib/icons'
-import { WalletTopupModal } from '@/components/wallet/wallet-topup-modal'
+import { Download, TrendingDown, TrendingUp, Wallet } from '@/lib/icons'
 import { WalletWithdrawModal } from '@/components/wallet/wallet-withdraw-modal'
 import { useDashboardPeriod } from '@/contexts/dashboard-period-context'
 import { periodToQuery } from '@/lib/dashboard-period'
@@ -16,7 +15,6 @@ import { WalletTransactionHistory } from '@/components/wallet/wallet-transaction
 export function TeknisiSaldoView() {
   const { period } = useDashboardPeriod()
   const { wallet, isLoading } = useWallet()
-  const [showTopup, setShowTopup] = useState(false)
   const [showWithdraw, setShowWithdraw] = useState(false)
   const [totalSpending, setTotalSpending] = useState(0)
   const [spendingCount, setSpendingCount] = useState(0)
@@ -61,18 +59,14 @@ export function TeknisiSaldoView() {
         <div>
           <h1 className="text-xl font-semibold tracking-tightest text-ink sm:text-2xl">Saldo & Transaksi</h1>
           <p className="mt-0.5 text-[13px] text-surface-500">
-            Kelola saldo Anda dan lihat riwayat transaksi
+            Pendapatan dari layanan Anda — tarik ke rekening bank kapan saja
           </p>
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
           <DashboardMonthFilter className="self-start sm:self-auto" />
-          <Button onClick={() => setShowTopup(true)} variant="primary" size="sm" className="w-full sm:w-auto">
-            <Plus className="h-4 w-4" />
-            Topup Saldo
-          </Button>
           <Button
             onClick={() => setShowWithdraw(true)}
-            variant="outline"
+            variant="primary"
             size="sm"
             className="w-full sm:w-auto"
             disabled={isLoading || balance <= 0}
@@ -83,11 +77,10 @@ export function TeknisiSaldoView() {
         </div>
       </div>
 
-      {/* Metrics — mobile: saldo full width, deposit & pengeluaran 2 kolom; desktop: 3 kolom */}
       <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-3">
         <div className="col-span-2 min-w-0 lg:col-span-1">
           <MetricCard
-            title="Saldo Anda"
+            title="Saldo tersedia"
             value={isLoading ? '…' : formattedBalance}
             icon={Wallet}
             footnote={updatedLabel}
@@ -97,10 +90,10 @@ export function TeknisiSaldoView() {
         </div>
         <div className="min-w-0">
           <MetricCard
-            title="Total Deposit"
+            title="Pendapatan"
             value={isLoading ? '…' : formattedBalance}
             icon={TrendingUp}
-            footnote="Akumulasi topup"
+            footnote="Dari transaksi selesai"
             compact
             dense
           />
@@ -137,15 +130,6 @@ export function TeknisiSaldoView() {
       <WalletTransactionHistory onTransactionsLoaded={loadSpendingSummary} />
 
       <AnimatePresence>
-        {showTopup && (
-          <WalletTopupModal
-            onClose={() => setShowTopup(false)}
-            onSuccess={() => {
-              setShowTopup(false)
-              void loadSpendingSummary()
-            }}
-          />
-        )}
         {showWithdraw && (
           <WalletWithdrawModal
             onClose={() => setShowWithdraw(false)}

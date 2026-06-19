@@ -97,7 +97,6 @@ export default function CartPage() {
   const router = useRouter()
   const { status: sessionStatus } = useSession()
   const { items, updateQuantity, removeItem, hydrated, syncProducts } = useCart()
-  const [walletBalance, setWalletBalance] = useState<number | null>(null)
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const [checkoutSuccess, setCheckoutSuccess] = useState<string[] | null>(null)
@@ -127,14 +126,7 @@ export default function CartPage() {
     if (sessionStatus !== 'authenticated') return
     void (async () => {
       try {
-        const [walletRes, profileRes] = await Promise.all([
-          fetch('/api/wallet'),
-          profilePrefilled.current ? Promise.resolve(null) : fetch('/api/user/profile'),
-        ])
-        const walletJson = walletRes ? await walletRes.json() : null
-        if (walletRes?.ok && walletJson?.success) {
-          setWalletBalance(Number(walletJson.data?.balance ?? 0))
-        }
+        const profileRes = profilePrefilled.current ? null : await fetch('/api/user/profile')
         if (profileRes) {
           const profileJson = await profileRes.json()
           if (profileRes.ok && profileJson.success && !profilePrefilled.current) {
@@ -267,8 +259,7 @@ export default function CartPage() {
     marketplaceItems.length > 0 ? floorIdr((total * buyerFeePercent) / 100) : 0
   const checkoutTotal = total + buyerFee
   const addressInvalid = requiresShipping && shippingAddress.trim().length < 10
-  const canPayFromWallet = walletBalance == null || walletBalance >= checkoutTotal
-  const checkoutLabel = canPayFromWallet ? 'Bayar dari saldo' : 'Bayar via Tripay'
+  const checkoutLabel = 'Lanjut ke pembayaran'
 
   const applyPromo = async () => {
     const code = promoCode.trim()
@@ -339,7 +330,7 @@ export default function CartPage() {
                 <div>
                   <h2 className="font-semibold text-ink">Checkout berhasil!</h2>
                   <p className="mt-1 text-sm text-surface-600">
-                    Pembayaran dipotong dari saldo wallet Anda.
+                    Pesanan berhasil dibuat. Selesaikan pembayaran untuk melanjutkan.
                   </p>
                   <p className="mt-2 font-mono text-xs text-surface-700">
                     {checkoutSuccess.join(' · ')}
@@ -609,21 +600,6 @@ export default function CartPage() {
                     </p>
                   </div>
 
-                  {sessionStatus === 'authenticated' && walletBalance != null && (
-                    <div className="flex items-center gap-2 rounded-xl border border-surface-200/70 bg-surface-50 px-3 py-2 text-xs">
-                      <Wallet className="h-4 w-4 text-primary-600" />
-                      <span className="text-surface-600">Saldo wallet:</span>
-                      <span
-                        className={cn(
-                          'font-semibold tabular-nums',
-                          walletBalance < checkoutTotal ? 'text-rose-600' : 'text-ink',
-                        )}
-                      >
-                        {formatPrice(walletBalance)}
-                      </span>
-                    </div>
-                  )}
-
                   {checkoutError && (
                     <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
                       {checkoutError}
@@ -676,12 +652,9 @@ export default function CartPage() {
                     {checkoutLoading ? 'Memproses…' : checkoutLabel}
                     <ArrowRight className="h-4 w-4" />
                   </Button>
-                  {!canPayFromWallet && walletBalance != null && (
-                    <p className="mt-2 text-center text-[11px] text-amber-700">
-                      Saldo {formatPrice(walletBalance)} tidak cukup — checkout via Tripay (+ biaya
-                      channel).
-                    </p>
-                  )}
+                  <p className="mt-2 text-center text-[11px] text-surface-500">
+                    Bayar via QRIS atau Virtual Account — tanpa perlu top up saldo.
+                  </p>
 
                   {/* Trust */}
                   <div className="mt-3 flex items-center justify-center gap-3 text-[10px] text-surface-500">
@@ -728,7 +701,7 @@ export default function CartPage() {
                 }
                 onClick={() => void handleCheckout()}
               >
-                {checkoutLoading ? '…' : canPayFromWallet ? 'Bayar' : 'Tripay'}
+                {checkoutLoading ? '…' : 'Bayar'}
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </div>

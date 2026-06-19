@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { DashboardSmartSearch } from '@/components/dashboard/dashboard-smart-search'
+import { BrandLogo } from '@/components/brand/brand-logo'
 import { useAuth, type User, type UserRole } from '@/contexts/auth-context'
 import { Bell, ChevronDown, LogOut, MessageCircle } from '@/lib/icons'
 import { HeaderProfileTriggerIcon } from '@/components/mobile/header-profile-trigger-icon'
@@ -14,7 +15,7 @@ import { WalletBalanceButton } from '@/components/dashboard/wallet-balance-butto
 import { usePlatformNotifications } from '@/hooks/use-platform-notifications'
 import { NotificationFeedItem } from '@/components/shared/notification-feed-item'
 import { ProfileMenuSaldoItem } from '@/components/shared/profile-menu-saldo-item'
-import { MARKETPLACE_PATH, profileMenuItemsForRole } from '@/lib/role-routes'
+import { MARKETPLACE_PATH, homePathForRole, profileMenuItemsForRole } from '@/lib/role-routes'
 import { setUserNavHomeMode } from '@/lib/user-nav-home'
 import { setChatBottomNavMode } from '@/lib/chat-bottom-nav'
 import {
@@ -112,8 +113,19 @@ export function DashboardHeader() {
   return (
     <header className="sticky top-0 z-30 border-b border-surface-200/60 bg-white/75 backdrop-blur-xl">
       <div className={cn(mobileHeaderBarRowClass, mobileHeaderBarRowDesktopClass)}>
-        <div className="flex max-w-md flex-1 items-center">
-          <DashboardSmartSearch role={user?.role ?? 'USER'} />
+        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+          {user ? (
+            <Link
+              href={homePathForRole(user.role)}
+              className="inline-flex shrink-0 items-center lg:hidden"
+              aria-label="Beranda dashboard"
+            >
+              <BrandLogo variant="icon" iconClassName="h-[4.25rem] w-[4.25rem] scale-[1.45] sm:h-20 sm:w-20 sm:scale-[1.5]" />
+            </Link>
+          ) : null}
+          <div className="min-w-0 flex-1">
+            <DashboardSmartSearch role={user?.role ?? 'USER'} />
+          </div>
         </div>
 
         <div className={cn(headerActionsGroupClass, 'overflow-visible')}>

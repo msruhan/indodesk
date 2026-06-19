@@ -31,7 +31,7 @@ export function accountPathForRole(role: UserRole): string {
 
 export function saldoPathForRole(role: UserRole): string {
   if (role === 'TEKNISI') return '/teknisi/saldo'
-  return '/user/dashboard'
+  return '/user/riwayat'
 }
 
 export function showProfileSaldoForRole(role: UserRole): boolean {
