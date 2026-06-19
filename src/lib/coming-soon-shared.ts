@@ -31,6 +31,8 @@ export function isComingSoonBypassPath(pathname: string): boolean {
   if (pathname.startsWith('/api/public/coming-soon')) return true
   if (pathname === '/api/health') return true
   if (pathname.startsWith('/api/platform/')) return true
+  if (pathname.startsWith('/api/telegram/')) return true
+  if (pathname.startsWith('/api/teknisi/telegram/')) return true
   /** Registrasi ditutup saat soft launch */
   if (pathname === '/register' || pathname.startsWith('/register/')) return false
   if (pathname.startsWith('/api/auth/register')) return false

@@ -26,6 +26,7 @@ const PRODUCT_PUBLISHED_BODY = `🛍️ *Produk Baru di Marketplace!*
 💰 {{harga}}
 🏪 Toko: {{namaToko}}
 👤 Penjual: {{namaTeknisi}}
+📱 Telegram: {{usernameTelegram}}
 
 👉 {{linkProduk}}`
 
@@ -74,7 +75,15 @@ export const TELEGRAM_EVENT_CATALOG: Record<TelegramEventKey, TelegramEventDefin
     label: 'Produk dipublish',
     description: 'Broadcast ke channel saat iklan produk disetujui dan tampil di marketplace.',
     audience: 'CHANNEL',
-    placeholders: ['namaProduk', 'harga', 'kategori', 'namaToko', 'namaTeknisi', 'linkProduk'],
+    placeholders: [
+      'namaProduk',
+      'harga',
+      'kategori',
+      'namaToko',
+      'namaTeknisi',
+      'usernameTelegram',
+      'linkProduk',
+    ],
     defaultBody: PRODUCT_PUBLISHED_BODY,
     sampleVars: {
       namaProduk: 'iPhone 13 Pro 256GB',
@@ -82,6 +91,7 @@ export const TELEGRAM_EVENT_CATALOG: Record<TelegramEventKey, TelegramEventDefin
       kategori: 'Smartphone',
       namaToko: 'Ahmad Cell',
       namaTeknisi: 'Ahmad Teknisi',
+      usernameTelegram: '@ahmad_teknisi',
       linkProduk: 'https://bantoo.in/marketplace/products/contoh',
     },
   },

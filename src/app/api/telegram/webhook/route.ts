@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { consumeTelegramLinkToken } from '@/lib/telegram/link-token'
-import { sendTelegramMessage, TelegramNotificationTemplates, type TelegramUpdate } from '@/lib/telegram'
+import { linkTeknisiTelegramAccount } from '@/lib/telegram/link-account'
+import { sendTelegramMessage, type TelegramUpdate } from '@/lib/telegram'
 import { validateTelegramWebhookSecret } from '@/lib/telegram/webhook-auth'
 
 /**
  * POST /api/telegram/webhook
  * Webhook untuk menerima update dari Telegram Bot.
- *
- * Set webhook dengan secret_token (lihat scripts/setup-telegram-webhook.sh).
  */
 export async function POST(req: NextRequest) {
   const authError = validateTelegramWebhookSecret(req)
@@ -20,52 +18,43 @@ export async function POST(req: NextRequest) {
     if (update.message?.text) {
       const message = update.message
       const chatId = message.chat.id
-      const text = message.text
+      const text = message.text.trim()
       const telegramUser = message.from
 
       if (!text) return NextResponse.json({ success: true })
 
-      if (text.startsWith('/start ')) {
-        const token = text.replace('/start ', '').trim()
-        const userId = await consumeTelegramLinkToken(token)
+      if (text.startsWith('/start')) {
+        const token = text.replace(/^\/start\s*/i, '').trim()
 
-        if (!userId) {
+        if (!token) {
           await sendTelegramMessage(
             chatId,
-            '❌ Token verifikasi tidak valid atau sudah kedaluwarsa.\n\nSilakan generate token baru dari dashboard Bantoo.',
+            '👋 Halo! Untuk menghubungkan akun Bantoo, buka dashboard teknisi → Pengaturan → Telegram Alerts, lalu klik *Hubungkan Telegram*.\n\nJangan ketik /start manual — gunakan tombol dari web agar token verifikasi terkirim otomatis.',
+            { parse_mode: 'Markdown' },
           )
           return NextResponse.json({ success: true })
         }
 
-        const profile = await prisma.teknisiProfile.findUnique({
-          where: { userId },
-          include: { user: true },
+        const result = await linkTeknisiTelegramAccount({
+          token,
+          chatId,
+          username: telegramUser?.username ?? null,
         })
 
-        if (!profile) {
-          await sendTelegramMessage(
-            chatId,
-            '❌ Profil teknisi tidak ditemukan.\n\nPastikan Anda sudah terdaftar sebagai teknisi.',
-          )
+        if (!result.ok) {
+          if (result.reason === 'invalid_token') {
+            await sendTelegramMessage(
+              chatId,
+              '❌ Token verifikasi tidak valid atau sudah kedaluwarsa.\n\nSilakan generate token baru dari dashboard Bantoo.',
+            )
+          } else if (result.reason === 'no_profile') {
+            await sendTelegramMessage(
+              chatId,
+              '❌ Profil teknisi tidak ditemukan.\n\nPastikan Anda sudah terdaftar sebagai teknisi.',
+            )
+          }
           return NextResponse.json({ success: true })
         }
-
-        await prisma.teknisiProfile.update({
-          where: { userId },
-          data: {
-            telegramChatId: String(chatId),
-            telegramUsername: telegramUser.username || null,
-            telegramLinkedAt: new Date(),
-          },
-        })
-
-        await prisma.user.update({
-          where: { id: userId },
-          data: { telegramLinkedAt: new Date() },
-        })
-
-        const welcomeMessage = TelegramNotificationTemplates.accountLinked(profile.user.name)
-        await sendTelegramMessage(chatId, welcomeMessage, { parse_mode: 'Markdown' })
 
         return NextResponse.json({ success: true })
       }
@@ -79,11 +68,11 @@ export async function POST(req: NextRequest) {
 Bot ini digunakan untuk mengirim notifikasi ke teknisi.
 
 *Perintah:*
-/start <token> - Hubungkan akun dengan token verifikasi
+/start <token> - Hubungkan akun dengan token verifikasi dari dashboard
 /status - Cek status koneksi
 /help - Tampilkan bantuan ini
 
-Untuk menghubungkan akun, buka dashboard Bantoo → Settings → Telegram, lalu klik "Hubungkan Telegram".
+Untuk menghubungkan akun, buka dashboard Bantoo → Pengaturan → Telegram Alerts, lalu klik "Hubungkan Telegram".
           `.trim(),
           { parse_mode: 'Markdown' },
         )
@@ -102,14 +91,16 @@ Untuk menghubungkan akun, buka dashboard Bantoo → Settings → Telegram, lalu 
             '❌ Akun Telegram Anda belum terhubung dengan Bantoo.\n\nSilakan hubungkan dari dashboard.',
           )
         } else {
+          const tgLine = profile.telegramUsername
+            ? `\n📱 Telegram: @${profile.telegramUsername}`
+            : ''
           await sendTelegramMessage(
             chatId,
             `
 ✅ *Akun Terhubung*
 
 👤 Nama: ${profile.user.name}
-📧 Email: ${profile.user.email}
-🎭 Role: ${profile.user.role}
+📧 Email: ${profile.user.email}${tgLine}
 
 Anda akan menerima notifikasi untuk request baru dan update penting.
             `.trim(),

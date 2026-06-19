@@ -190,6 +190,31 @@ export async function getTelegramBotInfo(): Promise<{ success: boolean; data?: T
   }
 }
 
+/** Info webhook terdaftar di Telegram (untuk admin diagnostics). */
+export async function getTelegramWebhookInfo(): Promise<{
+  success: boolean
+  data?: { url?: string; hasCustomCertificate?: boolean; pendingUpdateCount?: number }
+  error?: string
+}> {
+  if (!TELEGRAM_BOT_TOKEN) {
+    return { success: false, error: 'Bot token tidak dikonfigurasi' }
+  }
+
+  try {
+    const response = await fetch(`${TELEGRAM_API_BASE}/bot${TELEGRAM_BOT_TOKEN}/getWebhookInfo`)
+    const data = await response.json()
+
+    if (!response.ok || !data.ok) {
+      return { success: false, error: data.description || 'Gagal get webhook info' }
+    }
+
+    return { success: true, data: data.result }
+  } catch (error) {
+    console.error('[Telegram] Error get webhook info:', error)
+    return { success: false, error: 'Network error' }
+  }
+}
+
 /**
  * Template notifikasi untuk berbagai event
  */

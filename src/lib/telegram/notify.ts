@@ -15,11 +15,15 @@ export async function notifyProductPublished(productId: string): Promise<void> {
         select: {
           name: true,
           teknisiStore: { select: { name: true } },
+          teknisiProfile: { select: { telegramUsername: true } },
         },
       },
     },
   })
   if (!product || product.listingStatus !== 'APPROVED' || !product.isPublished) return
+
+  const tgUser = product.seller.teknisiProfile?.telegramUsername?.trim()
+  const usernameTelegram = tgUser ? `@${tgUser.replace(/^@/, '')}` : '—'
 
   const base = appBaseUrl()
   await dispatchTelegramEvent('product.published', {
@@ -29,6 +33,7 @@ export async function notifyProductPublished(productId: string): Promise<void> {
       kategori: categoryLabel(product.category),
       namaToko: product.seller.teknisiStore?.name ?? product.seller.name ?? 'Toko',
       namaTeknisi: product.seller.name ?? 'Teknisi',
+      usernameTelegram,
       linkProduk: `${base}/marketplace/products/${product.id}`,
     },
   })

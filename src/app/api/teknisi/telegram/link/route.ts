@@ -19,11 +19,13 @@ export async function POST() {
   try {
     const token = await issueTelegramLinkToken(session.user.id)
     const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'YourBot'
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString()
 
     return apiSuccess({
       token,
       botUsername,
       deepLink: `https://t.me/${botUsername}?start=${token}`,
+      expiresAt,
     })
   } catch (e) {
     console.error('[TELEGRAM_LINK_ERROR]', e)

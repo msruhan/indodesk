@@ -17,6 +17,10 @@ type TelegramConfig = {
   channelChatId: string | null
   channelChatIdMasked: string | null
   channelConfigured: boolean
+  webhookConfigured?: boolean
+  webhookUrl?: string | null
+  webhookPendingUpdates?: number
+  webhookSecretConfigured?: boolean
 }
 
 function audienceLabel(audience: EffectiveTelegramTemplate['audience']) {
@@ -216,20 +220,33 @@ export function AdminTelegramNotificationsView() {
   const [adminTwoFa, setAdminTwoFa] = useState(false)
   const [savingConfig, setSavingConfig] = useState(false)
   const [testing, setTesting] = useState(false)
+  const [registeringWebhook, setRegisteringWebhook] = useState(false)
   const [configMessage, setConfigMessage] = useState<string | null>(null)
   const [configError, setConfigError] = useState<string | null>(null)
 
   const loadAll = useCallback(async () => {
     setLoading(true)
     try {
-      const [configRes, templatesRes] = await Promise.all([
+      const [configRes, templatesRes, webhookRes] = await Promise.all([
         fetch('/api/admin/telegram/config', { cache: 'no-store' }),
         fetch('/api/admin/telegram/templates', { cache: 'no-store' }),
+        fetch('/api/admin/telegram/config/webhook', { cache: 'no-store' }),
       ])
       const configJson = await configRes.json()
       const templatesJson = await templatesRes.json()
+      const webhookJson = await webhookRes.json()
       if (configRes.ok && configJson.success) {
-        setConfig(configJson.data)
+        setConfig({
+          ...configJson.data,
+          webhookConfigured: webhookJson.success ? webhookJson.data?.configured : false,
+          webhookUrl: webhookJson.success ? webhookJson.data?.webhookUrl : null,
+          webhookPendingUpdates: webhookJson.success
+            ? webhookJson.data?.webhook?.pendingUpdateCount
+            : undefined,
+          webhookSecretConfigured: webhookJson.success
+            ? webhookJson.data?.secretConfigured
+            : undefined,
+        })
         setChannelChatId(configJson.data.channelChatId ?? '')
       }
       if (templatesRes.ok && templatesJson.success) {
@@ -280,6 +297,26 @@ export function AdminTelegramNotificationsView() {
     }
   }
 
+  const registerWebhook = async () => {
+    setRegisteringWebhook(true)
+    setConfigMessage(null)
+    setConfigError(null)
+    try {
+      const res = await fetch('/api/admin/telegram/config/webhook', { method: 'POST' })
+      const json = await res.json()
+      if (!res.ok || !json.success) {
+        setConfigError(json.error ?? 'Gagal daftar webhook')
+        return
+      }
+      setConfigMessage(`Webhook terdaftar: ${json.data?.webhookUrl ?? 'OK'}`)
+      await loadAll()
+    } catch {
+      setConfigError('Gagal daftar webhook')
+    } finally {
+      setRegisteringWebhook(false)
+    }
+  }
+
   const testChannel = async () => {
     setTesting(true)
     setConfigMessage(null)
@@ -325,13 +362,32 @@ export function AdminTelegramNotificationsView() {
               <Badge variant={config?.botEnabled ? 'success' : 'outline'}>
                 Bot: {config?.botEnabled ? 'Terhubung' : 'Token belum diset'}
               </Badge>
+              <Badge variant={config?.webhookConfigured ? 'success' : 'outline'}>
+                Webhook: {config?.webhookConfigured ? 'Aktif' : 'Belum didaftarkan'}
+              </Badge>
               <Badge variant={config?.channelConfigured ? 'success' : 'outline'}>
                 Channel: {config?.channelConfigured ? 'Dikonfigurasi' : 'Belum diatur'}
               </Badge>
             </div>
 
             <div className="rounded-xl border border-surface-200/70 bg-surface-50/80 p-3 text-xs leading-relaxed text-surface-600">
-              <p className="font-medium text-surface-700">Cara setup:</p>
+              <p className="font-medium text-surface-700">Webhook teknisi (link Telegram):</p>
+              <p className="mt-1 break-all font-mono text-[11px]">{config?.webhookUrl ?? '—'}</p>
+              {!config?.webhookSecretConfigured ? (
+                <p className="mt-2 text-amber-700">
+                  Set <code className="rounded bg-white px-1">TELEGRAM_WEBHOOK_SECRET</code> di server,
+                  lalu klik Daftar Webhook.
+                </p>
+              ) : null}
+              {typeof config?.webhookPendingUpdates === 'number' && config.webhookPendingUpdates > 0 ? (
+                <p className="mt-1 text-surface-500">
+                  Pending updates: {config.webhookPendingUpdates}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="rounded-xl border border-surface-200/70 bg-surface-50/80 p-3 text-xs leading-relaxed text-surface-600">
+              <p className="font-medium text-surface-700">Cara setup channel:</p>
               <ol className="mt-1 list-decimal space-y-1 pl-4">
                 <li>Tambahkan bot Bantoo sebagai admin di channel/grup Telegram.</li>
                 <li>Dapatkan Chat ID channel (biasanya dimulai dengan -100…).</li>
@@ -362,6 +418,15 @@ export function AdminTelegramNotificationsView() {
             />
 
             <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void registerWebhook()}
+                disabled={registeringWebhook || !config?.botEnabled}
+              >
+                <RefreshCw className={`mr-1.5 h-4 w-4 ${registeringWebhook ? 'animate-spin' : ''}`} />
+                {registeringWebhook ? 'Mendaftar…' : 'Daftar Webhook'}
+              </Button>
               <Button type="button" onClick={() => void saveConfig()} disabled={savingConfig}>
                 {savingConfig ? 'Menyimpan…' : 'Simpan channel'}
               </Button>

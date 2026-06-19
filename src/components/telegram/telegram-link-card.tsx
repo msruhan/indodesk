@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { Send, Linkedin, Unlock, CheckCircle, Clock, ExternalLink } from '@/lib/icons'
+import { Send, Linkedin, Unlock, CheckCircle, Clock, ExternalLink, RefreshCw } from '@/lib/icons'
 
 interface TelegramStatus {
   isLinked: boolean
@@ -17,60 +17,148 @@ export function TelegramLinkCard() {
   const [status, setStatus] = useState<TelegramStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [linking, setLinking] = useState(false)
+  const [syncing, setSyncing] = useState(false)
   const [unlinking, setUnlinking] = useState(false)
   const [verificationLink, setVerificationLink] = useState<string | null>(null)
+  const [verificationToken, setVerificationToken] = useState<string | null>(null)
   const [expiresAt, setExpiresAt] = useState<Date | null>(null)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // Fetch status
-  const fetchStatus = async () => {
+  const applyStatus = useCallback((data: { isLinked: boolean; username?: string | null; linkedAt?: string | null }) => {
+    setStatus({
+      isLinked: data.isLinked,
+      telegramUsername: data.username,
+      linkedAt: data.linkedAt,
+    })
+    if (data.isLinked) {
+      setVerificationLink(null)
+      setVerificationToken(null)
+      setExpiresAt(null)
+    }
+  }, [])
+
+  const fetchStatus = useCallback(async (): Promise<TelegramStatus | null> => {
     try {
-      const res = await fetch('/api/teknisi/telegram/status')
+      const res = await fetch('/api/teknisi/telegram/status', { cache: 'no-store' })
       if (!res.ok) throw new Error('Gagal mengecek status')
       const result = await res.json()
       if (result.success && result.data) {
-        setStatus({
+        const next: TelegramStatus = {
           isLinked: result.data.isLinked,
           telegramUsername: result.data.username,
           linkedAt: result.data.linkedAt,
-        })
+        }
+        applyStatus(result.data)
+        return next
       }
     } catch (error) {
       console.error('Error fetch status:', error)
-      toast.error('Gagal mengecek status Telegram')
-    } finally {
-      setLoading(false)
     }
-  }
+    return null
+  }, [applyStatus])
+
+  const syncLink = useCallback(
+    async (opts?: { silent?: boolean }): Promise<boolean> => {
+      if (!verificationToken) {
+        const current = await fetchStatus()
+        return Boolean(current?.isLinked)
+      }
+
+      setSyncing(true)
+      try {
+        const res = await fetch('/api/teknisi/telegram/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: verificationToken }),
+        })
+        const result = await res.json()
+
+        if (result.success && result.data?.synced) {
+          await fetchStatus()
+          if (!opts?.silent) {
+            toast.success(
+              result.data.username
+                ? `Telegram synced — @${result.data.username}`
+                : 'Telegram synced!',
+            )
+          }
+          return true
+        }
+
+        const refreshed = await fetchStatus()
+        if (refreshed?.isLinked) return true
+
+        if (!opts?.silent) {
+          toast.info(
+            result.data?.message ??
+              'Belum terdeteksi. Buka link dari dashboard lalu tekan Start di bot.',
+          )
+        }
+        return false
+      } catch (error) {
+        console.error('Error sync telegram:', error)
+        if (!opts?.silent) toast.error('Gagal sinkronisasi Telegram')
+        return false
+      } finally {
+        setSyncing(false)
+      }
+    },
+    [verificationToken, fetchStatus],
+  )
 
   useEffect(() => {
-    void fetchStatus()
-  }, [])
+    void (async () => {
+      setLoading(true)
+      await fetchStatus()
+      setLoading(false)
+    })()
+  }, [fetchStatus])
 
-  // Generate link
+  useEffect(() => {
+    if (!verificationToken || status?.isLinked) {
+      if (pollRef.current) {
+        clearInterval(pollRef.current)
+        pollRef.current = null
+      }
+      return
+    }
+
+    pollRef.current = setInterval(() => {
+      void syncLink({ silent: true })
+    }, 4000)
+
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current)
+        pollRef.current = null
+      }
+    }
+  }, [verificationToken, status?.isLinked, syncLink])
+
   const handleGenerateLink = async () => {
     setLinking(true)
     try {
       const res = await fetch('/api/teknisi/telegram/link', { method: 'POST' })
-      if (!res.ok) {
-        const result = await res.json()
+      const result = await res.json()
+      if (!res.ok || !result.success) {
         throw new Error(result.error || 'Gagal generate link')
       }
-      const result = await res.json()
-      if (result.success && result.data) {
+      if (result.data) {
         setVerificationLink(result.data.deepLink)
-        // Set expiry 15 minutes from now
-        setExpiresAt(new Date(Date.now() + 15 * 60 * 1000))
-        toast.success('Link verifikasi berhasil dibuat!')
+        setVerificationToken(result.data.token)
+        setExpiresAt(
+          result.data.expiresAt ? new Date(result.data.expiresAt) : new Date(Date.now() + 10 * 60 * 1000),
+        )
+        toast.success('Link verifikasi siap — buka Telegram dan tekan Start')
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error generate link:', error)
-      toast.error(error.message || 'Gagal generate link Telegram')
+      toast.error(error instanceof Error ? error.message : 'Gagal generate link Telegram')
     } finally {
       setLinking(false)
     }
   }
 
-  // Unlink
   const handleUnlink = async () => {
     if (!confirm('Yakin ingin memutus koneksi Telegram? Anda tidak akan menerima notifikasi lagi.')) {
       return
@@ -79,37 +167,31 @@ export function TelegramLinkCard() {
     setUnlinking(true)
     try {
       const res = await fetch('/api/teknisi/telegram/unlink', { method: 'DELETE' })
-      if (!res.ok) {
-        const result = await res.json()
+      const result = await res.json()
+      if (!res.ok || !result.success) {
         throw new Error(result.error || 'Gagal unlink')
       }
-      const result = await res.json()
-      if (result.success) {
-        toast.success('Telegram berhasil diputus dari akun')
-        setStatus({ isLinked: false })
-        setVerificationLink(null)
-        setExpiresAt(null)
-      }
-    } catch (error: any) {
+      toast.success('Telegram berhasil diputus dari akun')
+      setStatus({ isLinked: false })
+      setVerificationLink(null)
+      setVerificationToken(null)
+      setExpiresAt(null)
+    } catch (error: unknown) {
       console.error('Error unlink:', error)
-      toast.error(error.message || 'Gagal memutus koneksi Telegram')
+      toast.error(error instanceof Error ? error.message : 'Gagal memutus koneksi Telegram')
     } finally {
       setUnlinking(false)
     }
   }
 
-  // Refresh status (untuk polling setelah user klik link)
   const handleRefreshStatus = async () => {
     setLoading(true)
-    await fetchStatus()
-    if (status?.isLinked) {
-      setVerificationLink(null)
-      setExpiresAt(null)
-      toast.success('Telegram berhasil terhubung!')
-    }
+    const linked = await syncLink()
+    if (!linked) await fetchStatus()
+    setLoading(false)
   }
 
-  if (loading) {
+  if (loading && !status) {
     return (
       <Card>
         <CardHeader>
@@ -136,7 +218,7 @@ export function TelegramLinkCard() {
             </p>
           </div>
           <Badge variant={status?.isLinked ? 'success' : 'outline'}>
-            {status?.isLinked ? 'Terhubung' : 'Belum link'}
+            {status?.isLinked ? 'Synced' : 'Belum link'}
           </Badge>
         </div>
       </CardHeader>
@@ -147,19 +229,19 @@ export function TelegramLinkCard() {
               <div className="flex items-start gap-3">
                 <CheckCircle className="h-5 w-5 text-emerald-600" />
                 <div className="flex-1">
-                  <p className="text-sm font-semibold text-emerald-900">
-                    Akun Terhubung
-                  </p>
-                  {status.telegramUsername && (
-                    <p className="mt-1 text-xs text-emerald-700">
+                  <p className="text-sm font-semibold text-emerald-900">Synced</p>
+                  {status.telegramUsername ? (
+                    <p className="mt-1 text-sm font-medium text-emerald-800">
                       @{status.telegramUsername}
                     </p>
+                  ) : (
+                    <p className="mt-1 text-xs text-emerald-700">Username Telegram tersimpan</p>
                   )}
-                  {status.linkedAt && (
+                  {status.linkedAt ? (
                     <p className="mt-1 text-xs text-emerald-600">
-                      Terhubung sejak {new Date(status.linkedAt).toLocaleDateString('id-ID')}
+                      Terhubung sejak {new Date(status.linkedAt).toLocaleString('id-ID')}
                     </p>
-                  )}
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -177,13 +259,12 @@ export function TelegramLinkCard() {
                 </li>
                 <li className="flex items-center gap-2">
                   <span className="h-1 w-1 rounded-full bg-primary-500" />
-                  Payout siap dicairkan
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-1 w-1 rounded-full bg-primary-500" />
-                  Pesan dari pelanggan
+                  Pesanan marketplace baru
                 </li>
               </ul>
+              <p className="text-[11px] text-surface-500">
+                Username Telegram Anda ikut tercatat untuk broadcast iklan produk di channel.
+              </p>
             </div>
 
             <Button
@@ -211,17 +292,21 @@ export function TelegramLinkCard() {
                     <div className="flex items-start gap-3">
                       <Clock className="h-5 w-5 text-primary-600" />
                       <div className="flex-1">
-                        <p className="text-sm font-semibold text-primary-900">
-                          Link Verifikasi Siap
-                        </p>
+                        <p className="text-sm font-semibold text-primary-900">Link Verifikasi Siap</p>
                         <p className="mt-1 text-xs text-primary-700">
-                          Klik tombol di bawah untuk membuka Telegram dan verifikasi akun Anda.
+                          Klik &quot;Buka Telegram&quot; lalu tekan <strong>Start</strong> di bot.
+                          Jangan ketik /start manual.
                         </p>
-                        {expiresAt && (
+                        {expiresAt ? (
                           <p className="mt-1 text-xs text-primary-600">
                             Berlaku hingga {expiresAt.toLocaleTimeString('id-ID')}
                           </p>
-                        )}
+                        ) : null}
+                        {syncing ? (
+                          <p className="mt-2 text-xs font-medium text-primary-800">
+                            Menunggu konfirmasi dari Telegram…
+                          </p>
+                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -231,7 +316,7 @@ export function TelegramLinkCard() {
                       type="button"
                       size="sm"
                       className="flex-1"
-                      onClick={() => window.open(verificationLink, '_blank')}
+                      onClick={() => window.open(verificationLink, '_blank', 'noopener,noreferrer')}
                     >
                       <ExternalLink className="h-4 w-4" />
                       Buka Telegram
@@ -240,27 +325,28 @@ export function TelegramLinkCard() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={handleRefreshStatus}
-                      disabled={loading}
+                      onClick={() => void handleRefreshStatus()}
+                      disabled={loading || syncing}
                     >
-                      Cek Status
+                      <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+                      {syncing ? 'Sync…' : 'Cek Status'}
                     </Button>
                   </div>
 
                   <p className="text-xs text-surface-500">
-                    Setelah klik link dan verifikasi di Telegram, klik "Cek Status" untuk memperbarui.
+                    Status akan otomatis berubah menjadi Synced setelah Anda menekan Start di bot.
                   </p>
                 </div>
               ) : (
                 <Button
                   type="button"
                   size="sm"
-                  onClick={handleGenerateLink}
+                  onClick={() => void handleGenerateLink()}
                   disabled={linking}
                   className="w-full"
                 >
                   <Linkedin className="h-4 w-4" />
-                  {linking ? 'Membuat Link...' : 'Hubungkan Telegram'}
+                  {linking ? 'Membuat Link…' : 'Hubungkan Telegram'}
                 </Button>
               )}
             </div>
