@@ -53,7 +53,7 @@ const ORDER_POOL: Order[] = [
   { id: '#IT-0240', title: 'Ganti baterai Redmi Note 12', status: 'done', tone: 'emerald' },
   { id: '#IT-0239', title: 'Service LCD Samsung A54', status: 'queue', tone: 'cyan' },
   { id: '#IT-0242', title: 'Flashing Oppo Reno 11', status: 'progress', tone: 'amber' },
-  { id: '#IT-0243', title: 'Konsultasi Unlock iPhone 13', status: 'done', tone: 'emerald' },
+  { id: '#IT-0243', title: 'Konsultasi Perbaikan Handphone', status: 'done', tone: 'emerald' },
   { id: '#IT-0244', title: 'Servis charging Vivo V29', status: 'queue', tone: 'cyan' },
 ]
 
@@ -279,7 +279,7 @@ function TabletScreen({
   reduced: boolean
 }) {
   return (
-    <div className="relative aspect-[16/10] overflow-hidden rounded-[1.2rem] bg-gradient-to-br from-white via-surface-50/50 to-primary-50/40 p-3.5">
+    <div className="relative aspect-[16/10] overflow-hidden rounded-[1.2rem] bg-white p-3.5">
       {/* Top bar */}
       <div className="mb-2.5 flex items-center justify-between">
         <div className="flex gap-1">
@@ -757,7 +757,7 @@ function PhoneScreen({
   }, [activeCategory])
 
   return (
-    <div className="relative aspect-[9/19] overflow-hidden rounded-[1.45rem] bg-gradient-to-br from-white via-surface-50/40 to-emerald-50/40">
+    <div className="relative aspect-[9/19] overflow-hidden rounded-[1.45rem] bg-white">
       {/* Notch */}
       <div className="relative z-10 flex justify-center">
         <span className="mt-1.5 h-1 w-10 rounded-full bg-surface-200" />

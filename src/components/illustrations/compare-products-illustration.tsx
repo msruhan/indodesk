@@ -4,6 +4,7 @@ import { motion, useInView } from 'framer-motion'
 import { useRef } from 'react'
 import { Award, Scales } from '@/lib/icons'
 import { AnimatedNumber } from '@/components/motion'
+import { MiniPhoneMockup, type PhoneMockupModel } from '@/components/illustrations/device-mockup-mini'
 import { cn } from '@/lib/utils'
 
 type Props = { className?: string }
@@ -69,7 +70,7 @@ export function CompareProductsIllustration({ className }: Props) {
           winner
           delay={0.15}
           scoreDelay={0.75}
-          imageGradient="from-slate-100 to-slate-200"
+          phoneModel="iphone-12"
           isInView={isInView}
         />
 
@@ -91,7 +92,7 @@ export function CompareProductsIllustration({ className }: Props) {
           score={70.4}
           delay={0.27}
           scoreDelay={0.95}
-          imageGradient="from-neutral-800 to-neutral-950"
+          phoneModel="iphone-11"
           isInView={isInView}
         />
       </div>
@@ -124,7 +125,7 @@ function ProductMiniCard({
   winner = false,
   delay,
   scoreDelay,
-  imageGradient,
+  phoneModel,
   isInView,
 }: {
   name: string
@@ -134,7 +135,7 @@ function ProductMiniCard({
   winner?: boolean
   delay: number
   scoreDelay: number
-  imageGradient: string
+  phoneModel: PhoneMockupModel
   isInView: boolean
 }) {
   return (
@@ -161,10 +162,8 @@ function ProductMiniCard({
         </motion.span>
       )}
 
-      <div className={cn('relative aspect-[5/4] bg-gradient-to-br sm:aspect-[4/3]', imageGradient)}>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="h-[68%] w-[40%] rounded-[8px] border border-white/20 bg-black/10 shadow-inner sm:rounded-[10px]" />
-        </div>
+      <div className="relative aspect-[5/4] overflow-hidden sm:aspect-[4/3]">
+        <MiniPhoneMockup model={phoneModel} animate={isInView} delay={delay + 0.1} />
       </div>
 
       <div className="flex flex-1 flex-col px-2 py-1.5">

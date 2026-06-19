@@ -84,6 +84,18 @@ export async function seedPlatformContent(prisma: PrismaClient) {
         key: 'inspection_service_enabled',
         value: s.inspectionServiceEnabled ? 'true' : 'false',
       },
+      {
+        key: 'cari_teknisi_enabled',
+        value: s.cariTeknisiEnabled ? 'true' : 'false',
+      },
+      {
+        key: 'konsultasi_service_enabled',
+        value: s.konsultasiServiceEnabled ? 'true' : 'false',
+      },
+      {
+        key: 'rekber_service_enabled',
+        value: s.rekberServiceEnabled ? 'true' : 'false',
+      },
     ],
   })
 

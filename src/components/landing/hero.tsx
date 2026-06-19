@@ -19,28 +19,45 @@ const ROTATE_MS = 8000
 
 const heroVariants = [
   {
-    id: 'seller',
-    badge: '3.000+ teknisi & toko aktif',
-    lines: ['Fee marketplace bikin margin tipis?', 'Kami bantoo-in jual handphone kamu.'],
-    highlightLine: 1,
-    description:
-      'Jual di bantoo.in — komisi mulai 3–5% (Pro: 1–2%), buyer dari ekosistem teknisi, plus rekber aman. Satu tempat untuk jual, konsultasi, dan transaksi.',
-    trustItems: ['Komisi ringan', 'Buyer teknisi', 'Rekber aman'],
-    primaryCta: { label: 'Mulai jual gratis', href: '/register/teknisi' },
-    secondaryCta: { label: 'Lihat marketplace', href: '/marketplace' },
-  },
-  {
     id: 'buyer',
     badge: 'Transaksi aman dengan rekber platform',
-    lines: ['Beli HP second bingung takut tipu?', 'Kami bantoo-in transaksinya.'],
+    lines: ['Beli HP second takut zonk?', 'Kami bantoo-in pilih yang paling oke.'],
     highlightLine: 1,
     description:
-      'Beli dari teknisi & toko terverifikasi di bantoo.in — inspeksi, konsultasi, dan rekber aman sebelum dana cair ke penjual.',
+      'Beli dari teknisi & toko terverifikasi — inspeksi, konsultasi, rekber aman.',
     trustItems: ['Teknisi verified', 'Rekber aman', 'Inspeksi tersedia'],
     primaryCta: { label: 'Cari handphone', href: '/marketplace' },
     secondaryCta: { label: 'Daftar gratis', href: '/register' },
   },
+  {
+    id: 'seller',
+    badge: '3.000+ teknisi & toko aktif',
+    lines: ['Fee toko ijo & oren bikin pusing?', 'Kami bantoo-in jual dengan fee rendah.'],
+    highlightLine: 1,
+    description:
+      'Komisi rendah, buyer ekosistem teknisi, rekber aman — jual, konsultasi, transaksi.',
+    trustItems: ['Komisi rendah', 'Buyer teknisi', 'Rekber aman'],
+    primaryCta: { label: 'Mulai jual gratis', href: '/register/teknisi' },
+    secondaryCta: { label: 'Lihat marketplace', href: '/marketplace' },
+  },
+  {
+    id: 'teknisi',
+    badge: 'Bangun reputasi teknisi & toko HP',
+    lines: ['Pengen portofolio yang keliatan pro?', 'Daftar &kami bantoo-in bangun profilmu.'],
+    highlightLine: 1,
+    description:
+      'Profil toko, katalog, dan sertifikasi — keliatan pro dari hari pertama.',
+    trustItems: ['Profil toko', 'Katalog produk', 'Sertifikasi'],
+    primaryCta: { label: 'Daftar sebagai teknisi', href: '/register/teknisi' },
+    secondaryCta: { label: 'Lihat teknisi', href: '/teknisi' },
+  },
 ] as const
+
+const SLIDE_ARIA_LABELS: Record<(typeof heroVariants)[number]['id'], string> = {
+  buyer: 'Tampilkan pesan pembeli',
+  seller: 'Tampilkan pesan penjual',
+  teknisi: 'Tampilkan pesan teknisi',
+}
 
 const partners = ['Samsung', 'Xiaomi', 'OPPO', 'Apple', 'Vivo', 'Realme', 'Infinix']
 
@@ -160,7 +177,7 @@ export function Hero() {
               <button
                 key={v.id}
                 type="button"
-                aria-label={idx === 0 ? 'Tampilkan pesan penjual' : 'Tampilkan pesan pembeli'}
+                aria-label={SLIDE_ARIA_LABELS[v.id]}
                 onClick={() => goTo(idx)}
                 className={cn(
                   'h-1.5 rounded-full transition-all duration-300',

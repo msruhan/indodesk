@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   LayoutDashboard,
   UserCircle,
@@ -12,8 +12,14 @@ import {
   Shield,
 } from '@/lib/icons'
 import { RoleSidebar, type SidebarNavItem } from './role-sidebar'
+import { useFeatureFlags } from '@/contexts/feature-flags-context'
+import {
+  canAccessInspectionService,
+  canAccessKonsultasiService,
+  canAccessRekberService,
+} from '@/lib/platform-settings-shared'
 
-const userNavItems: readonly SidebarNavItem[] = [
+const baseUserNavItems: readonly SidebarNavItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/user/dashboard', section: 'Ringkasan' },
   { icon: ShoppingBag, label: 'Pesanan', href: '/user/orders', section: 'Belanja' },
   { icon: MessageCircle, label: 'Konsultasi', href: '/user/konsultasi', section: 'Layanan' },
@@ -28,7 +34,25 @@ const bottomNavItems: readonly SidebarNavItem[] = [
 ]
 
 export function UserSidebar() {
+  const { flags } = useFeatureFlags()
   const [ticketUnread, setTicketUnread] = useState(0)
+
+  const userNavItems = useMemo(
+    () =>
+      baseUserNavItems.filter((item) => {
+        if (item.href === '/user/konsultasi' && !canAccessKonsultasiService('USER', flags)) {
+          return false
+        }
+        if (item.href === '/user/inspeksi' && !canAccessInspectionService('USER', flags)) {
+          return false
+        }
+        if (item.href === '/user/rekber' && !canAccessRekberService('USER', flags)) {
+          return false
+        }
+        return true
+      }),
+    [flags],
+  )
 
   const loadTicketUnread = useCallback(async () => {
     try {

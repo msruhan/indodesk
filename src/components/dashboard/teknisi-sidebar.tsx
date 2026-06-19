@@ -18,6 +18,12 @@ import {
 } from '@/lib/icons'
 import { RoleSidebar, type SidebarNavItem } from './role-sidebar'
 import { useHydrated } from '@/hooks/use-hydrated'
+import { useFeatureFlags } from '@/contexts/feature-flags-context'
+import {
+  canAccessInspectionService,
+  canAccessKonsultasiService,
+  canAccessRekberService,
+} from '@/lib/platform-settings-shared'
 
 const baseNavItems: readonly Omit<SidebarNavItem, 'badge'>[] = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/teknisi/dashboard', section: 'Ringkasan' },
@@ -33,6 +39,10 @@ const baseNavItems: readonly Omit<SidebarNavItem, 'badge'>[] = [
   { icon: History, label: 'Riwayat Transaksi', href: '/teknisi/saldo', section: 'Keuangan' },
 ]
 
+const KONSULTASI_HREFS = new Set(['/teknisi/iklan-konsultasi', '/teknisi/konsultasi'])
+const INSPEKSI_HREFS = new Set(['/teknisi/inspeksi'])
+const REKBER_HREFS = new Set(['/teknisi/rekber'])
+
 const bottomNavItems: readonly SidebarNavItem[] = [
   { icon: UserCircle, label: 'Profil', href: '/teknisi/settings' },
   { icon: HelpCircle, label: 'Pusat Bantuan', href: '/teknisi/bantuan' },
@@ -40,10 +50,28 @@ const bottomNavItems: readonly SidebarNavItem[] = [
 
 export function TeknisiSidebar() {
   const hydrated = useHydrated()
+  const { flags } = useFeatureFlags()
   const [konsultasiPending, setKonsultasiPending] = useState(0)
   const [marketplacePending, setMarketplacePending] = useState(0)
   const [inspectionPending, setInspectionPending] = useState(0)
   const [ticketUnread, setTicketUnread] = useState(0)
+
+  const visibleNavItems = useMemo(
+    () =>
+      baseNavItems.filter((item) => {
+        if (KONSULTASI_HREFS.has(item.href) && !canAccessKonsultasiService('TEKNISI', flags)) {
+          return false
+        }
+        if (INSPEKSI_HREFS.has(item.href) && !canAccessInspectionService('TEKNISI', flags)) {
+          return false
+        }
+        if (REKBER_HREFS.has(item.href) && !canAccessRekberService('TEKNISI', flags)) {
+          return false
+        }
+        return true
+      }),
+    [flags],
+  )
 
   const loadCounts = useCallback(async () => {
     try {
@@ -71,7 +99,7 @@ export function TeknisiSidebar() {
   }, [loadCounts])
 
   const items = useMemo((): readonly SidebarNavItem[] => {
-    return baseNavItems.map((item) => {
+    return visibleNavItems.map((item) => {
       if (!hydrated) return item
       if (item.href === '/teknisi/konsultasi' && konsultasiPending > 0) {
         return { ...item, badge: konsultasiPending }
@@ -84,7 +112,7 @@ export function TeknisiSidebar() {
       }
       return item
     })
-  }, [hydrated, konsultasiPending, marketplacePending, inspectionPending])
+  }, [hydrated, visibleNavItems, konsultasiPending, marketplacePending, inspectionPending])
 
   return (
     <RoleSidebar

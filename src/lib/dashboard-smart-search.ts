@@ -1,4 +1,11 @@
 import type { UserRole } from '@prisma/client'
+import type { PublicFeatureFlags } from '@/lib/platform-settings-shared'
+import {
+  canAccessInspectionService,
+  canAccessKonsultasiService,
+  canAccessRemoteService,
+  canAccessRekberService,
+} from '@/lib/platform-settings-shared'
 import {
   MARKETPLACE_PATH,
   accountPathForRole,
@@ -39,9 +46,41 @@ function quick(
 }
 
 /** Static shortcuts per role — filtered locally by query. */
-export function quickActionsForRole(role: UserRole): SmartSearchItem[] {
-  if (role === 'ADMIN') {
-    return [
+export function quickActionsForRole(
+  role: UserRole,
+  flags?: PublicFeatureFlags,
+): SmartSearchItem[] {
+  const items =
+    role === 'ADMIN'
+      ? adminQuickActions()
+      : role === 'TEKNISI'
+        ? teknisiQuickActions()
+        : userQuickActions()
+
+  if (!flags) return items
+
+  return items.filter((item) => {
+    if (item.href.startsWith('/user/konsultasi') || item.href.startsWith('/teknisi/konsultasi')) {
+      return canAccessKonsultasiService(role, flags)
+    }
+    if (item.href.startsWith('/teknisi/iklan-konsultasi')) {
+      return canAccessKonsultasiService(role, flags)
+    }
+    if (item.href.includes('inspeksi')) {
+      return canAccessInspectionService(role, flags)
+    }
+    if (item.href.includes('rekber')) {
+      return canAccessRekberService(role, flags)
+    }
+    if (item.href.includes('filter=remote')) {
+      return canAccessRemoteService(role, flags) && canAccessKonsultasiService(role, flags)
+    }
+    return true
+  })
+}
+
+function adminQuickActions(): SmartSearchItem[] {
+  return [
       quick('dashboard', 'Dashboard admin', 'Ringkasan platform', '/admin/dashboard', [
         'home',
         'overview',
@@ -97,11 +136,11 @@ export function quickActionsForRole(role: UserRole): SmartSearchItem[] {
         'dukungan',
       ]),
       quick('market', 'Marketplace', 'Halaman depan publik', MARKETPLACE_PATH, ['beranda']),
-    ]
-  }
+  ]
+}
 
-  if (role === 'TEKNISI') {
-    return [
+function teknisiQuickActions(): SmartSearchItem[] {
+  return [
       quick('dashboard', 'Dashboard teknisi', 'Ringkasan performa', '/teknisi/dashboard', ['home']),
       quick('analitik', 'Analitik', 'Statistik toko dan layanan', '/teknisi/analitik', ['statistik']),
       quick('toko', 'Profil Toko', 'Kelola profil toko', '/teknisi/toko', ['store']),
@@ -146,9 +185,10 @@ export function quickActionsForRole(role: UserRole): SmartSearchItem[] {
         'server',
       ]),
       quick('market', 'Marketplace', 'Halaman depan', MARKETPLACE_PATH, ['beranda']),
-    ]
-  }
+  ]
+}
 
+function userQuickActions(): SmartSearchItem[] {
   return [
     quick('dashboard', 'Dashboard', 'Ringkasan akun', '/user/dashboard', ['home']),
     quick('pesanan', 'Pesanan', 'Marketplace, top up, digital & server', '/user/orders', [

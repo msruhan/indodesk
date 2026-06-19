@@ -9,6 +9,9 @@ import { useHydrated } from '@/hooks/use-hydrated'
 import { USER_BOTTOM_NAV_ITEMS } from '@/lib/user-bottom-nav'
 import { applyDashboardBottomNavSwap, homePathForRole, MARKETPLACE_PATH } from '@/lib/role-routes'
 import { useAuth, type UserRole } from '@/contexts/auth-context'
+import { useFeatureFlags } from '@/contexts/feature-flags-context'
+import { canAccessKonsultasiService } from '@/lib/platform-settings-shared'
+import type { PublicFeatureFlags } from '@/lib/platform-settings-shared'
 import {
   getTeknisiNavHomeModeForPath,
   setTeknisiNavHomeMode,
@@ -113,12 +116,22 @@ function getNavItems(
   pathname: string | null,
   role: UserRole | null,
   teknisiNavMode: 'workspace' | 'market',
+  flags: PublicFeatureFlags,
 ): NavItem[] {
   const resolvedRole = role ?? roleFromPath(pathname)
   let items: NavItem[]
   if (resolvedRole === 'ADMIN') items = [...adminNav]
-  else if (resolvedRole === 'TEKNISI') items = [...teknisiNav]
-  else items = [...userNav]
+  else if (resolvedRole === 'TEKNISI') {
+    items = teknisiNav.filter((item) => {
+      if (
+        item.href === '/teknisi/konsultasi' &&
+        !canAccessKonsultasiService('TEKNISI', flags)
+      ) {
+        return false
+      }
+      return true
+    })
+  } else items = [...userNav]
 
   if (resolvedRole) {
     items = applyDashboardBottomNavSwap(
@@ -169,6 +182,7 @@ function isNavItemActive(item: NavItem, pathname: string | null, tab: string | n
 function DashboardBottomNavContent({ tab }: { tab: string | null }) {
   const pathname = usePathname()
   const { user } = useAuth()
+  const { flags } = useFeatureFlags()
   const hydrated = useHydrated()
   const isTeknisi = user?.role === 'TEKNISI'
 
@@ -183,7 +197,7 @@ function DashboardBottomNavContent({ tab }: { tab: string | null }) {
     () => (isTeknisi ? getTeknisiNavHomeModeForPath(pathname) : 'workspace'),
   )
 
-  const navItems = getNavItems(pathname, user?.role ?? null, teknisiNavMode)
+  const navItems = getNavItems(pathname, user?.role ?? null, teknisiNavMode, flags)
 
   const onNavClick = (href: string) => {
     if (!isTeknisi) return

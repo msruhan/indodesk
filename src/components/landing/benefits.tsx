@@ -24,11 +24,12 @@ const benefits = [
     icon: TrendingUp,
     title: 'Komisi Lebih Masuk Akal',
     description:
-      'Jual handphone dengan komisi marketplace mulai 3–5% (Pro: 1–2%) — margin tetap terjaga dibanding platform umum.',
-    stat: 3,
-    statSuffix: '%',
-    statPrefix: 'Mulai ',
-    statLabel: 'komisi marketplace',
+      'Jual handphone dengan komisi marketplace rendah — margin tetap terjaga dibanding platform umum.',
+    statText: 'Komisi rendah',
+    stat: 0,
+    statSuffix: '',
+    statPrefix: '',
+    statLabel: 'marketplace fee',
   },
   {
     icon: Clock,
@@ -127,12 +128,18 @@ export function Benefits() {
                 </div>
 
                 <div className="mb-3">
-                  <AnimatedNumber
-                    value={b.stat}
-                    prefix={b.statPrefix}
-                    suffix={b.statSuffix}
-                    className="block text-3xl font-bold tracking-tightest text-ink tabular-nums"
-                  />
+                  {'statText' in b && b.statText ? (
+                    <span className="block text-3xl font-bold tracking-tightest text-ink">
+                      {b.statText}
+                    </span>
+                  ) : (
+                    <AnimatedNumber
+                      value={b.stat}
+                      prefix={b.statPrefix}
+                      suffix={b.statSuffix}
+                      className="block text-3xl font-bold tracking-tightest text-ink tabular-nums"
+                    />
+                  )}
                   <p className="text-xs font-medium uppercase tracking-[0.18em] text-surface-500">
                     {b.statLabel}
                   </p>

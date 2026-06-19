@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
+import { getPublicFeatureFlags } from '@/lib/platform-settings'
 import { normalizeProfileContentForDb } from '@/lib/teknisi-profile-content'
 import { serializeTeknisiAccountProfile } from '@/lib/teknisi-profile-serializer'
 
@@ -103,6 +104,13 @@ export async function PATCH(req: Request) {
     inspectionPriceOnline,
     inspectionPriceOffline,
   } = data
+
+    if (consultationServices !== undefined) {
+      const flags = await getPublicFeatureFlags()
+      if (!flags.konsultasiServiceEnabled) {
+        return apiError('Layanan konsultasi sedang dinonaktifkan', 403)
+      }
+    }
 
     if (specialty !== undefined) {
       const normalized = specialty.map((s) => s.trim()).filter(Boolean)

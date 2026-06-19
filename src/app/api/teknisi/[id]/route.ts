@@ -14,6 +14,11 @@ export async function GET(
   const { id } = await params
 
   try {
+    const flags = await getPublicFeatureFlags()
+    if (!flags.cariTeknisiEnabled) {
+      return apiError('Cari Teknisi sedang dinonaktifkan', 403)
+    }
+
     const profile = await prisma.teknisiProfile.findFirst({
       where: { userId: id },
       include: {

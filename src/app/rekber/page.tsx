@@ -1,13 +1,16 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Navbar } from '@/components/landing'
 import { BottomNav, MobileSafeAreaSpacer } from '@/components/mobile'
 import { buildServiceTabs } from '@/lib/section-tab-config'
+import { useAuth } from '@/contexts/auth-context'
 import { useFeatureFlags } from '@/contexts/feature-flags-context'
+import { canAccessRekberService } from '@/lib/platform-settings-shared'
 import { PageHero } from '@/components/shared/page-hero'
 import { Shield, Plus } from '@/lib/icons'
 import { RekberCreateForm } from '@/components/rekber/rekber-create-form'
@@ -15,18 +18,56 @@ import { RekberTransactionList } from '@/components/rekber/rekber-transaction-li
 import { useRekberList } from '@/hooks/use-rekber-list'
 
 export default function RekberPage() {
+  const router = useRouter()
   const { data: session, status: sessionStatus } = useSession()
-  const { flags } = useFeatureFlags()
-  const tabs = buildServiceTabs(
-    (session?.user?.role as 'ADMIN' | 'TEKNISI' | 'USER' | undefined) ?? null,
-    flags,
-  )
+  const { user, isLoading: authLoading } = useAuth()
+  const { flags, loading: flagsLoading } = useFeatureFlags()
+  const role = (user?.role as 'ADMIN' | 'TEKNISI' | 'USER' | undefined) ?? null
+  const allowed = canAccessRekberService(role, flags)
+  const guardLoading = authLoading || flagsLoading
+  const tabs = buildServiceTabs(role, flags)
   const [showCreateForm, setShowCreateForm] = useState(false)
   const isAuthed = sessionStatus === 'authenticated'
   const { items, stats, loading, error, actingId, load, userAction } = useRekberList(
     '/api/rekber',
     isAuthed,
   )
+
+  if (guardLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface-50">
+        <p className="text-sm text-surface-500">Memeriksa akses…</p>
+      </div>
+    )
+  }
+
+  if (!allowed) {
+    return (
+      <div className="min-h-screen overflow-x-hidden bg-surface-50">
+        <div className="hidden lg:block">
+          <Navbar />
+        </div>
+        <section className="relative flex min-h-[60vh] items-center justify-center px-4 lg:pt-28">
+          <div className="max-w-md rounded-2xl border border-surface-200/70 bg-white/90 p-8 text-center shadow-soft-md backdrop-blur-md">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-50 text-primary-700">
+              <Shield className="h-6 w-6" />
+            </div>
+            <h2 className="text-lg font-semibold text-ink">Layanan Rekber tidak tersedia</h2>
+            <p className="mt-2 text-sm text-surface-600">
+              Menu Rekber Aman sedang dinonaktifkan oleh admin. Silakan cek kembali nanti.
+            </p>
+            <div className="mt-5 flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
+              <Button variant="primary" size="sm" onClick={() => router.push('/')}>
+                Kembali ke Beranda
+              </Button>
+            </div>
+          </div>
+        </section>
+        <MobileSafeAreaSpacer />
+        <BottomNav />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-surface-50">

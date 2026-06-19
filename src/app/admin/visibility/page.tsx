@@ -42,18 +42,34 @@ export default function AdminVisibilityPage() {
           <li className="flex items-start gap-2">
             <span className="mt-1 inline-flex h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary-500" />
             <span>
-              <strong>IndoDesk &amp; Konsultasi Remote</strong> mengontrol halaman publik{' '}
-              <code className="text-xs">/remote</code> dan pemesanan konsultasi dengan IndoDesk.
-              Tidak ada menu Remote terpisah di dashboard — sesi remote dikelola melalui{' '}
-              <strong>Konsultasi</strong>.
+              <strong>Ruang Teknisi</strong> memiliki tiga toggle terpisah:{' '}
+              <strong>Cari Teknisi</strong> (halaman <code className="text-xs">/teknisi</code>
+              ), <strong>Remote Online</strong> (halaman <code className="text-xs">/remote</code>
+              ), dan <strong>Inspeksi HP</strong> (halaman{' '}
+              <code className="text-xs">/inspeksi</code> + dashboard). Grup menu Ruang Teknisi
+              otomatis disembunyikan bila ketiga submenu tidak aktif.
             </span>
           </li>
           <li className="flex items-start gap-2">
             <span className="mt-1 inline-flex h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary-500" />
             <span>
-              <strong>Inspeksi</strong> tampil di navigasi publik dan sidebar user/teknisi saat
-              toggle aktif. Dashboard user diblokir bila dimatikan; teknisi dengan order aktif
-              masih dapat mengakses <code className="text-xs">/teknisi/inspeksi</code> langsung.
+              <strong>Remote Online</strong> juga mengontrol pemesanan konsultasi dengan IndoDesk.
+              Sesi remote dikelola melalui menu <strong>Konsultasi</strong> di dashboard.
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="mt-1 inline-flex h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary-500" />
+            <span>
+              <strong>Inspeksi HP</strong> juga mengontrol menu Inspeksi di sidebar dashboard
+              user/teknisi. Admin selalu memiliki akses panel admin inspeksi.
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="mt-1 inline-flex h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary-500" />
+            <span>
+              <strong>Konsultasi</strong> mengontrol menu Konsultasi di dashboard user, serta menu
+              Konsultasi &amp; Iklan Konsultasi di dashboard teknisi. Pemesanan konsultasi baru
+              diblokir bila dimatikan.
             </span>
           </li>
           <li className="flex items-start gap-2">

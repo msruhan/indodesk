@@ -14,6 +14,8 @@ import { Navbar } from '@/components/landing'
 import { BottomNav, MobileSafeAreaSpacer } from '@/components/mobile'
 import { buildServiceTabs } from '@/lib/section-tab-config'
 import { useFeatureFlags } from '@/contexts/feature-flags-context'
+import { useAuth } from '@/contexts/auth-context'
+import { canAccessCariTeknisi } from '@/lib/platform-settings-shared'
 import { PageHero } from '@/components/shared/page-hero'
 import {
   SpotlightCard,
@@ -32,6 +34,7 @@ import {
   Radio,
   CheckCircle,
   Award,
+  Users,
   Shield,
 } from '@/lib/icons'
 import { InspectionBadge } from '@/components/teknisi/inspection-badge'
@@ -74,12 +77,13 @@ const compactNumber = (n: number) =>
 export default function TeknisiListPage() {
   const router = useRouter()
   const { data: session, status } = useSession()
+  const { user, isLoading: authLoading } = useAuth()
   const { openChatWithPeer } = useChat()
-  const { flags } = useFeatureFlags()
-  const tabs = buildServiceTabs(
-    (session?.user?.role as 'ADMIN' | 'TEKNISI' | 'USER' | undefined) ?? null,
-    flags,
-  )
+  const { flags, loading: flagsLoading } = useFeatureFlags()
+  const role = (user?.role as 'ADMIN' | 'TEKNISI' | 'USER' | undefined) ?? null
+  const allowed = canAccessCariTeknisi(role, flags)
+  const guardLoading = authLoading || flagsLoading
+  const tabs = buildServiceTabs(role, flags)
   const [teknisiList, setTeknisiList] = useState<PublicTeknisiDto[]>([])
   const [loadingList, setLoadingList] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -140,6 +144,42 @@ export default function TeknisiListPage() {
     })
 
   const onlineCount = teknisiList.filter((t) => t.isOnline).length
+
+  if (guardLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface-50">
+        <p className="text-sm text-surface-500">Memeriksa akses…</p>
+      </div>
+    )
+  }
+
+  if (!allowed) {
+    return (
+      <div className="min-h-screen overflow-x-hidden bg-surface-50">
+        <div className="hidden lg:block">
+          <Navbar />
+        </div>
+        <section className="relative flex min-h-[60vh] items-center justify-center px-4 lg:pt-28">
+          <div className="max-w-md rounded-2xl border border-surface-200/70 bg-white/90 p-8 text-center shadow-soft-md backdrop-blur-md">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-50 text-primary-700">
+              <Users className="h-6 w-6" />
+            </div>
+            <h2 className="text-lg font-semibold text-ink">Cari Teknisi tidak tersedia</h2>
+            <p className="mt-2 text-sm text-surface-600">
+              Halaman daftar teknisi sedang dinonaktifkan oleh admin.
+            </p>
+            <div className="mt-5 flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
+              <Button variant="primary" size="sm" onClick={() => router.push('/')}>
+                Kembali ke Beranda
+              </Button>
+            </div>
+          </div>
+        </section>
+        <MobileSafeAreaSpacer />
+        <BottomNav />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-surface-50">

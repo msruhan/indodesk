@@ -17,6 +17,7 @@ import {
   type SmartSearchItem,
 } from '@/lib/dashboard-smart-search'
 import { mobileHeaderSearchInputClass } from '@/components/mobile/header-action-styles'
+import { useFeatureFlags } from '@/contexts/feature-flags-context'
 
 type MergedItem = SmartSearchItem | SmartSearchApiResult
 
@@ -53,7 +54,8 @@ export function DashboardSmartSearch({ role, className }: DashboardSmartSearchPr
   const [loading, setLoading] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
 
-  const quickActions = useMemo(() => quickActionsForRole(role), [role])
+  const { flags } = useFeatureFlags()
+  const quickActions = useMemo(() => quickActionsForRole(role, flags), [role, flags])
 
   const filteredQuick = useMemo(
     () => filterSmartSearchItems(quickActions, searchQuery),

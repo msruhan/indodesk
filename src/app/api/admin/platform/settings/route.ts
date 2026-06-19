@@ -18,6 +18,9 @@ const settingsSchema = z.object({
   imeiServiceEnabled: z.boolean(),
   remoteServiceEnabled: z.boolean(),
   inspectionServiceEnabled: z.boolean(),
+  cariTeknisiEnabled: z.boolean(),
+  konsultasiServiceEnabled: z.boolean(),
+  rekberServiceEnabled: z.boolean(),
   ...adminStepUpFields,
 })
 

@@ -10,6 +10,7 @@ import {
 } from '@/lib/inspection-includes'
 import { calculateRekberFee, generateRekberOrderCode } from '@/lib/rekber-config'
 import { serializeRekber, type RekberParty } from '@/lib/rekber-serializer'
+import { getPublicFeatureFlags } from '@/lib/platform-settings'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,6 +35,11 @@ export async function POST(
 ) {
   const { session, error } = await requireApiRole(['USER'])
   if (error) return error
+
+  const flags = await getPublicFeatureFlags()
+  if (!flags.rekberServiceEnabled) {
+    return apiError('Layanan rekber sedang dinonaktifkan', 403)
+  }
 
   const { id } = await params
 

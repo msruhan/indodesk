@@ -1767,6 +1767,32 @@ model PlatformSetting {
 }
 
 // ============================================================
+// LANDING PRICING (admin-managed plans for homepage)
+// ============================================================
+
+model LandingPricingPlan {
+  id           String   @id @default(cuid())
+  name         String
+  description  String   @default("") @db.Text
+  price        String
+  priceSubtext String   @default("")
+  cta          String   @default("Mulai")
+  ctaHref      String   @default("/register")
+  highlight    Boolean  @default(false)
+  badge        String?
+  /// sparkles | zap | star
+  icon         String   @default("sparkles")
+  /// JSON array of feature strings
+  features     String   @default("[]") @db.Text
+  sortOrder    Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+}
+
+// ============================================================
 // HELP / FAQ
 // ============================================================
 

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Smartphone, Laptop, CheckSquare } from '@/lib/icons'
+import { Smartphone, Laptop, CheckSquare, Users, MessageCircle, Search, Shield } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import type { PlatformSettingsDto } from '@/lib/platform-settings-shared'
 import {
@@ -10,7 +10,13 @@ import {
   requestAdminStepUpCredentials,
 } from '@/lib/admin-step-up-client'
 
-type FlagKey = 'imeiServiceEnabled' | 'remoteServiceEnabled' | 'inspectionServiceEnabled'
+type FlagKey =
+  | 'imeiServiceEnabled'
+  | 'cariTeknisiEnabled'
+  | 'remoteServiceEnabled'
+  | 'inspectionServiceEnabled'
+  | 'konsultasiServiceEnabled'
+  | 'rekberServiceEnabled'
 
 type FeatureFlag = {
   key: FlagKey
@@ -19,6 +25,8 @@ type FeatureFlag = {
   icon: typeof Smartphone
   /** Catatan akses kontekstual yang ditampilkan di kartu. */
   audienceNote: string
+  /** Grup visual di halaman visibilitas. */
+  section?: string
 }
 
 const FLAGS: FeatureFlag[] = [
@@ -31,19 +39,46 @@ const FLAGS: FeatureFlag[] = [
     audienceNote: 'Navigasi publik · Teknisi · Admin',
   },
   {
-    key: 'remoteServiceEnabled',
-    title: 'Halaman IndoDesk & Konsultasi Remote',
+    section: 'Ruang Teknisi',
+    key: 'cariTeknisiEnabled',
+    title: 'Cari Teknisi',
     description:
-      'Tampilkan halaman publik /remote (panduan IndoDesk) dan izinkan pemesanan konsultasi dengan remote (requiresRemote). Sesi remote dikelola di menu Konsultasi — bukan menu terpisah. Bila dimatikan, link navigasi disembunyikan dan booking remote diblokir.',
-    icon: Laptop,
-    audienceNote: 'Navigasi publik · Booking konsultasi remote',
+      'Tampilkan submenu "Cari Teknisi" di grup Ruang Teknisi, halaman /teknisi, dan profil teknisi publik untuk user, teknisi, dan pengunjung. Bila dimatikan, listing dan profil teknisi tidak dapat diakses; link disembunyikan. Admin selalu memiliki akses.',
+    icon: Search,
+    audienceNote: 'Ruang Teknisi · Navigasi publik · User · Teknisi',
   },
   {
-    key: 'inspectionServiceEnabled',
-    title: 'Menu Inspeksi Pra-Beli',
+    section: 'Ruang Teknisi',
+    key: 'remoteServiceEnabled',
+    title: 'Remote Online',
     description:
-      'Tampilkan menu Inspeksi di navigasi publik, sidebar user/teknisi, dan halaman layanan terkait. Bila dimatikan, halaman publik dan dashboard user tidak bisa diakses; link disembunyikan. Admin selalu memiliki akses panel admin.',
+      'Tampilkan submenu "Remote Online" di Ruang Teknisi, halaman publik /remote (panduan IndoDesk), dan izinkan pemesanan konsultasi remote. Sesi remote dikelola di menu Konsultasi dashboard. Bila dimatikan, link navigasi disembunyikan dan booking remote diblokir.',
+    icon: Laptop,
+    audienceNote: 'Ruang Teknisi · Navigasi publik · Booking remote',
+  },
+  {
+    section: 'Ruang Teknisi',
+    key: 'inspectionServiceEnabled',
+    title: 'Inspeksi HP',
+    description:
+      'Tampilkan submenu "Inspeksi HP" di Ruang Teknisi, sidebar dashboard user/teknisi, dan halaman layanan inspeksi terkait. Bila dimatikan, halaman inspeksi dashboard dan publik diblokir; link disembunyikan. Admin selalu memiliki akses panel admin.',
     icon: CheckSquare,
+    audienceNote: 'Ruang Teknisi · Dashboard user/teknisi · Admin',
+  },
+  {
+    key: 'konsultasiServiceEnabled',
+    title: 'Menu Konsultasi',
+    description:
+      'Tampilkan menu Konsultasi di dashboard user, serta menu Konsultasi & Iklan Konsultasi di dashboard teknisi. Bila dimatikan, pemesanan konsultasi baru diblokir dan menu terkait disembunyikan. Admin selalu memiliki akses.',
+    icon: MessageCircle,
+    audienceNote: 'Dashboard user/teknisi · Booking konsultasi · Admin',
+  },
+  {
+    key: 'rekberServiceEnabled',
+    title: 'Rekber Aman',
+    description:
+      'Tampilkan menu "Rekber Aman" di navigasi publik, sidebar dashboard user/teknisi, dan halaman layanan /rekber. Bila dimatikan, pembuatan rekber baru diblokir dan link disembunyikan. Admin selalu memiliki akses panel admin rekber.',
+    icon: Shield,
     audienceNote: 'Navigasi publik · Dashboard user/teknisi · Admin',
   },
 ]
@@ -97,14 +132,11 @@ export function AdminFeatureFlagsForm() {
       const json = await res.json()
       if (!res.ok || !json.success) {
         setError(json.error ?? 'Gagal menyimpan')
-        // rollback
         setSettings(settings)
         return
       }
       setSettings(json.data)
-      setMessage(
-        `${flag.title} berhasil ${next ? 'diaktifkan' : 'dinonaktifkan'}.`,
-      )
+      setMessage(`${flag.title} berhasil ${next ? 'diaktifkan' : 'dinonaktifkan'}.`)
     } catch {
       setError('Gagal menyimpan')
       setSettings(settings)
@@ -133,53 +165,65 @@ export function AdminFeatureFlagsForm() {
     )
   }
 
+  let lastSection: string | undefined
+
   return (
     <div className="space-y-3">
       {FLAGS.map((flag) => {
         const Icon = flag.icon
         const enabled = settings[flag.key]
         const isSaving = saving === flag.key
+        const showSectionHeader = flag.section && flag.section !== lastSection
+        if (flag.section) lastSection = flag.section
+
         return (
-          <div
-            key={flag.key}
-            className="flex flex-col gap-3 rounded-2xl border border-surface-200/70 bg-white/80 p-4 sm:flex-row sm:items-start sm:justify-between"
-          >
-            <div className="flex gap-3">
-              <span
-                className={cn(
-                  'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
-                  enabled ? 'bg-primary-50 text-primary-700' : 'bg-surface-100 text-surface-500',
-                )}
-              >
-                <Icon className="h-5 w-5" />
-              </span>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-ink">{flag.title}</p>
-                <p className="mt-0.5 text-xs leading-relaxed text-surface-500">
-                  {flag.description}
-                </p>
-                <p className="mt-1.5 text-[11px] font-medium uppercase tracking-wider text-surface-400">
-                  {flag.audienceNote}
+          <div key={flag.key}>
+            {showSectionHeader ? (
+              <div className="mb-2 mt-1 flex items-center gap-2 px-1">
+                <Users className="h-4 w-4 text-primary-600" />
+                <p className="text-xs font-semibold uppercase tracking-wider text-surface-500">
+                  {flag.section}
                 </p>
               </div>
-            </div>
-            <div className="flex items-center gap-3 sm:flex-col sm:items-end">
-              <span
-                className={cn(
-                  'rounded-full px-2.5 py-0.5 text-[11px] font-semibold',
-                  enabled
-                    ? 'bg-primary-50 text-primary-700'
-                    : 'bg-surface-100 text-surface-500',
-                )}
-              >
-                {enabled ? 'Aktif' : 'Disembunyikan'}
-              </span>
-              <FlagSwitch
-                checked={enabled}
-                disabled={isSaving}
-                onChange={(next) => void toggle(flag, next)}
-                label={flag.title}
-              />
+            ) : null}
+            <div className="flex flex-col gap-3 rounded-2xl border border-surface-200/70 bg-white/80 p-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex gap-3">
+                <span
+                  className={cn(
+                    'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
+                    enabled ? 'bg-primary-50 text-primary-700' : 'bg-surface-100 text-surface-500',
+                  )}
+                >
+                  <Icon className="h-5 w-5" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-ink">{flag.title}</p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-surface-500">
+                    {flag.description}
+                  </p>
+                  <p className="mt-1.5 text-[11px] font-medium uppercase tracking-wider text-surface-400">
+                    {flag.audienceNote}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 sm:flex-col sm:items-end">
+                <span
+                  className={cn(
+                    'rounded-full px-2.5 py-0.5 text-[11px] font-semibold',
+                    enabled
+                      ? 'bg-primary-50 text-primary-700'
+                      : 'bg-surface-100 text-surface-500',
+                  )}
+                >
+                  {enabled ? 'Aktif' : 'Disembunyikan'}
+                </span>
+                <FlagSwitch
+                  checked={enabled}
+                  disabled={isSaving}
+                  onChange={(next) => void toggle(flag, next)}
+                  label={flag.title}
+                />
+              </div>
             </div>
           </div>
         )

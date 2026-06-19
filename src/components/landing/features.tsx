@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { motion } from 'framer-motion'
 import {
@@ -14,7 +15,7 @@ import {
   Users,
   Smartphone,
   Globe,
-  Shield,
+  Scales,
   Zap,
 } from '@/lib/icons'
 
@@ -48,11 +49,13 @@ const features = [
     accent: 'from-amber-400/20 via-amber-300/15 to-transparent',
   },
   {
-    icon: Shield,
-    title: 'Jasa Rekber (Escrow)',
+    icon: Scales,
+    title: 'Benchmark Produk',
     description:
-      'Transaksi aman dengan sistem rekening bersama. Buyer dan seller terlindungi dengan mediator admin.',
+      'Bandingkan dua iklan side-by-side — kondisi, spesifikasi, hardware, dan kelengkapan dinilai otomatis. Dapatkan skor total & rekomendasi pemenang.',
     accent: 'from-emerald-500/20 via-emerald-400/15 to-transparent',
+    href: '/marketplace/bandingkan',
+    cta: 'Bandingkan',
   },
   {
     icon: Globe,
@@ -61,7 +64,14 @@ const features = [
       'Komunikasi langsung antara user, teknisi, dan admin. Dengan indikator online/offline dan unread counter.',
     accent: 'from-cyan-500/20 via-cyan-400/15 to-transparent',
   },
-] as const
+] as const satisfies ReadonlyArray<{
+  icon: typeof Smartphone
+  title: string
+  description: string
+  accent: string
+  href?: string
+  cta?: string
+}>
 
 export function Features() {
   return (
@@ -115,16 +125,31 @@ export function Features() {
                     {feature.description}
                   </p>
 
-                  {/* Subtle "learn more" affordance on hover */}
-                  <div className="mt-5 flex items-center text-[13px] font-medium text-primary-700 opacity-70 transition-opacity duration-300 group-hover/spot:opacity-100">
-                    Pelajari
-                    <span
-                      aria-hidden
-                      className="ml-1 inline-block transition-transform duration-450 group-hover/spot:translate-x-1"
+                  {/* Subtle CTA on hover */}
+                  {'href' in feature && feature.href ? (
+                    <Link
+                      href={feature.href}
+                      className="mt-5 inline-flex items-center text-[13px] font-medium text-primary-700 opacity-70 transition-opacity duration-300 group-hover/spot:opacity-100"
                     >
-                      →
-                    </span>
-                  </div>
+                      {'cta' in feature && feature.cta ? feature.cta : 'Pelajari'}
+                      <span
+                        aria-hidden
+                        className="ml-1 inline-block transition-transform duration-450 group-hover/spot:translate-x-1"
+                      >
+                        →
+                      </span>
+                    </Link>
+                  ) : (
+                    <div className="mt-5 flex items-center text-[13px] font-medium text-primary-700 opacity-70 transition-opacity duration-300 group-hover/spot:opacity-100">
+                      Pelajari
+                      <span
+                        aria-hidden
+                        className="ml-1 inline-block transition-transform duration-450 group-hover/spot:translate-x-1"
+                      >
+                        →
+                      </span>
+                    </div>
+                  )}
                 </div>
               </SpotlightCard>
             </motion.div>

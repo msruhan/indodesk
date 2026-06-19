@@ -80,6 +80,11 @@ export async function POST(req: Request) {
     return apiError('Tidak dapat memesan konsultasi ke diri sendiri')
   }
 
+  const flags = await getPublicFeatureFlags()
+  if (!flags.konsultasiServiceEnabled) {
+    return apiError('Layanan konsultasi sedang dinonaktifkan', 403)
+  }
+
   try {
     const profile = await prisma.teknisiProfile.findUnique({
       where: { userId: teknisiId },
@@ -99,7 +104,6 @@ export async function POST(req: Request) {
     }
 
     if (matched.requiresRemote) {
-      const flags = await getPublicFeatureFlags()
       if (!flags.remoteServiceEnabled) {
         return apiError('Konsultasi remote (IndoDesk) sedang tidak tersedia', 403)
       }

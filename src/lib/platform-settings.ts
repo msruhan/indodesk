@@ -6,6 +6,9 @@ import {
   canAccessImeiService,
   canAccessRemoteService,
   canAccessInspectionService,
+  canAccessCariTeknisi,
+  canAccessKonsultasiService,
+  canAccessRekberService,
   type PlatformSettingKey,
   type PlatformSettingsDto,
   type PublicFeatureFlags,
@@ -19,6 +22,9 @@ export {
   canAccessImeiService,
   canAccessRemoteService,
   canAccessInspectionService,
+  canAccessCariTeknisi,
+  canAccessKonsultasiService,
+  canAccessRekberService,
 }
 export type { PlatformSettingKey, PlatformSettingsDto, PublicFeatureFlags }
 
@@ -34,6 +40,9 @@ const KEY_MAP: Record<PlatformSettingKey, keyof PlatformSettingsDto | null> = {
   imei_service_enabled: 'imeiServiceEnabled',
   remote_service_enabled: 'remoteServiceEnabled',
   inspection_service_enabled: 'inspectionServiceEnabled',
+  cari_teknisi_enabled: 'cariTeknisiEnabled',
+  konsultasi_service_enabled: 'konsultasiServiceEnabled',
+  rekber_service_enabled: 'rekberServiceEnabled',
 }
 
 const REVERSE_KEY_MAP = Object.fromEntries(
@@ -60,6 +69,18 @@ function dtoToRows(dto: PlatformSettingsDto): Array<{ key: string; value: string
       key: 'inspection_service_enabled',
       value: dto.inspectionServiceEnabled ? 'true' : 'false',
     },
+    {
+      key: 'cari_teknisi_enabled',
+      value: dto.cariTeknisiEnabled ? 'true' : 'false',
+    },
+    {
+      key: 'konsultasi_service_enabled',
+      value: dto.konsultasiServiceEnabled ? 'true' : 'false',
+    },
+    {
+      key: 'rekber_service_enabled',
+      value: dto.rekberServiceEnabled ? 'true' : 'false',
+    },
   ]
 }
 
@@ -84,6 +105,10 @@ function rowToDto(rows: Array<{ key: string; value: string }>): PlatformSettings
     remoteServiceEnabled: (map.get('remote_service_enabled') ?? 'true') === 'true',
     inspectionServiceEnabled:
       (map.get('inspection_service_enabled') ?? 'true') === 'true',
+    cariTeknisiEnabled:
+      (map.get('cari_teknisi_enabled') ?? map.get('teknisi_room_enabled') ?? 'true') === 'true',
+    konsultasiServiceEnabled: (map.get('konsultasi_service_enabled') ?? 'true') === 'true',
+    rekberServiceEnabled: (map.get('rekber_service_enabled') ?? 'true') === 'true',
   }
 }
 
@@ -132,6 +157,9 @@ export async function getPublicFeatureFlags(): Promise<PublicFeatureFlags> {
     imeiServiceEnabled: s.imeiServiceEnabled,
     remoteServiceEnabled: s.remoteServiceEnabled,
     inspectionServiceEnabled: s.inspectionServiceEnabled,
+    cariTeknisiEnabled: s.cariTeknisiEnabled,
+    konsultasiServiceEnabled: s.konsultasiServiceEnabled,
+    rekberServiceEnabled: s.rekberServiceEnabled,
     googleAuthEnabled: isGoogleAuthEnabled,
   }
 }

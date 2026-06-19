@@ -12,6 +12,7 @@ import {
 import { listRekberTransactions } from '@/lib/rekber-query'
 import { REKBER_INCLUDE } from '@/lib/rekber-includes'
 import { requireEmailVerifiedUser } from '@/lib/require-email-verified'
+import { getPublicFeatureFlags } from '@/lib/platform-settings'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,6 +56,11 @@ export async function GET() {
 export async function POST(req: Request) {
   const { session, error } = await requireApiRole(['USER', 'TEKNISI'])
   if (error) return error
+
+  const flags = await getPublicFeatureFlags()
+  if (!flags.rekberServiceEnabled) {
+    return apiError('Layanan rekber sedang dinonaktifkan', 403)
+  }
 
   const emailGate = await requireEmailVerifiedUser(session.user.id)
   if (!emailGate.ok) return emailGate.error

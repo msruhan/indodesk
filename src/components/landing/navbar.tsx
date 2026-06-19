@@ -12,6 +12,8 @@ import {
   canAccessImeiService,
   canAccessRemoteService,
   canAccessInspectionService,
+  canAccessCariTeknisi,
+  canAccessRekberService,
 } from '@/lib/platform-settings-shared'
 import { BrandLogo } from '@/components/brand/brand-logo'
 import {
@@ -60,7 +62,7 @@ const ALL_NAV_GROUPS = [
   {
     label: 'Ruang Teknisi',
     items: [
-      { href: '/teknisi', label: 'Cari Teknisi' },
+      { href: '/teknisi', label: 'Cari Teknisi', requireCariTeknisi: true },
       { href: '/remote', label: 'Remote Online', requireRemote: true },
       { href: '/inspeksi', label: 'Inspeksi HP', requireInspection: true },
     ],
@@ -74,7 +76,11 @@ const ALL_NAV_GROUPS = [
   },
 ] as const
 
-const STANDALONE_NAV_LINK = { href: '/rekber', label: 'Rekber Aman' } as const
+const STANDALONE_NAV_LINK = {
+  href: '/rekber',
+  label: 'Rekber Aman',
+  requireRekber: true,
+} as const
 
 const ALL_MOBILE_NAV_SECTIONS: {
   title?: string
@@ -85,6 +91,8 @@ const ALL_MOBILE_NAV_SECTIONS: {
     requireImei?: boolean
     requireRemote?: boolean
     requireInspection?: boolean
+    requireCariTeknisi?: boolean
+    requireRekber?: boolean
   }[]
 }[] = [
   {
@@ -98,7 +106,7 @@ const ALL_MOBILE_NAV_SECTIONS: {
   {
     title: 'Layanan Teknisi',
     items: [
-      { href: '/teknisi', label: 'Cari Teknisi', icon: Users },
+      { href: '/teknisi', label: 'Cari Teknisi', icon: Users, requireCariTeknisi: true },
       { href: '/remote', label: 'Remote Online', icon: Laptop, requireRemote: true },
       {
         href: '/inspeksi',
@@ -109,7 +117,7 @@ const ALL_MOBILE_NAV_SECTIONS: {
     ],
   },
   {
-    items: [{ href: '/rekber', label: 'Rekber Aman', icon: Shield }],
+    items: [{ href: '/rekber', label: 'Rekber Aman', icon: Shield, requireRekber: true }],
   },
   {
     title: 'Gabung',
@@ -139,12 +147,15 @@ export function Navbar() {
   const canSeeImei = canAccessImeiService(role, flags)
   const canSeeRemote = canAccessRemoteService(role, flags)
   const canSeeInspection = canAccessInspectionService(role, flags)
+  const canSeeCariTeknisi = canAccessCariTeknisi(role, flags)
+  const canSeeRekber = canAccessRekberService(role, flags)
 
   const navGroups = useMemo(
     () =>
       ALL_NAV_GROUPS.map((g) => ({
         ...g,
         items: g.items.filter((i) => {
+          if ('requireCariTeknisi' in i && i.requireCariTeknisi && !canSeeCariTeknisi) return false
           if ('requireImei' in i && i.requireImei && !canSeeImei) return false
           if ('requireRemote' in i && i.requireRemote && !canSeeRemote) return false
           if ('requireInspection' in i && i.requireInspection && !canSeeInspection) {
@@ -153,21 +164,25 @@ export function Navbar() {
           return true
         }),
       })).filter((g) => g.items.length > 0),
-    [canSeeImei, canSeeRemote, canSeeInspection],
+    [canSeeImei, canSeeRemote, canSeeInspection, canSeeCariTeknisi],
   )
+
+  const showStandaloneRekber = canSeeRekber
 
   const mobileNavSections = useMemo(
     () =>
       ALL_MOBILE_NAV_SECTIONS.map((s) => ({
         ...s,
         items: s.items.filter((i) => {
+          if (i.requireCariTeknisi && !canSeeCariTeknisi) return false
           if (i.requireImei && !canSeeImei) return false
           if (i.requireRemote && !canSeeRemote) return false
           if (i.requireInspection && !canSeeInspection) return false
+          if (i.requireRekber && !canSeeRekber) return false
           return true
         }),
       })).filter((s) => s.items.length > 0),
-    [canSeeImei, canSeeRemote, canSeeInspection],
+    [canSeeImei, canSeeRemote, canSeeInspection, canSeeCariTeknisi, canSeeRekber],
   )
 
   useEffect(() => {
@@ -272,7 +287,7 @@ export function Navbar() {
                     )}
                   </AnimatePresence>
                 </div>
-                {index === 1 && (
+                {index === 1 && showStandaloneRekber && (
                   <Link
                     href={STANDALONE_NAV_LINK.href}
                     className={cn(

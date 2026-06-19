@@ -16,6 +16,9 @@ export const PLATFORM_SETTING_KEYS = [
   'imei_service_enabled',
   'remote_service_enabled',
   'inspection_service_enabled',
+  'cari_teknisi_enabled',
+  'konsultasi_service_enabled',
+  'rekber_service_enabled',
 ] as const
 
 export type PlatformSettingKey = (typeof PLATFORM_SETTING_KEYS)[number]
@@ -35,15 +38,30 @@ export type PlatformSettingsDto = {
    */
   imeiServiceEnabled: boolean
   /**
-   * Apakah halaman publik /remote (IndoDesk) dan pemesanan konsultasi remote
-   * (requiresRemote) diizinkan. Sesi remote dikelola di Konsultasi, bukan menu terpisah.
+   * Apakah menu "Remote Online" di Ruang Teknisi, halaman /remote (IndoDesk),
+   * dan pemesanan konsultasi remote diizinkan.
    */
   remoteServiceEnabled: boolean
   /**
-   * Apakah menu "Inspeksi" ditampilkan di navigasi publik dan sidebar user/teknisi.
-   * ADMIN tetap dapat mengakses panel admin terkait.
+   * Apakah menu "Inspeksi HP" di Ruang Teknisi, sidebar dashboard user/teknisi,
+   * dan halaman inspeksi ditampilkan. ADMIN tetap dapat mengakses panel admin.
    */
   inspectionServiceEnabled: boolean
+  /**
+   * Apakah menu "Cari Teknisi" di Ruang Teknisi dan halaman /teknisi ditampilkan
+   * untuk user, teknisi, dan pengunjung.
+   */
+  cariTeknisiEnabled: boolean
+  /**
+   * Apakah menu Konsultasi & Iklan Konsultasi ditampilkan di dashboard user/teknisi
+   * serta pemesanan konsultasi diizinkan.
+   */
+  konsultasiServiceEnabled: boolean
+  /**
+   * Apakah menu "Rekber Aman" di navigasi publik, sidebar dashboard user/teknisi,
+   * dan halaman layanan rekber ditampilkan. ADMIN tetap memiliki akses panel admin.
+   */
+  rekberServiceEnabled: boolean
 }
 
 export const DEFAULT_PLATFORM_SETTINGS: PlatformSettingsDto = {
@@ -57,6 +75,9 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettingsDto = {
   imeiServiceEnabled: true,
   remoteServiceEnabled: true,
   inspectionServiceEnabled: true,
+  cariTeknisiEnabled: true,
+  konsultasiServiceEnabled: true,
+  rekberServiceEnabled: true,
 }
 
 /**
@@ -67,6 +88,9 @@ export type PublicFeatureFlags = {
   imeiServiceEnabled: boolean
   remoteServiceEnabled: boolean
   inspectionServiceEnabled: boolean
+  cariTeknisiEnabled: boolean
+  konsultasiServiceEnabled: boolean
+  rekberServiceEnabled: boolean
   /** Login / daftar via Google OAuth (dari env AUTH_GOOGLE_*). */
   googleAuthEnabled: boolean
 }
@@ -75,6 +99,9 @@ export const DEFAULT_PUBLIC_FEATURE_FLAGS: PublicFeatureFlags = {
   imeiServiceEnabled: DEFAULT_PLATFORM_SETTINGS.imeiServiceEnabled,
   remoteServiceEnabled: DEFAULT_PLATFORM_SETTINGS.remoteServiceEnabled,
   inspectionServiceEnabled: DEFAULT_PLATFORM_SETTINGS.inspectionServiceEnabled,
+  cariTeknisiEnabled: DEFAULT_PLATFORM_SETTINGS.cariTeknisiEnabled,
+  konsultasiServiceEnabled: DEFAULT_PLATFORM_SETTINGS.konsultasiServiceEnabled,
+  rekberServiceEnabled: DEFAULT_PLATFORM_SETTINGS.rekberServiceEnabled,
   googleAuthEnabled: false,
 }
 
@@ -114,4 +141,37 @@ export function canAccessRemoteService(role: Role, flags: PublicFeatureFlags): b
 export function canAccessInspectionService(role: Role, flags: PublicFeatureFlags): boolean {
   if (role === 'ADMIN') return true
   return flags.inspectionServiceEnabled
+}
+
+/**
+ * Role yang diizinkan melihat menu "Cari Teknisi" dan halaman /teknisi.
+ *
+ * - ADMIN selalu boleh.
+ * - USER, TEKNISI, dan pengunjung mengikuti `cariTeknisiEnabled`.
+ */
+export function canAccessCariTeknisi(role: Role, flags: PublicFeatureFlags): boolean {
+  if (role === 'ADMIN') return true
+  return flags.cariTeknisiEnabled
+}
+
+/**
+ * Role yang diizinkan melihat menu Konsultasi & Iklan Konsultasi di dashboard.
+ *
+ * - ADMIN selalu boleh.
+ * - USER & TEKNISI mengikuti `konsultasiServiceEnabled`.
+ */
+export function canAccessKonsultasiService(role: Role, flags: PublicFeatureFlags): boolean {
+  if (role === 'ADMIN') return true
+  return flags.konsultasiServiceEnabled
+}
+
+/**
+ * Role yang diizinkan melihat menu Rekber Aman dan halaman layanan rekber.
+ *
+ * - ADMIN selalu boleh (panel admin rekber).
+ * - USER, TEKNISI, dan pengunjung mengikuti `rekberServiceEnabled`.
+ */
+export function canAccessRekberService(role: Role, flags: PublicFeatureFlags): boolean {
+  if (role === 'ADMIN') return true
+  return flags.rekberServiceEnabled
 }

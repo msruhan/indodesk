@@ -47,6 +47,7 @@ const baseAdminNavItems: readonly SidebarNavItem[] = [
   { icon: Eye, label: 'Monitoring', href: '/admin/monitoring', section: 'Analitik & Monitoring' },
   { icon: History, label: 'Log Aktivitas', href: '/admin/logs', section: 'Analitik & Monitoring' },
   { icon: Image, label: 'Banner', href: '/admin/banners', section: 'Konten & Komunikasi' },
+  { icon: DollarSign, label: 'Pricing Landing', href: '/admin/pricing', section: 'Konten & Komunikasi' },
   { icon: Bell, label: 'Notifikasi In-App', href: '/admin/notifications', section: 'Konten & Komunikasi' },
   { icon: Send, label: 'Notifikasi Telegram', href: '/admin/telegram-notifications', section: 'Konten & Komunikasi' },
   { icon: Briefcase, label: 'Lowongan Kerja', href: '/admin/lowongan', section: 'Konten & Komunikasi' },

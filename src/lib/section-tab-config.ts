@@ -15,6 +15,8 @@ import {
   canAccessImeiService,
   canAccessRemoteService,
   canAccessInspectionService,
+  canAccessCariTeknisi,
+  canAccessRekberService,
 } from '@/lib/platform-settings-shared'
 
 const IMEI_TAB: SectionTab = {
@@ -83,14 +85,19 @@ export function buildServiceTabs(
   role: 'ADMIN' | 'TEKNISI' | 'USER' | null | undefined,
   flags: PublicFeatureFlags,
 ): SectionTab[] {
-  const tabs: SectionTab[] = [{ href: '/teknisi', label: 'Teknisi', icon: Users }]
+  const tabs: SectionTab[] = []
+  if (canAccessCariTeknisi(role, flags)) {
+    tabs.push({ href: '/teknisi', label: 'Teknisi', icon: Users })
+  }
   if (canAccessRemoteService(role, flags)) tabs.push(REMOTE_TAB)
-  tabs.push({
-    href: '/rekber',
-    label: 'Rekber',
-    icon: Shield,
-    matchPrefixes: ['/rekber'],
-  })
+  if (canAccessRekberService(role, flags)) {
+    tabs.push({
+      href: '/rekber',
+      label: 'Rekber',
+      icon: Shield,
+      matchPrefixes: ['/rekber'],
+    })
+  }
   if (canAccessInspectionService(role, flags)) tabs.push(INSPEKSI_TAB)
   return tabs
 }

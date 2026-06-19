@@ -1,16 +1,24 @@
 'use client'
 
+import { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Reveal, viewportReveal, staggerContainer } from '@/components/motion'
 import { ArrowRight, Sparkles } from '@/lib/icons'
+import { useAuth } from '@/contexts/auth-context'
+import { useFeatureFlags } from '@/contexts/feature-flags-context'
+import {
+  canAccessInspectionService,
+  canAccessRemoteService,
+  canAccessRekberService,
+} from '@/lib/platform-settings-shared'
 import { RemoteOnlineIllustration } from '@/components/illustrations/remote-online-illustration'
 import { InspectionIllustration } from '@/components/illustrations/inspection-illustration'
 import { CompareProductsIllustration } from '@/components/illustrations/compare-products-illustration'
 import { RekberIllustration } from '@/components/illustrations/rekber-illustration'
 
-const services = [
+const ALL_SERVICES = [
   {
     eyebrow: 'Remote Online',
     title: 'Teknisi bantu dari jauh',
@@ -20,6 +28,7 @@ const services = [
     cta: 'Lihat layanan remote',
     accent: 'primary' as const,
     illustration: RemoteOnlineIllustration,
+    requireRemote: true,
   },
   {
     eyebrow: 'Inspeksi',
@@ -30,6 +39,7 @@ const services = [
     cta: 'Coba layanan inspeksi',
     accent: 'teal' as const,
     illustration: InspectionIllustration,
+    requireInspection: true,
   },
   {
     eyebrow: 'Bandingkan',
@@ -50,6 +60,7 @@ const services = [
     cta: 'Pelajari rekber',
     accent: 'amber' as const,
     illustration: RekberIllustration,
+    requireRekber: true,
   },
 ]
 
@@ -76,6 +87,27 @@ const ACCENT_CLASSES: Record<
 }
 
 export function ServicesShowcase() {
+  const { user } = useAuth()
+  const { flags } = useFeatureFlags()
+  const role = (user?.role as 'ADMIN' | 'TEKNISI' | 'USER' | undefined) ?? null
+
+  const services = useMemo(
+    () =>
+      ALL_SERVICES.filter((service) => {
+        if ('requireRemote' in service && service.requireRemote) {
+          return canAccessRemoteService(role, flags)
+        }
+        if ('requireInspection' in service && service.requireInspection) {
+          return canAccessInspectionService(role, flags)
+        }
+        if ('requireRekber' in service && service.requireRekber) {
+          return canAccessRekberService(role, flags)
+        }
+        return true
+      }),
+    [role, flags],
+  )
+
   return (
     <section
       id="services-showcase"

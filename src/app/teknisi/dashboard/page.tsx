@@ -26,6 +26,8 @@ import { TeknisiWelcomeCard } from '@/components/teknisi/teknisi-welcome-card'
 import { TeknisiDigitalIdCard } from '@/components/teknisi/teknisi-digital-id-card'
 import { TeknisiTrustBadges } from '@/components/teknisi/teknisi-trust-badges'
 import type { TeknisiDashboardDto } from '@/lib/teknisi-dashboard-data'
+import { useFeatureFlags } from '@/contexts/feature-flags-context'
+import { canAccessKonsultasiService } from '@/lib/platform-settings-shared'
 
 const formatPrice = (price: number) =>
   new Intl.NumberFormat('id-ID', {
@@ -35,6 +37,8 @@ const formatPrice = (price: number) =>
   }).format(price)
 
 export default function TeknisiDashboardPage() {
+  const { flags } = useFeatureFlags()
+  const canSeeKonsultasi = canAccessKonsultasiService('TEKNISI', flags)
   const [data, setData] = useState<TeknisiDashboardDto | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -191,11 +195,13 @@ export default function TeknisiDashboardPage() {
             title="Order & Sesi Terbaru"
         description="Riwayat order dan sesi yang perlu dipantau."
         action={
-          <Link href="/teknisi/konsultasi">
-            <Button variant="outline" size="sm">
-              Lihat semua
-            </Button>
-          </Link>
+          canSeeKonsultasi ? (
+            <Link href="/teknisi/konsultasi">
+              <Button variant="outline" size="sm">
+                Lihat semua
+              </Button>
+            </Link>
+          ) : undefined
         }
       >
         {recentOrders.length > 0 ? (

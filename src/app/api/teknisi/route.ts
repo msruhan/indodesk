@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess } from '@/lib/api-auth'
+import { getPublicFeatureFlags } from '@/lib/platform-settings'
 import { serializePublicTeknisi } from '@/lib/teknisi-public'
 import { syncTeknisiCompletedSessions } from '@/lib/teknisi-stats-server'
 
@@ -8,6 +9,11 @@ export const dynamic = 'force-dynamic'
 /** GET /api/teknisi — daftar teknisi publik untuk halaman listing */
 export async function GET() {
   try {
+    const flags = await getPublicFeatureFlags()
+    if (!flags.cariTeknisiEnabled) {
+      return apiError('Cari Teknisi sedang dinonaktifkan', 403)
+    }
+
     const profiles = await prisma.teknisiProfile.findMany({
       include: {
         user: { select: { id: true, name: true, image: true } },
