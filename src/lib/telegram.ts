@@ -132,13 +132,37 @@ export async function sendTelegramMessage(
   }
 }
 
+let cachedBotUsername: string | null | undefined
+
+/** Username bot dari getMe (sumber utama) atau env; hindari nama tampilan bot yang bukan @username. */
+export async function resolveTelegramBotUsername(): Promise<string | null> {
+  if (cachedBotUsername) return cachedBotUsername
+
+  if (TELEGRAM_BOT_TOKEN) {
+    const info = await getTelegramBotInfo()
+    if (info.success && info.data?.username) {
+      cachedBotUsername = info.data.username
+      return cachedBotUsername
+    }
+  }
+
+  const fromEnv = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME?.trim().replace(/^@/, '')
+  return fromEnv || null
+}
+
+export function buildTelegramDeepLink(username: string, startParam: string): string {
+  const clean = username.trim().replace(/^@/, '')
+  return `https://t.me/${clean}?start=${encodeURIComponent(startParam)}`
+}
+
 /**
  * Generate link untuk menghubungkan akun dengan bot Telegram
  * User akan klik link ini, lalu bot akan menerima /start dengan parameter
  */
-export function generateTelegramBotLink(verificationCode: string): string {
-  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'BantooBot'
-  return `https://t.me/${botUsername}?start=${verificationCode}`
+export async function generateTelegramBotLink(verificationCode: string): Promise<string | null> {
+  const botUsername = await resolveTelegramBotUsername()
+  if (!botUsername) return null
+  return buildTelegramDeepLink(botUsername, verificationCode)
 }
 
 /**

@@ -26,7 +26,7 @@ jobs:
             TELEGRAM_BOT_TOKEN='${{ secrets.TELEGRAM_BOT_TOKEN }}'
             TELEGRAM_WEBHOOK_SECRET='${{ secrets.TELEGRAM_WEBHOOK_SECRET }}'
             BOT_USER='${{ secrets.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME }}'
-            BOT_USER="${BOT_USER:-Bantoo-in}"
+            BOT_USER="${BOT_USER:-bantoo_bot}"
 
             upsert() {
               local key="$1" val="$2"

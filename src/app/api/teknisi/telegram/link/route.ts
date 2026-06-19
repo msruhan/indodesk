@@ -1,5 +1,5 @@
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
-import { isTelegramEnabled } from '@/lib/telegram'
+import { buildTelegramDeepLink, isTelegramEnabled, resolveTelegramBotUsername } from '@/lib/telegram'
 import { issueTelegramLinkToken } from '@/lib/telegram/link-token'
 
 export const dynamic = 'force-dynamic'
@@ -18,13 +18,16 @@ export async function POST() {
 
   try {
     const token = await issueTelegramLinkToken(session.user.id)
-    const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'YourBot'
+    const botUsername = await resolveTelegramBotUsername()
+    if (!botUsername) {
+      return apiError('Username bot Telegram tidak ditemukan', 503)
+    }
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString()
 
     return apiSuccess({
       token,
       botUsername,
-      deepLink: `https://t.me/${botUsername}?start=${token}`,
+      deepLink: buildTelegramDeepLink(botUsername, token),
       expiresAt,
     })
   } catch (e) {
