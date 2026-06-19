@@ -30,6 +30,8 @@ export function isComingSoonBypassPath(pathname: string): boolean {
   if (pathname.startsWith('/api/auth')) return true
   if (pathname.startsWith('/api/admin')) return true
   if (pathname.startsWith('/api/public/coming-soon')) return true
+  /** Logo & aset statis publik — harus tetap bisa dimuat di halaman coming soon */
+  if (pathname.startsWith('/icon/')) return true
   return false
 }
 
