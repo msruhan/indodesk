@@ -11,6 +11,7 @@ import {
   canAccessRekberService,
 } from '@/lib/platform-settings-shared'
 import { homePathForRole } from '@/lib/role-routes'
+import { LEGAL_FOOTER_LINKS } from '@/lib/legal-content'
 import type { UserRole } from '@prisma/client'
 
 type FooterLink = {
@@ -86,7 +87,7 @@ export function Footer() {
   return (
     <footer className="relative overflow-hidden border-t border-surface-200/70 bg-gradient-to-b from-white to-surface-50/60">
       <div className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
           <div className="sm:col-span-2 lg:col-span-2">
             <Link href="/" className="inline-flex">
               <BrandLogo variant="wordmark" wordmarkClassName="h-9 sm:h-10" />
@@ -131,11 +132,29 @@ export function Footer() {
               ))}
             </ul>
           </div>
+
+          <div>
+            <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-surface-500">
+              Legal
+            </h3>
+            <ul className="space-y-2">
+              {LEGAL_FOOTER_LINKS.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="text-sm text-surface-600 transition-colors hover:text-ink"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
 
         <div className="mt-8 flex flex-col items-center justify-between gap-3 border-t border-surface-200/70 pt-6 sm:flex-row">
           <p className="text-xs text-surface-500">© {new Date().getFullYear()} Bantoo</p>
-          <div className="flex flex-wrap items-center gap-4 text-xs text-surface-500">
+          <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-surface-500 sm:justify-end">
             <Link href="/#pricing" className="transition-colors hover:text-ink">
               Pricing
             </Link>
