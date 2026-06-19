@@ -93,7 +93,7 @@ export async function POST(req: Request) {
       return apiError('Email atau password salah', 401)
     }
 
-    if (!user.emailVerified) {
+    if (!isLoginEmailVerified(user)) {
       return apiError(LOGIN_EMAIL_NOT_VERIFIED_MESSAGE, 403, { code: 'EMAIL_NOT_VERIFIED' })
     }
 
