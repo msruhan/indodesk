@@ -85,9 +85,9 @@ export default function TeknisiRekberPage() {
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold tracking-tightest text-ink sm:text-2xl">Rekber Seller</h1>
+          <h1 className="text-xl font-semibold tracking-tightest text-ink sm:text-2xl">Transaksi Aman (Penjual)</h1>
           <p className="mt-0.5 text-[13px] text-surface-500">
-            Pantau transaksi rekber sebagai penjual
+            Pantau transaksi aman sebagai penjual
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -120,7 +120,7 @@ export default function TeknisiRekberPage() {
           title="Selesai"
           value={displayStats.released.toLocaleString('id-ID')}
           icon={CheckCircle}
-          footnote="Rekber tuntas"
+          footnote="Transaksi tuntas"
           tone="primary"
           compact
         />
@@ -181,7 +181,7 @@ export default function TeknisiRekberPage() {
         showStats={false}
         emptyMessage={
           periodItems.length === 0
-            ? 'Belum ada transaksi rekber.'
+            ? 'Belum ada transaksi aman.'
             : 'Tidak ada transaksi yang cocok dengan filter.'
         }
         onRefresh={() => void load()}

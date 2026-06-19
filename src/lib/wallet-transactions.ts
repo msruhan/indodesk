@@ -73,8 +73,8 @@ const ledgerTypeLabels: Record<string, string> = {
   WITHDRAWAL: 'Penarikan',
   PAYMENT: 'Pembayaran',
   REFUND: 'Refund',
-  ESCROW_HOLD: 'Rekber (hold)',
-  ESCROW_RELEASE: 'Rekber (release)',
+  ESCROW_HOLD: 'Transaksi Aman (hold)',
+  ESCROW_RELEASE: 'Transaksi Aman (release)',
   EARNING: 'Penambahan saldo',
   CASHBACK: 'Cashback',
 }

@@ -17,7 +17,7 @@ export const revenueMonthly = [
 export const transactionMix = [
   { name: 'Marketplace', value: 42, color: '#10b981' },
   { name: 'Top Up', value: 28, color: '#06b6d4' },
-  { name: 'Rekber', value: 16, color: '#8b5cf6' },
+  { name: 'Transaksi Aman', value: 16, color: '#8b5cf6' },
   { name: 'Konsultasi', value: 9, color: '#f59e0b' },
   { name: 'Remote', value: 5, color: '#ec4899' },
 ]

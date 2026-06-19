@@ -195,7 +195,7 @@ export default function AdminApprovalPage() {
               Permintaan approval
             </TabsTrigger>
             <TabsTrigger value="rekber" className="shrink-0 px-3 text-xs sm:px-4">
-              Manajemen Escrow
+              Transaksi Aman
             </TabsTrigger>
           </TabsList>
         </div>

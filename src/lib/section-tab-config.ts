@@ -73,7 +73,7 @@ export function buildMarketplaceTabs(
 export const serviceTabs: SectionTab[] = [
   { href: '/teknisi', label: 'Teknisi', icon: Users },
   REMOTE_TAB,
-  { href: '/rekber', label: 'Rekber', icon: Shield, matchPrefixes: ['/rekber'] },
+  { href: '/rekber', label: 'Transaksi Aman', icon: Shield, matchPrefixes: ['/rekber'] },
   INSPEKSI_TAB,
 ]
 
@@ -93,7 +93,7 @@ export function buildServiceTabs(
   if (canAccessRekberService(role, flags)) {
     tabs.push({
       href: '/rekber',
-      label: 'Rekber',
+      label: 'Transaksi Aman',
       icon: Shield,
       matchPrefixes: ['/rekber'],
     })

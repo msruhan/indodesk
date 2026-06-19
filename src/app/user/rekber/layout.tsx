@@ -7,8 +7,8 @@ export default function UserRekberLayout({ children }: { children: React.ReactNo
   return (
     <DashboardServiceGate
       canAccess={canAccessRekberService}
-      title="Rekber"
-      description="Layanan rekber sedang dinonaktifkan oleh admin."
+      title="Transaksi Aman"
+      description="Layanan transaksi aman sedang dinonaktifkan oleh admin."
       dashboardHref="/user/dashboard"
     >
       {children}

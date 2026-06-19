@@ -52,9 +52,9 @@ export default function RekberPage() {
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-50 text-primary-700">
               <Shield className="h-6 w-6" />
             </div>
-            <h2 className="text-lg font-semibold text-ink">Layanan Rekber tidak tersedia</h2>
+            <h2 className="text-lg font-semibold text-ink">Layanan Transaksi Aman tidak tersedia</h2>
             <p className="mt-2 text-sm text-surface-600">
-              Menu Rekber Aman sedang dinonaktifkan oleh admin. Silakan cek kembali nanti.
+              Menu Transaksi Aman sedang dinonaktifkan oleh admin. Silakan cek kembali nanti.
             </p>
             <div className="mt-5 flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
               <Button variant="primary" size="sm" onClick={() => router.push('/')}>
@@ -76,12 +76,12 @@ export default function RekberPage() {
       </div>
       <PageHero
         sectionTabs={{ tabs, layoutId: 'service-section-tab' }}
-        badge={{ icon: Shield, label: 'Rekber (Escrow)' }}
+        badge={{ icon: Shield, label: 'Transaksi Aman' }}
         title={
           <>
-            Jasa rekber untuk transaksi,
+            Transaksi aman
             <span className="block">
-              <span className="gradient-text-static">aman</span> & transparan.
+              <span className="gradient-text-static">& transparan</span>.
             </span>
           </>
         }
@@ -92,7 +92,7 @@ export default function RekberPage() {
             className="bg-gradient-to-r from-primary-600 to-accent-500"
           >
             <Plus className="mr-2 h-4 w-4" />
-            Ajukan Rekber Baru
+            Ajukan Transaksi Aman
           </Button>
         }
       />
@@ -113,9 +113,9 @@ export default function RekberPage() {
             <div className="flex items-start gap-4">
               <Shield className="mt-1 h-8 w-8 shrink-0 text-primary-600" />
               <div>
-                <h3 className="mb-2 text-lg font-semibold">Bagaimana Rekber Bekerja?</h3>
+                <h3 className="mb-2 text-lg font-semibold">Bagaimana Transaksi Aman Bekerja?</h3>
                 <ul className="space-y-1 text-sm text-surface-700">
-                  <li>1. Pembeli buat rekber — pilih penjual (member via email atau teknisi terdaftar)</li>
+                  <li>1. Pembeli buat transaksi aman — pilih penjual (member via email atau teknisi terdaftar)</li>
                   <li>2. Pembeli membayar — dana ditahan di escrow</li>
                   <li>3. Penjual mengirim barang / menyelesaikan layanan</li>
                   <li>4. Pembeli konfirmasi penerimaan — dana dilepas ke penjual</li>
@@ -144,7 +144,7 @@ export default function RekberPage() {
             <CardContent className="py-12 text-center">
               <Shield className="mx-auto mb-4 h-12 w-12 text-surface-300" />
               <p className="text-sm text-surface-600">
-                Masuk untuk melihat dan mengelola transaksi rekber Anda.
+                Masuk untuk melihat dan mengelola transaksi aman Anda.
               </p>
             </CardContent>
           </Card>

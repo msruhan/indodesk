@@ -540,8 +540,8 @@ export function AccountSettingsView({
               <p className="mb-1 text-[13px] text-surface-600">{profile.email}</p>
               <p className="mb-3 text-xs text-surface-500">
                 {profile.emailVerified
-                  ? 'Email Anda sudah terverifikasi. Diperlukan untuk checkout, top-up, penarikan saldo, dan rekber.'
-                  : 'Verifikasi email diperlukan sebelum checkout, top-up saldo, penarikan, atau membuat transaksi rekber.'}
+                  ? 'Email Anda sudah terverifikasi. Diperlukan untuk checkout, top-up, penarikan saldo, dan transaksi aman.'
+                  : 'Verifikasi email diperlukan sebelum checkout, top-up saldo, penarikan, atau membuat transaksi aman.'}
               </p>
               {emailVerifyMsg && (
                 <p

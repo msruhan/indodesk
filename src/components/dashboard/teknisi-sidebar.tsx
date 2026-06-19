@@ -34,7 +34,7 @@ const baseNavItems: readonly Omit<SidebarNavItem, 'badge'>[] = [
   { icon: Package, label: 'Pesanan Masuk', href: '/teknisi/pesanan', section: 'Pekerjaan' },
   { icon: MessageCircle, label: 'Konsultasi', href: '/teknisi/konsultasi', section: 'Pekerjaan' },
   { icon: CheckSquare, label: 'Inspeksi', href: '/teknisi/inspeksi', section: 'Pekerjaan' },
-  { icon: Shield, label: 'Rekber', href: '/teknisi/rekber', section: 'Pekerjaan' },
+  { icon: Shield, label: 'Transaksi Aman', href: '/teknisi/rekber', section: 'Pekerjaan' },
   { icon: ShoppingCart, label: 'Pesanan', href: '/teknisi/orders', section: 'Belanja' },
   { icon: History, label: 'Riwayat Transaksi', href: '/teknisi/saldo', section: 'Keuangan' },
 ]

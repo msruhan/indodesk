@@ -157,7 +157,7 @@ export const spendingCategoryLabel: Record<SpendingCategory, string> = {
   server: 'Server Service',
   shop: 'Marketplace',
   topup: 'Top Up',
-  rekber: 'Rekber / Escrow',
+  rekber: 'Transaksi Aman',
   withdrawal: 'Penarikan',
   other: 'Lainnya',
 }

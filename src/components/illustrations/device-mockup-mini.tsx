@@ -67,7 +67,7 @@ export function MiniPhoneMockup({
   return (
     <div className={cn('relative flex h-full w-full items-center justify-center bg-white', className)}>
       <motion.div
-        className="relative h-[82%] w-[44%] min-w-[52px] max-w-[72px]"
+        className="relative h-[92%] w-[38%] min-w-[46px] max-w-[68px]"
         initial={animate ? { opacity: 0, y: 10, scale: 0.9 } : undefined}
         animate={
           animate

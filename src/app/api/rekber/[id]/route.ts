@@ -46,7 +46,7 @@ export async function GET(
       },
       include: REKBER_INCLUDE,
     })
-    if (!row) return apiError('Rekber tidak ditemukan', 404)
+    if (!row) return apiError('Transaksi aman tidak ditemukan', 404)
 
     return apiSuccess(
       serializeRekber(row, {
@@ -56,7 +56,7 @@ export async function GET(
     )
   } catch (e) {
     console.error('[REKBER_DETAIL_GET]', e)
-    return apiError('Gagal memuat detail rekber', 500)
+    return apiError('Gagal memuat detail transaksi aman', 500)
   }
 }
 
@@ -86,7 +86,7 @@ export async function PATCH(
       where: { id },
       include: REKBER_INCLUDE,
     })
-    if (!existing) return apiError('Rekber tidak ditemukan', 404)
+    if (!existing) return apiError('Transaksi aman tidak ditemukan', 404)
 
     const isBuyer = session.user.id === existing.buyerId
     const isSeller = session.user.id === existing.sellerId
@@ -108,7 +108,7 @@ export async function PATCH(
     if (parsed.data.action === 'fund') {
       if (!isBuyer) return apiError('Hanya pembeli yang dapat membayar')
       if (existing.status !== 'PENDING') {
-        return apiError('Rekber sudah dibayar atau tidak dapat dibayar')
+        return apiError('Transaksi aman sudah dibayar atau tidak dapat dibayar')
       }
 
       const updated = await walletTransaction(async (tx) => {
@@ -179,7 +179,7 @@ export async function PATCH(
     if (parsed.data.action === 'cancel') {
       if (!isBuyer) return apiError('Hanya pembeli yang dapat membatalkan')
       if (existing.status !== 'PENDING') {
-        return apiError('Hanya rekber menunggu pembayaran yang bisa dibatalkan')
+        return apiError('Hanya transaksi aman menunggu pembayaran yang bisa dibatalkan')
       }
 
       const updated = await prisma.rekberTransaction.update({
@@ -211,7 +211,7 @@ export async function PATCH(
     if (parsed.data.action === 'advance') {
       if (!isSeller) return apiError('Hanya penjual yang dapat memproses')
       if (existing.status !== 'HELD') {
-        return apiError('Rekber harus dalam status dana ditahan')
+        return apiError('Transaksi aman harus dalam status dana ditahan')
       }
       const proof = existing.packagingProof
       if (!proof || proof.status !== 'APPROVED') {
@@ -243,7 +243,7 @@ export async function PATCH(
     if (parsed.data.action === 'set_shipment') {
       if (!isSeller) return apiError('Hanya penjual yang dapat input resi')
       if (existing.status !== 'PROCESSING') {
-        return apiError('Resi hanya dapat diinput saat rekber sedang diproses')
+        return apiError('Resi hanya dapat diinput saat transaksi aman sedang diproses')
       }
       if (!isBinderbyteConfigured()) {
         return apiError('Layanan pelacakan resi belum dikonfigurasi di server', 503)
@@ -269,7 +269,7 @@ export async function PATCH(
         where: { id },
         include: REKBER_INCLUDE,
       })
-      if (!updated) return apiError('Rekber tidak ditemukan', 404)
+      if (!updated) return apiError('Transaksi aman tidak ditemukan', 404)
 
       void logOrderEvent({
         action: 'rekber.shipment_registered',
@@ -296,6 +296,6 @@ export async function PATCH(
       return apiError('Wallet tidak ditemukan', 400)
     }
     console.error('[REKBER_PATCH]', e)
-    return apiError('Gagal memperbarui rekber', 500)
+    return apiError('Gagal memperbarui transaksi aman', 500)
   }
 }

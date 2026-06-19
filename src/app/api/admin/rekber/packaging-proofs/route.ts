@@ -47,6 +47,6 @@ export async function GET(req: Request) {
     })
   } catch (e) {
     console.error('[ADMIN_REKBER_PACKAGING_PROOFS_GET]', e)
-    return apiError('Gagal memuat antrian bukti packaging rekber', 500)
+    return apiError('Gagal memuat antrian bukti packaging transaksi aman', 500)
   }
 }

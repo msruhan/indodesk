@@ -49,7 +49,7 @@ export async function GET() {
   } catch (e) {
     const detail = e instanceof Error ? e.message : String(e)
     console.error('[REKBER_GET]', detail, e)
-    return apiError('Gagal memuat rekber', 500)
+    return apiError('Gagal memuat transaksi aman', 500)
   }
 }
 
@@ -59,7 +59,7 @@ export async function POST(req: Request) {
 
   const flags = await getPublicFeatureFlags()
   if (!flags.rekberServiceEnabled) {
-    return apiError('Layanan rekber sedang dinonaktifkan', 403)
+    return apiError('Layanan transaksi aman sedang dinonaktifkan', 403)
   }
 
   const emailGate = await requireEmailVerifiedUser(session.user.id)
@@ -94,7 +94,7 @@ export async function POST(req: Request) {
   }
 
   if (sellerId === session.user.id) {
-    return apiError('Tidak dapat membuat rekber dengan diri sendiri sebagai penjual')
+    return apiError('Tidak dapat membuat transaksi aman dengan diri sendiri sebagai penjual')
   }
 
   try {
@@ -142,6 +142,6 @@ export async function POST(req: Request) {
     )
   } catch (e) {
     console.error('[REKBER_POST]', e)
-    return apiError('Gagal membuat rekber', 500)
+    return apiError('Gagal membuat transaksi aman', 500)
   }
 }

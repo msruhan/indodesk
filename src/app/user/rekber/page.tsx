@@ -92,8 +92,8 @@ export default function UserRekberPage() {
   return (
     <div className="space-y-6">
       <DashboardPageHeader
-        title="Rekber Saya"
-        description="Transaksi aman dengan rekening bersama."
+        title="Transaksi Aman Saya"
+        description="Transaksi aman dengan dana ditahan platform."
         actions={
           <>
             <DashboardMonthFilter />
@@ -103,7 +103,7 @@ export default function UserRekberPage() {
             <Link href="/rekber">
               <Button size="sm">
                 <Plus className="mr-1.5 h-3.5 w-3.5" />
-                Ajukan rekber
+                Ajukan transaksi aman
               </Button>
             </Link>
           </>
@@ -144,7 +144,7 @@ export default function UserRekberPage() {
           title="Selesai"
           value={displayStats.completed.toString()}
           icon={CheckCircle}
-          footnote="Rekber tuntas"
+          footnote="Transaksi tuntas"
           tone="primary"
           compact
         />
@@ -165,7 +165,7 @@ export default function UserRekberPage() {
             options={statusOptions}
             value={statusFilter}
             onChange={setStatusFilter}
-            ariaLabel="Filter status rekber"
+            ariaLabel="Filter status transaksi aman"
             label="Status"
             className="w-full sm:w-[11.5rem]"
           />
@@ -183,12 +183,12 @@ export default function UserRekberPage() {
           showStats={false}
           emptyMessage={
             periodItems.length === 0
-              ? 'Belum ada transaksi rekber.'
+              ? 'Belum ada transaksi aman.'
               : 'Tidak ada transaksi yang cocok dengan filter.'
           }
           showEmptyCta={periodItems.length === 0}
           emptyCtaHref="/rekber"
-          emptyCtaLabel="Ajukan rekber baru"
+          emptyCtaLabel="Ajukan transaksi aman baru"
           onUserAction={userAction}
           onOpenComplaint={(id) => setComplaintOpenId(id)}
           onRespondComplaint={(id) => {

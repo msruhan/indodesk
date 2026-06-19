@@ -1,18 +1,10 @@
 'use client'
 
-import { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Reveal, viewportReveal, staggerContainer } from '@/components/motion'
 import { ArrowRight, Sparkles } from '@/lib/icons'
-import { useAuth } from '@/contexts/auth-context'
-import { useFeatureFlags } from '@/contexts/feature-flags-context'
-import {
-  canAccessInspectionService,
-  canAccessRemoteService,
-  canAccessRekberService,
-} from '@/lib/platform-settings-shared'
 import { RemoteOnlineIllustration } from '@/components/illustrations/remote-online-illustration'
 import { InspectionIllustration } from '@/components/illustrations/inspection-illustration'
 import { CompareProductsIllustration } from '@/components/illustrations/compare-products-illustration'
@@ -28,7 +20,6 @@ const ALL_SERVICES = [
     cta: 'Lihat layanan remote',
     accent: 'primary' as const,
     illustration: RemoteOnlineIllustration,
-    requireRemote: true,
   },
   {
     eyebrow: 'Inspeksi',
@@ -39,7 +30,6 @@ const ALL_SERVICES = [
     cta: 'Coba layanan inspeksi',
     accent: 'teal' as const,
     illustration: InspectionIllustration,
-    requireInspection: true,
   },
   {
     eyebrow: 'Bandingkan',
@@ -52,15 +42,14 @@ const ALL_SERVICES = [
     illustration: CompareProductsIllustration,
   },
   {
-    eyebrow: 'Rekber',
-    title: 'Transaksi aman dengan rekber platform',
+    eyebrow: 'Transaksi Aman',
+    title: 'Transaksi aman platform',
     description:
       'Dana ditahan di rekening bersama sampai barang atau jasa diterima. Teknisi dan user terlindungi dari penipuan.',
     href: '/rekber',
-    cta: 'Pelajari rekber',
+    cta: 'Pelajari layanan',
     accent: 'amber' as const,
     illustration: RekberIllustration,
-    requireRekber: true,
   },
 ]
 
@@ -87,27 +76,6 @@ const ACCENT_CLASSES: Record<
 }
 
 export function ServicesShowcase() {
-  const { user } = useAuth()
-  const { flags } = useFeatureFlags()
-  const role = (user?.role as 'ADMIN' | 'TEKNISI' | 'USER' | undefined) ?? null
-
-  const services = useMemo(
-    () =>
-      ALL_SERVICES.filter((service) => {
-        if ('requireRemote' in service && service.requireRemote) {
-          return canAccessRemoteService(role, flags)
-        }
-        if ('requireInspection' in service && service.requireInspection) {
-          return canAccessInspectionService(role, flags)
-        }
-        if ('requireRekber' in service && service.requireRekber) {
-          return canAccessRekberService(role, flags)
-        }
-        return true
-      }),
-    [role, flags],
-  )
-
   return (
     <section
       id="services-showcase"
@@ -141,7 +109,7 @@ export function ServicesShowcase() {
           whileInView="show"
           viewport={{ once: true, margin: '-80px' }}
         >
-          {services.map((service, idx) => {
+          {ALL_SERVICES.map((service, idx) => {
             const Illustration = service.illustration
             const accent = ACCENT_CLASSES[service.accent]
             const reverse = idx % 2 === 1

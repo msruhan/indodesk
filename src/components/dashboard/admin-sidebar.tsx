@@ -37,7 +37,7 @@ const baseAdminNavItems: readonly SidebarNavItem[] = [
   { icon: CheckSquare, label: 'Approval', href: '/admin/approval', section: 'Moderasi & Trust' },
   { icon: FileText, label: 'Inspeksi', href: '/admin/inspeksi', section: 'Moderasi & Trust' },
   { icon: Scales, label: 'Komplain Marketplace', href: '/admin/komplain', section: 'Moderasi & Trust' },
-  { icon: Shield, label: 'Rekber', href: '/admin/rekber', section: 'Moderasi & Trust' },
+  { icon: Shield, label: 'Transaksi Aman', href: '/admin/rekber', section: 'Moderasi & Trust' },
   { icon: Package, label: 'Bukti Packaging', href: '/admin/marketplace-packaging', section: 'Moderasi & Trust' },
   { icon: AlertCircle, label: 'Tiket Dukungan', href: '/admin/tickets', section: 'Dukungan' },
   { icon: CreditCard, label: 'Transaksi', href: '/admin/transactions', section: 'Keuangan' },

@@ -46,12 +46,12 @@ export function AdminRekberComplaintsPanel({ embedded = false }: { embedded?: bo
       const res = await fetch(`/api/admin/rekber/complaints?status=${statusFilter}`)
       const json = await res.json()
       if (!res.ok || !json.success) {
-        setError(json.error ?? 'Gagal memuat komplain rekber')
+        setError(json.error ?? 'Gagal memuat komplain transaksi aman')
         return
       }
       setItems(json.data?.items ?? [])
     } catch {
-      setError('Gagal memuat komplain rekber')
+      setError('Gagal memuat komplain transaksi aman')
     } finally {
       setLoading(false)
     }
@@ -97,11 +97,11 @@ export function AdminRekberComplaintsPanel({ embedded = false }: { embedded?: bo
       <div className="flex flex-wrap items-center justify-between gap-3">
         {!embedded ? (
           <div>
-            <h2 className="text-lg font-semibold text-ink">Komplain Rekber</h2>
-            <p className="text-xs text-surface-500">Antrian komplain rekber parity dengan marketplace.</p>
+            <h2 className="text-lg font-semibold text-ink">Komplain Transaksi Aman</h2>
+            <p className="text-xs text-surface-500">Antrian komplain transaksi aman parity dengan marketplace.</p>
           </div>
         ) : (
-          <p className="text-xs text-surface-500">Antrian komplain rekber parity dengan marketplace.</p>
+          <p className="text-xs text-surface-500">Antrian komplain transaksi aman parity dengan marketplace.</p>
         )}
         <div className="flex items-center gap-2">
           <Button

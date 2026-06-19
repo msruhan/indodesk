@@ -9,8 +9,8 @@ export default function TeknisiRekberLayout({ children }: { children: React.Reac
     <TeknisiWorkspaceShell>
       <DashboardServiceGate
         canAccess={canAccessRekberService}
-        title="Rekber"
-        description="Layanan rekber sedang dinonaktifkan oleh admin."
+        title="Transaksi Aman"
+        description="Layanan transaksi aman sedang dinonaktifkan oleh admin."
         dashboardHref="/teknisi/dashboard"
       >
         {children}

@@ -386,7 +386,7 @@ function DailyRevenueChart({ daily }: { daily: PlatformRevenueSummary['charts'][
             options={options}
             series={[
               { name: 'Marketplace', data: daily.marketplace },
-              { name: 'Rekber', data: daily.rekber },
+              { name: 'Transaksi Aman', data: daily.rekber },
               { name: 'Inspeksi', data: daily.inspeksi },
             ]}
             type="area"

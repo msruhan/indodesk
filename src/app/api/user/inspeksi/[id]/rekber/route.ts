@@ -38,7 +38,7 @@ export async function POST(
 
   const flags = await getPublicFeatureFlags()
   if (!flags.rekberServiceEnabled) {
-    return apiError('Layanan rekber sedang dinonaktifkan', 403)
+    return apiError('Layanan transaksi aman sedang dinonaktifkan', 403)
   }
 
   const { id } = await params
@@ -63,20 +63,20 @@ export async function POST(
 
     if (!inspection) return apiError('Inspeksi tidak ditemukan', 404)
     if (!inspection.report) {
-      return apiError('Rekber bundle hanya bisa dibuat setelah laporan inspeksi tersedia', 400)
+      return apiError('Transaksi aman bundle hanya bisa dibuat setelah laporan inspeksi tersedia', 400)
     }
     if (inspection.rekber) {
-      return apiError('Rekber untuk inspeksi ini sudah dibuat', 400)
+      return apiError('Transaksi aman untuk inspeksi ini sudah dibuat', 400)
     }
     if (
       inspection.status !== 'REPORT_SUBMITTED' &&
       inspection.status !== 'COMPLETED'
     ) {
-      return apiError('Status inspeksi belum siap untuk rekber', 400)
+      return apiError('Status inspeksi belum siap untuk transaksi aman', 400)
     }
     if (inspection.report.recommendation === 'NOT_RECOMMENDED') {
       return apiError(
-        'Rekber tidak disarankan untuk barang dengan rekomendasi tidak layak beli',
+        'Transaksi aman tidak disarankan untuk barang dengan rekomendasi tidak layak beli',
         400,
       )
     }
@@ -84,7 +84,7 @@ export async function POST(
     const { amount } = parsed.data
     const description =
       parsed.data.description?.trim() ||
-      `Rekber pembelian: ${inspection.productName} (pasca inspeksi ${inspection.orderCode})`
+      `Transaksi aman pembelian: ${inspection.productName} (pasca inspeksi ${inspection.orderCode})`
 
     const fee = calculateRekberFee(amount)
     const orderCode = generateRekberOrderCode()
@@ -136,6 +136,6 @@ export async function POST(
     )
   } catch (e) {
     console.error('[USER_INSPEKSI_REKBER_POST]', e)
-    return apiError('Gagal membuat rekber bundle', 500)
+    return apiError('Gagal membuat transaksi aman bundle', 500)
   }
 }

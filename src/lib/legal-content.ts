@@ -47,7 +47,7 @@ export const KEBIJAKAN_PRIVASI_POINTS: LegalPoint[] = [
 
 export const KEBIJAKAN_REFUND_POINTS: LegalPoint[] = [
   {
-    title: 'Marketplace & rekber',
+    title: 'Marketplace & transaksi aman',
     body: 'Refund jika order dibatalkan, komplain/retur disetujui, atau mediasi admin.',
   },
   {

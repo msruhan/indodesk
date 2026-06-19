@@ -78,7 +78,7 @@ const ALL_NAV_GROUPS = [
 
 const STANDALONE_NAV_LINK = {
   href: '/rekber',
-  label: 'Rekber Aman',
+  label: 'Transaksi Aman',
   requireRekber: true,
 } as const
 
@@ -117,7 +117,7 @@ const ALL_MOBILE_NAV_SECTIONS: {
     ],
   },
   {
-    items: [{ href: '/rekber', label: 'Rekber Aman', icon: Shield, requireRekber: true }],
+    items: [{ href: '/rekber', label: 'Transaksi Aman', icon: Shield, requireRekber: true }],
   },
   {
     title: 'Gabung',

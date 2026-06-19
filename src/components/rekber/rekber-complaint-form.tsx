@@ -31,7 +31,7 @@ export function RekberComplaintForm({ onSubmit, onCancel }: RekberComplaintFormP
 
   return (
     <div className="space-y-3 rounded-xl border border-surface-200 bg-surface-50/60 p-4">
-      <p className="text-sm font-semibold text-ink">Ajukan komplain rekber</p>
+      <p className="text-sm font-semibold text-ink">Ajukan komplain transaksi aman</p>
       <div>
         <label className="mb-1 block text-xs font-medium text-surface-700">Alasan komplain</label>
         <textarea

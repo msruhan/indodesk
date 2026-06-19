@@ -11,8 +11,8 @@ import { prisma } from '@/lib/db'
 export const dynamic = 'force-dynamic'
 
 const ERROR_MAP: Record<string, { message: string; status: number }> = {
-  REKBER_NOT_FOUND: { message: 'Rekber tidak ditemukan', status: 404 },
-  INVALID_STATUS: { message: 'Bukti packaging hanya untuk rekber dengan dana ditahan', status: 400 },
+  REKBER_NOT_FOUND: { message: 'Transaksi aman tidak ditemukan', status: 404 },
+  INVALID_STATUS: { message: 'Bukti packaging hanya untuk transaksi aman dengan dana ditahan', status: 400 },
   PACKAGING_PENDING_REVIEW: { message: 'Bukti packaging sedang direview admin', status: 409 },
   PACKAGING_RESUBMIT_EXPIRED: { message: 'Batas waktu upload ulang sudah lewat', status: 400 },
   PACKAGING_PHOTO_REQUIRED: { message: 'Minimal 1 foto packaging wajib', status: 400 },
@@ -37,7 +37,7 @@ export async function GET(
     const code = e instanceof Error ? e.message : ''
     const mapped = ERROR_MAP[code]
     if (mapped) return apiError(mapped.message, mapped.status)
-    if (code === 'REKBER_NOT_FOUND') return apiError('Rekber tidak ditemukan', 404)
+    if (code === 'REKBER_NOT_FOUND') return apiError('Transaksi aman tidak ditemukan', 404)
     console.error('[REKBER_PACKAGING_GET]', e)
     return apiError('Gagal memuat bukti packaging', 500)
   }
@@ -68,7 +68,7 @@ export async function POST(
       where: { id, sellerId: session.user.id },
       include: REKBER_INCLUDE,
     })
-    if (!rekber) return apiError('Rekber tidak ditemukan', 404)
+    if (!rekber) return apiError('Transaksi aman tidak ditemukan', 404)
 
     return apiSuccess(
       serializeRekber(rekber, {

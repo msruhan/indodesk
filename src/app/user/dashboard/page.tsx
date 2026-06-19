@@ -188,7 +188,7 @@ export default function UserDashboardPage() {
           { label: 'Total Belanja', value: formatPrice(stats.totalSpent), icon: ShoppingBag, color: 'primary' },
           { label: 'Order', value: String(stats.totalOrders), icon: CheckCircle, color: 'accent' },
           { label: 'Konsultasi Aktif', value: String(stats.activeKonsultasi), icon: MessageCircle, color: 'violet' },
-          { label: 'Rekber Aktif', value: String(stats.activeRekber), icon: Shield, color: 'amber' },
+          { label: 'Transaksi Aman Aktif', value: String(stats.activeRekber), icon: Shield, color: 'amber' },
           {
             label: 'Inspeksi Aktif',
             value: String(stats.activeInspeksi),

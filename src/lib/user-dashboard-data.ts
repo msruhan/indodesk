@@ -170,7 +170,7 @@ export async function getUserDashboardData(userId: string): Promise<UserDashboar
     ...rekber.map((r) => ({
       id: r.id,
       type: 'rekber' as const,
-      title: r.description ?? 'Rekber',
+      title: r.description ?? 'Transaksi Aman',
       subtitle: r.seller.name ?? r.orderCode,
       amount: Number(r.amount) + Number(r.fee),
       status:

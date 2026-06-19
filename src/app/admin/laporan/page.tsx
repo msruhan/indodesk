@@ -244,7 +244,7 @@ export default function AdminLaporanPage() {
           />
           <OrderCategoryCard
             icon={Shield}
-            label="Rekber / Escrow"
+            label="Transaksi Aman"
             tone="bg-pink-50 text-pink-700 ring-pink-200/70"
             total={data.orders.rekber.total}
           />

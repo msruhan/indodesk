@@ -550,7 +550,7 @@ const SPENDING_FILTERS: Array<{ id: 'all' | SpendingCategory; label: string }> =
   { id: 'server', label: 'Server' },
   { id: 'shop', label: 'Marketplace' },
   { id: 'topup', label: 'Top Up' },
-  { id: 'rekber', label: 'Rekber' },
+  { id: 'rekber', label: 'Transaksi Aman' },
   { id: 'withdrawal', label: 'Withdraw' },
   { id: 'other', label: 'Lainnya' },
 ]

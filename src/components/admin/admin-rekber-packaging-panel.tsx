@@ -75,9 +75,9 @@ export function AdminRekberPackagingPanel() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-ink">Bukti Packaging Rekber</h2>
+          <h2 className="text-lg font-semibold text-ink">Bukti Packaging Transaksi Aman</h2>
           <p className="text-xs text-surface-500">
-            Review foto & video kemasan sebelum penjual memproses rekber.
+            Review foto & video kemasan sebelum penjual memproses transaksi aman.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
@@ -96,7 +96,7 @@ export function AdminRekberPackagingPanel() {
       {!loading && items.length === 0 && (
         <Card>
           <CardContent className="p-6 text-center text-sm text-surface-500">
-            Tidak ada bukti packaging rekber menunggu review.
+            Tidak ada bukti packaging transaksi aman menunggu review.
           </CardContent>
         </Card>
       )}
@@ -112,7 +112,7 @@ export function AdminRekberPackagingPanel() {
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-sm font-semibold">{item.orderCode}</span>
                   <Badge variant="outline" className="text-[10px]">
-                    Rekber
+                    Transaksi Aman
                   </Badge>
                   {item.overdue24h && (
                     <Badge variant="danger" className="text-[10px]">

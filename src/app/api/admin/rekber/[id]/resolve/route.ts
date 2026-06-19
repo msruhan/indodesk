@@ -40,13 +40,13 @@ export async function POST(
       where: { id },
       include: REKBER_INCLUDE,
     })
-    if (!existing) return apiError('Rekber tidak ditemukan', 404)
+    if (!existing) return apiError('Transaksi aman tidak ditemukan', 404)
 
     if (existing.status === 'RELEASED' || existing.status === 'REFUNDED') {
       return apiError('State tidak valid', 409, { code: 'INVALID_STATE' })
     }
     if (!['HELD', 'PROCESSING', 'SHIPPED', 'DISPUTED'].includes(existing.status)) {
-      return apiError('Hanya rekber aktif atau dispute yang bisa diselesaikan admin')
+      return apiError('Hanya transaksi aman aktif atau dispute yang bisa diselesaikan admin')
     }
 
     const amount = existing.amount
@@ -139,6 +139,6 @@ export async function POST(
       return apiError('Wallet penjual tidak ditemukan', 400)
     }
     console.error('[ADMIN_REKBER_RESOLVE]', e)
-    return apiError('Gagal menyelesaikan rekber', 500)
+    return apiError('Gagal menyelesaikan transaksi aman', 500)
   }
 }

@@ -29,7 +29,7 @@ export function CompareProductsIllustration({ className }: Props) {
     <div
       ref={rootRef}
       className={cn(
-        'relative flex aspect-[4/3] w-full flex-col overflow-hidden rounded-3xl border border-primary-200/70 p-3 sm:p-4',
+        'relative flex w-full flex-col overflow-hidden rounded-3xl border border-primary-200/70 p-3 sm:p-4',
         'bg-gradient-to-br from-white via-primary-50/40 to-emerald-50/30',
         className,
       )}
@@ -61,7 +61,7 @@ export function CompareProductsIllustration({ className }: Props) {
       </motion.div>
 
       {/* Product cards + VS */}
-      <div className="relative z-10 grid flex-shrink-0 grid-cols-[1fr_auto_1fr] items-stretch gap-1.5 sm:gap-2">
+      <div className="relative z-10 grid grid-cols-[1fr_auto_1fr] items-stretch gap-1.5 sm:gap-2">
         <ProductMiniCard
           name="iPhone 12"
           storage="128GB"
@@ -97,17 +97,17 @@ export function CompareProductsIllustration({ className }: Props) {
         />
       </div>
 
-      {/* Breakdown panel */}
+      {/* Breakdown panel — alur natural, tanpa flex-grow */}
       <motion.div
-        className="relative z-10 mt-2 flex min-h-0 flex-1 flex-col rounded-2xl border border-surface-200/80 bg-white/95 p-2.5 shadow-[0_12px_32px_-16px_rgba(16,185,129,0.3)] backdrop-blur-sm sm:mt-3 sm:p-3"
-        initial={{ opacity: 0, y: 10 }}
+        className="relative z-10 mt-2.5 rounded-2xl border border-surface-200/80 bg-white/95 p-2.5 shadow-[0_12px_32px_-16px_rgba(16,185,129,0.3)] backdrop-blur-sm sm:mt-3 sm:p-3"
+        initial={{ opacity: 0, y: 8 }}
         animate={isInView ? { opacity: 1, y: 0 } : undefined}
-        transition={{ delay: 1.1, duration: 0.5, ease }}
+        transition={{ delay: 0.9, duration: 0.45, ease }}
       >
-        <p className="mb-1.5 text-[8.5px] font-black uppercase tracking-[0.14em] text-surface-500 sm:mb-2">
+        <p className="mb-2 text-[8.5px] font-black uppercase tracking-[0.14em] text-surface-500">
           Breakdown per kategori
         </p>
-        <div className="space-y-1.5 sm:space-y-2">
+        <div className="space-y-2">
           {pillars.map((p, i) => (
             <PillarRow key={p.label} {...p} index={i} isInView={isInView} />
           ))}
@@ -155,25 +155,25 @@ function ProductMiniCard({
           className="absolute right-1.5 top-1.5 z-10 inline-flex items-center gap-0.5 rounded-full bg-gradient-to-r from-primary-500 to-primary-600 px-1.5 py-0.5 text-[7px] font-black uppercase tracking-[0.1em] text-white shadow-soft-xs sm:text-[8px]"
           initial={{ scale: 0.7, opacity: 0 }}
           animate={isInView ? { scale: 1, opacity: 1 } : undefined}
-          transition={{ delay: 2.1, type: 'spring', stiffness: 400, damping: 20 }}
+          transition={{ delay: 1.6, type: 'spring', stiffness: 400, damping: 20 }}
         >
           <Award className="h-2 w-2 sm:h-2.5 sm:w-2.5" weight="fill" />
           Terbaik
         </motion.span>
       )}
 
-      <div className="relative aspect-[5/4] overflow-hidden sm:aspect-[4/3]">
+      <div className="relative aspect-[3/4] overflow-hidden sm:aspect-[4/5]">
         <MiniPhoneMockup model={phoneModel} animate={isInView} delay={delay + 0.1} />
       </div>
 
-      <div className="flex flex-1 flex-col px-2 py-1.5">
+      <div className="flex flex-col px-2 py-1.5">
         <p className="truncate text-[8.5px] font-bold text-ink sm:text-[9px]">
           {name} {storage}
         </p>
         <p className="text-[7.5px] font-semibold text-surface-500 sm:text-[8px]">Rp {price}</p>
         <div
           className={cn(
-            'mt-auto rounded-lg px-2 py-1 text-center',
+            'mt-1 rounded-lg px-2 py-1 text-center',
             winner ? 'bg-gradient-to-br from-primary-500 to-primary-700 text-white' : 'bg-surface-100 text-surface-600',
           )}
         >
@@ -213,7 +213,7 @@ function PillarRow({
   isInView: boolean
 }) {
   const winnerA = scoreA >= scoreB
-  const barDelay = 1.3 + index * 0.12
+  const barDelay = 1.05 + index * 0.1
 
   return (
     <div>
@@ -222,19 +222,19 @@ function PillarRow({
         <span className="text-surface-400">bobot {weight}</span>
       </div>
       <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
-        {/* A — bar ke kanan */}
         <div className="flex items-center gap-1">
           <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-100 sm:h-2">
             <motion.div
               className={cn(
-                'h-full rounded-full',
+                'h-full origin-left rounded-full',
                 winnerA
                   ? 'bg-gradient-to-r from-primary-500 to-emerald-500'
                   : 'bg-surface-300',
               )}
-              initial={{ width: 0 }}
-              animate={isInView ? { width: `${scoreA}%` } : undefined}
-              transition={{ delay: barDelay, duration: 0.75, ease }}
+              initial={{ scaleX: 0 }}
+              animate={isInView ? { scaleX: scoreA / 100 } : undefined}
+              transition={{ delay: barDelay, duration: 0.65, ease }}
+              style={{ width: '100%' }}
             />
           </div>
           <span
@@ -246,7 +246,6 @@ function PillarRow({
             {scoreA}
           </span>
         </div>
-        {/* B — bar ke kiri */}
         <div className="flex items-center gap-1">
           <span
             className={cn(
@@ -259,14 +258,15 @@ function PillarRow({
           <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-100 sm:h-2">
             <motion.div
               className={cn(
-                'ml-auto h-full rounded-full',
+                'ml-auto h-full origin-right rounded-full',
                 !winnerA
                   ? 'bg-gradient-to-l from-primary-500 to-emerald-500'
                   : 'bg-surface-300',
               )}
-              initial={{ width: 0 }}
-              animate={isInView ? { width: `${scoreB}%` } : undefined}
-              transition={{ delay: barDelay + 0.06, duration: 0.75, ease }}
+              initial={{ scaleX: 0 }}
+              animate={isInView ? { scaleX: scoreB / 100 } : undefined}
+              transition={{ delay: barDelay + 0.05, duration: 0.65, ease }}
+              style={{ width: '100%' }}
             />
           </div>
         </div>

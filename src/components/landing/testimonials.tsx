@@ -13,7 +13,7 @@ const testimonials = [
     role: 'Teknisi Handphone',
     avatar: 'AH',
     content:
-      'Platform Bantoo sangat membantu bisnis saya. Konsultasi online jadi mudah dan rekber bikin transaksi terasa aman. Revenue saya naik 40%!',
+      'Platform Bantoo sangat membantu bisnis saya. Konsultasi online jadi mudah dan transaksi aman bikin transaksi terasa aman. Revenue saya naik 40%!',
     rating: 5,
   },
   {
@@ -29,7 +29,7 @@ const testimonials = [
     role: 'User',
     avatar: 'SN',
     content:
-      'Konsultasi online sangat memuaskan. Teknisi responsif dan masalah iPhone saya langsung selesai. Sistem rekber juga bikin saya tenang saat beli barang.',
+      'Konsultasi online sangat memuaskan. Teknisi responsif dan masalah iPhone saya langsung selesai. Sistem transaksi aman juga bikin saya tenang saat beli barang.',
     rating: 5,
   },
   {
@@ -45,7 +45,7 @@ const testimonials = [
     role: 'User',
     avatar: 'DL',
     content:
-      'Marketplace-nya lengkap. Bisa beli handphone second harga oke dan rekber bikin saya tidak khawatir. Highly recommended!',
+      'Marketplace-nya lengkap. Bisa beli handphone second harga oke dan transaksi aman bikin saya tidak khawatir. Highly recommended!',
     rating: 5,
   },
   {

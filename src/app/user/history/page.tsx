@@ -51,7 +51,7 @@ export default function UserHistoryPage() {
               </TabsTrigger>
               <TabsTrigger value="rekber">
                 <Shield className="w-4 h-4 mr-2" />
-                Rekber
+                Transaksi Aman
               </TabsTrigger>
             </TabsList>
             

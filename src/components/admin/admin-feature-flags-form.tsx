@@ -75,9 +75,9 @@ const FLAGS: FeatureFlag[] = [
   },
   {
     key: 'rekberServiceEnabled',
-    title: 'Rekber Aman',
+    title: 'Transaksi Aman',
     description:
-      'Tampilkan menu "Rekber Aman" di navigasi publik, sidebar dashboard user/teknisi, dan halaman layanan /rekber. Bila dimatikan, pembuatan rekber baru diblokir dan link disembunyikan. Admin selalu memiliki akses panel admin rekber.',
+      'Tampilkan menu "Transaksi Aman" di navigasi publik, sidebar dashboard user/teknisi, dan halaman layanan /rekber. Bila dimatikan, pembuatan transaksi aman baru diblokir dan link disembunyikan. Admin selalu memiliki akses panel admin transaksi aman.',
     icon: Shield,
     audienceNote: 'Navigasi publik · Dashboard user/teknisi · Admin',
   },

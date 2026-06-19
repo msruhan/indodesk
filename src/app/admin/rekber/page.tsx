@@ -12,9 +12,9 @@ export default function AdminRekberPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tightest text-ink lg:text-3xl">
-          Manajemen Rekber (Escrow)
+          Manajemen Transaksi Aman
         </h1>
-        <p className="mt-1 text-sm text-surface-500">Kelola semua transaksi rekening bersama</p>
+        <p className="mt-1 text-sm text-surface-500">Kelola semua transaksi aman dengan dana ditahan platform</p>
       </div>
 
       <AdminRekberPackagingPanel />

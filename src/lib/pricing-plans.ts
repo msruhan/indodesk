@@ -54,7 +54,7 @@ export const DEFAULT_PRICING_PLANS: Omit<PricingPlanDto, 'id'>[] = [
       'Browse marketplace produk',
       'Konsultasi dengan teknisi',
       'Remote assistance',
-      'Rekber (escrow) aman',
+      'Transaksi aman (escrow)',
       'Inspection service',
       'Topup pulsa & data',
       'Chat real-time',

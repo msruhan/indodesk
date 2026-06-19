@@ -102,7 +102,7 @@ function adminQuickActions(): SmartSearchItem[] {
         'topup',
         'marketplace',
       ]),
-      quick('rekber', 'Rekber / escrow', 'Transaksi ditahan', '/admin/rekber', ['escrow']),
+      quick('rekber', 'Transaksi Aman', 'Transaksi ditahan', '/admin/rekber', ['escrow']),
       quick(
         'keuangan-marketplace',
         'Keuangan Marketplace',
@@ -160,7 +160,7 @@ function teknisiQuickActions(): SmartSearchItem[] {
       ]),
       quick('konsultasi', 'Konsultasi', 'Request dari pelanggan', '/teknisi/konsultasi', ['chat']),
       quick('inspeksi', 'Inspeksi', 'Permintaan inspeksi pra-beli', '/teknisi/inspeksi', ['cek']),
-      quick('rekber', 'Rekber', 'Transaksi escrow', '/teknisi/rekber', ['escrow']),
+      quick('rekber', 'Transaksi Aman', 'Transaksi escrow', '/teknisi/rekber', ['escrow']),
       quick('belanja', 'Pesanan', 'Belanja sebagai pembeli', '/teknisi/orders', ['order', 'belanja']),
       quick('saldo', 'Riwayat Transaksi', 'Saldo, top up, dan tarik', '/teknisi/saldo', [
         'wallet',
@@ -198,7 +198,7 @@ function userQuickActions(): SmartSearchItem[] {
     ]),
     quick('konsultasi', 'Konsultasi', 'Riwayat konsultasi teknisi', '/user/konsultasi', ['chat', 'remote']),
     quick('inspeksi', 'Inspeksi', 'Inspeksi pra-beli', '/user/inspeksi', ['cek', 'laporan']),
-    quick('rekber', 'Rekber', 'Transaksi rekening bersama', '/user/rekber', ['escrow']),
+    quick('rekber', 'Transaksi Aman', 'Dana ditahan platform', '/user/rekber', ['escrow']),
     quick('riwayat', 'Riwayat transaksi', 'Semua order dan aktivitas', '/user/riwayat', [
       'order',
       'history',

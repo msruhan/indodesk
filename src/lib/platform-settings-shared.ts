@@ -58,8 +58,8 @@ export type PlatformSettingsDto = {
    */
   konsultasiServiceEnabled: boolean
   /**
-   * Apakah menu "Rekber Aman" di navigasi publik, sidebar dashboard user/teknisi,
-   * dan halaman layanan rekber ditampilkan. ADMIN tetap memiliki akses panel admin.
+   * Apakah menu "Transaksi Aman" di navigasi publik, sidebar dashboard user/teknisi,
+   * dan halaman layanan transaksi aman ditampilkan. ADMIN tetap memiliki akses panel admin.
    */
   rekberServiceEnabled: boolean
 }
@@ -166,9 +166,9 @@ export function canAccessKonsultasiService(role: Role, flags: PublicFeatureFlags
 }
 
 /**
- * Role yang diizinkan melihat menu Rekber Aman dan halaman layanan rekber.
+ * Role yang diizinkan melihat menu Transaksi Aman dan halaman layanan transaksi aman.
  *
- * - ADMIN selalu boleh (panel admin rekber).
+ * - ADMIN selalu boleh (panel admin transaksi aman).
  * - USER, TEKNISI, dan pengunjung mengikuti `rekberServiceEnabled`.
  */
 export function canAccessRekberService(role: Role, flags: PublicFeatureFlags): boolean {

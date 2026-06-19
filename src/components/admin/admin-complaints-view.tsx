@@ -37,7 +37,7 @@ export function AdminComplaintsView() {
       <DashboardPageHeader
         eyebrow="Operasional"
         title="Komplain"
-        description="Tinjau dan selesaikan komplain marketplace serta rekber dari satu tempat."
+        description="Tinjau dan selesaikan komplain marketplace serta transaksi aman dari satu tempat."
       />
 
       <Tabs value={activeTab} onValueChange={setTab}>
@@ -47,7 +47,7 @@ export function AdminComplaintsView() {
               Komplain Marketplace
             </TabsTrigger>
             <TabsTrigger value="rekber" className="shrink-0 px-3 text-xs sm:px-4">
-              Komplain Rekber
+              Komplain Transaksi Aman
             </TabsTrigger>
           </TabsList>
         </div>

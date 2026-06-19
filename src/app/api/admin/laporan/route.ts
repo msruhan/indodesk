@@ -110,7 +110,7 @@ export async function GET() {
       { name: 'Server Service', value: totalTransactions > 0 ? Math.round((totalServerOrders / totalTransactions) * 100) : 0, count: totalServerOrders, color: '#06b6d4' },
       { name: 'Marketplace', value: totalTransactions > 0 ? Math.round((totalMarketplaceOrders / totalTransactions) * 100) : 0, count: totalMarketplaceOrders, color: '#8b5cf6' },
       { name: 'Top Up', value: totalTransactions > 0 ? Math.round((totalTopupOrders / totalTransactions) * 100) : 0, count: totalTopupOrders, color: '#f59e0b' },
-      { name: 'Rekber', value: totalTransactions > 0 ? Math.round((totalRekber / totalTransactions) * 100) : 0, count: totalRekber, color: '#ec4899' },
+      { name: 'Transaksi Aman', value: totalTransactions > 0 ? Math.round((totalRekber / totalTransactions) * 100) : 0, count: totalRekber, color: '#ec4899' },
     ]
 
     // Communication mix for donut

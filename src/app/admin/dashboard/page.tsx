@@ -141,7 +141,7 @@ export default function AdminDashboardPage() {
           value={data.stats.totalKonsultasi.toLocaleString('id-ID')}
           icon={MessageCircle}
           sparkline={data.sparklines.konsultasi}
-          footnote={`${data.stats.rekberHeld} rekber ditahan`}
+          footnote={`${data.stats.rekberHeld} transaksi aman ditahan`}
         />
       </div>
 
@@ -170,8 +170,8 @@ export default function AdminDashboardPage() {
             {data.stats.rekberHeld > 0 && (
               <InsightCard
                 icon={Shield}
-                title={`${data.stats.rekberHeld} rekber aktif`}
-                description="Dana escrow ditahan — pantau di modul Rekber."
+                title={`${data.stats.rekberHeld} transaksi aman aktif`}
+                description="Dana escrow ditahan — pantau di modul Transaksi Aman."
                 tone="warning"
               />
             )}

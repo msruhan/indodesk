@@ -148,7 +148,7 @@ export function RekberCreateForm({ onSuccess, onCancel }: Props) {
     }
 
     if (mode === 'peer' && session?.user?.email?.toLowerCase() === emailTrimmed) {
-      setError('Tidak dapat membuat rekber dengan diri sendiri sebagai penjual')
+      setError('Tidak dapat membuat transaksi aman dengan diri sendiri sebagai penjual')
       return
     }
 
@@ -172,7 +172,7 @@ export function RekberCreateForm({ onSuccess, onCancel }: Props) {
       })
       const json = await res.json()
       if (!res.ok || !json.success) {
-        setError(json.error ?? 'Gagal membuat rekber')
+        setError(json.error ?? 'Gagal membuat transaksi aman')
         return
       }
       if (onSuccess) {
@@ -182,7 +182,7 @@ export function RekberCreateForm({ onSuccess, onCancel }: Props) {
       const role = session?.user?.role
       router.push(role === 'USER' ? '/user/rekber' : '/rekber')
     } catch {
-      setError('Gagal membuat rekber')
+      setError('Gagal membuat transaksi aman')
     } finally {
       setSubmitting(false)
     }
@@ -191,7 +191,7 @@ export function RekberCreateForm({ onSuccess, onCancel }: Props) {
   return (
     <Card className="mb-6">
       <CardHeader>
-        <CardTitle>Ajukan Rekber Aman</CardTitle>
+        <CardTitle>Ajukan Transaksi Aman</CardTitle>
         <p className="text-sm text-surface-600">
           Untuk transaksi di luar listing marketplace — nego langsung, jasa custom, atau jual beli antar member.
         </p>
@@ -205,7 +205,7 @@ export function RekberCreateForm({ onSuccess, onCancel }: Props) {
               <Link href="/marketplace" className="font-semibold underline underline-offset-2">
                 Marketplace
               </Link>
-              ? Gunakan checkout di sana — escrow otomatis, tanpa form rekber manual.
+              ? Gunakan checkout di sana — escrow otomatis, tanpa form transaksi aman manual.
             </span>
           </p>
         </div>
@@ -360,7 +360,7 @@ export function RekberCreateForm({ onSuccess, onCancel }: Props) {
           {amountNum > 0 && (
             <div className="rounded-xl bg-surface-50 px-3 py-2 text-xs text-surface-600">
               <p>Nominal: {formatPrice(amountNum)}</p>
-              <p>Biaya rekber: {formatPrice(fee)}</p>
+              <p>Biaya layanan: {formatPrice(fee)}</p>
               <p className="font-semibold text-ink">Total ditahan: {formatPrice(total)}</p>
             </div>
           )}
@@ -380,7 +380,7 @@ export function RekberCreateForm({ onSuccess, onCancel }: Props) {
               </Link>
             ) : (
               <Button type="submit" variant="primary" disabled={submitting || isSessionLoading}>
-                {submitting ? 'Membuat…' : 'Buat Rekber'}
+                {submitting ? 'Membuat…' : 'Buat Transaksi Aman'}
               </Button>
             )}
             {onCancel && (

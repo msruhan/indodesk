@@ -54,7 +54,7 @@ export default function AdminSettingsPage() {
 
       <DashboardPanel
         title="Preferensi Notifikasi"
-        description="Pilih channel untuk alert penting seperti approval, rekber, chat, dan keamanan."
+        description="Pilih channel untuk alert penting seperti approval, transaksi aman, chat, dan keamanan."
       >
         <div className="grid gap-3 md:grid-cols-3">
           {[

@@ -43,7 +43,7 @@ export const defaultPlatformNotifications: PlatformNotification[] = [
   },
   {
     id: 'n3',
-    title: 'Rekber perlu validasi',
+    title: 'Transaksi aman perlu validasi',
     body: 'Transaksi escrow ORD-2024-004 menunggu tindakan admin.',
     audiences: ['ADMIN'],
     tone: 'warning',

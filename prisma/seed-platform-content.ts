@@ -24,8 +24,8 @@ const DEFAULT_HELP = [
   },
   {
     audience: 'user',
-    question: 'Bagaimana cara menggunakan rekber?',
-    answer: 'Pergi ke halaman Rekber dan klik Ajukan Rekber Baru untuk memulai transaksi aman.',
+    question: 'Bagaimana cara menggunakan transaksi aman?',
+    answer: 'Pergi ke halaman Transaksi Aman dan klik Ajukan Transaksi Aman untuk memulai transaksi dengan dana ditahan platform.',
     sortOrder: 2,
   },
   {

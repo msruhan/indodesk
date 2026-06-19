@@ -4,9 +4,9 @@ import { createRekberComplaint } from '@/lib/rekber-complaint'
 export const dynamic = 'force-dynamic'
 
 const ERROR_MAP: Record<string, { message: string; status: number }> = {
-  REKBER_NOT_FOUND: { message: 'Rekber tidak ditemukan', status: 404 },
-  INVALID_STATUS: { message: 'Komplain hanya untuk rekber yang sedang berjalan', status: 400 },
-  COMPLAINT_EXISTS: { message: 'Komplain sudah diajukan untuk rekber ini', status: 409 },
+  REKBER_NOT_FOUND: { message: 'Transaksi aman tidak ditemukan', status: 404 },
+  INVALID_STATUS: { message: 'Komplain hanya untuk transaksi aman yang sedang berjalan', status: 400 },
+  COMPLAINT_EXISTS: { message: 'Komplain sudah diajukan untuk transaksi aman ini', status: 409 },
   DEFECT_PHOTO_REQUIRED: { message: 'Minimal 1 foto masalah wajib', status: 400 },
   UNBOXING_VIDEO_REQUIRED: { message: 'Minimal 1 video bukti wajib', status: 400 },
 }

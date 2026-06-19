@@ -6,7 +6,7 @@ import { ArrowRight, Sparkles, CheckCircle } from '@/lib/icons'
 import { Reveal, Magnetic } from '@/components/motion'
 import { motion } from 'framer-motion'
 
-const trustItems = ['Komisi ringan', 'Rekber aman', 'Teknisi verified'] as const
+const trustItems = ['Komisi ringan', 'Transaksi aman', 'Teknisi verified'] as const
 
 export function CTA() {
   return (
@@ -45,7 +45,7 @@ export function CTA() {
               </h2>
 
               <p className="mx-auto mt-5 max-w-2xl text-base text-surface-600 sm:text-lg">
-                Penjual dapat fee yang masuk akal. Pembeli dapat rekber aman & teknisi terverifikasi.
+                Penjual dapat fee yang masuk akal. Pembeli dapat transaksi aman & teknisi terverifikasi.
                 Daftar gratis — tanpa kartu kredit.
               </p>
 

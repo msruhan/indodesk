@@ -68,7 +68,7 @@ export function RekberTransactionList({
   showStats = true,
   emptyCtaHref,
   emptyCtaLabel,
-  emptyMessage = 'Belum ada transaksi rekber.',
+  emptyMessage = 'Belum ada transaksi aman.',
   showEmptyCta = Boolean(emptyCtaHref && emptyCtaLabel),
 }: Props) {
   return (

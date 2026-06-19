@@ -47,12 +47,12 @@ export function InspectionRekberBundle({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: amountNum,
-          description: `Rekber pembelian: ${productName}`,
+          description: `Transaksi aman pembelian: ${productName}`,
         }),
       })
       const data = await res.json()
       if (!data.success) {
-        setError(data.error || 'Gagal membuat rekber')
+        setError(data.error || 'Gagal membuat transaksi aman')
         return
       }
       if (data.data?.inspection) onCreated(data.data.inspection)
@@ -68,7 +68,7 @@ export function InspectionRekberBundle({
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
           <Shield className="h-5 w-5 text-violet-600" />
-          Beli aman dengan Rekber
+          Beli aman dengan Transaksi Aman
         </CardTitle>
         <p className="text-xs text-surface-600">
           Setelah inspeksi layak, lanjutkan pembelian ke {teknisiName} dengan dana ditahan escrow hingga
@@ -94,7 +94,7 @@ export function InspectionRekberBundle({
           {amountNum > 0 && (
             <div className="rounded-xl bg-white/80 px-3 py-2 text-xs text-surface-600">
               <p>Nominal: {formatPrice(amountNum)}</p>
-              <p>Biaya rekber: {formatPrice(fee)}</p>
+              <p>Biaya layanan: {formatPrice(fee)}</p>
               <p className="font-semibold text-ink">Total ditahan: {formatPrice(total)}</p>
             </div>
           )}
@@ -104,7 +104,7 @@ export function InspectionRekberBundle({
             </p>
           )}
           <Button type="submit" variant="primary" disabled={submitting} className="w-full">
-            {submitting ? 'Membuat rekber…' : 'Buat Rekber Bundle'}
+            {submitting ? 'Membuat transaksi…' : 'Buat Transaksi Aman'}
           </Button>
         </form>
       </CardContent>
@@ -123,13 +123,13 @@ export function InspectionRekberLinked({ orderCode, statusLabel, href }: LinkedP
     <Card className="border-violet-200 bg-violet-50/40">
       <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
         <div>
-          <p className="text-sm font-semibold text-ink">Rekber terhubung</p>
+          <p className="text-sm font-semibold text-ink">Transaksi aman terhubung</p>
           <p className="text-xs text-surface-500">
             {orderCode} · {statusLabel}
           </p>
         </div>
         <Button asChild variant="outline" size="sm">
-          <Link href={href}>Kelola rekber</Link>
+          <Link href={href}>Kelola transaksi</Link>
         </Button>
       </CardContent>
     </Card>

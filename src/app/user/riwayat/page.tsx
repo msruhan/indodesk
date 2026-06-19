@@ -64,7 +64,7 @@ const tabs: { id: RiwayatTransactionType; label: string }[] = [
   { id: 'server', label: 'Server' },
   { id: 'konsultasi', label: 'Konsultasi' },
   { id: 'inspeksi', label: 'Inspeksi' },
-  { id: 'rekber', label: 'Rekber' },
+  { id: 'rekber', label: 'Transaksi Aman' },
 ]
 
 const statusConfig = {
@@ -266,7 +266,7 @@ export default function UserRiwayatPage() {
     },
     {
       tab: 'rekber' as const,
-      label: 'Rekber',
+      label: 'Transaksi Aman',
       count: periodTransactions.filter((t) => t.type === 'rekber').length,
       icon: Shield,
       color: 'violet' as const,

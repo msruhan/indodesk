@@ -39,7 +39,7 @@ export type PlatformRevenueSummary = {
 
 export const CHANNEL_LABELS: Record<PlatformRevenueChannel, string> = {
   marketplace: 'Marketplace',
-  rekber: 'Rekber',
+  rekber: 'Transaksi Aman',
   inspeksi: 'Inspeksi',
   konsultasi: 'Konsultasi',
 }

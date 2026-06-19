@@ -10,10 +10,10 @@ async function handle(req: Request) {
 
   try {
     const stats = await processRekberComplaintDeadlines()
-    return apiSuccess({ message: 'Rekber complaint deadlines processed', ...stats })
+    return apiSuccess({ message: 'Deadline komplain transaksi aman diproses', ...stats })
   } catch (e) {
     console.error('[CRON_REKBER_COMPLAINT_DEADLINES]', e)
-    return apiError('Gagal memproses deadline komplain rekber', 500)
+    return apiError('Gagal memproses deadline komplain transaksi aman', 500)
   }
 }
 

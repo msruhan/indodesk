@@ -27,7 +27,7 @@ const EXPLORE_LINKS: FooterLink[] = [
   { label: 'Top Up', href: '/topup' },
   { label: 'Cari Teknisi', href: '/teknisi', requireCariTeknisi: true },
   { label: 'Inspeksi HP', href: '/inspeksi', requireInspection: true },
-  { label: 'Rekber Aman', href: '/rekber', requireRekber: true },
+  { label: 'Transaksi Aman', href: '/rekber', requireRekber: true },
 ]
 
 const MITRA_LINKS: FooterLink[] = [
@@ -93,7 +93,7 @@ export function Footer() {
               <BrandLogo variant="wordmark" wordmarkClassName="h-9 sm:h-10" />
             </Link>
             <p className="mt-3 max-w-sm text-sm text-surface-600">
-              Ekosistem teknisi handphone — jual, beli, konsultasi, rekber aman.
+              Ekosistem teknisi handphone — jual, beli, konsultasi, transaksi aman.
             </p>
           </div>
 

@@ -3,7 +3,7 @@ import { AdminComplaintsView } from '@/components/admin/admin-complaints-view'
 
 export const metadata = {
   title: 'Komplain · Admin Bantoo',
-  description: 'Tinjau dan selesaikan komplain marketplace dan rekber.',
+  description: 'Tinjau dan selesaikan komplain marketplace dan transaksi aman.',
 }
 
 export default function AdminKomplainPage() {

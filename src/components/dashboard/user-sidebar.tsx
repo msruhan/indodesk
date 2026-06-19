@@ -24,7 +24,7 @@ const baseUserNavItems: readonly SidebarNavItem[] = [
   { icon: ShoppingBag, label: 'Pesanan', href: '/user/orders', section: 'Belanja' },
   { icon: MessageCircle, label: 'Konsultasi', href: '/user/konsultasi', section: 'Layanan' },
   { icon: CheckSquare, label: 'Inspeksi', href: '/user/inspeksi', section: 'Layanan' },
-  { icon: Shield, label: 'Rekber', href: '/user/rekber', section: 'Layanan' },
+  { icon: Shield, label: 'Transaksi Aman', href: '/user/rekber', section: 'Layanan' },
   { icon: History, label: 'Riwayat Transaksi', href: '/user/riwayat', section: 'Keuangan' },
 ]
 

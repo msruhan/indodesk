@@ -20,12 +20,12 @@ const ROTATE_MS = 8000
 const heroVariants = [
   {
     id: 'buyer',
-    badge: 'Transaksi aman dengan rekber platform',
+    badge: 'Transaksi aman platform',
     lines: ['Beli HP second takut zonk?', 'Kami bantoo-in pilih yang paling oke.'],
     highlightLine: 1,
     description:
-      'Beli dari teknisi & toko terverifikasi — inspeksi, konsultasi, rekber aman.',
-    trustItems: ['Teknisi verified', 'Rekber aman', 'Inspeksi tersedia'],
+      'Beli dari teknisi & toko terverifikasi — inspeksi, konsultasi, transaksi aman.',
+    trustItems: ['Teknisi verified', 'Transaksi aman', 'Inspeksi tersedia'],
     primaryCta: { label: 'Cari handphone', href: '/marketplace' },
     secondaryCta: { label: 'Daftar gratis', href: '/register' },
   },
@@ -35,8 +35,8 @@ const heroVariants = [
     lines: ['Fee toko ijo & oren bikin pusing?', 'Kami bantoo-in jual dengan fee rendah.'],
     highlightLine: 1,
     description:
-      'Komisi rendah, buyer ekosistem teknisi, rekber aman — jual, konsultasi, transaksi.',
-    trustItems: ['Komisi rendah', 'Buyer teknisi', 'Rekber aman'],
+      'Komisi rendah, buyer ekosistem teknisi, transaksi aman — jual, konsultasi, transaksi.',
+    trustItems: ['Komisi rendah', 'Buyer teknisi', 'Transaksi aman'],
     primaryCta: { label: 'Mulai jual gratis', href: '/register/teknisi' },
     secondaryCta: { label: 'Lihat marketplace', href: '/marketplace' },
   },

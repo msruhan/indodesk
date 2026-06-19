@@ -72,7 +72,7 @@ const tabConfig: Array<{ key: TabKey; label: string; icon: typeof Sparkles }> = 
   { key: 'imei', label: 'Digital', icon: Smartphone },
   { key: 'server', label: 'Server', icon: Laptop },
   { key: 'topup', label: 'Top Up', icon: Zap },
-  { key: 'rekber', label: 'Rekber', icon: Shield },
+  { key: 'rekber', label: 'Transaksi Aman', icon: Shield },
 ]
 
 const typeConfig: Record<TransactionType, { label: string; icon: typeof Sparkles; tone: string }> = {
@@ -80,7 +80,7 @@ const typeConfig: Record<TransactionType, { label: string; icon: typeof Sparkles
   imei: { label: 'Digital', icon: Smartphone, tone: 'bg-blue-50 text-blue-700 ring-blue-200/70' },
   server: { label: 'Server', icon: Laptop, tone: 'bg-amber-50 text-amber-700 ring-amber-200/70' },
   topup: { label: 'Top Up', icon: Zap, tone: 'bg-violet-50 text-violet-700 ring-violet-200/70' },
-  rekber: { label: 'Rekber', icon: Shield, tone: 'bg-emerald-50 text-emerald-700 ring-emerald-200/70' },
+  rekber: { label: 'Transaksi Aman', icon: Shield, tone: 'bg-emerald-50 text-emerald-700 ring-emerald-200/70' },
 }
 
 const statusConfig: Record<NormalizedStatus, { label: string; variant: 'warning' | 'info' | 'success' | 'danger' | 'default'; icon: typeof Clock }> = {

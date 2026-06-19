@@ -195,8 +195,8 @@ export function RekberIllustration({ className }: Props) {
 
           <VaultReceiver cycle={CYCLE} travel={TRAVEL} />
 
-          <span className="rounded-full bg-white/95 px-2 py-0.5 text-[8.5px] font-black uppercase tracking-[0.16em] text-amber-700 shadow-soft-xs ring-1 ring-inset ring-amber-200">
-            Escrow Vault
+          <span className="rounded-full bg-white/95 px-2.5 py-0.5 text-[9px] font-bold tracking-tight text-amber-700 shadow-soft-xs ring-1 ring-inset ring-amber-200">
+            Bantoo.in
           </span>
         </div>
       </motion.div>

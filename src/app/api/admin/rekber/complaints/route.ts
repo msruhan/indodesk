@@ -56,6 +56,6 @@ export async function GET(req: Request) {
     })
   } catch (e) {
     console.error('[ADMIN_REKBER_COMPLAINTS_GET]', e)
-    return apiError('Gagal memuat komplain rekber', 500)
+    return apiError('Gagal memuat komplain transaksi aman', 500)
   }
 }

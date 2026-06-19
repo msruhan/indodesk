@@ -174,7 +174,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardDto> {
     { name: 'Digital', value: Math.round((totalImei / totalForMix) * 100), color: '#10b981' },
     { name: 'Server', value: Math.round((totalServer / totalForMix) * 100), color: '#06b6d4' },
     { name: 'Top Up', value: Math.round((totalTopup / totalForMix) * 100), color: '#f59e0b' },
-    { name: 'Rekber', value: Math.round((totalRekber / totalForMix) * 100), color: '#ec4899' },
+    { name: 'Transaksi Aman', value: Math.round((totalRekber / totalForMix) * 100), color: '#ec4899' },
   ].filter((x) => x.value > 0)
 
   const productViews = await prisma.product.aggregate({ _sum: { views: true } })
@@ -226,8 +226,8 @@ export async function getAdminDashboardData(): Promise<AdminDashboardDto> {
 
   if (rekberHeld > 0) {
     insights.push({
-      title: `${rekberHeld} rekber dana ditahan`,
-      description: 'Pantau escrow yang perlu mediasi atau release di modul Rekber.',
+      title: `${rekberHeld} transaksi aman dana ditahan`,
+      description: 'Pantau escrow yang perlu mediasi atau release di modul Transaksi Aman.',
       tone: 'warning',
     })
   }

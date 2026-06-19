@@ -19,6 +19,6 @@ export async function GET() {
     return apiSuccess({ items, stats: buildRekberStats(items) })
   } catch (e) {
     console.error('[ADMIN_REKBER_GET]', e)
-    return apiError('Gagal memuat rekber', 500)
+    return apiError('Gagal memuat transaksi aman', 500)
   }
 }

@@ -45,7 +45,7 @@ const benefits = [
     icon: Shield,
     title: 'Transaksi Aman',
     description:
-      'Sistem rekber (escrow) melindungi buyer dan seller. Transaksi dilakukan dengan aman melalui mediator admin.',
+      'Sistem transaksi aman (escrow) melindungi buyer dan seller. Transaksi dilakukan dengan aman melalui mediator admin.',
     stat: 100,
     statSuffix: '%',
     statPrefix: '',
@@ -66,7 +66,7 @@ const benefits = [
 const checklistItems = [
   'Marketplace terintegrasi',
   'Konsultasi online real-time',
-  'Sistem rekber aman',
+  'Sistem transaksi aman',
   'Rating & review terpercaya',
   'Lowongan kerja teknisi',
   'Chat real-time',
@@ -107,7 +107,7 @@ export function Benefits() {
             <span className="gradient-text-static"> Dibantoo-in.</span>
           </h2>
           <p className="mt-4 text-pretty text-base text-surface-600 sm:text-lg">
-            Seller: fee marketplace lebih masuk akal. Buyer: rekber & teknisi terverifikasi. Satu
+            Seller: fee marketplace lebih masuk akal. Buyer: transaksi aman & teknisi terverifikasi. Satu
             platform untuk ekosistem teknisi handphone Indonesia.
           </p>
         </Reveal>

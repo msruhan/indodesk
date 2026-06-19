@@ -338,7 +338,7 @@ export async function GET(req: Request) {
             orderCode: o.orderCode,
             user: { ...o.buyer, role: o.buyer.role },
             seller: o.seller,
-            title: o.description ?? 'Rekber transaction',
+            title: o.description ?? 'Transaksi aman',
             amount: o.amount.toString(),
             platformRevenue: rekberPlatformRevenue(o.status, o.fee),
             status: o.status,
