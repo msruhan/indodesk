@@ -134,9 +134,15 @@ export async function sendTelegramMessage(
 
 let cachedBotUsername: string | null | undefined
 
-/** Username bot dari getMe (sumber utama) atau env; hindari nama tampilan bot yang bukan @username. */
+/** Username bot: env (konfigurasi eksplisit) lalu getMe sebagai fallback. */
 export async function resolveTelegramBotUsername(): Promise<string | null> {
   if (cachedBotUsername) return cachedBotUsername
+
+  const fromEnv = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME?.trim().replace(/^@/, '')
+  if (fromEnv) {
+    cachedBotUsername = fromEnv
+    return cachedBotUsername
+  }
 
   if (TELEGRAM_BOT_TOKEN) {
     const info = await getTelegramBotInfo()
@@ -146,8 +152,7 @@ export async function resolveTelegramBotUsername(): Promise<string | null> {
     }
   }
 
-  const fromEnv = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME?.trim().replace(/^@/, '')
-  return fromEnv || null
+  return null
 }
 
 export function buildTelegramDeepLink(username: string, startParam: string): string {

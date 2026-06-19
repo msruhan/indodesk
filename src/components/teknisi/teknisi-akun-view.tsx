@@ -164,16 +164,16 @@ function PengaturanTabContent() {
             </p>
           </div>
 
-          <div className="rounded-2xl border border-surface-200/70 bg-white/70 p-4">
+          <div className="rounded-2xl border border-surface-200/70 bg-surface-50/50 p-4 opacity-75">
             <div className="mb-3 flex items-start justify-between gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-100 text-surface-400">
                 <MessageCircle className="h-5 w-5" />
               </span>
-              <Badge variant="success">Aktif</Badge>
+              <Badge variant="outline">Coming Soon</Badge>
             </div>
-            <p className="text-sm font-semibold text-ink">WhatsApp reminders</p>
-            <p className="mt-1 text-xs leading-relaxed text-surface-500">
-              Reminder konsultasi dan remote masuk ke WhatsApp.
+            <p className="text-sm font-semibold text-surface-500">WhatsApp reminders</p>
+            <p className="mt-1 text-xs leading-relaxed text-surface-400">
+              Reminder konsultasi dan remote via WhatsApp — segera hadir.
             </p>
           </div>
 
