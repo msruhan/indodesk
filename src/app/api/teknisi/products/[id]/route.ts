@@ -14,6 +14,7 @@ import {
 } from '@/lib/product-listing-review'
 import { couponInputToDb, parseCouponFromForm } from '@/lib/product-coupon'
 import { serializeTeknisiProduct } from '@/lib/product-serializer'
+import { notifyProductPublishedIfTransition } from '@/lib/telegram/notify'
 import {
   parseBenchmarkFieldsFromForm,
   parseProductSpecsFromForm,
@@ -198,6 +199,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         where: { id },
         data,
       })
+      if (togglePublish === 'true' && product.isPublished && !existing.isPublished) {
+        void notifyProductPublishedIfTransition(product.id, false)
+      }
       return apiSuccess(serializeTeknisiProduct(product))
     }
 
@@ -223,6 +227,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       where: { id },
       data,
     })
+    if (togglePublish && product.isPublished && !existing.isPublished) {
+      void notifyProductPublishedIfTransition(product.id, false)
+    }
     return apiSuccess(serializeTeknisiProduct(product))
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Gagal memperbarui produk'

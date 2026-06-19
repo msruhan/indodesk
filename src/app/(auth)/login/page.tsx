@@ -196,6 +196,9 @@ function LoginForm() {
   const [needs2FA, setNeeds2FA] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [info, setInfo] = useState<string | null>(null)
+  const [emailNotVerified, setEmailNotVerified] = useState(false)
+  const [resendingVerification, setResendingVerification] = useState(false)
   const [comingSoonActive, setComingSoonActive] = useState(false)
 
   useEffect(() => {
@@ -215,6 +218,8 @@ function LoginForm() {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
+    setInfo(null)
+    setEmailNotVerified(false)
 
     const result = await login(email, password, needs2FA ? totp : undefined)
 
@@ -227,6 +232,9 @@ function LoginForm() {
 
     if (!result.success) {
       setError(result.error || 'Login gagal')
+      if (result.code === 'EMAIL_NOT_VERIFIED') {
+        setEmailNotVerified(true)
+      }
       setIsLoading(false)
       return
     }
@@ -248,6 +256,36 @@ function LoginForm() {
     }
     router.refresh()
     setIsLoading(false)
+  }
+
+  const handleResendVerification = async () => {
+    if (!email.trim() || !password) {
+      setError('Isi email dan password terlebih dahulu.')
+      return
+    }
+
+    setResendingVerification(true)
+    setError(null)
+    setInfo(null)
+
+    try {
+      const res = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        setError(json.error ?? 'Gagal mengirim email verifikasi')
+        return
+      }
+      setInfo(json.data?.message ?? 'Email verifikasi telah dikirim. Periksa inbox Anda.')
+      setEmailNotVerified(false)
+    } catch {
+      setError('Gagal menghubungi server')
+    } finally {
+      setResendingVerification(false)
+    }
   }
 
   return (
@@ -302,6 +340,26 @@ function LoginForm() {
               {error && (
                 <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                   {error}
+                </div>
+              )}
+              {info && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                  {info}
+                </div>
+              )}
+              {emailNotVerified && (
+                <div className="rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-primary-900">
+                  <p>Belum menerima email? Kami bisa kirim ulang tautan verifikasi ke inbox Anda.</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-3 w-full"
+                    disabled={resendingVerification || isLoading}
+                    onClick={() => void handleResendVerification()}
+                  >
+                    {resendingVerification ? 'Mengirim…' : 'Kirim ulang email verifikasi'}
+                  </Button>
                 </div>
               )}
 

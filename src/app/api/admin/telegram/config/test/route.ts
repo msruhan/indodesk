@@ -24,7 +24,12 @@ export async function POST() {
   )
 
   if (!result.success) {
-    return apiError(result.error ?? 'Gagal mengirim pesan uji', 502)
+    const base = result.error ?? 'Gagal mengirim pesan uji'
+    const hint =
+      /chat not found|not enough rights|Forbidden/i.test(base)
+        ? ' Tambahkan @bantoo_bot sebagai admin channel Telegram, lalu coba lagi.'
+        : ''
+    return apiError(base + hint, 502)
   }
 
   return apiSuccess({ sent: true })

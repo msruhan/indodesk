@@ -19,6 +19,13 @@ describe('renderTelegramTemplate', () => {
     const out = renderTelegramTemplate('{{nama}}', { nama: 'test_name' })
     expect(out).toBe('test\\_name')
   })
+
+  it('wraps link placeholders as clickable markdown links', () => {
+    const out = renderTelegramTemplate('👉 {{linkProduk}}', {
+      linkProduk: 'https://bantoo.in/marketplace/products/abc',
+    })
+    expect(out).toBe('👉 [LINK PRODUK](https://bantoo.in/marketplace/products/abc)')
+  })
 })
 
 describe('escapeTelegramMarkdown', () => {

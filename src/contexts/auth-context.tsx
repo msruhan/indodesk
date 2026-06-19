@@ -21,7 +21,7 @@ interface AuthContextType {
     email: string,
     password: string,
     totp?: string,
-  ) => Promise<{ success: boolean; error?: string; requires2FA?: boolean }>
+  ) => Promise<{ success: boolean; error?: string; requires2FA?: boolean; code?: string }>
   register: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>
   registerTeknisi: (payload: Record<string, unknown>) => Promise<{ success: boolean; error?: string; message?: string }>
   logout: () => Promise<void>
@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: string,
       password: string,
       totp?: string,
-    ): Promise<{ success: boolean; error?: string; requires2FA?: boolean }> => {
+    ): Promise<{ success: boolean; error?: string; requires2FA?: boolean; code?: string }> => {
       try {
         if (!totp) {
           const checkRes = await fetch('/api/auth/check-login', {
@@ -80,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return {
               success: false,
               error: (checkData.error as string | undefined) || 'Email atau password salah',
+              code: checkData.code as string | undefined,
             }
           }
           const checkPayload = checkData.data as { requires2FA?: boolean } | undefined
