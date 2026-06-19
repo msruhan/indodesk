@@ -10,7 +10,7 @@ import {
   recordLoginFailure,
 } from '@/lib/lockout'
 import { getClientIp, RATE_LIMITS, withRateLimit, rateLimitResponse } from '@/lib/rate-limit-store'
-import { LOGIN_EMAIL_NOT_VERIFIED_MESSAGE } from '@/lib/auth/login-email-guard'
+import { isLoginEmailVerified, LOGIN_EMAIL_NOT_VERIFIED_MESSAGE } from '@/lib/auth/login-email-guard'
 import {
   COMING_SOON_ADMIN_ONLY_LOGIN_MESSAGE,
   isComingSoonEnabled,
