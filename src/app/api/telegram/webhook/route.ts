@@ -18,10 +18,12 @@ export async function POST(req: NextRequest) {
     if (update.message?.text) {
       const message = update.message
       const chatId = message.chat.id
-      const text = message.text.trim()
+      const rawText = message.text
       const telegramUser = message.from
 
-      if (!text) return NextResponse.json({ success: true })
+      if (!rawText?.trim()) return NextResponse.json({ success: true })
+
+      const text = rawText.trim()
 
       if (text.startsWith('/start')) {
         const token = text.replace(/^\/start\s*/i, '').trim()
