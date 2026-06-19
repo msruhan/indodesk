@@ -11,6 +11,10 @@ import {
 } from '@/lib/lockout'
 import { getClientIp, RATE_LIMITS, withRateLimit, rateLimitResponse } from '@/lib/rate-limit-store'
 import { LOGIN_EMAIL_NOT_VERIFIED_MESSAGE } from '@/lib/auth/login-email-guard'
+import {
+  COMING_SOON_ADMIN_ONLY_LOGIN_MESSAGE,
+  isComingSoonEnabled,
+} from '@/lib/coming-soon-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -101,6 +105,10 @@ export async function POST(req: Request) {
       return apiError('Akun tidak aktif. Hubungi dukungan Bantoo.', 403, {
         code: 'ACCOUNT_INACTIVE',
       })
+    }
+
+    if ((await isComingSoonEnabled()) && user.role !== 'ADMIN') {
+      return apiError(COMING_SOON_ADMIN_ONLY_LOGIN_MESSAGE, 403, { code: 'COMING_SOON' })
     }
 
     return apiSuccess({ requires2FA: user.twoFactorEnabled })

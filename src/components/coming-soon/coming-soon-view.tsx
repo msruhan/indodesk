@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { BrandLogo } from '@/components/brand/brand-logo'
 import { AuroraBackground } from '@/components/motion'
@@ -194,14 +193,8 @@ export function ComingSoonView({
         </motion.div>
       </main>
 
-      <footer className="relative z-10 flex flex-col items-center gap-2 px-6 pb-8 text-center text-xs text-surface-400">
+      <footer className="relative z-10 px-6 pb-8 text-center text-xs text-surface-400">
         <p>© {new Date().getFullYear()} Bantoo · Marketplace & ekosistem teknisi HP</p>
-        <Link
-          href="/login?callbackUrl=/admin/visibility"
-          className="text-[11px] text-surface-400/80 transition hover:text-surface-600"
-        >
-          Masuk admin
-        </Link>
       </footer>
     </div>
   )

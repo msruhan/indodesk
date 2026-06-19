@@ -15,6 +15,9 @@ import { getCachedSessionVersion, setCachedSessionVersion } from '@/lib/session-
 import { bumpSessionVersion } from '@/lib/session-version'
 import { isLoginEmailVerified } from '@/lib/auth/login-email-guard'
 import { getRequestContext } from '@/lib/request-context'
+import {
+  isComingSoonEnabled,
+} from '@/lib/coming-soon-server'
 
 import { isGoogleAuthEnabled } from '@/lib/google-auth-enabled'
 import { evaluateGoogleSignIn } from '@/lib/auth/google-oauth-policy'
@@ -51,6 +54,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       })
       if (!dbUser?.isActive) return false
       if (!isLoginEmailVerified(dbUser)) return false
+
+      if ((await isComingSoonEnabled()) && dbUser.role !== 'ADMIN') {
+        return `/login?error=${encodeURIComponent('coming_soon_admin_only')}`
+      }
 
       const guard = await checkTeknisiLoginGuard(user.id, dbUser.role)
       return guard.allowed
@@ -247,6 +254,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
 
         if (!user.isActive) {
+          return null
+        }
+
+        if ((await isComingSoonEnabled()) && user.role !== 'ADMIN') {
           return null
         }
 

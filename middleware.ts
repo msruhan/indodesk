@@ -121,6 +121,20 @@ export const middleware = auth(async (req) => {
     }
   }
 
+  /** Sesi non-admin saat coming soon — paksa ke halaman gate (admin tetap bypass penuh). */
+  if (
+    !isComingSoonForceDisabled() &&
+    session?.user?.role &&
+    session.user.role !== 'ADMIN'
+  ) {
+    const comingSoon = await getCachedComingSoon()
+    if (comingSoon?.enabled && pathname !== '/coming-soon' && pathname !== '/login') {
+      return finalize(req, pathname, () =>
+        NextResponse.redirect(new URL('/coming-soon', req.nextUrl.origin)),
+      )
+    }
+  }
+
   const matchedRoute = matchProtectedRoute(pathname)
   if (matchedRoute) {
     if (!session?.user) {

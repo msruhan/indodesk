@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { logAuthEvent } from '@/lib/activity-log'
 import { checkTeknisiLoginGuard } from '@/lib/teknisi-login-guard'
 import { readGoogleLinkIntentUserId } from '@/lib/auth/google-link-cookie'
+import { isComingSoonEnabled } from '@/lib/coming-soon-server'
 
 type DbUserPick = Pick<User, 'id' | 'isActive' | 'role' | 'twoFactorEnabled' | 'email'>
 
@@ -82,6 +83,10 @@ export async function evaluateGoogleSignIn(input: GoogleSignInInput): Promise<Go
 
   const dbUser = await resolveDbUser(input.userId, email)
   if (!dbUser) return deny('not_registered')
+
+  if ((await isComingSoonEnabled()) && dbUser.role !== 'ADMIN') {
+    return deny('coming_soon_admin_only')
+  }
 
   const linkIntentUserId = input.linkIntentUserId ?? (await readGoogleLinkIntentUserId())
   const googleAccount = await findGoogleAccount(dbUser.id)

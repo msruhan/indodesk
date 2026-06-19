@@ -166,9 +166,8 @@ export function AdminComingSoonForm() {
               Jika terlogout saat mode aktif, buka{' '}
               <Link href="/login?callbackUrl=/admin/visibility" className="font-medium text-primary-700 hover:underline">
                 /login
-              </Link>{' '}
-              (atau tautan &quot;Masuk admin&quot; di footer coming soon), login sebagai admin, lalu
-              matikan toggle di halaman ini.
+              </Link>
+              , login sebagai admin, lalu matikan toggle di halaman ini.
             </p>
           </div>
         </div>

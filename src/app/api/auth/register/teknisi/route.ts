@@ -8,8 +8,19 @@ import {
   teknisiRegisterSchema,
 } from '@/lib/teknisi-registration'
 import { sendEmailVerification } from '@/lib/email-verification'
+import {
+  COMING_SOON_ADMIN_ONLY_LOGIN_MESSAGE,
+  isComingSoonEnabled,
+} from '@/lib/coming-soon-server'
 
 export async function POST(req: Request) {
+  if (await isComingSoonEnabled()) {
+    return NextResponse.json(
+      { success: false, error: COMING_SOON_ADMIN_ONLY_LOGIN_MESSAGE, code: 'COMING_SOON' },
+      { status: 503 },
+    )
+  }
+
   const ip = getClientIp(req)
   const rl = await withRateLimit(req, ['auth', 'register-teknisi', ip], RATE_LIMITS.auth)
   if (!rl.allowed) {

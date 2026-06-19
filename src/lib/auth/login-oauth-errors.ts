@@ -18,6 +18,8 @@ const LOGIN_OAUTH_ERROR_MESSAGES: Record<string, string> = {
   google_already_linked: 'Google sudah terhubung ke akun ini.',
   teknisi_blocked:
     'Akun teknisi belum dapat digunakan. Periksa status pendaftaran atau hubungi admin.',
+  coming_soon_admin_only:
+    'Platform dalam soft launch. Hanya admin yang dapat login saat ini.',
   AccessDenied:
     'Login Google ditolak. Pastikan akun sudah terdaftar dan Google sudah dihubungkan di Profil.',
   Configuration: 'Login Google belum dikonfigurasi dengan benar. Hubungi administrator.',

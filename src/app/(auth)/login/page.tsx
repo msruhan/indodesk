@@ -196,6 +196,16 @@ function LoginForm() {
   const [needs2FA, setNeeds2FA] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [comingSoonActive, setComingSoonActive] = useState(false)
+
+  useEffect(() => {
+    void fetch('/api/public/coming-soon')
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.success && json.data?.enabled) setComingSoonActive(true)
+      })
+      .catch(() => {})
+  }, [])
 
   const handleOAuthError = useCallback((message: string) => {
     setError(message)
@@ -264,7 +274,9 @@ function LoginForm() {
                   ? 'Buat password baru untuk akun Anda'
                   : needs2FA
                     ? 'Kode 6 digit dari Authenticator, atau kode cadangan (XXXX-XXXX)'
-                    : 'Platform ekosistem teknisi handphone Indonesia'}
+                    : comingSoonActive
+                      ? 'Soft launch — login khusus admin'
+                      : 'Platform ekosistem teknisi handphone Indonesia'}
               </CardDescription>
             </div>
           </CardHeader>
@@ -272,6 +284,12 @@ function LoginForm() {
           <CardContent>
             <OAuthErrorSync onError={handleOAuthError} />
             <VerifyStatusBanner />
+            {comingSoonActive && !resetToken && (
+              <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                Platform dalam persiapan peluncuran. Pendaftaran user/teknisi ditutup sementara.
+                Hanya akun <strong>admin</strong> yang dapat masuk.
+              </div>
+            )}
             {resetToken ? (
               <ResetPasswordForm token={resetToken} />
             ) : (
@@ -370,7 +388,7 @@ function LoginForm() {
             </form>
             )}
 
-            {!resetToken && !needs2FA && (
+            {!resetToken && !needs2FA && !comingSoonActive && (
               <GoogleAuthDivider
                 callbackUrl={
                   searchParams.get('callbackUrl') && isSafeCallbackUrl(searchParams.get('callbackUrl')!)
@@ -382,24 +400,26 @@ function LoginForm() {
           </CardContent>
 
           <CardFooter className="flex flex-col gap-3">
-            <div className="text-center text-sm text-surface-600">
-              Belum punya akun?{' '}
-              <Link
-                href="/register"
-                className="font-medium text-primary-700 hover:text-primary-800 hover:underline underline-offset-4"
-              >
-                Daftar user
-              </Link>
-              {' · '}
-              <Link
-                href="/register/teknisi"
-                className="font-medium text-primary-700 hover:text-primary-800 hover:underline underline-offset-4"
-              >
-                Daftar teknisi
-              </Link>
-            </div>
+            {!comingSoonActive ? (
+              <div className="text-center text-sm text-surface-600">
+                Belum punya akun?{' '}
+                <Link
+                  href="/register"
+                  className="font-medium text-primary-700 hover:text-primary-800 hover:underline underline-offset-4"
+                >
+                  Daftar user
+                </Link>
+                {' · '}
+                <Link
+                  href="/register/teknisi"
+                  className="font-medium text-primary-700 hover:text-primary-800 hover:underline underline-offset-4"
+                >
+                  Daftar teknisi
+                </Link>
+              </div>
+            ) : null}
             <Link
-              href="/"
+              href={comingSoonActive ? '/coming-soon' : '/'}
               className="text-center text-sm text-surface-500 hover:text-ink transition-colors"
             >
               ← Kembali ke beranda

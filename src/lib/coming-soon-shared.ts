@@ -27,9 +27,12 @@ export function isComingSoonBypassPath(pathname: string): boolean {
   if (pathname === '/lupa-password') return true
   if (pathname === '/auth/continue' || pathname.startsWith('/auth/')) return true
   if (pathname.startsWith('/admin')) return true
-  if (pathname.startsWith('/api/auth')) return true
   if (pathname.startsWith('/api/admin')) return true
   if (pathname.startsWith('/api/public/coming-soon')) return true
+  /** Registrasi ditutup saat soft launch */
+  if (pathname === '/register' || pathname.startsWith('/register/')) return false
+  if (pathname.startsWith('/api/auth/register')) return false
+  if (pathname.startsWith('/api/auth')) return true
   /** Logo & aset statis publik — harus tetap bisa dimuat di halaman coming soon */
   if (pathname.startsWith('/icon/')) return true
   return false
