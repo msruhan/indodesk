@@ -35,7 +35,9 @@ async function tripayFetch<T>(
   const json = (await res.json()) as TripayApiResponse<T>
   if (!res.ok || !json.success) {
     const msg = json.message || `Tripay HTTP ${res.status}`
-    throw new Error(msg)
+    const err = new Error(msg) as Error & { tripayStatus?: number }
+    err.tripayStatus = res.status
+    throw err
   }
   return json
 }
@@ -53,11 +55,15 @@ export async function tripayFeeCalculator(
     code: channelCode,
     amount: String(amount),
   })
-  const json = await tripayFetch<TripayFeeCalculatorResult>(
+  const json = await tripayFetch<TripayFeeCalculatorResult | TripayFeeCalculatorResult[]>(
     `/merchant/fee-calculator?${qs.toString()}`,
   )
   if (!json.data) throw new Error('Tripay fee calculator returned empty data')
-  return json.data
+  const row = Array.isArray(json.data)
+    ? json.data.find((item) => item.code === channelCode) ?? json.data[0]
+    : json.data
+  if (!row) throw new Error('Tripay fee calculator returned empty data')
+  return row
 }
 
 export type CreateTripayTransactionInput = {
@@ -96,7 +102,9 @@ export async function tripayCreateTransaction(
 
   if (input.customerPhone) formBody.customer_phone = input.customerPhone
   if (input.returnUrl) formBody.return_url = input.returnUrl
-  if (input.expiredTimeSeconds) formBody.expired_time = String(input.expiredTimeSeconds)
+  if (input.expiredTimeSeconds) {
+    formBody.expired_time = String(Math.floor(Date.now() / 1000) + input.expiredTimeSeconds)
+  }
 
   const json = await tripayFetch<TripayCreateTransactionResult>('/transaction/create', {
     method: 'POST',

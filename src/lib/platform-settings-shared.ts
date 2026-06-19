@@ -4,6 +4,11 @@
  * me-reekspor isi file ini supaya kontrak tetap konsisten.
  */
 
+import {
+  DEFAULT_COMING_SOON_HEADLINE,
+  DEFAULT_COMING_SOON_MESSAGE,
+} from '@/lib/coming-soon-shared'
+
 export const PLATFORM_SETTING_KEYS = [
   'platform_name',
   'support_email',
@@ -19,6 +24,10 @@ export const PLATFORM_SETTING_KEYS = [
   'cari_teknisi_enabled',
   'konsultasi_service_enabled',
   'rekber_service_enabled',
+  'coming_soon_enabled',
+  'coming_soon_launch_at',
+  'coming_soon_headline',
+  'coming_soon_message',
 ] as const
 
 export type PlatformSettingKey = (typeof PLATFORM_SETTING_KEYS)[number]
@@ -62,11 +71,17 @@ export type PlatformSettingsDto = {
    * dan halaman layanan transaksi aman ditampilkan. ADMIN tetap memiliki akses panel admin.
    */
   rekberServiceEnabled: boolean
+  /** Soft launch: arahkan seluruh halaman publik ke /coming-soon. Admin tetap bypass. */
+  comingSoonEnabled: boolean
+  /** ISO datetime target peluncuran untuk countdown (opsional). */
+  comingSoonLaunchAt: string | null
+  comingSoonHeadline: string
+  comingSoonMessage: string
 }
 
 export const DEFAULT_PLATFORM_SETTINGS: PlatformSettingsDto = {
   platformName: 'Bantoo',
-  supportEmail: 'support@bantoo.in',
+  supportEmail: 'hello@bantoo.in',
   supportPhone: '0800-1234-5678',
   adminEmail: 'admin@bantoo.in',
   buyerFeePercent: 2,
@@ -78,6 +93,10 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettingsDto = {
   cariTeknisiEnabled: true,
   konsultasiServiceEnabled: true,
   rekberServiceEnabled: true,
+  comingSoonEnabled: false,
+  comingSoonLaunchAt: null,
+  comingSoonHeadline: DEFAULT_COMING_SOON_HEADLINE,
+  comingSoonMessage: DEFAULT_COMING_SOON_MESSAGE,
 }
 
 /**

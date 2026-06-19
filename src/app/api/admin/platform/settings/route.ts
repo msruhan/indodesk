@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { logAdminGovernance } from '@/lib/admin-audit'
-import { getPlatformSettings, savePlatformSettings } from '@/lib/platform-settings'
+import { getPlatformSettings, savePlatformSettings, warmComingSoonCache } from '@/lib/platform-settings'
 import { verifyAdminStepUp, StepUpAuthError } from '@/lib/wallet/admin-step-up'
 import { adminStepUpFields } from '@/lib/wallet/admin-step-up-schema'
 
@@ -15,6 +15,10 @@ const settingsSchema = z.object({
   buyerFeePercent: z.number().min(0).max(100),
   sellerFeePercent: z.number().min(0).max(100),
   maintenanceMode: z.boolean(),
+  comingSoonEnabled: z.boolean(),
+  comingSoonLaunchAt: z.string().nullable(),
+  comingSoonHeadline: z.string().min(2).max(160),
+  comingSoonMessage: z.string().min(2).max(500),
   imeiServiceEnabled: z.boolean(),
   remoteServiceEnabled: z.boolean(),
   inspectionServiceEnabled: z.boolean(),
@@ -30,6 +34,7 @@ export async function GET() {
 
   try {
     const settings = await getPlatformSettings()
+    await warmComingSoonCache()
     return apiSuccess(settings)
   } catch (e) {
     console.error('[ADMIN_PLATFORM_SETTINGS_GET]', e)
@@ -71,6 +76,7 @@ export async function PATCH(req: Request) {
       severity: 'WARNING',
       metadata: {
         maintenanceMode: settings.maintenanceMode,
+        comingSoonEnabled: settings.comingSoonEnabled,
         buyerFeePercent: settings.buyerFeePercent,
         sellerFeePercent: settings.sellerFeePercent,
         adminEmail: settings.adminEmail,

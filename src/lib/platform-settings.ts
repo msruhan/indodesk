@@ -14,6 +14,10 @@ import {
   type PublicFeatureFlags,
 } from '@/lib/platform-settings-shared'
 import { isGoogleAuthEnabled } from '@/lib/google-auth-enabled'
+import {
+  type ComingSoonConfig,
+} from '@/lib/coming-soon-shared'
+import { setCachedComingSoon } from '@/lib/coming-soon-cache'
 
 export {
   DEFAULT_PLATFORM_SETTINGS,
@@ -43,6 +47,10 @@ const KEY_MAP: Record<PlatformSettingKey, keyof PlatformSettingsDto | null> = {
   cari_teknisi_enabled: 'cariTeknisiEnabled',
   konsultasi_service_enabled: 'konsultasiServiceEnabled',
   rekber_service_enabled: 'rekberServiceEnabled',
+  coming_soon_enabled: 'comingSoonEnabled',
+  coming_soon_launch_at: 'comingSoonLaunchAt',
+  coming_soon_headline: 'comingSoonHeadline',
+  coming_soon_message: 'comingSoonMessage',
 }
 
 const REVERSE_KEY_MAP = Object.fromEntries(
@@ -81,6 +89,22 @@ function dtoToRows(dto: PlatformSettingsDto): Array<{ key: string; value: string
       key: 'rekber_service_enabled',
       value: dto.rekberServiceEnabled ? 'true' : 'false',
     },
+    {
+      key: 'coming_soon_enabled',
+      value: dto.comingSoonEnabled ? 'true' : 'false',
+    },
+    {
+      key: 'coming_soon_launch_at',
+      value: dto.comingSoonLaunchAt ?? '',
+    },
+    {
+      key: 'coming_soon_headline',
+      value: dto.comingSoonHeadline,
+    },
+    {
+      key: 'coming_soon_message',
+      value: dto.comingSoonMessage,
+    },
   ]
 }
 
@@ -109,7 +133,29 @@ function rowToDto(rows: Array<{ key: string; value: string }>): PlatformSettings
       (map.get('cari_teknisi_enabled') ?? map.get('teknisi_room_enabled') ?? 'true') === 'true',
     konsultasiServiceEnabled: (map.get('konsultasi_service_enabled') ?? 'true') === 'true',
     rekberServiceEnabled: (map.get('rekber_service_enabled') ?? 'true') === 'true',
+    comingSoonEnabled: map.get('coming_soon_enabled') === 'true',
+    comingSoonLaunchAt: (() => {
+      const raw = map.get('coming_soon_launch_at')?.trim()
+      return raw ? raw : null
+    })(),
+    comingSoonHeadline:
+      map.get('coming_soon_headline')?.trim() || DEFAULT_PLATFORM_SETTINGS.comingSoonHeadline,
+    comingSoonMessage:
+      map.get('coming_soon_message')?.trim() || DEFAULT_PLATFORM_SETTINGS.comingSoonMessage,
   }
+}
+
+function settingsToComingSoonConfig(dto: PlatformSettingsDto): ComingSoonConfig {
+  return {
+    enabled: dto.comingSoonEnabled,
+    launchAt: dto.comingSoonLaunchAt,
+    headline: dto.comingSoonHeadline,
+    message: dto.comingSoonMessage,
+  }
+}
+
+async function syncComingSoonCache(dto: PlatformSettingsDto): Promise<void> {
+  await setCachedComingSoon(settingsToComingSoonConfig(dto))
 }
 
 export async function getPlatformSettings(): Promise<PlatformSettingsDto> {
@@ -129,7 +175,22 @@ export async function savePlatformSettings(dto: PlatformSettingsDto): Promise<Pl
       }),
     ),
   )
-  return getPlatformSettings()
+  const saved = await getPlatformSettings()
+  await syncComingSoonCache(saved)
+  return saved
+}
+
+export async function warmComingSoonCache(): Promise<void> {
+  const dto = await getPlatformSettings()
+  await syncComingSoonCache(dto)
+}
+
+/** Public config for halaman coming soon — sekaligus mem-warm cache edge. */
+export async function getPublicComingSoonConfig(): Promise<ComingSoonConfig> {
+  const dto = await getPlatformSettings()
+  const config = settingsToComingSoonConfig(dto)
+  await setCachedComingSoon(config)
+  return config
 }
 
 /** Public subset for help pages & footer */

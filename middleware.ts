@@ -10,6 +10,8 @@ import {
   generateCspNonce,
   withSecurityRequestHeaders,
 } from '@/lib/security/headers'
+import { getCachedComingSoon } from '@/lib/coming-soon-cache'
+import { shouldBypassComingSoon, isComingSoonForceDisabled } from '@/lib/coming-soon-shared'
 
 const { auth } = NextAuth(authConfig)
 
@@ -73,7 +75,7 @@ function finalize(
   return applySecurityHeadersToResponse(res, pathname, nonce) as NextResponse
 }
 
-export const middleware = auth((req) => {
+export const middleware = auth(async (req) => {
   const { pathname } = req.nextUrl
 
   if (req.method === 'OPTIONS' && pathname.startsWith('/api/')) {
@@ -94,6 +96,31 @@ export const middleware = auth((req) => {
   }
 
   const session = req.auth
+  const userRole = session?.user?.role as string | undefined
+
+  if (!isComingSoonForceDisabled() && !shouldBypassComingSoon(pathname, userRole)) {
+    const comingSoon = await getCachedComingSoon()
+    if (comingSoon?.enabled) {
+      if (pathname.startsWith('/api/')) {
+        return finalize(req, pathname, () =>
+          NextResponse.json(
+            {
+              success: false,
+              error: 'Platform sedang dalam persiapan peluncuran.',
+              code: 'COMING_SOON',
+            },
+            { status: 503 },
+          ),
+        )
+      }
+      if (pathname !== '/coming-soon') {
+        return finalize(req, pathname, () =>
+          NextResponse.redirect(new URL('/coming-soon', req.nextUrl.origin)),
+        )
+      }
+    }
+  }
+
   const matchedRoute = matchProtectedRoute(pathname)
   if (matchedRoute) {
     if (!session?.user) {

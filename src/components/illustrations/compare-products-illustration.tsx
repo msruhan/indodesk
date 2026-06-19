@@ -14,7 +14,6 @@ const ease = [0.22, 1, 0.36, 1] as const
 const pillars = [
   { label: 'Kondisi', weight: '30%', scoreA: 92, scoreB: 68 },
   { label: '3uTools', weight: '25%', scoreA: 88, scoreB: 72 },
-  { label: 'Spesifikasi', weight: '25%', scoreA: 100, scoreB: 75 },
 ]
 
 /**
@@ -162,8 +161,8 @@ function ProductMiniCard({
         </motion.span>
       )}
 
-      <div className="relative aspect-[3/4] overflow-hidden sm:aspect-[4/5]">
-        <MiniPhoneMockup model={phoneModel} animate={isInView} delay={delay + 0.1} />
+      <div className="relative flex items-center justify-center bg-gradient-to-b from-surface-50/80 to-white py-3 sm:py-3.5">
+        <MiniPhoneMockup model={phoneModel} variant="card" animate={isInView} delay={delay + 0.1} />
       </div>
 
       <div className="flex flex-col px-2 py-1.5">

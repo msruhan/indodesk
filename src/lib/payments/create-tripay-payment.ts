@@ -28,8 +28,10 @@ export async function createTripayPaymentIntent(input: CreateTripayPaymentInput)
   if (!user?.email) throw new Error('USER_EMAIL_MISSING')
 
   const feeResult = await tripayFeeCalculator(input.subtotal, input.channelCode)
-  const feeAmount = feeResult.total_fee.merchant + feeResult.total_fee.customer
-  const amount = input.subtotal + feeAmount
+  const merchantFee = feeResult.total_fee.merchant
+  const customerFee = feeResult.total_fee.customer
+  const feeAmount = merchantFee + customerFee
+  const amount = input.subtotal + customerFee
 
   const merchantRef = generateMerchantRef()
   const returnUrl = `${input.returnUrlBase}/payments/${merchantRef}?status=return`

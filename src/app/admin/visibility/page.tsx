@@ -1,6 +1,7 @@
 'use client'
 
 import { DashboardPageHeader, DashboardPanel } from '@/components/dashboard'
+import { AdminComingSoonForm } from '@/components/admin/admin-coming-soon-form'
 import { AdminFeatureFlagsForm } from '@/components/admin/admin-feature-flags-form'
 
 export default function AdminVisibilityPage() {
@@ -8,9 +9,16 @@ export default function AdminVisibilityPage() {
     <div className="space-y-6">
       <DashboardPageHeader
         eyebrow="Kontrol Admin"
-        title="Visibilitas Menu"
-        description="Atur menu fitur tertentu agar hanya tampil ke role yang sesuai. Perubahan langsung berlaku untuk seluruh pengguna platform."
+        title="Visibilitas & Soft Launch"
+        description="Atur mode coming soon untuk soft launch, serta visibilitas menu fitur untuk role yang sesuai."
       />
+
+      <DashboardPanel
+        title="Soft Launch — Coming Soon"
+        description="Aktifkan untuk mengarahkan seluruh halaman publik ke halaman countdown. Admin tetap dapat mengakses dashboard."
+      >
+        <AdminComingSoonForm />
+      </DashboardPanel>
 
       <DashboardPanel
         title="Pengaturan Visibilitas"
@@ -70,6 +78,14 @@ export default function AdminVisibilityPage() {
               <strong>Konsultasi</strong> mengontrol menu Konsultasi di dashboard user, serta menu
               Konsultasi &amp; Iklan Konsultasi di dashboard teknisi. Pemesanan konsultasi baru
               diblokir bila dimatikan.
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="mt-1 inline-flex h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary-500" />
+            <span>
+              <strong>Coming Soon</strong> mengarahkan seluruh halaman publik (landing, marketplace,
+              login, register, dll.) ke halaman soft launch. Hanya <strong>Admin</strong> yang dapat
+              bypass; teknisi dan user juga akan diarahkan sampai mode dimatikan.
             </span>
           </li>
           <li className="flex items-start gap-2">

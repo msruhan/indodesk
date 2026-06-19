@@ -70,6 +70,26 @@ async function main() {
   console.log('  fee pelanggan:', customerFee)
   console.log('  total dibayar:', total)
 
+  const doCreate = process.argv.includes('--create')
+  if (doCreate) {
+    const { tripayCreateTransaction } = await import('../src/lib/tripay/client')
+    const merchantRef = `SMOKE-${Date.now()}`
+    const payAmount = feeAmount + customerFee
+    console.log(`\nCreate transaction: Rp${payAmount.toLocaleString('id-ID')} via ${channelCode} …`)
+    const tx = await tripayCreateTransaction({
+      method: channelCode,
+      merchantRef,
+      amount: payAmount,
+      customerName: 'Smoke Test',
+      customerEmail: 'smoke-test@bantoo.in',
+      orderItems: [{ name: 'Topup Saldo Bantoo', price: feeAmount, quantity: 1 }],
+      returnUrl: 'https://bantoo.in/payments/smoke-test?status=return',
+      expiredTimeSeconds: 3600,
+    })
+    console.log('OK — reference:', tx.reference, '| status:', tx.status)
+    if (tx.qr_url) console.log('  qr_url:', tx.qr_url.slice(0, 72) + '…')
+  }
+
   console.log('\nLangkah uji di browser (setelah npm run dev):')
   console.log('  1. Login → Dompet → Top up saldo → pilih Tripay')
   console.log('  2. Atau checkout marketplace/konsultasi/topup saat saldo tidak cukup')

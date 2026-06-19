@@ -75,6 +75,7 @@ const PUBLIC_PATH_PREFIXES = [
   '/cart',
   '/legal',
   '/kontak',
+  '/coming-soon',
 ] as const
 
 function matchesPublicPrefix(pathname: string, prefix: string): boolean {

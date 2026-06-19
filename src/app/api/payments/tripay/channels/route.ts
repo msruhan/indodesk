@@ -14,7 +14,13 @@ export async function GET() {
 
   const cfg = getTripayConfig()
   if (!cfg.isConfigured) {
-    return apiError('Payment gateway belum dikonfigurasi', 503)
+    return apiError('Payment gateway belum dikonfigurasi. Set TRIPAY_* di server.', 503)
+  }
+  if (cfg.modeMismatch) {
+    return apiError(
+      'Konfigurasi Tripay tidak cocok: API Key sandbox (DEV-) harus TRIPAY_MODE=sandbox.',
+      503,
+    )
   }
 
   try {
@@ -28,12 +34,28 @@ export async function GET() {
         type: c.type,
         iconUrl: c.icon_url,
       }))
+    if (active.length === 0) {
+      return apiError(
+        'Tidak ada channel aktif. Aktifkan di Tripay → Sandbox → Channel Pembayaran.',
+        502,
+      )
+    }
     return apiSuccess(active)
   } catch (e) {
     console.error('[TRIPAY_CHANNELS]', e)
     const detail = e instanceof Error ? e.message : 'Gagal memuat channel pembayaran'
-    const message =
-      process.env.NODE_ENV === 'development' ? detail : 'Gagal memuat channel pembayaran'
+    const message = tripayErrorMessage(detail)
     return apiError(message, 502)
   }
+}
+
+function tripayErrorMessage(detail: string): string {
+  if (/invalid api key/i.test(detail)) {
+    return 'API Key Tripay tidak valid. Salin ulang dari dashboard Sandbox → Merchant, lalu update TRIPAY_* di server.'
+  }
+  if (/unauthorized|forbidden/i.test(detail)) {
+    return 'Autentikasi Tripay gagal. Periksa API Key, Private Key, dan Merchant Code.'
+  }
+  if (process.env.NODE_ENV === 'development') return detail
+  return 'Gagal memuat channel pembayaran'
 }

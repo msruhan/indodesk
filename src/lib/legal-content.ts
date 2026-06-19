@@ -1,4 +1,4 @@
-export const SUPPORT_EMAIL = 'hello@bantoo.id'
+export const SUPPORT_EMAIL = 'hello@bantoo.in'
 
 export const LEGAL_UPDATED_LABEL = 'Juni 2026'
 
