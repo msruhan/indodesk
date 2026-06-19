@@ -12,8 +12,9 @@ const outfit = Outfit({
 })
 
 export const metadata: Metadata = {
-  title: 'Bandoo - Platform Ekosistem Teknisi Handphone',
-  description: 'Platform terpadu untuk teknisi handphone, marketplace, konsultasi online, dan manajemen bisnis service handphone.',
+  title: 'Bantoo - Platform Ekosistem Digital',
+  description:
+    'Platform terpadu marketplace, rekber, layanan teknisi, konsultasi online, dan layanan digital untuk ekosistem teknologi Indonesia.',
 }
 
 export default async function RootLayout({
