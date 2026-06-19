@@ -3,11 +3,36 @@ import { getTelegramChannelChatId } from '@/lib/telegram/channel-config'
 import { getEventAudience, type TelegramEventKey } from '@/lib/telegram/template-defaults'
 import { renderTelegramTemplate } from '@/lib/telegram/template-render'
 import { getEffectiveTemplate } from '@/lib/telegram/template-store'
-import { isTelegramEnabled, sendTelegramMessage } from '@/lib/telegram'
+import { isTelegramEnabled, sendTelegramMessage, sendTelegramPhoto } from '@/lib/telegram'
 
 export type TelegramDispatchContext = {
   teknisiUserId?: string
   vars: Record<string, string | number | null | undefined>
+  /** URL HTTPS absolut — jika ada, kirim sendPhoto + caption alih-alih sendMessage. */
+  photoUrl?: string | null
+}
+
+async function deliverTelegramNotification(
+  chatId: string | number,
+  text: string,
+  photoUrl: string | null | undefined,
+  eventKey: string,
+): Promise<void> {
+  const parseMode = { parse_mode: 'Markdown' as const }
+
+  if (photoUrl?.trim()) {
+    const photoResult = await sendTelegramPhoto(chatId, photoUrl.trim(), text, parseMode)
+    if (photoResult.success) return
+    console.warn(
+      `[Telegram] sendPhoto gagal untuk ${eventKey}, fallback ke teks:`,
+      photoResult.error,
+    )
+  }
+
+  const result = await sendTelegramMessage(chatId, text, parseMode)
+  if (!result.success) {
+    console.error(`[Telegram] Gagal kirim ${eventKey}:`, result.error)
+  }
 }
 
 export async function dispatchTelegramEvent(
@@ -32,10 +57,7 @@ export async function dispatchTelegramEvent(
         console.warn(`[Telegram] Channel chat ID belum dikonfigurasi (${eventKey})`)
         return
       }
-      const result = await sendTelegramMessage(chatId, text, { parse_mode: 'Markdown' })
-      if (!result.success) {
-        console.error(`[Telegram] Gagal kirim ${eventKey} ke channel:`, result.error)
-      }
+      await deliverTelegramNotification(chatId, text, context.photoUrl, eventKey)
       return
     }
 
@@ -53,12 +75,7 @@ export async function dispatchTelegramEvent(
       return
     }
 
-    const result = await sendTelegramMessage(profile.telegramChatId, text, {
-      parse_mode: 'Markdown',
-    })
-    if (!result.success) {
-      console.error(`[Telegram] Gagal kirim ${eventKey} ke teknisi ${teknisiUserId}:`, result.error)
-    }
+    await deliverTelegramNotification(profile.telegramChatId, text, context.photoUrl, eventKey)
   } catch (error) {
     console.error(`[Telegram] dispatchTelegramEvent(${eventKey}) error:`, error)
   }

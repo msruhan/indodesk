@@ -59,6 +59,14 @@ export function getEmailAppUrl(): string {
   return (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000').replace(/\/$/, '')
 }
 
+/** Wordmark email — lebar tampilan (px); tinggi mengikuti rasio aset 1672×941. */
+export const EMAIL_WORDMARK_DISPLAY_WIDTH = 440
+export const EMAIL_WORDMARK_ASPECT = 1672 / 941
+
+export function getEmailWordmarkDisplayHeight(width = EMAIL_WORDMARK_DISPLAY_WIDTH): number {
+  return Math.round(width / EMAIL_WORDMARK_ASPECT)
+}
+
 function toneBox(tone: EmailTone): { bg: string; border: string } {
   switch (tone) {
     case 'warning':
@@ -138,6 +146,9 @@ export function renderEmailDocument(input: EmailTemplateInput): { html: string; 
     ? `<p style="margin:16px 0 0;font-size:12px;line-height:1.6;color:${EMAIL_THEME.muted};">${escapeHtml(input.footerNote)}</p>`
     : ''
 
+  const logoWidth = EMAIL_WORDMARK_DISPLAY_WIDTH
+  const logoHeight = getEmailWordmarkDisplayHeight(logoWidth)
+
   const html = `<!DOCTYPE html>
 <html lang="id">
 <head>
@@ -158,6 +169,7 @@ export function renderEmailDocument(input: EmailTemplateInput): { html: string; 
     @media only screen and (max-width: 620px) {
       .email-shell { width: 100% !important; }
       .email-body { padding: 24px 20px !important; }
+      .email-logo { max-width: 320px !important; width: 88% !important; }
     }
   </style>
 </head>
@@ -170,14 +182,15 @@ export function renderEmailDocument(input: EmailTemplateInput): { html: string; 
       <td align="center">
         <table role="presentation" class="email-shell" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
           <tr>
-            <td style="padding:0 0 20px;text-align:center;">
+            <td style="padding:8px 0 28px;text-align:center;">
               <a href="${escapeHtml(appUrl)}" style="text-decoration:none;display:inline-block;">
                 <img
+                  class="email-logo"
                   src="${escapeHtml(logoUrl)}"
                   alt="${escapeHtml(brand)}"
-                  width="200"
-                  height="48"
-                  style="display:block;margin:0 auto;border:0;outline:none;text-decoration:none;height:44px;width:auto;max-width:220px;"
+                  width="${logoWidth}"
+                  height="${logoHeight}"
+                  style="display:block;margin:0 auto;border:0;outline:none;text-decoration:none;width:${logoWidth}px;max-width:92%;height:auto;"
                 />
               </a>
             </td>

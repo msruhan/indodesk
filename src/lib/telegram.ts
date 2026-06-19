@@ -132,6 +132,54 @@ export async function sendTelegramMessage(
   }
 }
 
+/** Kirim foto dengan caption (Markdown/HTML) ke chat Telegram. */
+export async function sendTelegramPhoto(
+  chatId: string | number,
+  photoUrl: string,
+  caption: string,
+  options?: {
+    parse_mode?: 'Markdown' | 'HTML'
+    disable_notification?: boolean
+  },
+): Promise<{ success: boolean; error?: string }> {
+  if (!TELEGRAM_BOT_TOKEN) {
+    console.warn('[Telegram] Bot token tidak dikonfigurasi')
+    return { success: false, error: 'Bot token tidak dikonfigurasi' }
+  }
+
+  if (isStressTestMode()) {
+    await mockDelay(50)
+    return { success: true }
+  }
+
+  const safeCaption = caption.length > 1024 ? `${caption.slice(0, 1021)}…` : caption
+
+  try {
+    const response = await fetch(`${TELEGRAM_API_BASE}/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        photo: photoUrl,
+        caption: safeCaption,
+        ...options,
+      }),
+    })
+
+    const data = await response.json()
+
+    if (!response.ok || !data.ok) {
+      console.error('[Telegram] Gagal kirim foto:', data)
+      return { success: false, error: data.description || 'Gagal mengirim foto' }
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('[Telegram] Error kirim foto:', error)
+    return { success: false, error: 'Network error' }
+  }
+}
+
 let cachedBotUsername: string | null | undefined
 
 /** Username bot: env (konfigurasi eksplisit) lalu getMe sebagai fallback. */
@@ -302,11 +350,12 @@ Balas segera untuk menjaga response time Anda!
 
 Halo ${name}! 👋
 
-Akun Bantoo Anda sudah terhubung dengan Telegram. Anda akan menerima notifikasi untuk:
+Akun Anda sudah terhubung dengan Bantoo Bot di Telegram. Anda akan menerima notifikasi untuk:
+• Pesanan dari pelanggan
 • Request konsultasi baru
-• Request remote & inspeksi
+• Request inspeksi
 • Payout siap dicairkan
-• Pesan dari pelanggan
+
 
 Anda bisa unlink kapan saja dari dashboard.
   `.trim(),
