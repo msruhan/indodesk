@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
         if (!userId) {
           await sendTelegramMessage(
             chatId,
-            '❌ Token verifikasi tidak valid atau sudah kedaluwarsa.\n\nSilakan generate token baru dari dashboard IndoTeknizi.',
+            '❌ Token verifikasi tidak valid atau sudah kedaluwarsa.\n\nSilakan generate token baru dari dashboard Bantoo.',
           )
           return NextResponse.json({ success: true })
         }
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
         await sendTelegramMessage(
           chatId,
           `
-📱 *IndoTeknizi Bot*
+📱 *Bantoo Bot*
 
 Bot ini digunakan untuk mengirim notifikasi ke teknisi.
 
@@ -83,7 +83,7 @@ Bot ini digunakan untuk mengirim notifikasi ke teknisi.
 /status - Cek status koneksi
 /help - Tampilkan bantuan ini
 
-Untuk menghubungkan akun, buka dashboard IndoTeknizi → Settings → Telegram, lalu klik "Hubungkan Telegram".
+Untuk menghubungkan akun, buka dashboard Bantoo → Settings → Telegram, lalu klik "Hubungkan Telegram".
           `.trim(),
           { parse_mode: 'Markdown' },
         )
@@ -99,7 +99,7 @@ Untuk menghubungkan akun, buka dashboard IndoTeknizi → Settings → Telegram, 
         if (!profile) {
           await sendTelegramMessage(
             chatId,
-            '❌ Akun Telegram Anda belum terhubung dengan IndoTeknizi.\n\nSilakan hubungkan dari dashboard.',
+            '❌ Akun Telegram Anda belum terhubung dengan Bantoo.\n\nSilakan hubungkan dari dashboard.',
           )
         } else {
           await sendTelegramMessage(

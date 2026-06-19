@@ -5,6 +5,8 @@ import { animate, useInView, useMotionValue } from 'framer-motion'
 
 interface AnimatedNumberProps {
   value: number
+  /** Delay before count-up starts (seconds) */
+  delay?: number
   /** Animation duration in seconds */
   duration?: number
   /** Locale used for Number formatting */
@@ -24,6 +26,7 @@ interface AnimatedNumberProps {
  */
 export function AnimatedNumber({
   value,
+  delay = 0,
   duration = 1.6,
   locale = 'id-ID',
   suffix = '',
@@ -37,19 +40,25 @@ export function AnimatedNumber({
 
   useEffect(() => {
     if (!isInView) return
-    const controls = animate(motion, value, {
-      duration,
-      ease: [0.22, 1, 0.36, 1],
-      onUpdate: (v) => {
-        if (!ref.current) return
-        ref.current.textContent = `${prefix}${v.toLocaleString(locale, {
-          minimumFractionDigits: decimals,
-          maximumFractionDigits: decimals,
-        })}${suffix}`
-      },
-    })
-    return () => controls.stop()
-  }, [isInView, motion, value, duration, locale, suffix, prefix, decimals])
+    let controls: ReturnType<typeof animate> | undefined
+    const timer = window.setTimeout(() => {
+      controls = animate(motion, value, {
+        duration,
+        ease: [0.22, 1, 0.36, 1],
+        onUpdate: (v) => {
+          if (!ref.current) return
+          ref.current.textContent = `${prefix}${v.toLocaleString(locale, {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals,
+          })}${suffix}`
+        },
+      })
+    }, delay * 1000)
+    return () => {
+      window.clearTimeout(timer)
+      controls?.stop()
+    }
+  }, [isInView, motion, value, delay, duration, locale, suffix, prefix, decimals])
 
   return (
     <span ref={ref} className={className}>

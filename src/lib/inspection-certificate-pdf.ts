@@ -56,7 +56,7 @@ export function generateInspectionCertificatePdf(data: InspectionCertificateInpu
       .fillColor('#059669')
       .fontSize(22)
       .font('Helvetica-Bold')
-      .text('IndoTeknizi', { align: 'center' })
+      .text('Bantoo', { align: 'center' })
     doc
       .fillColor('#18181b')
       .fontSize(14)
@@ -135,7 +135,7 @@ export function generateInspectionCertificatePdf(data: InspectionCertificateInpu
       .fontSize(8)
       .fillColor('#a1a1aa')
       .text(
-        'Dokumen ini diterbitkan secara elektronik oleh platform IndoTeknizi berdasarkan laporan teknisi terverifikasi. ' +
+        'Dokumen ini diterbitkan secara elektronik oleh platform Bantoo berdasarkan laporan teknisi terverifikasi. ' +
           'Sertifikat bukan jaminan hukum atas kondisi barang di masa depan.',
         { align: 'center' },
       )

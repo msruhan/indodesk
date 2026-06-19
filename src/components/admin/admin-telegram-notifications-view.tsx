@@ -333,7 +333,7 @@ export function AdminTelegramNotificationsView() {
             <div className="rounded-xl border border-surface-200/70 bg-surface-50/80 p-3 text-xs leading-relaxed text-surface-600">
               <p className="font-medium text-surface-700">Cara setup:</p>
               <ol className="mt-1 list-decimal space-y-1 pl-4">
-                <li>Tambahkan bot IndoTeknizi sebagai admin di channel/grup Telegram.</li>
+                <li>Tambahkan bot Bantoo sebagai admin di channel/grup Telegram.</li>
                 <li>Dapatkan Chat ID channel (biasanya dimulai dengan -100…).</li>
                 <li>Paste Chat ID di bawah, simpan, lalu kirim pesan uji.</li>
               </ol>

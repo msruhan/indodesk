@@ -196,7 +196,7 @@ export function AdminSmtpSettingsForm() {
             type="email"
             value={form.from}
             onChange={(e) => setForm((f) => f && { ...f, from: e.target.value })}
-            placeholder="noreply@indoteknizi.com"
+            placeholder="noreply@bantoo.in"
           />
         </div>
         <div className="flex items-end">

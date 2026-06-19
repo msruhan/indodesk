@@ -48,9 +48,9 @@ export type PlatformSettingsDto = {
 
 export const DEFAULT_PLATFORM_SETTINGS: PlatformSettingsDto = {
   platformName: 'Bantoo',
-  supportEmail: 'support@indoteknizi.com',
+  supportEmail: 'support@bantoo.in',
   supportPhone: '0800-1234-5678',
-  adminEmail: 'admin@indoteknizi.com',
+  adminEmail: 'admin@bantoo.in',
   buyerFeePercent: 2,
   sellerFeePercent: 2.5,
   maintenanceMode: false,

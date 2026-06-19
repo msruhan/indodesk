@@ -137,7 +137,7 @@ export async function sendTelegramMessage(
  * User akan klik link ini, lalu bot akan menerima /start dengan parameter
  */
 export function generateTelegramBotLink(verificationCode: string): string {
-  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'IndoTekniziiBot'
+  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'BantooBot'
   return `https://t.me/${botUsername}?start=${verificationCode}`
 }
 
@@ -248,7 +248,7 @@ Balas segera untuk menjaga response time Anda!
 
 Halo ${name}! 👋
 
-Akun IndoTeknizi Anda sudah terhubung dengan Telegram. Anda akan menerima notifikasi untuk:
+Akun Bantoo Anda sudah terhubung dengan Telegram. Anda akan menerima notifikasi untuk:
 • Request konsultasi baru
 • Request remote & inspeksi
 • Payout siap dicairkan

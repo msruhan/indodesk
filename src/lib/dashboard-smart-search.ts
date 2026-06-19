@@ -175,7 +175,7 @@ export function quickActionsForRole(role: UserRole): SmartSearchItem[] {
       'tiket',
     ]),
     quick('chat', 'Chat', 'Pesan dengan teknisi', chatPathForRole('USER'), ['pesan']),
-    quick('beranda', 'Beranda', 'Halaman depan IndoTeknizi', '/', ['home', 'landing']),
+    quick('beranda', 'Beranda', 'Halaman depan Bantoo', '/', ['home', 'landing']),
   ]
 }
 

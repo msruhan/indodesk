@@ -2,11 +2,13 @@
 
 import { motion, AnimatePresence } from 'framer-motion'
 import { CheckCircle, CreditCard, Wallet, Zap } from '@/lib/icons'
+import type { PaymentMethod } from '@/data/topup-types'
 import { TOPUP_PAYMENT_METHODS } from '@/lib/topup-order-config'
 import { formatIDR } from '@/lib/topup-utils'
 import { cn } from '@/lib/utils'
 
 interface PaymentMethodListProps {
+  methods?: PaymentMethod[]
   selectedId: string | null
   onSelect: (id: string) => void
 }
@@ -19,10 +21,10 @@ const iconMap = {
   bank: CreditCard,
 } as const
 
-export function PaymentMethodList({ selectedId, onSelect }: PaymentMethodListProps) {
+export function PaymentMethodList({ methods = TOPUP_PAYMENT_METHODS, selectedId, onSelect }: PaymentMethodListProps) {
   return (
     <div className="space-y-2">
-      {TOPUP_PAYMENT_METHODS.map((m) => {
+      {methods.map((m) => {
         const Icon = iconMap[m.kind]
         const selected = selectedId === m.id
         return (

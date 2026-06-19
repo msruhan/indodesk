@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import { AdminComplaintsView } from '@/components/admin/admin-complaints-view'
 
 export const metadata = {
-  title: 'Komplain · Admin IndoTeknizi',
+  title: 'Komplain · Admin Bantoo',
   description: 'Tinjau dan selesaikan komplain marketplace dan rekber.',
 }
 

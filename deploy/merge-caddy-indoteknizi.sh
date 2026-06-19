@@ -43,6 +43,10 @@ $MARKER
 $DOMAIN {
 	reverse_proxy $UPSTREAM
 }
+
+www.$DOMAIN {
+	redir https://$DOMAIN{uri} permanent
+}
 EOF
 )
 

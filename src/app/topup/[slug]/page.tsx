@@ -12,12 +12,14 @@ import { TrustStrip } from '@/components/topup/shared/trust-strip'
 import { StepIndicator } from '@/components/topup/detail/step-indicator'
 import { AccountInputStep } from '@/components/topup/detail/account-input-step'
 import { DenominationGrid } from '@/components/topup/detail/denomination-grid'
+import { TripayChannelPicker } from '@/components/payments/tripay-channel-picker'
 import { PaymentMethodList } from '@/components/topup/detail/payment-method-list'
 import { PromoCodeField } from '@/components/topup/detail/promo-code-field'
 import { OrderSummary } from '@/components/topup/detail/order-summary'
 import { MobileCheckoutBar } from '@/components/topup/detail/mobile-checkout-bar'
 import { useTopup } from '@/contexts/topup-context'
 import { useTopupCatalog } from '@/contexts/topup-catalog-context'
+import type { PaymentMethod } from '@/data/topup-types'
 import { calcTopupDiscount, TOPUP_PAYMENT_METHODS } from '@/lib/topup-order-config'
 import { compactNumber, effectivePrice, formatIDR } from '@/lib/topup-utils'
 import { ArrowRight, ChevronLeft, Star } from '@/lib/icons'
@@ -31,6 +33,8 @@ export default function TopupDetailPage() {
   const { loading, findProduct, denominationsOf, findDenomination } = useTopupCatalog()
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(TOPUP_PAYMENT_METHODS)
+  const [pgTopup, setPgTopup] = useState<{ orderId: string; total: number } | null>(null)
 
   const product = findProduct(params.slug)
   const denominations = useMemo(
@@ -58,6 +62,18 @@ export default function TopupDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product?.slug])
 
+  useEffect(() => {
+    if (sessionStatus !== 'authenticated') return
+    void fetch('/api/topup/payment-methods')
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.success && Array.isArray(json.data)) {
+          setPaymentMethods(json.data)
+        }
+      })
+      .catch(() => undefined)
+  }, [sessionStatus])
+
   if (!loading && !product) return notFound()
   if (loading || !product) {
     return (
@@ -82,7 +98,7 @@ export default function TopupDetailPage() {
 
   const denom = draft.denominationSku ? findDenomination(draft.denominationSku) : null
   const method = draft.paymentMethodId
-    ? TOPUP_PAYMENT_METHODS.find((m) => m.id === draft.paymentMethodId) ?? null
+    ? paymentMethods.find((m) => m.id === draft.paymentMethodId) ?? null
     : null
   const subtotal = denom ? effectivePrice(denom) : 0
   const { discount } = calcTopupDiscount(subtotal, draft.promoCode)
@@ -91,8 +107,9 @@ export default function TopupDetailPage() {
 
   const handleSubmit = async () => {
     if (!ready || !denom) return
-    if (draft.paymentMethodId !== 'saldo') {
-      setSubmitError('Metode pembayaran ini belum tersedia. Pilih saldo IndoTeknizi.')
+    const paymentMethod = draft.paymentMethodId ?? 'saldo'
+    if (paymentMethod !== 'saldo' && paymentMethod !== 'tripay') {
+      setSubmitError('Metode pembayaran tidak tersedia.')
       return
     }
     if (sessionStatus !== 'authenticated') {
@@ -111,13 +128,21 @@ export default function TopupDetailPage() {
           denominationSku: denom.sku,
           accountId: draft.accountId.trim(),
           serverId: draft.serverId.trim() || undefined,
-          paymentMethod: 'saldo',
+          paymentMethod,
           promoCode: draft.promoCode || undefined,
         }),
       })
       const json = await res.json()
       if (!res.ok || !json.success) {
         setSubmitError(json.error ?? 'Checkout gagal')
+        return
+      }
+
+      if (json.data?.needsPayment && json.data?.orderId) {
+        setPgTopup({
+          orderId: json.data.orderId as string,
+          total: Number(json.data.total),
+        })
         return
       }
 
@@ -266,13 +291,20 @@ export default function TopupDetailPage() {
             <SectionCard
               step={3}
               title="Pilih metode pembayaran"
-              description="Saldo IndoTeknizi auto-confirm dan dapat cashback 1%."
+              description="Saldo Bantoo instan, atau bayar langsung via Tripay."
               completed={completed[3]}
             >
               <PaymentMethodList
+                methods={paymentMethods}
                 selectedId={draft.paymentMethodId}
                 onSelect={(id) => setDraft((p) => ({ ...p, paymentMethodId: id }))}
               />
+
+              {submitError && (
+                <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                  {submitError}
+                </p>
+              )}
 
               <div className="mt-4 space-y-1.5">
                 <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-surface-500">
@@ -309,6 +341,29 @@ export default function TopupDetailPage() {
       />
 
       <BottomNav />
+
+      {pgTopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-surface-200 bg-white p-5 shadow-xl">
+            <h3 className="text-lg font-semibold text-ink">Bayar Top Up</h3>
+            <p className="mt-1 text-xs text-surface-500">
+              Total {formatIDR(pgTopup.total)} (+ biaya channel Tripay)
+            </p>
+            <div className="mt-4">
+              <TripayChannelPicker
+                purpose="CATALOG_TOPUP"
+                targetId={pgTopup.orderId}
+                submitLabel="Lanjutkan pembayaran"
+                onCancel={() => setPgTopup(null)}
+                onSuccess={(merchantRef) => {
+                  setPgTopup(null)
+                  router.push(`/payments/${merchantRef}`)
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -135,6 +135,7 @@ model User {
   teknisiReviewsReceived    TeknisiReview[] @relation("TeknisiReviewsReceived")
   teknisiReviewsAuthored    TeknisiReview[] @relation("TeknisiReviewsAuthored")
   teknisiPortfolioCases     TeknisiPortfolioCase[] @relation("TeknisiPortfolioCases")
+  teknisiCertifications     TeknisiCertification[] @relation("TeknisiCertifications")
   inspectionOrdersAsUser  InspectionOrder[]      @relation("InspectionUser")
   inspectionOrdersAsTech  InspectionOrder[]      @relation("InspectionTeknisi")
   telegramVerifications   TelegramVerification[]
@@ -157,6 +158,7 @@ model User {
   supportTicketsReported     SupportTicket[]        @relation("TicketReporter")
   supportTicketsAssigned     SupportTicket[]        @relation("TicketAssignee")
   supportTicketMessages      SupportTicketMessage[]
+  paymentIntents             PaymentIntent[]        @relation("UserPaymentIntents")
 }
 
 // ============================================================
@@ -319,6 +321,25 @@ model TeknisiPortfolioCase {
   updatedAt DateTime @updatedAt
 
   teknisi User @relation("TeknisiPortfolioCases", fields: [teknisiId], references: [id], onDelete: Cascade)
+
+  @@index([teknisiId, sortOrder])
+}
+
+// ============================================================
+// TEKNISI CERTIFICATIONS (sertifikat di profil publik)
+// ============================================================
+
+model TeknisiCertification {
+  id        String   @id @default(cuid())
+  teknisiId String
+  title     String
+  fileUrl   String
+  fileType  String // image | pdf
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teknisi User @relation("TeknisiCertifications", fields: [teknisiId], references: [id], onDelete: Cascade)
 
   @@index([teknisiId, sortOrder])
 }
@@ -489,6 +510,7 @@ model ProductReview {
 }
 
 enum OrderStatus {
+  AWAITING_PAYMENT
   PENDING
   PAID
   PROCESSING
@@ -561,6 +583,11 @@ enum ShippingCourier {
   LION
 }
 
+enum OrderPaymentMethod {
+  WALLET
+  PAYMENT_GATEWAY
+}
+
 model Order {
   id        String      @id @default(cuid())
   orderCode String      @unique // e.g. "ORD-2026-XXXXXX"
@@ -577,6 +604,11 @@ model Order {
   settlementVersion Int               @default(2)
   cancelReason      String?           @db.Text
   cancelledBy       OrderCancelledBy?
+  paymentMethod     OrderPaymentMethod?
+  pgProvider        String?
+  pgExternalRef     String?
+  checkoutBatchId   String?
+  paymentExpiresAt  DateTime?
   status    OrderStatus @default(PENDING)
   note      String?
   shippingAddress       String?   @db.Text
@@ -611,6 +643,9 @@ model Order {
   @@index([trackingActive, trackingNextSyncAt])
   @@index([status, trackingActive])
   @@index([status, buyerActionDeadline])
+  @@index([checkoutBatchId, status])
+  @@index([pgExternalRef])
+  @@index([status, paymentExpiresAt])
 }
 
 model OrderComplaint {
@@ -788,6 +823,54 @@ model WalletLedger {
   wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
 
   @@index([walletId, createdAt])
+}
+
+enum PaymentIntentPurpose {
+  WALLET_TOPUP
+  KONSULTASI
+  MARKETPLACE
+  CATALOG_TOPUP
+}
+
+enum PaymentIntentStatus {
+  UNPAID
+  PAID
+  EXPIRED
+  FAILED
+  REFUNDED
+}
+
+model PaymentIntent {
+  id              String               @id @default(cuid())
+  merchantRef     String               @unique
+  purpose         PaymentIntentPurpose
+  userId          String
+  targetId        String?
+  subtotal        Decimal              @db.Decimal(14, 0)
+  feeAmount       Decimal              @default(0) @db.Decimal(14, 0)
+  amount          Decimal              @db.Decimal(14, 0)
+  channelCode     String
+  channelName     String?
+  channelType     String?
+  tripayReference String?              @unique
+  status          PaymentIntentStatus  @default(UNPAID)
+  payCode         String?
+  qrUrl           String?
+  qrString        String?
+  checkoutUrl     String?
+  payUrl          String?
+  returnUrl       String?
+  expiredAt       DateTime?
+  paidAt          DateTime?
+  metadata        Json?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  user User @relation("UserPaymentIntents", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([purpose, status])
+  @@index([tripayReference])
 }
 
 enum WalletDepositStatus {
@@ -1127,6 +1210,9 @@ model TopupOrder {
   fee             Decimal     @default(0) @db.Decimal(12, 0)
   total           Decimal     @db.Decimal(12, 0)
   paymentMethod   String?
+  pgProvider      String?
+  pgExternalRef   String?
+  paymentExpiresAt DateTime?
   status          TopupStatus @default(PENDING_PAYMENT)
   providerOrderId String?
   pollTokenHash   String?

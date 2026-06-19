@@ -3,18 +3,18 @@ const LOGIN_OAUTH_ERROR_MESSAGES: Record<string, string> = {
   not_registered:
     'Akun dengan email Google ini belum terdaftar. Silakan daftar terlebih dahulu melalui formulir.',
   google_not_linked:
-    'Email Google belum dihubungkan ke akun IndoTeknizi. Login dengan email & password, lalu hubungkan Google di menu Profil → Keamanan.',
+    'Email Google belum dihubungkan ke akun Bantoo. Login dengan email & password, lalu hubungkan Google di menu Profil → Keamanan.',
   OAuthAccountNotLinked:
-    'Email Google belum dihubungkan ke akun IndoTeknizi. Login dengan email & password, lalu hubungkan Google di menu Profil → Keamanan.',
+    'Email Google belum dihubungkan ke akun Bantoo. Login dengan email & password, lalu hubungkan Google di menu Profil → Keamanan.',
   oauth_2fa:
     'Akun ini menggunakan 2FA. Login dengan email, password, dan kode Authenticator — login Google tidak tersedia.',
   admin_google:
     'Akun admin hanya dapat login dengan email dan password.',
-  account_inactive: 'Akun tidak aktif. Hubungi dukungan IndoTeknizi.',
+  account_inactive: 'Akun tidak aktif. Hubungi dukungan Bantoo.',
   google_email_missing: 'Google tidak mengirim alamat email. Coba akun Google lain.',
   google_link_mismatch: 'Gagal menghubungkan Google. Silakan coba lagi dari halaman Profil.',
   google_email_mismatch:
-    'Email Google harus sama dengan email akun IndoTeknizi Anda. Gunakan akun Google yang sesuai.',
+    'Email Google harus sama dengan email akun Bantoo Anda. Gunakan akun Google yang sesuai.',
   google_already_linked: 'Google sudah terhubung ke akun ini.',
   teknisi_blocked:
     'Akun teknisi belum dapat digunakan. Periksa status pendaftaran atau hubungi admin.',

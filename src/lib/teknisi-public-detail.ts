@@ -1,4 +1,4 @@
-import type { TeknisiPortfolioCase, TeknisiProfile, TeknisiStore, User } from '@prisma/client'
+import type { TeknisiCertification, TeknisiPortfolioCase, TeknisiProfile, TeknisiStore, User } from '@prisma/client'
 import { resolveDisplayImageUrl } from '@/lib/image-url-utils'
 import {
   buildTeknisiAllServices,
@@ -9,6 +9,10 @@ import type { PublicFeatureFlags } from '@/lib/platform-settings-shared'
 import { profileContentFromDb, type TeknisiProfileContent } from '@/lib/teknisi-profile-content'
 import { resolveTeknisiBadgeFromProfile } from '@/lib/teknisi-badge'
 import type { PublicTeknisiDto } from '@/lib/teknisi-public'
+import {
+  serializeTeknisiCertification,
+  type TeknisiCertificationItemDto,
+} from '@/lib/teknisi-certification'
 import {
   serializeTeknisiPortfolioCase,
   type TeknisiPortfolioItemDto,
@@ -24,6 +28,7 @@ export type PublicTeknisiDetailDto = PublicTeknisiDto &
   responseTime: string | null
   completionRate: number
   isVerified: boolean
+  memberSinceAt: string
   services: TeknisiConsultationService[]
   linkedStore: {
     id: string
@@ -38,13 +43,15 @@ export type PublicTeknisiDetailDto = PublicTeknisiDto &
     totalSold: number
   } | null
   portfolio: TeknisiPortfolioItemDto[]
+  certifications: TeknisiCertificationItemDto[]
   platformStats: TeknisiPlatformStatsDto
 }
 
 type ProfileRow = TeknisiProfile & {
-  user: Pick<User, 'id' | 'name' | 'image'> & {
+  user: Pick<User, 'id' | 'name' | 'image' | 'createdAt'> & {
     teknisiStore?: TeknisiStore | null
     teknisiPortfolioCases?: TeknisiPortfolioCase[]
+    teknisiCertifications?: TeknisiCertification[]
   }
 }
 
@@ -99,6 +106,7 @@ export function serializePublicTeknisiDetail(
     responseTime: profile.responseTime,
     completionRate: profile.completionRate,
     isVerified: profile.isVerified,
+    memberSinceAt: profile.user.createdAt.toISOString(),
     ...profileContentFromDb(profile),
     services: featureFlags
       ? filterServicesByFeatureFlags(buildTeknisiAllServices(profile), featureFlags)
@@ -107,6 +115,9 @@ export function serializePublicTeknisiDetail(
     portfolio: (profile.user.teknisiPortfolioCases ?? [])
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .map(serializeTeknisiPortfolioCase),
+    certifications: (profile.user.teknisiCertifications ?? [])
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map(serializeTeknisiCertification),
     platformStats,
   }
 }

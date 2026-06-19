@@ -60,7 +60,7 @@ export function UserSidebar() {
       profile={{
         initials: 'US',
         name: 'User',
-        email: 'user@indoteknizi.com',
+        email: 'user@bantoo.in',
       }}
       scope="User"
     />

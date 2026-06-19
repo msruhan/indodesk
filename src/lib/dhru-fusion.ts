@@ -55,9 +55,9 @@ export function isDhruProSkippedOrUnavailable(error?: string): boolean {
   )
 }
 
-const DHRU_CLASSIC_USER_AGENT = 'IndoTeknizi/1.0 (DhruFusion Classic API)'
+const DHRU_CLASSIC_USER_AGENT = 'Bantoo/1.0 (DhruFusion Classic API)'
 const DHRU_BROWSER_USER_AGENT =
-  'Mozilla/5.0 (compatible; IndoTeknizi/1.0; DhruFusion Classic API) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+  'Mozilla/5.0 (compatible; Bantoo/1.0; DhruFusion Classic API) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
 function resolveSiteOrigin(host: string): string {
   try {

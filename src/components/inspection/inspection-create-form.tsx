@@ -218,7 +218,7 @@ export function InspectionCreateForm({
               className="h-10 w-full rounded-xl border border-surface-200 px-3 text-sm"
               disabled={!!productPrefill?.productSource}
             >
-              <option value="INDOTEKNIZII">Marketplace IndoTeknizi</option>
+              <option value="INDOTEKNIZII">Marketplace Bantoo</option>
               <option value="TOKOPEDIA">Tokopedia</option>
               <option value="SHOPEE">Shopee</option>
               <option value="OLX">OLX</option>

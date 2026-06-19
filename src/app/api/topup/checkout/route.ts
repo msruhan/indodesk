@@ -13,13 +13,13 @@ const checkoutSchema = z.object({
   serverId: z.string().max(80).optional(),
   email: z.string().email().optional().or(z.literal('')),
   whatsapp: z.string().max(20).optional(),
-  paymentMethod: z.enum(['saldo']),
+  paymentMethod: z.enum(['saldo', 'tripay']),
   promoCode: z.string().max(32).optional(),
 })
 
 const ERROR_MAP: Record<string, { message: string; status: number }> = {
   PAYMENT_NOT_SUPPORTED: {
-    message: 'Metode pembayaran belum tersedia. Gunakan saldo IndoTeknizi.',
+    message: 'Metode pembayaran belum tersedia. Gunakan saldo Bantoo.',
     status: 400,
   },
   PRODUCT_NOT_FOUND: { message: 'Produk atau nominal tidak ditemukan', status: 404 },
@@ -72,7 +72,24 @@ export async function POST(req: Request) {
         promoCode: parsed.data.promoCode,
       },
     )
-    return apiSuccess(result, 201)
+
+    if (result.mode === 'needs_payment') {
+      return apiSuccess(
+        {
+          needsPayment: true,
+          paymentGateway: result.paymentGateway,
+          orderId: result.orderId,
+          total: result.total,
+          order: result.order,
+        },
+        201,
+      )
+    }
+
+    return apiSuccess(
+      { order: result.order, pollToken: result.pollToken },
+      201,
+    )
   } catch (e) {
     const code = e instanceof Error ? e.message : ''
     const mapped = ERROR_MAP[code]

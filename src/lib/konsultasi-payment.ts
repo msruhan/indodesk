@@ -1,6 +1,5 @@
 import { prisma } from '@/lib/db'
-import { walletTransaction } from '@/lib/wallet/transaction'
-import { logPaymentEvent } from '@/lib/activity-log'
+import { fulfillKonsultasiPaymentInTx } from '@/lib/payments/fulfill/konsultasi'
 
 export async function secureKonsultasiPaymentByRef(
   externalRef: string,
@@ -11,15 +10,11 @@ export async function secureKonsultasiPaymentByRef(
   })
 
   if (!session) return { ok: false, error: 'Sesi pembayaran tidak ditemukan' }
+  if (session.status === 'PENDING' && session.paymentStatus === 'SECURED') {
+    return { ok: true, sessionId: session.id }
+  }
   if (session.status !== 'AWAITING_PAYMENT') {
     return { ok: false, error: 'Sesi tidak menunggu pembayaran' }
-  }
-  if (session.paymentExpiresAt && session.paymentExpiresAt < new Date()) {
-    await prisma.konsultasiSession.update({
-      where: { id: session.id },
-      data: { status: 'CANCELLED', paymentStatus: 'RELEASED', endedAt: new Date() },
-    })
-    return { ok: false, error: 'Pembayaran kedaluwarsa' }
   }
 
   const amount = Number(session.price)
@@ -27,23 +22,10 @@ export async function secureKonsultasiPaymentByRef(
     return { ok: false, error: 'Nominal pembayaran tidak valid' }
   }
 
-  await walletTransaction(async (tx) => {
-    await tx.konsultasiSession.update({
-      where: { id: session.id },
-      data: {
-        status: 'PENDING',
-        paymentStatus: 'SECURED',
-        paidAt: new Date(),
-      },
-    })
-  })
+  const result = await prisma.$transaction(async (tx) =>
+    fulfillKonsultasiPaymentInTx(tx, session.id),
+  )
 
-  void logPaymentEvent({
-    action: 'konsultasi.payment',
-    severity: 'SUCCESS',
-    summary: `Pembayaran PG konsultasi: ${session.service}`,
-    target: { type: 'konsultasi', id: session.id, label: session.service },
-  })
-
+  if (!result.ok) return result
   return { ok: true, sessionId: session.id }
 }

@@ -374,7 +374,7 @@ function OrderModal({
                     maxLength={100}
                   />
                   <p className="mt-1 text-[10px] text-surface-400">
-                    Format SN divalidasi oleh supplier, bukan IndoTeknizi.
+                    Format SN divalidasi oleh supplier, bukan Bantoo.
                   </p>
                 </div>
               )}

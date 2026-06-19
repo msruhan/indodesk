@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { PublicTeknisiDetailDto } from '@/lib/teknisi-public-detail'
 import type { TeknisiConsultationService } from '@/lib/konsultasi-services'
+import { TripayChannelPicker } from '@/components/payments/tripay-channel-picker'
 import { X } from '@/lib/icons'
 
 type Props = {
@@ -46,6 +47,7 @@ export function KonsultasiBookingDialog({
   const [walletBalance, setWalletBalance] = useState<number | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [paySession, setPaySession] = useState<{ sessionId: string; price: number } | null>(null)
 
   useEffect(() => {
     if (!open || sessionStatus !== 'authenticated') return
@@ -110,6 +112,14 @@ export function KonsultasiBookingDialog({
         return
       }
 
+      if (json.data?.needsPayment && json.data?.paymentGateway === 'tripay' && json.data?.sessionId) {
+        setPaySession({
+          sessionId: json.data.sessionId as string,
+          price: selected.price,
+        })
+        return
+      }
+
       if (json.data?.needsPayment && json.data?.redirectUrl) {
         window.location.href = json.data.redirectUrl as string
         return
@@ -135,8 +145,12 @@ export function KonsultasiBookingDialog({
       <div className="relative z-10 max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-3xl border border-surface-200/80 bg-white p-5 shadow-soft-lg sm:rounded-3xl">
         <motion.div className="mb-4 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold text-ink">Pesan Konsultasi</h2>
-            <p className="text-xs text-surface-500">dengan {teknisi.name}</p>
+            <h2 className="text-lg font-bold text-ink">
+              {paySession ? 'Pilih Pembayaran' : 'Pesan Konsultasi'}
+            </h2>
+            <p className="text-xs text-surface-500">
+              {paySession ? 'Bayar via Tripay' : `dengan ${teknisi.name}`}
+            </p>
           </div>
           <button
             type="button"
@@ -147,6 +161,19 @@ export function KonsultasiBookingDialog({
           </button>
         </motion.div>
 
+        {paySession ? (
+          <TripayChannelPicker
+            purpose="KONSULTASI"
+            targetId={paySession.sessionId}
+            submitLabel={`Bayar ${formatPrice(paySession.price)}`}
+            onCancel={() => setPaySession(null)}
+            onSuccess={(merchantRef) => {
+              onClose()
+              router.push(`/payments/${merchantRef}`)
+            }}
+          />
+        ) : (
+          <>
         <div className="mb-4 max-h-40 space-y-2 overflow-y-auto">
           {teknisi.services
             .filter((svc) => svc.kind === 'consultation')
@@ -291,6 +318,8 @@ export function KonsultasiBookingDialog({
                 : `Bayar ${selected ? formatPrice(selected.price) : ''}`}
           </Button>
         </div>
+          </>
+        )}
       </div>
     </motion.div>
   )

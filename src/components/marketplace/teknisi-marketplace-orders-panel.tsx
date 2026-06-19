@@ -27,6 +27,7 @@ const statusVariant: Record<
   MarketplaceOrderDto['status'],
   'warning' | 'default' | 'success' | 'danger'
 > = {
+  awaiting_payment: 'warning',
   pending: 'warning',
   paid: 'warning',
   processing: 'default',

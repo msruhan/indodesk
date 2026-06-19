@@ -26,6 +26,8 @@
     "db:setup:production": "prisma migrate deploy",
     "db:bootstrap-admin": "tsx scripts/bootstrap-admin.ts",
     "test:r2": "npx tsx scripts/test-r2-upload.ts",
+    "test:tripay": "npx tsx scripts/tripay-sandbox-smoke.ts",
+    "test:tripay:bantoo": "npx tsx scripts/tripay-bantoo-verify.ts",
     "stress:seed": "tsx stress-test/seed/stress-seed.ts",
     "stress:clean": "tsx stress-test/seed/clean.ts",
     "stress:smoke": "k6 run stress-test/scenarios/01-public-discovery.js --vus 1 --duration 30s",

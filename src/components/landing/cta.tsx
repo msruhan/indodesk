@@ -6,11 +6,7 @@ import { ArrowRight, Sparkles, CheckCircle } from '@/lib/icons'
 import { Reveal, Magnetic } from '@/components/motion'
 import { motion } from 'framer-motion'
 
-const trustItems = [
-  'Komunitas solid',
-  'Bisnis berkembang',
-  'Rekber aman',
-] as const
+const trustItems = ['Komisi ringan', 'Rekber aman', 'Teknisi verified'] as const
 
 export function CTA() {
   return (
@@ -43,14 +39,14 @@ export function CTA() {
               </div>
 
               <h2 className="mt-6 text-balance text-[34px] font-semibold leading-[1.04] tracking-tightest text-ink sm:text-5xl lg:text-[60px]">
-                Siap mengembangkan bisnis
+                Jual & beli HP,
                 <br />
-                <span className="gradient-text-static">teknisi handphone Anda?</span>
+                <span className="gradient-text-static">dibantoo-in.</span>
               </h2>
 
               <p className="mx-auto mt-5 max-w-2xl text-base text-surface-600 sm:text-lg">
-                Bergabunglah dengan ribuan teknisi dan user yang percaya IndoTeknizi untuk mengembangkan
-                bisnis mereka. Daftar gratis tanpa kartu kredit.
+                Penjual dapat fee yang masuk akal. Pembeli dapat rekber aman & teknisi terverifikasi.
+                Daftar gratis — tanpa kartu kredit.
               </p>
 
               <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">

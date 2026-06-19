@@ -1,7 +1,7 @@
 import { generateSecret, generateURI, verify } from 'otplib'
 import QRCode from 'qrcode'
 
-const APP_NAME = 'IndoTeknizi'
+const APP_NAME = 'Bantoo'
 
 /** Toleransi drift jam (detik). Period TOTP = 30s → ±1 langkah waktu. */
 const EPOCH_TOLERANCE_SECONDS = 30

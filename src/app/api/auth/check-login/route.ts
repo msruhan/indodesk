@@ -98,7 +98,7 @@ export async function POST(req: Request) {
     }
 
     if (!user.isActive) {
-      return apiError('Akun tidak aktif. Hubungi dukungan IndoTeknizi.', 403, {
+      return apiError('Akun tidak aktif. Hubungi dukungan Bantoo.', 403, {
         code: 'ACCOUNT_INACTIVE',
       })
     }

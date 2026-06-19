@@ -942,7 +942,7 @@ function TeknisiTeamPanel({ store }: { store: PublicStoreDetailDto }) {
       <div className="border-t border-surface-200/70 bg-surface-50/50 px-5 py-3">
         <p className="inline-flex items-center gap-1.5 text-[10.5px] text-surface-500">
           <Sparkles className="h-3 w-3 text-amber-600" weight="fill" />
-          Verified by IndoTeknizi
+          Verified by Bantoo
         </p>
       </div>
     </div>

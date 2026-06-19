@@ -37,7 +37,7 @@ export function formatSupplierRejectReason(raw: string, phase: 'submit' | 'poll'
 
   if (lower.includes('creditprocess') || lower.includes('credit process')) {
     return phase === 'submit'
-      ? '[Ditolak saat kirim] Saldo/kredit akun reseller API di supplier tidak cukup (CreditprocessError). Top-up di panel supplier — ini bukan saldo wallet user di IndoTeknizi.'
+      ? '[Ditolak saat kirim] Saldo/kredit akun reseller API di supplier tidak cukup (CreditprocessError). Top-up di panel supplier — ini bukan saldo wallet user di Bantoo.'
       : `${prefix} ${clean}`
   }
 

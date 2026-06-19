@@ -17,7 +17,7 @@ export function inspectionCategoryLabel(category: InspectionDeviceCategory): str
 
 export function inspectionSourceLabel(source: InspectionProductSource): string {
   const map: Record<InspectionProductSource, string> = {
-    INDOTEKNIZII: 'Marketplace IndoTeknizi',
+    INDOTEKNIZII: 'Marketplace Bantoo',
     TOKOPEDIA: 'Tokopedia',
     SHOPEE: 'Shopee',
     OLX: 'OLX',

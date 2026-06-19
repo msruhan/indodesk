@@ -45,6 +45,7 @@ const STATUS_TABS: Array<{ id: StatusFilter; label: string }> = [
 ]
 
 const statusConfig: Record<MarketplaceOrderDto['status'], { label: string; variant: 'warning' | 'info' | 'success' | 'danger' | 'default'; icon: typeof Clock }> = {
+  awaiting_payment: { label: 'Menunggu Bayar', variant: 'warning', icon: Clock },
   pending: { label: 'Menunggu Bayar', variant: 'warning', icon: Clock },
   paid: { label: 'Dibayar', variant: 'warning', icon: CheckCircle },
   processing: { label: 'Diproses', variant: 'info', icon: RefreshCw },

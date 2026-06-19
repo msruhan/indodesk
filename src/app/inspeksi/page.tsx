@@ -97,7 +97,7 @@ export default function InspeksiLandingPage() {
             </span>
           </>
         }
-        description="Jasa inspeksi dari teknisi terverifikasi IndoTeknizi — untuk barang dari marketplace kami atau platform lain (OLX, Tokopedia, dll)."
+        description="Jasa inspeksi dari teknisi terverifikasi Bantoo — untuk barang dari marketplace kami atau platform lain (OLX, Tokopedia, dll)."
         right={
           <Button asChild className="bg-gradient-to-r from-primary-600 to-accent-500">
             <Link href={ctaHref}>Mulai inspeksi</Link>

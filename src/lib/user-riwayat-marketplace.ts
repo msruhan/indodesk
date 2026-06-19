@@ -6,6 +6,7 @@ function mapMarketplaceStatus(status: MarketplaceOrderDto['status']): RiwayatTxS
   switch (status) {
     case 'completed':
       return 'completed'
+    case 'awaiting_payment':
     case 'pending':
     case 'paid':
       return 'pending'

@@ -386,7 +386,7 @@ export default function RegisterTeknisiPage() {
                     rows={4}
                     required
                     minLength={30}
-                    placeholder="Jelaskan latar belakang kerja Anda, jenis servis yang biasa ditangani, dan mengapa ingin bergabung di IndoTeknizi..."
+                    placeholder="Jelaskan latar belakang kerja Anda, jenis servis yang biasa ditangani, dan mengapa ingin bergabung di Bantoo.in..."
                     className="w-full rounded-xl border border-surface-200 bg-white px-3 py-2.5 text-sm text-ink shadow-soft-xs focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-200/50"
                   />
                   <p className="text-[11px] text-surface-500">Minimal 30 karakter</p>

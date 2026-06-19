@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -30,6 +30,7 @@ import { isDateInPeriod } from '@/lib/dashboard-period'
 import { cn } from '@/lib/utils'
 import type { UserKonsultasiDto } from '@/lib/user-konsultasi-serializer'
 import type { TeknisiKonsultasiStatus } from '@/lib/teknisi-layanan-serializer'
+import { TripayChannelPicker } from '@/components/payments/tripay-channel-picker'
 
 const formatPrice = (price: number) =>
   new Intl.NumberFormat('id-ID', {
@@ -67,6 +68,7 @@ const statusConfig: Record<
 }
 
 export default function UserKonsultasiPage() {
+  const router = useRouter()
   const { period } = useDashboardPeriod()
   const searchParams = useSearchParams()
   const [items, setItems] = useState<UserKonsultasiDto[]>([])
@@ -79,6 +81,7 @@ export default function UserKonsultasiPage() {
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [ratingFilter, setRatingFilter] = useState<RatingFilter>('all')
+  const [channelPaySession, setChannelPaySession] = useState<UserKonsultasiDto | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -409,6 +412,24 @@ export default function UserKonsultasiPage() {
                             Konfirmasi bayar
                           </Button>
                         )}
+                        {k.payHref && (
+                          <Link href={k.payHref}>
+                            <Button type="button" variant="primary" size="sm" className="h-7 px-2 text-[10px]">
+                              Lanjutkan bayar
+                            </Button>
+                          </Link>
+                        )}
+                        {k.needsChannelPayment && (
+                          <Button
+                            type="button"
+                            variant="primary"
+                            size="sm"
+                            className="h-7 px-2 text-[10px]"
+                            onClick={() => setChannelPaySession(k)}
+                          >
+                            Bayar sekarang
+                          </Button>
+                        )}
                         {k.canCancel && (
                           <Button
                             type="button"
@@ -500,6 +521,29 @@ export default function UserKonsultasiPage() {
           </Card>
         )}
       </div>
+
+      {channelPaySession && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-surface-200 bg-white p-5 shadow-xl">
+            <h3 className="text-lg font-semibold text-ink">Bayar Konsultasi</h3>
+            <p className="mt-1 text-xs text-surface-500">
+              {channelPaySession.service} — {formatPrice(channelPaySession.amount)}
+            </p>
+            <div className="mt-4">
+              <TripayChannelPicker
+                purpose="KONSULTASI"
+                targetId={channelPaySession.id}
+                submitLabel={`Bayar ${formatPrice(channelPaySession.amount)}`}
+                onCancel={() => setChannelPaySession(null)}
+                onSuccess={(merchantRef) => {
+                  setChannelPaySession(null)
+                  router.push(`/payments/${merchantRef}`)
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

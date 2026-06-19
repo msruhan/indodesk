@@ -352,7 +352,7 @@ export default function TeknisiProdukPage() {
     >
       <DashboardPageHeader
         title="Iklan Produk"
-        description="Kelola produk dan software yang Anda jual di marketplace IndoTeknizi."
+        description="Kelola produk dan software yang Anda jual di marketplace Bantoo."
         actions={
           <Button
             variant="primary"

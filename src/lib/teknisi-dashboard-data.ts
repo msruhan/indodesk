@@ -60,7 +60,7 @@ export async function getTeknisiDashboardData(teknisiId: string): Promise<Teknis
     completedRemoteRows,
     productAgg,
   ] = await Promise.all([
-      prisma.user.findUnique({ where: { id: teknisiId }, select: { name: true } }),
+      prisma.user.findUnique({ where: { id: teknisiId }, select: { name: true, createdAt: true } }),
       prisma.teknisiProfile.findUnique({ where: { userId: teknisiId } }),
       prisma.wallet.findUnique({ where: { userId: teknisiId } }),
       prisma.konsultasiSession.findMany({
@@ -191,6 +191,7 @@ export async function getTeknisiDashboardData(teknisiId: string): Promise<Teknis
     specialty: profile?.specialty ?? [],
     badge,
     isVerified: profile?.isVerified ?? false,
+    memberSinceAt: (user?.createdAt ?? profile?.createdAt ?? new Date()).toISOString(),
   }
 
   return {

@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useMemo, useRef, useState } from 'react'
 import {
   motion,
@@ -9,15 +10,20 @@ import {
   type MotionValue,
 } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import type { TeknisiDigitalIdSource } from '@/lib/teknisi-digital-id'
+import {
+  buildTeknisiCardNumber,
+  buildTeknisiCardValidity,
+  type TeknisiDigitalIdSource,
+} from '@/lib/teknisi-digital-id'
 import {
   Award,
   CheckCircle,
   RefreshCw,
   Shield,
   Sparkles,
-  Wrench,
 } from '@/lib/icons'
+
+const BANTOO_CARD_ICON = '/icon/icon-bandoo.source.png'
 
 export function TeknisiDigitalIdCard({ teknisi }: { teknisi: TeknisiDigitalIdSource }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -29,22 +35,12 @@ export function TeknisiDigitalIdCard({ teknisi }: { teknisi: TeknisiDigitalIdSou
   const sRotX = useSpring(rotateX, { stiffness: 220, damping: 18 })
   const sRotY = useSpring(rotateY, { stiffness: 220, damping: 18 })
 
-  // Generate stable ID number from teknisi.id
-  const idNumber = useMemo(() => {
-    const hex = teknisi.id.replace(/[^0-9a-f]/gi, '').slice(0, 12).toUpperCase().padEnd(12, '0')
-    return `IT-${hex.slice(0, 4)}-${hex.slice(4, 8)}-${hex.slice(8, 12)}`
-  }, [teknisi.id])
+  const idNumber = useMemo(() => buildTeknisiCardNumber(teknisi.id), [teknisi.id])
 
-  // Generate join year from id (deterministic)
-  const memberSince = useMemo(() => {
-    const charCode = teknisi.id.charCodeAt(0) || 65
-    const year = 2020 + (charCode % 5)
-    return year
-  }, [teknisi.id])
-
-  const validUntil = useMemo(() => {
-    return memberSince + 5
-  }, [memberSince])
+  const { memberSince, validThruLabel, validRangeLabel } = useMemo(
+    () => buildTeknisiCardValidity(teknisi.memberSinceAt),
+    [teknisi.memberSinceAt],
+  )
 
   const holoBg = useTransform(
     [glowX, glowY],
@@ -99,7 +95,13 @@ export function TeknisiDigitalIdCard({ teknisi }: { teknisi: TeknisiDigitalIdSou
             className="absolute inset-0 overflow-hidden rounded-2xl"
             style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
           >
-            <CardFront teknisi={teknisi} idNumber={idNumber} memberSince={memberSince} validUntil={validUntil} holoBg={holoBg} />
+            <CardFront
+              teknisi={teknisi}
+              idNumber={idNumber}
+              memberSince={memberSince}
+              validThruLabel={validThruLabel}
+              holoBg={holoBg}
+            />
           </div>
 
           {/* BACK */}
@@ -107,7 +109,11 @@ export function TeknisiDigitalIdCard({ teknisi }: { teknisi: TeknisiDigitalIdSou
             className="absolute inset-0 overflow-hidden rounded-2xl"
             style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
           >
-            <CardBack teknisi={teknisi} idNumber={idNumber} memberSince={memberSince} validUntil={validUntil} />
+            <CardBack
+              teknisi={teknisi}
+              idNumber={idNumber}
+              validRangeLabel={validRangeLabel}
+            />
           </div>
         </motion.div>
 
@@ -117,7 +123,7 @@ export function TeknisiDigitalIdCard({ teknisi }: { teknisi: TeknisiDigitalIdSou
 
       <div className="mt-4 flex items-center justify-center gap-1.5 text-[10px] font-medium text-surface-500">
         <Sparkles className="h-3 w-3 text-primary-600" weight="fill" />
-        <span>Dipersembahkan oleh IndoTeknizi · Hover untuk efek 3D</span>
+        <span>Dipersembahkan oleh Bantoo · Hover untuk efek 3D</span>
       </div>
     </div>
   )
@@ -130,13 +136,13 @@ function CardFront({
   teknisi,
   idNumber,
   memberSince,
-  validUntil,
+  validThruLabel,
   holoBg,
 }: {
   teknisi: TeknisiDigitalIdSource
   idNumber: string
   memberSince: number
-  validUntil: number
+  validThruLabel: string
   holoBg: MotionValue<string>
 }) {
   return (
@@ -192,15 +198,17 @@ function CardFront({
         {/* Header — logo + chip */}
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2">
-            <motion.div
-              animate={{ rotate: [0, 360] }}
-              transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}
-              className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/15 backdrop-blur-md"
-            >
-              <Wrench className="h-4 w-4 text-emerald-200" weight="fill" />
-            </motion.div>
+            <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-xl bg-white/15 backdrop-blur-md ring-1 ring-white/20">
+              <Image
+                src={BANTOO_CARD_ICON}
+                alt="Bantoo"
+                width={32}
+                height={32}
+                className="h-full w-full object-cover"
+              />
+            </div>
             <div className="leading-none">
-              <p className="text-[7px] font-bold uppercase tracking-[0.22em] text-emerald-200/80">IndoTeknizi</p>
+              <p className="text-[7px] font-bold uppercase tracking-[0.22em] text-emerald-200/80">Bantoo</p>
               <p className="mt-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-white">Verified Technician</p>
             </div>
           </div>
@@ -246,7 +254,7 @@ function CardFront({
             </div>
             <div>
               <p className="text-[7px] font-semibold uppercase tracking-[0.18em] text-emerald-200/70">Valid Thru</p>
-              <p className="text-[10px] font-bold tabular-nums">12/{String(validUntil).slice(2)}</p>
+              <p className="text-[10px] font-bold tabular-nums">{validThruLabel}</p>
             </div>
           </div>
 
@@ -271,13 +279,11 @@ function CardFront({
 function CardBack({
   teknisi,
   idNumber,
-  memberSince,
-  validUntil,
+  validRangeLabel,
 }: {
   teknisi: TeknisiDigitalIdSource
   idNumber: string
-  memberSince: number
-  validUntil: number
+  validRangeLabel: string
 }) {
   // Generate deterministic barcode pattern from idNumber (Code 128-like vertical bars)
   const barcodeBars = useMemo(() => {
@@ -462,22 +468,22 @@ function CardBack({
           <p className="text-[6.5px] leading-[1.5] text-emerald-100/70">
             <span className="font-bold uppercase tracking-[0.18em] text-emerald-200/90">Notice — </span>
             This card is issued by{' '}
-            <span className="font-semibold text-white">IndoTeknizi Indonesia</span> as proof of verified
+            <span className="font-semibold text-white">Bantoo Indonesia</span> as proof of verified
             technician membership. It remains the sole property of{' '}
-            <span className="font-semibold text-white">IndoTeknizi</span>. Misuse or unauthorized
+            <span className="font-semibold text-white">Bantoo</span>. Misuse or unauthorized
             transfer is prohibited.
           </p>
 
           <div className="mt-2 flex items-center justify-between gap-2 border-t border-white/10 pt-1.5">
             <p className="font-mono text-[6.5px] uppercase tracking-[0.32em] text-emerald-200/40">
-              VALID 01/{String(memberSince).slice(2)} — 12/{String(validUntil).slice(2)}
+              VALID {validRangeLabel}
             </p>
             <div className="inline-flex items-center gap-0.5 rounded-sm bg-emerald-500/15 px-1 py-0.5 text-[7px] font-black uppercase tracking-[0.16em] text-emerald-200">
               <Shield className="h-2 w-2" weight="fill" />
               Authentic
             </div>
             <p className="font-mono text-[6.5px] uppercase tracking-[0.32em] text-emerald-200/40">
-              indoteknizi.id
+              bantoo.in
             </p>
           </div>
         </div>

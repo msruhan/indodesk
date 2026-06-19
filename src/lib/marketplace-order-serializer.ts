@@ -20,6 +20,7 @@ import { orderRequiresPhysicalPackaging } from '@/lib/marketplace-physical-order
 import { isTerminalTrackingStatus, SHIPPING_COURIER_OPTIONS } from '@/lib/shipping-courier'
 
 export type MarketplaceOrderUiStatus =
+  | 'awaiting_payment'
   | 'pending'
   | 'paid'
   | 'processing'
@@ -102,6 +103,8 @@ type OrderRow = Order & {
 
 export function mapMarketplaceOrderUiStatus(db: Order['status']): MarketplaceOrderUiStatus {
   switch (db) {
+    case 'AWAITING_PAYMENT':
+      return 'awaiting_payment'
     case 'PENDING':
       return 'pending'
     case 'PAID':
@@ -123,6 +126,8 @@ export function mapMarketplaceOrderUiStatus(db: Order['status']): MarketplaceOrd
 
 export function marketplaceOrderStatusLabel(status: MarketplaceOrderUiStatus): string {
   switch (status) {
+    case 'awaiting_payment':
+      return 'Menunggu pembayaran'
     case 'pending':
       return 'Menunggu bayar'
     case 'paid':

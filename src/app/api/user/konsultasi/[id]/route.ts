@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { logCommunicationEvent } from '@/lib/activity-log'
 import { secureKonsultasiPaymentByRef } from '@/lib/konsultasi-payment'
+import { fulfillKonsultasiPaymentInTx } from '@/lib/payments/fulfill/konsultasi'
 import { refundKonsultasiPayment } from '@/lib/konsultasi-wallet'
 import { walletTransaction } from '@/lib/wallet/transaction'
 import { serializeUserKonsultasi } from '@/lib/user-konsultasi-serializer'
@@ -93,21 +94,33 @@ export async function PATCH(
       const ref = parsed.data.pgExternalRef ?? existing.pgExternalRef
       if (!ref) return apiError('Referensi pembayaran tidak ditemukan')
 
-      const result = await secureKonsultasiPaymentByRef(ref, Number(existing.price))
-      if (!result.ok) return apiError(result.error)
+      const intent = await prisma.paymentIntent.findUnique({ where: { merchantRef: ref } })
+      let fulfilledViaIntent = false
+      if (intent?.status === 'PAID' && existing.status === 'AWAITING_PAYMENT') {
+        const fulfill = await prisma.$transaction(async (tx) =>
+          fulfillKonsultasiPaymentInTx(tx, existing.id),
+        )
+        if (!fulfill.ok) return apiError(fulfill.error)
+        fulfilledViaIntent = true
+      } else {
+        const result = await secureKonsultasiPaymentByRef(ref, Number(existing.price))
+        if (!result.ok) return apiError(result.error)
+      }
 
       const updated = await prisma.konsultasiSession.findUniqueOrThrow({
         where: { id },
         include: { teknisi: { select: TEKNISI_SELECT } },
       })
 
-      void logCommunicationEvent({
-        action: 'konsultasi.created',
-        severity: 'INFO',
-        summary: `Konsultasi dibayar: ${existing.service} — ${teknisiLabel}`,
-        actor,
-        target: { type: 'konsultasi', id, label: existing.service },
-      })
+      if (!fulfilledViaIntent && existing.status === 'AWAITING_PAYMENT') {
+        void logCommunicationEvent({
+          action: 'konsultasi.created',
+          severity: 'INFO',
+          summary: `Konsultasi dibayar: ${existing.service} — ${teknisiLabel}`,
+          actor,
+          target: { type: 'konsultasi', id, label: existing.service },
+        })
+      }
 
       return apiSuccess(serializeUserKonsultasi(updated))
     }

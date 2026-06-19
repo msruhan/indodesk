@@ -82,7 +82,7 @@ export const TELEGRAM_EVENT_CATALOG: Record<TelegramEventKey, TelegramEventDefin
       kategori: 'Smartphone',
       namaToko: 'Ahmad Cell',
       namaTeknisi: 'Ahmad Teknisi',
-      linkProduk: 'https://indoteknizi.com/marketplace/products/contoh',
+      linkProduk: 'https://bantoo.in/marketplace/products/contoh',
     },
   },
   'marketplace.order.new': {
@@ -107,7 +107,7 @@ export const TELEGRAM_EVENT_CATALOG: Record<TelegramEventKey, TelegramEventDefin
       total: 'Rp 5.200.000',
       jumlahItem: '1',
       metodeBayar: 'wallet',
-      linkPesanan: 'https://indoteknizi.com/teknisi/pesanan',
+      linkPesanan: 'https://bantoo.in/teknisi/pesanan',
     },
   },
   'marketplace.order.paid': {
@@ -132,7 +132,7 @@ export const TELEGRAM_EVENT_CATALOG: Record<TelegramEventKey, TelegramEventDefin
       total: 'Rp 5.200.000',
       jumlahItem: '1',
       metodeBayar: 'wallet',
-      linkPesanan: 'https://indoteknizi.com/teknisi/pesanan',
+      linkPesanan: 'https://bantoo.in/teknisi/pesanan',
     },
   },
   'konsultasi.new': {
@@ -147,7 +147,7 @@ export const TELEGRAM_EVENT_CATALOG: Record<TelegramEventKey, TelegramEventDefin
       layanan: 'Konsultasi iPhone tidak bisa charge',
       kodeSesi: 'KON-2026-XYZ',
       remoteId: '123456789',
-      linkDashboard: 'https://indoteknizi.com/teknisi/konsultasi',
+      linkDashboard: 'https://bantoo.in/teknisi/konsultasi',
     },
   },
   'inspeksi.new': {
@@ -162,7 +162,7 @@ export const TELEGRAM_EVENT_CATALOG: Record<TelegramEventKey, TelegramEventDefin
       namaProduk: 'MacBook Pro 14 M2',
       mode: 'online',
       kodeOrder: 'INS-2026-DEF',
-      linkDashboard: 'https://indoteknizi.com/teknisi/inspeksi',
+      linkDashboard: 'https://bantoo.in/teknisi/inspeksi',
     },
   },
 }

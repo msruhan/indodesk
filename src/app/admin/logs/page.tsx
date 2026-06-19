@@ -1,7 +1,7 @@
 import { AdminLogsView } from '@/components/admin/admin-logs-view'
 
 export const metadata = {
-  title: 'Log Aktivitas · Admin IndoTeknizi',
+  title: 'Log Aktivitas · Admin Bantoo',
   description: 'Audit trail seluruh aktivitas platform: login, order, deposit, chat, dan keamanan.',
 }
 

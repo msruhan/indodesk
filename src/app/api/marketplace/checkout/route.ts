@@ -66,7 +66,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const orders = await processMarketplaceCheckout(
+    const result = await processMarketplaceCheckout(
       session.user.id,
       session.user.name,
       session.user.email,
@@ -80,13 +80,28 @@ export async function POST(req: Request) {
       },
     )
 
-    const totalPaid = orders.reduce((sum, o) => sum + o.total, 0)
+    if (result.mode === 'needs_payment') {
+      return apiSuccess(
+        {
+          needsPayment: true,
+          paymentGateway: result.paymentGateway,
+          checkoutBatchId: result.checkoutBatchId,
+          grandHoldTotal: result.grandHoldTotal,
+          orderIds: result.orderIds,
+          orders: result.orders,
+          orderCodes: result.orders.map((o) => o.orderCode),
+        },
+        201,
+      )
+    }
+
+    const totalPaid = result.orders.reduce((sum, o) => sum + o.total, 0)
 
     return apiSuccess(
       {
-        orders,
+        orders: result.orders,
         totalPaid,
-        orderCodes: orders.map((o) => o.orderCode),
+        orderCodes: result.orders.map((o) => o.orderCode),
       },
       201,
     )

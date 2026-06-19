@@ -7,6 +7,7 @@ import { findConsultationService } from '@/lib/konsultasi-services'
 import { holdUserForKonsultasi } from '@/lib/konsultasi-wallet'
 import { getPublicFeatureFlags } from '@/lib/platform-settings'
 import { getPaymentGatewayProvider, KONSULTASI_PAYMENT_TTL_MS } from '@/lib/payment-gateway'
+import { getTripayConfig } from '@/lib/tripay/config'
 import { walletTransaction } from '@/lib/wallet/transaction'
 import { serializeUserKonsultasi } from '@/lib/user-konsultasi-serializer'
 import { notifyKonsultasiNew } from '@/lib/telegram/notify'
@@ -215,6 +216,20 @@ export async function POST(req: Request) {
       include: { teknisi: { select: TEKNISI_SELECT } },
     })
 
+    const tripayReady = getTripayConfig().isConfigured
+
+    if (tripayReady) {
+      return apiSuccess(
+        {
+          ...serializeUserKonsultasi(pendingSession),
+          needsPayment: true,
+          paymentGateway: 'tripay',
+          sessionId: pendingSession.id,
+        },
+        201,
+      )
+    }
+
     const pg = getPaymentGatewayProvider()
     const payment = await pg.createPayment({
       sessionId: pendingSession.id,
@@ -242,6 +257,7 @@ export async function POST(req: Request) {
       {
         ...serializeUserKonsultasi(refreshed),
         needsPayment: true,
+        paymentGateway: 'stub',
         redirectUrl: payment.redirectUrl,
         pgExternalRef: payment.externalRef,
       },

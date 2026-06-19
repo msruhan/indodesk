@@ -13,7 +13,7 @@ const testimonials = [
     role: 'Teknisi Handphone',
     avatar: 'AH',
     content:
-      'Platform IndoTeknizi sangat membantu bisnis saya. Konsultasi online jadi mudah dan rekber bikin transaksi terasa aman. Revenue saya naik 40%!',
+      'Platform Bantoo sangat membantu bisnis saya. Konsultasi online jadi mudah dan rekber bikin transaksi terasa aman. Revenue saya naik 40%!',
     rating: 5,
   },
   {
@@ -21,7 +21,7 @@ const testimonials = [
     role: 'Pemilik Toko',
     avatar: 'BS',
     content:
-      'Marketplace di IndoTeknizi sangat membantu promosi. Banyak customer baru datang dari platform ini. Rating dan review membangun kepercayaan dengan cepat.',
+      'Marketplace di Bantoo sangat membantu promosi. Banyak customer baru datang dari platform ini. Rating dan review membangun kepercayaan dengan cepat.',
     rating: 5,
   },
   {
@@ -101,7 +101,7 @@ export function Testimonials() {
             <span className="gradient-text-static">hasil nyata</span>
           </h2>
           <p className="mt-4 text-pretty text-base text-surface-600 sm:text-lg">
-            Apa kata teknisi, toko, dan user kami tentang IndoTeknizi.
+            Apa kata teknisi, toko, dan user kami tentang Bantoo.
           </p>
         </Reveal>
 

@@ -12,30 +12,24 @@ export const TOPUP_PAYMENT_METHODS: PaymentMethod[] = [
   {
     id: 'saldo',
     kind: 'saldo',
-    label: 'Saldo IndoTeknizi',
+    label: 'Saldo Bantoo',
     hint: 'Bayar instan dari saldo wallet',
     fee: 0,
     instant: true,
   },
   {
-    id: 'qris',
+    id: 'tripay',
     kind: 'qris',
-    label: 'QRIS',
-    hint: 'Segera hadir — gunakan saldo wallet untuk saat ini',
+    label: 'QRIS / Virtual Account',
+    hint: 'Bayar langsung via Tripay (tanpa saldo wallet)',
     fee: 0,
-    disabled: true,
-    disabledReason: 'Segera hadir',
-  },
-  {
-    id: 'va-bca',
-    kind: 'va',
-    label: 'BCA Virtual Account',
-    hint: 'Segera hadir',
-    fee: 4_500,
-    disabled: true,
-    disabledReason: 'Segera hadir',
   },
 ]
+
+/** Payment methods available for checkout (Tripay gated server-side). */
+export function getTopupPaymentMethodsForClient(tripayEnabled: boolean): PaymentMethod[] {
+  return TOPUP_PAYMENT_METHODS.filter((m) => m.id !== 'tripay' || tripayEnabled)
+}
 
 export const TOPUP_PROMO_CODES: Record<
   string,

@@ -53,6 +53,7 @@ async function main() {
   await prisma.product.deleteMany()
   await prisma.teknisiReview.deleteMany()
   await prisma.teknisiPortfolioCase.deleteMany()
+  await prisma.teknisiCertification.deleteMany()
   await prisma.teknisiProfile.deleteMany()
   await prisma.session.deleteMany()
   await prisma.account.deleteMany()
@@ -337,6 +338,27 @@ async function main() {
         tone: 'from-violet-500 to-fuchsia-600',
         glow: 'rgba(139,92,246,0.4)',
         sortOrder: 2,
+      },
+    ],
+  })
+
+  await prisma.teknisiCertification.createMany({
+    data: [
+      {
+        teknisiId: teknisi1.id,
+        title: 'Apple Certified iOS Technician',
+        fileUrl:
+          'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=800&h=600&fit=crop',
+        fileType: 'image',
+        sortOrder: 0,
+      },
+      {
+        teknisiId: teknisi1.id,
+        title: 'Sertifikat Board Repair Level 2',
+        fileUrl:
+          'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&h=600&fit=crop',
+        fileType: 'image',
+        sortOrder: 1,
       },
     ],
   })

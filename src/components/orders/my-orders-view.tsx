@@ -51,6 +51,7 @@ const shopStatusVariant: Record<
   MarketplaceOrderDto['status'],
   'success' | 'warning' | 'default' | 'danger'
 > = {
+  awaiting_payment: 'warning',
   pending: 'warning',
   paid: 'warning',
   processing: 'default',

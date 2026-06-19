@@ -34,6 +34,7 @@ const statusBadgeVariant: Record<
   MarketplaceOrderDto['status'],
   'warning' | 'info' | 'success' | 'danger' | 'default'
 > = {
+  awaiting_payment: 'warning',
   pending: 'default',
   paid: 'warning',
   processing: 'info',

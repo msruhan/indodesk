@@ -24,6 +24,7 @@ import { useCart } from '@/contexts/cart-context'
 import type { CartItem } from '@/lib/cart'
 import { calcCartCouponDiscount } from '@/lib/product-coupon'
 import { floorIdr } from '@/lib/marketplace-fees'
+import { TripayChannelPicker } from '@/components/payments/tripay-channel-picker'
 import { BackButton } from '@/components/shared/back-button'
 import {
   ArrowRight,
@@ -100,6 +101,10 @@ export default function CartPage() {
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const [checkoutSuccess, setCheckoutSuccess] = useState<string[] | null>(null)
+  const [pgCheckout, setPgCheckout] = useState<{
+    checkoutBatchId: string
+    grandHoldTotal: number
+  } | null>(null)
   const [promoCode, setPromoCode] = useState('')
   const [appliedPromoCode, setAppliedPromoCode] = useState('')
   const [promoApplied, setPromoApplied] = useState(false)
@@ -229,6 +234,14 @@ export default function CartPage() {
         setCheckoutError(json.error ?? 'Checkout gagal')
         return
       }
+      if (json.data?.needsPayment && json.data?.checkoutBatchId) {
+        setPgCheckout({
+          checkoutBatchId: json.data.checkoutBatchId as string,
+          grandHoldTotal: Number(json.data.grandHoldTotal),
+        })
+        marketplaceItems.forEach((i) => removeItem(i.id))
+        return
+      }
       const codes: string[] = json.data?.orderCodes ?? []
       setCheckoutSuccess(codes)
       marketplaceItems.forEach((i) => removeItem(i.id))
@@ -254,6 +267,8 @@ export default function CartPage() {
     marketplaceItems.length > 0 ? floorIdr((total * buyerFeePercent) / 100) : 0
   const checkoutTotal = total + buyerFee
   const addressInvalid = requiresShipping && shippingAddress.trim().length < 10
+  const canPayFromWallet = walletBalance == null || walletBalance >= checkoutTotal
+  const checkoutLabel = canPayFromWallet ? 'Bayar dari saldo' : 'Bayar via Tripay'
 
   const applyPromo = async () => {
     const code = promoCode.trim()
@@ -654,20 +669,17 @@ export default function CartPage() {
                     disabled={
                       checkoutLoading ||
                       marketplaceItems.length === 0 ||
-                      addressInvalid ||
-                      (walletBalance != null && walletBalance < checkoutTotal)
+                      addressInvalid
                     }
                     onClick={() => void handleCheckout()}
                   >
-                    {checkoutLoading ? 'Memproses…' : 'Bayar dari saldo'}
+                    {checkoutLoading ? 'Memproses…' : checkoutLabel}
                     <ArrowRight className="h-4 w-4" />
                   </Button>
-                  {walletBalance != null && walletBalance < checkoutTotal && (
-                    <p className="mt-2 text-center text-[11px] text-rose-600">
-                      Saldo tidak cukup.{' '}
-                      <Link href="/topup" className="underline">
-                        Top-up saldo
-                      </Link>
+                  {!canPayFromWallet && walletBalance != null && (
+                    <p className="mt-2 text-center text-[11px] text-amber-700">
+                      Saldo {formatPrice(walletBalance)} tidak cukup — checkout via Tripay (+ biaya
+                      channel).
                     </p>
                   )}
 
@@ -712,14 +724,36 @@ export default function CartPage() {
                 disabled={
                   checkoutLoading ||
                   marketplaceItems.length === 0 ||
-                  addressInvalid ||
-                  (walletBalance != null && walletBalance < total)
+                  addressInvalid
                 }
                 onClick={() => void handleCheckout()}
               >
-                {checkoutLoading ? '…' : 'Bayar'}
+                {checkoutLoading ? '…' : canPayFromWallet ? 'Bayar' : 'Tripay'}
                 <ArrowRight className="h-4 w-4" />
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pgCheckout && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-surface-200 bg-white p-5 shadow-xl">
+            <h3 className="text-lg font-semibold text-ink">Bayar Pesanan</h3>
+            <p className="mt-1 text-xs text-surface-500">
+              Total hold {formatPrice(pgCheckout.grandHoldTotal)} (+ biaya channel Tripay)
+            </p>
+            <div className="mt-4">
+              <TripayChannelPicker
+                purpose="MARKETPLACE"
+                targetId={pgCheckout.checkoutBatchId}
+                submitLabel="Lanjutkan pembayaran"
+                onCancel={() => setPgCheckout(null)}
+                onSuccess={(merchantRef) => {
+                  setPgCheckout(null)
+                  router.push(`/payments/${merchantRef}`)
+                }}
+              />
             </div>
           </div>
         </div>

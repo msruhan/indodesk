@@ -99,7 +99,7 @@ export function TeknisiSidebar() {
       profile={{
         initials: 'TK',
         name: 'Teknisi',
-        email: 'teknisi@indoteknizi.com',
+        email: 'teknisi@bantoo.in',
       }}
       scope="Teknisi"
     />

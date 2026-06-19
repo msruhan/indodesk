@@ -67,8 +67,8 @@ export function Footer() {
               <BrandLogo variant="wordmark" wordmarkClassName="h-9 sm:h-10" />
             </Link>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-surface-600">
-              Platform ekosistem teknisi handphone terintegrasi — marketplace, konsultasi online, dan
-              manajemen bisnis dalam satu pengalaman premium.
+              Platform ekosistem teknisi handphone — jual, beli, konsultasi, dan rekber aman.
+              <span className="mt-1 block font-medium text-primary-700">bantoo.in — kami bantoo-in.</span>
             </p>
             <div className="mt-6 flex gap-2">
               {socialLinks.map((social) => (
@@ -108,7 +108,7 @@ export function Footer() {
 
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-surface-200/70 pt-7 sm:flex-row">
           <p className="text-xs text-surface-500">
-            © {new Date().getFullYear()} Bandoo. Crafted with care.
+            © {new Date().getFullYear()} Bantoo. Crafted with care.
           </p>
           <div className="flex items-center gap-5 text-xs text-surface-500">
             <Link href="#" className="transition-colors hover:text-ink">

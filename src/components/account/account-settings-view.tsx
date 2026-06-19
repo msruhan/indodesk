@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { useUserProfile } from '@/hooks/use-user-profile'
 import { GoogleLinkCard } from '@/components/account/google-link-card'
+import { PasswordChangedSuccessModal } from '@/components/account/password-changed-success-modal'
 import {
   CheckCircle,
   Edit,
@@ -115,6 +116,7 @@ export function AccountSettingsView({
   const [confirmPassword, setConfirmPassword] = useState('')
   const [savingPassword, setSavingPassword] = useState(false)
   const [passwordMsg, setPasswordMsg] = useState<string | null>(null)
+  const [passwordChangedModalOpen, setPasswordChangedModalOpen] = useState(false)
 
   const [twoFaStep, setTwoFaStep] = useState<'idle' | 'setup' | 'disable'>('idle')
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
@@ -251,12 +253,12 @@ export function AccountSettingsView({
         setPasswordMsg(data.error || 'Gagal mengubah password')
         return
       }
-      setPasswordMsg('Password berhasil diubah')
+      setPasswordMsg(null)
       setShowPasswordForm(false)
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
-      void reload()
+      setPasswordChangedModalOpen(true)
     } catch {
       setPasswordMsg('Gagal mengubah password')
     } finally {
@@ -357,6 +359,7 @@ export function AccountSettingsView({
   }
 
   return (
+    <>
     <motion.div className="space-y-5">
       <Suspense fallback={null}>
         <EmailVerifyQuerySync onStatus={handleVerifyQuery} />
@@ -758,5 +761,7 @@ export function AccountSettingsView({
         </motion.div>
       )}
     </motion.div>
+    <PasswordChangedSuccessModal open={passwordChangedModalOpen} />
+    </>
   )
 }

@@ -149,7 +149,7 @@ export function AdminSidebar() {
       profile={{
         initials: 'AD',
         name: 'Admin',
-        email: 'admin@indoteknizi.com',
+        email: 'admin@bantoo.in',
       }}
       scope="Admin"
     />

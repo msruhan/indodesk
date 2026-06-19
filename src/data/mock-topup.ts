@@ -399,7 +399,7 @@ export const paymentMethods: PaymentMethod[] = [
   {
     id: 'saldo',
     kind: 'saldo',
-    label: 'Saldo IndoTeknizi',
+    label: 'Saldo Bantoo',
     hint: 'Cashback 1% · Auto-confirm',
     fee: 0,
     instant: true,

@@ -43,7 +43,7 @@ export const DEFAULT_WORK_APPROACH =
   'Diagnosis awal, estimasi, eksekusi, quality check, garansi'
 
 export const DEFAULT_TAGLINE_SUFFIX =
-  'dengan diagnosis cepat, komunikasi jelas, dan garansi layanan melalui IndoTeknizi.'
+  'dengan diagnosis cepat, komunikasi jelas, dan garansi layanan melalui Bantoo.'
 
 export function buildDefaultTagline(specialty: string[]): string {
   const specs = specialty.slice(0, 3).join(', ')

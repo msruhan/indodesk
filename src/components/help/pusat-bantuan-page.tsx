@@ -43,7 +43,7 @@ const CONFIG: Record<
   user: {
     hubPath: '/user/bantuan',
     ticketBasePath: '/user/bantuan/tiket',
-    subtitle: 'FAQ, laporan kendala, dan kontak tim support IndoTeknizi.',
+    subtitle: 'FAQ, laporan kendala, dan kontak tim support Bantoo.',
     emptyFaq: 'Belum ada FAQ untuk user.',
   },
   teknisi: {

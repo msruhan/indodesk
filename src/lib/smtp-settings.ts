@@ -52,7 +52,7 @@ const DEFAULTS: Omit<SmtpSettingsDto, 'hasPassword' | 'passwordMasked'> = {
   port: 587,
   secure: false,
   user: '',
-  from: 'noreply@indoteknizi.com',
+  from: 'noreply@bantoo.in',
 }
 
 let runtimeCache: SmtpRuntimeConfig | null | undefined

@@ -507,7 +507,7 @@ function ShippingVisualization({
           <CheckCircle className="h-5 w-5 text-primary-600" />
           <div>
             <p className="text-xs font-semibold text-primary-700">Paket telah diterima!</p>
-            <p className="text-[10px] text-primary-600">Terima kasih telah berbelanja di IndoTeknizi</p>
+            <p className="text-[10px] text-primary-600">Terima kasih telah berbelanja di Bantoo</p>
           </div>
         </motion.div>
       )}

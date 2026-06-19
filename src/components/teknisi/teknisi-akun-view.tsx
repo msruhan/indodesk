@@ -13,11 +13,13 @@ import { AccountSettingsView } from '@/components/account/account-settings-view'
 import { TeknisiProfileForm } from '@/components/teknisi/teknisi-profile-form'
 import { TeknisiProfileJadwalForm } from '@/components/teknisi/teknisi-profile-jadwal-form'
 import { TeknisiPortfolioSection } from '@/components/teknisi/teknisi-portfolio-section'
+import { TeknisiCertificationSection } from '@/components/teknisi/teknisi-certification-section'
 import { TeknisiTrustBadges } from '@/components/teknisi/teknisi-trust-badges'
 import { TelegramLinkCard } from '@/components/telegram/telegram-link-card'
 import { useTeknisiProfile } from '@/hooks/use-teknisi-profile'
 import type { TeknisiAccountProfileDto } from '@/lib/teknisi-profile-serializer'
 import {
+  Award,
   Bell,
   Briefcase,
   Clock,
@@ -26,7 +28,7 @@ import {
   UserCircle,
 } from '@/lib/icons'
 
-export type TeknisiAkunTab = 'profil' | 'jadwal' | 'portfolio' | 'pengaturan'
+export type TeknisiAkunTab = 'profil' | 'jadwal' | 'portfolio' | 'sertifikasi' | 'pengaturan'
 
 const fadeIn = { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.3 } }
 
@@ -34,11 +36,12 @@ const TABS: { id: TeknisiAkunTab; label: string; icon: typeof UserCircle }[] = [
   { id: 'profil', label: 'Profil', icon: UserCircle },
   { id: 'jadwal', label: 'Jadwal', icon: Clock },
   { id: 'portfolio', label: 'Portfolio', icon: Briefcase },
+  { id: 'sertifikasi', label: 'Sertifikasi', icon: Award },
   { id: 'pengaturan', label: 'Pengaturan', icon: Settings },
 ]
 
 function parseTab(raw: string | null): TeknisiAkunTab {
-  if (raw === 'jadwal' || raw === 'portfolio' || raw === 'pengaturan') return raw
+  if (raw === 'jadwal' || raw === 'portfolio' || raw === 'sertifikasi' || raw === 'pengaturan') return raw
   return 'profil'
 }
 
@@ -123,6 +126,21 @@ function PortfolioTabContent() {
   )
 }
 
+function SertifikasiTabContent() {
+  return (
+    <motion.div {...fadeIn}>
+      <Card>
+        <CardHeader>
+          <CardTitle>Sertifikasi</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TeknisiCertificationSection />
+        </CardContent>
+      </Card>
+    </motion.div>
+  )
+}
+
 function PengaturanTabContent() {
   return (
     <motion.div {...fadeIn} className="space-y-6">
@@ -190,6 +208,8 @@ function AkunTabBody({
       return <JadwalTabContent profile={profile} setProfile={setProfile} />
     case 'portfolio':
       return <PortfolioTabContent />
+    case 'sertifikasi':
+      return <SertifikasiTabContent />
     case 'pengaturan':
       return <PengaturanTabContent />
   }

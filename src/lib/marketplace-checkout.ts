@@ -7,8 +7,14 @@ import { notifyMarketplaceOrderNew } from '@/lib/telegram/notify'
 import { generateMarketplaceOrderCode } from '@/lib/marketplace-order-config'
 import { computeMarketplaceFees } from '@/lib/marketplace-fees'
 import { getPlatformSettings } from '@/lib/platform-settings'
+import { getTripayConfig } from '@/lib/tripay/config'
 import { holdBuyerForMarketplace } from '@/lib/marketplace-wallet'
 import { serializeMarketplaceOrder } from '@/lib/marketplace-order-serializer'
+import type { MarketplaceOrderDto } from '@/lib/marketplace-order-serializer'
+import {
+  generateCheckoutBatchId,
+  MARKETPLACE_PAYMENT_TTL_MS,
+} from '@/lib/payments/payment-intent'
 import {
   calcLineCouponDiscount,
   couponFromProduct,
@@ -43,6 +49,8 @@ type ResolvedLine = {
   }
 }
 
+type TxClient = Parameters<Parameters<typeof walletTransaction>[0]>[0]
+
 function groupLinesBySeller(lines: ResolvedLine[]): Map<string, ResolvedLine[]> {
   const map = new Map<string, ResolvedLine[]>()
   for (const line of lines) {
@@ -60,23 +68,40 @@ export type MarketplaceCheckoutOptions = {
   couponCode?: string | null
 }
 
-export async function processMarketplaceCheckout(
-  buyerId: string,
-  buyerName: string | null | undefined,
-  buyerEmail: string | null | undefined,
-  buyerRole: 'USER' | 'TEKNISI' | 'ADMIN',
-  lines: CheckoutLineInput[],
-  options: MarketplaceCheckoutOptions = {},
-) {
-  if (lines.length === 0) {
-    throw new Error('EMPTY_CART')
+export type MarketplaceCheckoutResult =
+  | { mode: 'paid'; orders: MarketplaceOrderDto[] }
+  | {
+      mode: 'needs_payment'
+      paymentGateway: 'tripay'
+      checkoutBatchId: string
+      grandHoldTotal: number
+      orderIds: string[]
+      orders: MarketplaceOrderDto[]
+    }
+
+async function reserveStockForLines(tx: TxClient, groupLines: ResolvedLine[]) {
+  for (const line of groupLines) {
+    const updated = await tx.product.updateMany({
+      where: { id: line.productId, stock: { gte: line.quantity } },
+      data: {
+        stock: { decrement: line.quantity },
+        soldCount: { increment: line.quantity },
+      },
+    })
+    if (updated.count === 0) throw new Error('OUT_OF_STOCK')
   }
+}
+
+async function resolveCheckoutContext(
+  buyerId: string,
+  lines: CheckoutLineInput[],
+  options: MarketplaceCheckoutOptions,
+) {
+  if (lines.length === 0) throw new Error('EMPTY_CART')
 
   const address = options.shippingAddress?.trim() ?? ''
-  if (options.requiresShipping) {
-    if (address.length < 10) {
-      throw new Error('SHIPPING_ADDRESS_REQUIRED')
-    }
+  if (options.requiresShipping && address.length < 10) {
+    throw new Error('SHIPPING_ADDRESS_REQUIRED')
   }
 
   const productIds = [...new Set(lines.map((l) => l.productId))]
@@ -99,9 +124,7 @@ export async function processMarketplaceCheckout(
     },
   })
 
-  if (products.length !== productIds.length) {
-    throw new Error('PRODUCT_NOT_FOUND')
-  }
+  if (products.length !== productIds.length) throw new Error('PRODUCT_NOT_FOUND')
 
   const productMap = new Map(products.map((p) => [p.id, p]))
   const resolved: ResolvedLine[] = []
@@ -131,14 +154,11 @@ export async function processMarketplaceCheckout(
     ? normalizeCouponCode(options.couponCode)
     : ''
 
-  let grandTotal = new Prisma.Decimal(0)
   let totalCouponDiscount = 0
   for (const group of sellerGroups.values()) {
     for (const line of group) {
       const lineSubtotal = Number(line.unitPrice) * line.quantity
-      const lineDiscount = calcLineCouponDiscount(lineSubtotal, line.coupon, enteredCoupon)
-      totalCouponDiscount += lineDiscount
-      grandTotal = grandTotal.add(new Prisma.Decimal(lineSubtotal - lineDiscount))
+      totalCouponDiscount += calcLineCouponDiscount(lineSubtotal, line.coupon, enteredCoupon)
     }
   }
 
@@ -147,8 +167,8 @@ export async function processMarketplaceCheckout(
   }
 
   const platformSettings = await getPlatformSettings()
-
   let grandHoldTotal = new Prisma.Decimal(0)
+
   for (const group of sellerGroups.values()) {
     let subtotal = new Prisma.Decimal(0)
     let discount = new Prisma.Decimal(0)
@@ -167,9 +187,30 @@ export async function processMarketplaceCheckout(
     grandHoldTotal = grandHoldTotal.add(fees.buyerHoldAmount)
   }
 
+  return { address, sellerGroups, enteredCoupon, platformSettings, grandHoldTotal }
+}
+
+export async function processMarketplaceCheckout(
+  buyerId: string,
+  buyerName: string | null | undefined,
+  buyerEmail: string | null | undefined,
+  buyerRole: 'USER' | 'TEKNISI' | 'ADMIN',
+  lines: CheckoutLineInput[],
+  options: MarketplaceCheckoutOptions = {},
+): Promise<MarketplaceCheckoutResult> {
+  const ctx = await resolveCheckoutContext(buyerId, lines, options)
+
   const wallet = await prisma.wallet.findUnique({ where: { userId: buyerId } })
-  if (!wallet) throw new Error('WALLET_NOT_FOUND')
-  if (wallet.balance.lessThan(grandHoldTotal)) throw new Error('INSUFFICIENT_BALANCE')
+  const canPayWallet =
+    wallet != null && wallet.balance.greaterThanOrEqualTo(ctx.grandHoldTotal)
+
+  if (!canPayWallet) {
+    if (!getTripayConfig().isConfigured) {
+      if (!wallet) throw new Error('WALLET_NOT_FOUND')
+      throw new Error('INSUFFICIENT_BALANCE')
+    }
+    return createAwaitingPaymentOrders(buyerId, buyerRole, ctx, options)
+  }
 
   const actor: ActivityActor = {
     id: buyerId,
@@ -180,9 +221,8 @@ export async function processMarketplaceCheckout(
 
   const createdOrders = await walletTransaction(async (tx) => {
     const orders = []
-    let debitReferenceId: string | null = null
 
-    for (const [sellerId, groupLines] of sellerGroups) {
+    for (const [sellerId, groupLines] of ctx.sellerGroups) {
       let subtotal = new Prisma.Decimal(0)
       let discount = new Prisma.Decimal(0)
       for (const line of groupLines) {
@@ -191,12 +231,12 @@ export async function processMarketplaceCheckout(
         const lineDiscount = calcLineCouponDiscount(
           Number(lineSubtotal),
           line.coupon,
-          enteredCoupon,
+          ctx.enteredCoupon,
         )
         discount = discount.add(new Prisma.Decimal(lineDiscount))
       }
       const total = subtotal.sub(discount)
-      const fees = computeMarketplaceFees(Number(total), platformSettings)
+      const fees = computeMarketplaceFees(Number(total), ctx.platformSettings)
 
       const orderCode = generateMarketplaceOrderCode()
       const order = await tx.order.create({
@@ -213,8 +253,9 @@ export async function processMarketplaceCheckout(
           buyerHoldAmount: fees.buyerHoldAmount,
           sellerNetAmount: fees.sellerNetAmount,
           settlementVersion: 2,
+          paymentMethod: 'WALLET',
           status: 'PAID',
-          ...(address ? { shippingAddress: address } : {}),
+          ...(ctx.address ? { shippingAddress: ctx.address } : {}),
           ...(options.shippingPhone?.trim()
             ? { shippingPhone: options.shippingPhone.trim() }
             : {}),
@@ -233,25 +274,8 @@ export async function processMarketplaceCheckout(
         },
       })
 
-      for (const line of groupLines) {
-        const updated = await tx.product.updateMany({
-          where: { id: line.productId, stock: { gte: line.quantity } },
-          data: {
-            stock: { decrement: line.quantity },
-            soldCount: { increment: line.quantity },
-          },
-        })
-        if (updated.count === 0) throw new Error('OUT_OF_STOCK')
-      }
-
-      await holdBuyerForMarketplace(
-        tx,
-        buyerId,
-        fees.buyerHoldAmount,
-        order.id,
-        orderCode,
-      )
-
+      await reserveStockForLines(tx, groupLines)
+      await holdBuyerForMarketplace(tx, buyerId, fees.buyerHoldAmount, order.id, orderCode)
       orders.push(order)
 
       void logPaymentEvent({
@@ -280,20 +304,98 @@ export async function processMarketplaceCheckout(
       void notifyMarketplaceOrderNew(order.id)
     }
 
-    if (debitReferenceId) {
-      await holdBuyerForMarketplace(
-        tx,
-        buyerId,
-        grandHoldTotal,
-        debitReferenceId,
-        `Checkout marketplace (${orders.length} pesanan)`,
-      )
+    return orders
+  })
+
+  return {
+    mode: 'paid',
+    orders: createdOrders.map((o) =>
+      serializeMarketplaceOrder(o, { viewerId: buyerId, viewerRole: buyerRole }),
+    ),
+  }
+}
+
+async function createAwaitingPaymentOrders(
+  buyerId: string,
+  buyerRole: 'USER' | 'TEKNISI' | 'ADMIN',
+  ctx: Awaited<ReturnType<typeof resolveCheckoutContext>>,
+  options: MarketplaceCheckoutOptions,
+): Promise<MarketplaceCheckoutResult> {
+  const checkoutBatchId = generateCheckoutBatchId()
+  const paymentExpiresAt = new Date(Date.now() + MARKETPLACE_PAYMENT_TTL_MS)
+
+  const createdOrders = await prisma.$transaction(async (tx) => {
+    const orders = []
+
+    for (const [sellerId, groupLines] of ctx.sellerGroups) {
+      let subtotal = new Prisma.Decimal(0)
+      let discount = new Prisma.Decimal(0)
+      for (const line of groupLines) {
+        const lineSubtotal = line.unitPrice.mul(line.quantity)
+        subtotal = subtotal.add(lineSubtotal)
+        const lineDiscount = calcLineCouponDiscount(
+          Number(lineSubtotal),
+          line.coupon,
+          ctx.enteredCoupon,
+        )
+        discount = discount.add(new Prisma.Decimal(lineDiscount))
+      }
+      const total = subtotal.sub(discount)
+      const fees = computeMarketplaceFees(Number(total), ctx.platformSettings)
+
+      const orderCode = generateMarketplaceOrderCode()
+      const order = await tx.order.create({
+        data: {
+          orderCode,
+          buyerId,
+          sellerId,
+          subtotal,
+          discount,
+          fee: fees.buyerFeeAmount,
+          total,
+          buyerFeeAmount: fees.buyerFeeAmount,
+          sellerFeeAmount: fees.sellerFeeAmount,
+          buyerHoldAmount: fees.buyerHoldAmount,
+          sellerNetAmount: fees.sellerNetAmount,
+          settlementVersion: 2,
+          paymentMethod: 'PAYMENT_GATEWAY',
+          status: 'AWAITING_PAYMENT',
+          checkoutBatchId,
+          paymentExpiresAt,
+          ...(ctx.address ? { shippingAddress: ctx.address } : {}),
+          ...(options.shippingPhone?.trim()
+            ? { shippingPhone: options.shippingPhone.trim() }
+            : {}),
+          items: {
+            create: groupLines.map((line) => ({
+              productId: line.productId,
+              quantity: line.quantity,
+              price: line.unitPrice,
+            })),
+          },
+        },
+        include: {
+          buyer: { select: BUYER_SELECT },
+          seller: { select: SELLER_SELECT },
+          items: { include: { product: { select: { id: true, name: true } } } },
+        },
+      })
+
+      await reserveStockForLines(tx, groupLines)
+      orders.push(order)
     }
 
     return orders
   })
 
-  return createdOrders.map((o) =>
-    serializeMarketplaceOrder(o, { viewerId: buyerId, viewerRole: buyerRole }),
-  )
+  return {
+    mode: 'needs_payment',
+    paymentGateway: 'tripay',
+    checkoutBatchId,
+    grandHoldTotal: Number(ctx.grandHoldTotal),
+    orderIds: createdOrders.map((o) => o.id),
+    orders: createdOrders.map((o) =>
+      serializeMarketplaceOrder(o, { viewerId: buyerId, viewerRole: buyerRole }),
+    ),
+  }
 }

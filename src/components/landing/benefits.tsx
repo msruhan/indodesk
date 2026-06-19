@@ -22,13 +22,13 @@ import {
 const benefits = [
   {
     icon: TrendingUp,
-    title: 'Tingkatkan Penjualan',
+    title: 'Komisi Lebih Masuk Akal',
     description:
-      'Rata-rata teknisi dan toko melihat peningkatan 35% penjualan dalam 3 bulan dengan marketplace terintegrasi.',
-    stat: 35,
+      'Jual handphone dengan komisi marketplace mulai 3–5% (Pro: 1–2%) — margin tetap terjaga dibanding platform umum.',
+    stat: 3,
     statSuffix: '%',
-    statPrefix: '+',
-    statLabel: 'peningkatan penjualan',
+    statPrefix: 'Mulai ',
+    statLabel: 'komisi marketplace',
   },
   {
     icon: Clock,
@@ -102,12 +102,12 @@ export function Benefits() {
             Benefits
           </Badge>
           <h2 className="text-balance text-[34px] font-semibold leading-[1.05] tracking-tightest text-ink sm:text-5xl">
-            Mengapa teknisi memilih
-            <span className="gradient-text-static"> IndoTeknizi</span>
+            Jual untung. Beli tenang.
+            <span className="gradient-text-static"> Dibantoo-in.</span>
           </h2>
           <p className="mt-4 text-pretty text-base text-surface-600 sm:text-lg">
-            Hasil nyata dari pengguna nyata. Lihat bagaimana IndoTeknizi membantu bisnis teknisi
-            berkembang.
+            Seller: fee marketplace lebih masuk akal. Buyer: rekber & teknisi terverifikasi. Satu
+            platform untuk ekosistem teknisi handphone Indonesia.
           </p>
         </Reveal>
 
@@ -158,7 +158,7 @@ export function Benefits() {
                 Siap mengembangkan bisnis teknisi Anda?
               </h3>
               <p className="mt-3 max-w-xl text-base text-surface-600">
-                Bergabunglah dengan ribuan teknisi dan toko yang sudah menggunakan IndoTeknizi.
+                Bergabunglah dengan ribuan teknisi dan toko yang sudah menggunakan Bantoo.
               </p>
 
               <div className="mt-6 grid grid-cols-1 gap-2.5 sm:grid-cols-2">

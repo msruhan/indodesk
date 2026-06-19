@@ -349,7 +349,7 @@ export default function RemotePage() {
                   <h3 className="text-xs font-bold text-ink">Tentang IndoDesk</h3>
                   <p className="text-[12px] leading-[1.7] text-surface-600">
                     IndoDesk adalah aplikasi remote desktop open-source yang dikembangkan khusus untuk
-                    ekosistem IndoTeknizi. Ringan, tanpa perlu konfigurasi, dan tersedia untuk Windows
+                    ekosistem Bantoo. Ringan, tanpa perlu konfigurasi, dan tersedia untuk Windows
                     serta macOS.
                   </p>
                   <div className="flex flex-wrap gap-1.5 pt-1">

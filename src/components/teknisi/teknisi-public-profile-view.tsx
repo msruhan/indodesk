@@ -30,6 +30,7 @@ import { useChat } from '@/contexts/chat-context'
 import { openTeknisiChat } from '@/lib/open-teknisi-chat'
 import type { PublicTeknisiDetailDto } from '@/lib/teknisi-public-detail'
 import { resolvePortfolioIcon, type TeknisiPortfolioItemDto } from '@/lib/teknisi-portfolio'
+import type { TeknisiCertificationItemDto } from '@/lib/teknisi-certification'
 import type { TeknisiConsultationService } from '@/lib/konsultasi-services'
 import { allProfileSkills } from '@/lib/teknisi-profile-content'
 import { getProfileSummaryFields } from '@/lib/teknisi-profile-display'
@@ -37,12 +38,14 @@ import { formatOperatingHoursLines } from '@/lib/store-operating-hours'
 import { cn } from '@/lib/utils'
 import {
   ArrowRight,
+  Award,
   Calendar,
   Check,
   CheckCircle,
   Clock,
   CreditCard,
   Eye,
+  FileText,
   Heart,
   Laptop,
   Lock,
@@ -265,6 +268,11 @@ export function TeknisiPublicProfileView({ teknisiId }: Props) {
                 <motion.div variants={fadeUp}>
                   <AvailabilityPanel teknisi={teknisi} />
                 </motion.div>
+                {teknisi.certifications.length > 0 && (
+                  <motion.div variants={fadeUp}>
+                    <CertificationsPanel certifications={teknisi.certifications} />
+                  </motion.div>
+                )}
                 {teknisi.linkedStore && (
                   <motion.div variants={fadeUp}>
                     <LinkedStoreCard teknisi={teknisi} />
@@ -1026,6 +1034,105 @@ function AvailabilityPanel({ teknisi }: { teknisi: PublicTeknisiDetailDto }) {
         Online hours dapat berubah mengikuti antrean konsultasi dan ketersediaan teknisi.
       </p>
     </SectionCard>
+  )
+}
+
+/* ============================================================================
+   CERTIFICATIONS PANEL
+   ========================================================================== */
+function CertificationsPanel({
+  certifications,
+}: {
+  certifications: TeknisiCertificationItemDto[]
+}) {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+
+  return (
+    <>
+      <SectionCard eyebrow="Kompetensi" title="Sertifikasi">
+        <div className="space-y-2.5">
+          {certifications.map((item, idx) => (
+            <motion.div
+              key={item.id}
+              initial={{ opacity: 0, y: 8 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-30px' }}
+              transition={{ delay: idx * 0.05 }}
+              className="group overflow-hidden rounded-2xl border border-surface-200/70 bg-white transition-shadow hover:shadow-soft-xs"
+            >
+              {item.fileType === 'image' ? (
+                <button
+                  type="button"
+                  onClick={() => setPreviewUrl(item.fileUrl)}
+                  className="block w-full text-left"
+                >
+                  <div className="relative aspect-[16/10] overflow-hidden bg-surface-100">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={item.fileUrl}
+                      alt={item.title}
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+                    <span className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] text-ink opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100">
+                      <Eye className="h-3 w-3" />
+                      Perbesar
+                    </span>
+                  </div>
+                  <div className="flex items-start gap-2.5 p-3">
+                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700">
+                      <Award className="h-4 w-4" />
+                    </span>
+                    <p className="text-[13px] font-semibold leading-snug text-ink">{item.title}</p>
+                  </div>
+                </button>
+              ) : (
+                <a
+                  href={item.fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 p-3 transition-colors hover:bg-surface-50/80"
+                >
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600">
+                    <FileText className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] font-semibold text-ink">{item.title}</p>
+                    <p className="mt-0.5 text-[11px] text-primary-600">Buka PDF</p>
+                  </div>
+                  <ArrowRight className="h-4 w-4 shrink-0 text-surface-400 transition-transform group-hover:translate-x-0.5" />
+                </a>
+              )}
+            </motion.div>
+          ))}
+        </div>
+      </SectionCard>
+
+      {previewUrl && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-ink/70 p-4 backdrop-blur-sm"
+          onClick={() => setPreviewUrl(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <button
+            type="button"
+            className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+            aria-label="Tutup pratinjau"
+            onClick={() => setPreviewUrl(null)}
+          >
+            ×
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={previewUrl}
+            alt="Pratinjau sertifikasi"
+            className="max-h-[90vh] max-w-full rounded-2xl object-contain shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+    </>
   )
 }
 
