@@ -341,6 +341,7 @@ model TeknisiStore {
   jamWeekdays   String?
   jamWeekend    String?
   operatingHours Json                 @default("{}")
+  profileImage  String? // avatar toko (listing & kartu penjual)
   coverImage    String?
   gallery       String[]             @default([])
   layanan       String[]             @default([])

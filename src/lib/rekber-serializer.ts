@@ -1,4 +1,9 @@
-import type { RekberPackagingMedia, RekberPackagingProof, RekberStatus, RekberTransaction, User } from '@prisma/client'
+import type { RekberPackagingMedia, RekberPackagingProof, RekberStatus, RekberTransaction, User, UserRole } from '@prisma/client'
+import {
+  deriveRekberSellerType,
+  rekberSellerTypeLabel,
+  type RekberSellerType,
+} from '@/lib/rekber-seller-types'
 import { formatNotificationTimeLabel } from '@/lib/notification-display'
 import {
   serializeRekberPackagingProof,
@@ -22,7 +27,7 @@ export type RekberUiStatus =
   | 'disputed'
   | 'refunded'
 
-export type RekberParty = Pick<User, 'id' | 'name' | 'email' | 'image'>
+export type RekberParty = Pick<User, 'id' | 'name' | 'email' | 'image' | 'role'>
 
 export type RekberTimelineEvent = {
   status: RekberUiStatus
@@ -39,6 +44,8 @@ export type RekberDto = {
   sellerId: string
   sellerName: string
   sellerEmail: string | null
+  sellerType: RekberSellerType
+  sellerTypeLabel: string
   amount: number
   fee: number
   totalHold: number
@@ -229,6 +236,7 @@ export function serializeRekber(row: RekberRow, opts: SerializeOpts = {}): Rekbe
 
   const isBuyer = role === 'buyer'
   const isSeller = role === 'seller'
+  const sellerType = deriveRekberSellerType((row.seller.role ?? 'USER') as UserRole)
   const complaint = row.complaint ? serializeRekberComplaint(row.complaint) : null
   const packagingProof = row.packagingProof
     ? serializeRekberPackagingProof(row.packagingProof)
@@ -243,6 +251,8 @@ export function serializeRekber(row: RekberRow, opts: SerializeOpts = {}): Rekbe
     sellerId: row.seller.id,
     sellerName: row.seller.name ?? 'Seller',
     sellerEmail: row.seller.email,
+    sellerType,
+    sellerTypeLabel: rekberSellerTypeLabel(sellerType),
     amount,
     fee,
     totalHold,

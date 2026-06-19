@@ -18,6 +18,7 @@ const PARTY_SELECT = {
   name: true,
   email: true,
   image: true,
+  role: true,
 } satisfies Record<keyof RekberParty, true>
 
 const includeOrder = INSPECTION_USER_ORDER_INCLUDE

@@ -19,6 +19,20 @@ export async function deleteStoreCover(imageUrl: string | null | undefined): Pro
   await deleteImage(imageUrl, LOCAL_PREFIX)
 }
 
+export async function saveStoreProfileImage(file: File, userId: string): Promise<string> {
+  return saveImage({
+    folder: 'stores',
+    localUrlPrefix: LOCAL_PREFIX,
+    file,
+    ownerId: userId,
+    maxBytes: MAX_BYTES,
+  })
+}
+
+export async function deleteStoreProfileImage(imageUrl: string | null | undefined): Promise<void> {
+  await deleteImage(imageUrl, LOCAL_PREFIX)
+}
+
 export async function saveStoreGalleryImage(file: File, userId: string): Promise<string> {
   return saveImage({
     folder: 'stores',

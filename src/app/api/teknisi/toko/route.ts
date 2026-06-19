@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
-import { saveStoreCover, deleteStoreCover } from '@/lib/store-image'
+import { saveStoreCover, deleteStoreCover, saveStoreProfileImage, deleteStoreProfileImage } from '@/lib/store-image'
 import {
   deleteAllStoreGalleryImages,
   deleteRemovedStoreGalleryImages,
@@ -46,6 +46,7 @@ function hasContentFieldUpdate(data: Record<string, unknown>) {
     'journey',
     'journeyIntro',
     'coverImage',
+    'profileImage',
     'gallery',
   ].some((k) => data[k] !== undefined)
 }
@@ -78,6 +79,7 @@ export async function POST(req: Request) {
     const contentType = req.headers.get('content-type') ?? ''
     let parsedPayload: ReturnType<typeof parseStoreFormPayload>
     let coverImage: string | null = null
+    let profileImage: string | null = null
     let gallery: string[] = []
 
     if (contentType.includes('multipart/form-data')) {
@@ -90,6 +92,10 @@ export async function POST(req: Request) {
       const file = form.get('cover')
       if (file instanceof File && file.size > 0) {
         coverImage = await saveStoreCover(file, session.user.id)
+      }
+      const profileFile = form.get('profile')
+      if (profileFile instanceof File && profileFile.size > 0) {
+        profileImage = await saveStoreProfileImage(profileFile, session.user.id)
       }
       gallery = await resolveStoreGalleryFromForm(form, session.user.id)
     } else {
@@ -105,6 +111,7 @@ export async function POST(req: Request) {
       data: {
         userId: session.user.id,
         ...parsedPayload,
+        profileImage,
         coverImage,
         gallery,
         listingStatus: 'PENDING',
@@ -166,6 +173,13 @@ export async function PATCH(req: Request) {
           const coverImage = await saveStoreCover(file, session.user.id)
           await deleteStoreCover(existing.coverImage)
           data.coverImage = coverImage
+        }
+
+        const profileFile = form.get('profile')
+        if (profileFile instanceof File && profileFile.size > 0) {
+          const profileImage = await saveStoreProfileImage(profileFile, session.user.id)
+          await deleteStoreProfileImage(existing.profileImage)
+          data.profileImage = profileImage
         }
 
         const gallery = await resolveStoreGalleryFromForm(form, session.user.id, existing.gallery)
@@ -230,6 +244,7 @@ export async function DELETE() {
     })
     if (!existing) return apiError('Toko tidak ditemukan', 404)
 
+    await deleteStoreProfileImage(existing.profileImage)
     await deleteStoreCover(existing.coverImage)
     await deleteAllStoreGalleryImages(existing.gallery)
     await prisma.teknisiStore.delete({ where: { userId: session.user.id } })

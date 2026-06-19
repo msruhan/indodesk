@@ -54,6 +54,7 @@ function storeToForm(s: TeknisiStoreDto): TeknisiStoreFormValues {
     layanan: s.layanan.length > 0 ? [...s.layanan] : [''],
     journey: s.journey.map((m) => ({ ...m })),
     gallery: [...s.gallery],
+    profileImage: s.profileImage,
   }
 }
 

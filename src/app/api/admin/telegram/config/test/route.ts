@@ -19,7 +19,7 @@ export async function POST() {
 
   const result = await sendTelegramMessage(
     chatId,
-    '✅ *Tes koneksi IndoTeknizi*\n\nPesan uji dari dashboard admin. Channel Telegram siap menerima notifikasi produk baru.',
+    '✅ *Tes koneksi Bantoo Bot*\n\nPesan uji dari dashboard admin. Channel Telegram siap menerima notifikasi produk baru.',
     { parse_mode: 'Markdown' },
   )
 

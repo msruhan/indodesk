@@ -7,6 +7,7 @@ import { Reveal, viewportReveal, staggerContainer } from '@/components/motion'
 import { ArrowRight, Sparkles } from '@/lib/icons'
 import { RemoteOnlineIllustration } from '@/components/illustrations/remote-online-illustration'
 import { InspectionIllustration } from '@/components/illustrations/inspection-illustration'
+import { CompareProductsIllustration } from '@/components/illustrations/compare-products-illustration'
 import { RekberIllustration } from '@/components/illustrations/rekber-illustration'
 
 const services = [
@@ -29,6 +30,16 @@ const services = [
     cta: 'Coba layanan inspeksi',
     accent: 'teal' as const,
     illustration: InspectionIllustration,
+  },
+  {
+    eyebrow: 'Bandingkan',
+    title: 'Pilih unit terbaik dengan skor objektif',
+    description:
+      'Bandingkan dua iklan side-by-side — kondisi, spesifikasi, hardware, dan kelengkapan dinilai otomatis. Dapatkan skor total & rekomendasi pemenang.',
+    href: '/marketplace',
+    cta: 'Coba bandingkan produk',
+    accent: 'primary' as const,
+    illustration: CompareProductsIllustration,
   },
   {
     eyebrow: 'Rekber',
@@ -82,11 +93,11 @@ export function ServicesShowcase() {
             Layanan inti
           </Badge>
           <h2 className="text-balance text-[34px] font-semibold leading-[1.05] tracking-tightest text-ink sm:text-5xl">
-            Tiga layanan,
+            Empat layanan,
             <span className="gradient-text-static"> satu ekosistem</span>
           </h2>
           <p className="mt-4 text-pretty text-base text-surface-600 sm:text-lg">
-            Dari diagnosa jarak jauh, inspeksi sebelum beli, hingga transaksi yang dijamin admin — semuanya berjalan mulus dalam satu platform.
+            Dari diagnosa jarak jauh, inspeksi sebelum beli, perbandingan produk objektif, hingga transaksi yang dijamin admin — semuanya berjalan mulus dalam satu platform.
           </p>
         </Reveal>
 

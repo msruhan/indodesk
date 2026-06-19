@@ -44,7 +44,7 @@ export default function RekberPage() {
             </span>
           </>
         }
-        description="Transaksi aman dengan sistem rekening bersama. Dana ditahan sampai barang/service diterima sesuai kesepakatan."
+        description="Escrow untuk transaksi di luar marketplace — antar member atau deal custom dengan teknisi. Dana ditahan sampai barang/layanan diterima."
         right={
           <Button
             onClick={() => setShowCreateForm(!showCreateForm)}
@@ -74,12 +74,19 @@ export default function RekberPage() {
               <div>
                 <h3 className="mb-2 text-lg font-semibold">Bagaimana Rekber Bekerja?</h3>
                 <ul className="space-y-1 text-sm text-surface-700">
-                  <li>1. Pembeli membuat transaksi rekber dan memilih penjual (teknisi)</li>
+                  <li>1. Pembeli buat rekber — pilih penjual (member via email atau teknisi terdaftar)</li>
                   <li>2. Pembeli membayar — dana ditahan di escrow</li>
                   <li>3. Penjual mengirim barang / menyelesaikan layanan</li>
                   <li>4. Pembeli konfirmasi penerimaan — dana dilepas ke penjual</li>
                   <li>5. Jika ada sengketa, admin dapat memediasi (release atau refund)</li>
                 </ul>
+                <p className="mt-3 text-xs text-surface-600">
+                  Produk resmi dari toko teknisi? Beli lewat{' '}
+                  <a href="/marketplace" className="font-semibold text-primary-700 underline underline-offset-2">
+                    Marketplace
+                  </a>{' '}
+                  — checkout sudah pakai escrow otomatis.
+                </p>
               </div>
             </div>
           </CardContent>

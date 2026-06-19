@@ -134,7 +134,7 @@ export default function TokoListPage() {
             const badge = toko.badge ? badgeConfig[toko.badge] : null
             const BadgeIcon = badge?.icon
             const jam = toko.jamWeekdays ?? toko.jamWeekend ?? '—'
-            const cover = toko.coverImage ?? defaultCover
+            const avatar = toko.profileImage ?? toko.coverImage ?? defaultCover
 
             return (
               <Link key={toko.id} href={`/toko/${toko.id}`}>
@@ -142,7 +142,7 @@ export default function TokoListPage() {
                   <div className="flex gap-3 p-3 sm:p-4">
                     <div className="relative h-28 w-28 flex-shrink-0 overflow-hidden rounded-xl bg-surface-100 sm:h-32 sm:w-32">
                       <img
-                        src={cover}
+                        src={avatar}
                         alt={toko.name}
                         className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />

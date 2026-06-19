@@ -5,6 +5,7 @@ import type {
   TeknisiProfile,
   TeknisiStore,
   User,
+  ConditionGrade,
 } from '@prisma/client'
 import { categoryLabel, PRODUCT_CATEGORY_SLUG } from '@/lib/product-catalog'
 import {
@@ -45,6 +46,18 @@ export type MarketplaceProductDto = {
   completeness: ProductCompletenessKey[]
   coupon: ProductCouponConfig | null
   couponLabel: string | null
+  benchmark: {
+    conditionGrade: ConditionGrade | null
+    conditionPercent: number | null
+    minusNotes: string | null
+    batteryHealth: number | null
+    batteryCycle: number | null
+    isAllOriginal: boolean | null
+    replacedParts: string[]
+    trueToneActive: boolean | null
+    faceIdWorks: boolean | null
+    verified3uTools: boolean
+  }
   seller: {
     id: string
     storeId: string | null
@@ -98,6 +111,18 @@ export function serializeMarketplaceProduct(p: ProductWithSeller): MarketplacePr
     completeness: parseCompletenessJson(p.completeness, p.category),
     coupon,
     couponLabel: coupon ? formatCouponLabel(coupon) : null,
+    benchmark: {
+      conditionGrade: p.conditionGrade,
+      conditionPercent: p.conditionPercent,
+      minusNotes: p.minusNotes,
+      batteryHealth: p.batteryHealth,
+      batteryCycle: p.batteryCycle,
+      isAllOriginal: p.isAllOriginal,
+      replacedParts: p.replacedParts,
+      trueToneActive: p.trueToneActive,
+      faceIdWorks: p.faceIdWorks,
+      verified3uTools: p.verified3uTools,
+    },
     seller: {
       id: p.seller.id,
       storeId: store?.id ?? null,
@@ -108,7 +133,7 @@ export function serializeMarketplaceProduct(p: ProductWithSeller): MarketplacePr
       totalSales: store?.totalSold ?? p.soldCount,
       responseTime: profile?.responseTime ?? null,
       location: store?.city ?? profile?.location ?? null,
-      image: resolveDisplayImageUrl(p.seller.image),
+      image: resolveDisplayImageUrl(store?.profileImage ?? p.seller.image),
     },
   }
 }

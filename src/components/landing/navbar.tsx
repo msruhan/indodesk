@@ -50,31 +50,31 @@ function getInitials(name: string): string {
 
 const ALL_NAV_GROUPS = [
   {
-    label: 'Marketplace',
+    label: 'Belanja',
     items: [
-      { href: '/marketplace', label: 'Shop' },
-      { href: '/topup', label: 'Topup' },
+      { href: '/marketplace', label: 'Marketplace' },
+      { href: '/topup', label: 'Top Up' },
       { href: '/imei', label: 'Layanan Digital', requireImei: true },
     ],
   },
   {
-    label: 'Layanan',
+    label: 'Ruang Teknisi',
     items: [
-      { href: '/teknisi', label: 'Teknisi' },
-      { href: '/remote', label: 'IndoDesk', requireRemote: true },
-      { href: '/inspeksi', label: 'Inspeksi', requireInspection: true },
+      { href: '/teknisi', label: 'Cari Teknisi' },
+      { href: '/remote', label: 'Remote Online', requireRemote: true },
+      { href: '/inspeksi', label: 'Inspeksi HP', requireInspection: true },
     ],
   },
   {
     label: 'Mitra',
     items: [
-      { href: '/toko', label: 'Toko' },
-      { href: '/lowongan', label: 'Lowongan' },
+      { href: '/toko', label: 'Direktori Toko' },
+      { href: '/lowongan', label: 'Karir / Lowongan' },
     ],
   },
 ] as const
 
-const STANDALONE_NAV_LINK = { href: '/rekber', label: 'Rekber' } as const
+const STANDALONE_NAV_LINK = { href: '/rekber', label: 'Rekber Aman' } as const
 
 const ALL_MOBILE_NAV_SECTIONS: {
   title?: string
@@ -88,33 +88,34 @@ const ALL_MOBILE_NAV_SECTIONS: {
   }[]
 }[] = [
   {
+    title: 'Belanja',
     items: [
-      { href: '/marketplace', label: 'Shop', icon: ShoppingBag },
+      { href: '/marketplace', label: 'Marketplace', icon: ShoppingBag },
       { href: '/topup', label: 'Top Up', icon: Zap },
       { href: '/imei', label: 'Layanan Digital', icon: Smartphone, requireImei: true },
     ],
   },
   {
-    title: 'Layanan',
+    title: 'Layanan Teknisi',
     items: [
-      { href: '/teknisi', label: 'Teknisi', icon: Users },
-      { href: '/remote', label: 'IndoDesk', icon: Laptop, requireRemote: true },
+      { href: '/teknisi', label: 'Cari Teknisi', icon: Users },
+      { href: '/remote', label: 'Remote Online', icon: Laptop, requireRemote: true },
       {
         href: '/inspeksi',
-        label: 'Inspeksi',
+        label: 'Inspeksi HP',
         icon: CheckSquare,
         requireInspection: true,
       },
     ],
   },
   {
-    items: [{ href: '/rekber', label: 'Rekber', icon: Shield }],
+    items: [{ href: '/rekber', label: 'Rekber Aman', icon: Shield }],
   },
   {
-    title: 'Mitra',
+    title: 'Gabung',
     items: [
-      { href: '/toko', label: 'Toko', icon: Store },
-      { href: '/lowongan', label: 'Lowongan', icon: Briefcase },
+      { href: '/toko', label: 'Direktori Toko', icon: Store },
+      { href: '/lowongan', label: 'Karir / Lowongan', icon: Briefcase },
     ],
   },
 ]

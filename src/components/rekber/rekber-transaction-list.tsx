@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Shield, Clock, CheckCircle, AlertCircle, XCircle, ArrowRight, Package } from '@/lib/icons'
+import { cn } from '@/lib/utils'
 import type { RekberDto, RekberStats } from '@/lib/rekber-serializer'
 import { RekberSellerFulfillment } from '@/components/rekber/rekber-seller-fulfillment'
 import type { ShippingCourier } from '@prisma/client'
@@ -137,6 +138,16 @@ export function RekberTransactionList({
                         <div>
                           <span className="text-surface-500">Penjual: </span>
                           <span className="font-medium">{r.sellerName}</span>
+                          <Badge
+                            className={cn(
+                              'ml-1.5 align-middle text-[10px] font-semibold',
+                              r.sellerType === 'teknisi'
+                                ? 'bg-amber-50 text-amber-800'
+                                : 'bg-surface-100 text-surface-700',
+                            )}
+                          >
+                            {r.sellerTypeLabel}
+                          </Badge>
                         </div>
                       </div>
                       {r.description && (

@@ -10,8 +10,10 @@ import { useChat } from '@/contexts/chat-context'
 import { openTeknisiChat } from '@/lib/open-teknisi-chat'
 import type { MarketplaceProductDto } from '@/lib/marketplace-product-serializer'
 import { MOCK_MARKETPLACE_PRODUCTS } from '@/lib/marketplace-mock-products'
-import { ProductPublicSpecs } from '@/components/marketplace/product-public-specs'
-import { Product3uToolsSection } from '@/components/marketplace/product-3utools-section'
+import {
+  ProductDetailSpecsCard,
+  shouldShowProductDetailCard,
+} from '@/components/marketplace/product-detail-specs-card'
 import { CompareButton } from '@/components/marketplace/compare-button'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Badge } from '@/components/ui/badge'
@@ -22,15 +24,16 @@ import { BottomNav, MobileSafeAreaSpacer } from '@/components/mobile'
 import {
   Award,
   CheckCircle,
+  CheckSquare,
   ChevronLeft,
   ChevronRight,
-  Clock,
   CreditCard,
   Eye,
   Heart,
   MapPin,
   MessageCircle,
   Package,
+  Scales,
   Share2,
   Shield,
   ShoppingCart,
@@ -42,6 +45,9 @@ import {
 } from '@/lib/icons'
 
 const ease = [0.22, 1, 0.36, 1] as const
+
+const DEFAULT_SELLER_AVATAR = (name: string) =>
+  `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=128&background=f0fdf4&color=047857&bold=true`
 
 const reveal = {
   hidden: { opacity: 0, y: 22, filter: 'blur(8px)' },
@@ -388,26 +394,6 @@ export default function ProductDetailPage() {
               <Card className="rounded-[1.75rem]">
                 <CardContent className="p-5">
                   <div className="mb-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">Spesifikasi</p>
-                    <h2 className="mt-1 text-xl font-bold tracking-tight text-black sm:text-2xl">Detail produk</h2>
-                  </div>
-                  <ProductPublicSpecs
-                    category={product.categoryValue}
-                    color={product.color}
-                    ram={product.ram}
-                    processor={product.processor}
-                    storage={product.storage}
-                    warranty={product.warranty}
-                    completeness={product.completeness}
-                  />
-                </CardContent>
-              </Card>
-            </motion.section>
-
-            <motion.section variants={reveal} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-80px' }}>
-              <Card className="rounded-[1.75rem]">
-                <CardContent className="p-5">
-                  <div className="mb-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">Deskripsi</p>
                     <h2 className="mt-1 text-xl font-bold tracking-tight text-black sm:text-2xl">Ringkasan kondisi produk</h2>
                   </div>
@@ -415,6 +401,32 @@ export default function ProductDetailPage() {
                 </CardContent>
               </Card>
             </motion.section>
+
+            {shouldShowProductDetailCard({
+              category: product.categoryValue,
+              color: product.color,
+              ram: product.ram,
+              processor: product.processor,
+              storage: product.storage,
+              warranty: product.warranty,
+              completeness: product.completeness,
+              benchmark: product.benchmark,
+              threeUtoolsImages: product.threeUtoolsImages,
+            }) && (
+              <motion.section variants={reveal} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-80px' }}>
+                <ProductDetailSpecsCard
+                  category={product.categoryValue}
+                  color={product.color}
+                  ram={product.ram}
+                  processor={product.processor}
+                  storage={product.storage}
+                  warranty={product.warranty}
+                  completeness={product.completeness}
+                  benchmark={product.benchmark}
+                  threeUtoolsImages={product.threeUtoolsImages}
+                />
+              </motion.section>
+            )}
 
             <motion.section variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-80px' }}>
               <motion.div variants={reveal} className="mb-4">
@@ -586,12 +598,6 @@ export default function ProductDetailPage() {
             </motion.div>
 
             <motion.div variants={reveal}>
-            {product.threeUtoolsImages && product.threeUtoolsImages.length > 0 && (
-              <Product3uToolsSection images={product.threeUtoolsImages} />
-            )}
-            </motion.div>
-
-            <motion.div variants={reveal}>
             <Card className="w-full rounded-[1.35rem]">
               <CardContent className="p-4">
                 <div className="mb-3 flex items-center justify-between">
@@ -606,7 +612,7 @@ export default function ProductDetailPage() {
 
                 <div className="flex items-center gap-3">
                   <img
-                    src="https://i.pravatar.cc/150?img=12"
+                    src={display.teknisi.image ?? DEFAULT_SELLER_AVATAR(display.teknisi.storeName)}
                     alt={display.teknisi.storeName}
                     className="h-12 w-12 rounded-2xl border border-surface-200 object-cover"
                   />
@@ -649,10 +655,26 @@ export default function ProductDetailPage() {
                 <h2 className="mb-4 text-base font-bold text-black">Keunggulan transaksi</h2>
                 <div className="space-y-3">
                   {[
-                    { title: 'COD tersedia', desc: 'Cek unit sebelum pembayaran', icon: Package },
-                    { title: 'Garansi 1 bulan', desc: 'Cover service center toko', icon: Shield },
-                    { title: 'Pembayaran fleksibel', desc: 'Transfer, wallet, atau rekber', icon: CreditCard },
-                    { title: 'Respon cepat', desc: 'Rata-rata balasan kurang dari 5 menit', icon: Clock },
+                    {
+                      title: 'Pembayaran aman',
+                      desc: 'Saldo di-hold hingga pesanan selesai',
+                      icon: CreditCard,
+                    },
+                    {
+                      title: 'Chat langsung',
+                      desc: 'Tanya penjual sebelum membeli',
+                      icon: MessageCircle,
+                    },
+                    {
+                      title: 'Komplain terstruktur',
+                      desc: 'Mediasi platform jika barang tidak sesuai',
+                      icon: Scales,
+                    },
+                    {
+                      title: 'Bandingkan unit',
+                      desc: 'Bandingkan spesifikasi & kondisi secara objektif',
+                      icon: CheckSquare,
+                    },
                   ].map((item) => {
                     const Icon = item.icon
                     return (

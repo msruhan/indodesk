@@ -96,7 +96,7 @@ export function TokoDetailView({ storeId }: Props) {
   }, [storeId])
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-gradient-to-b from-surface-50 via-white to-primary-50/30">
+    <div className="relative min-h-screen overflow-x-hidden bg-gradient-to-b from-neutral-50 via-white to-neutral-100">
       <AmbientOrbs />
       <div className="hidden lg:block"><Navbar /></div>
 
@@ -108,7 +108,7 @@ export function TokoDetailView({ storeId }: Props) {
             <CardContent className="py-10 text-center">
               <Store className="mx-auto mb-3 h-8 w-8 text-surface-400" />
               <p className="text-sm font-medium text-ink">{error}</p>
-              <Link href="/toko" className="mt-4 inline-block text-sm text-primary-600 hover:underline">
+              <Link href="/toko" className="mt-4 inline-block text-sm text-amber-700 hover:underline">
                 Lihat toko lain
               </Link>
             </CardContent>
@@ -184,12 +184,12 @@ function AmbientOrbs() {
   return (
     <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
       <motion.div
-        className="absolute -left-32 top-32 h-[28rem] w-[28rem] rounded-full bg-primary-300/30 blur-[120px]"
+        className="absolute -left-32 top-32 h-[28rem] w-[28rem] rounded-full bg-amber-200/25 blur-[120px]"
         animate={{ x: [0, 50, 0], y: [0, -25, 0] }}
         transition={{ duration: 14, repeat: Infinity, ease: 'easeInOut' }}
       />
       <motion.div
-        className="absolute -right-32 top-96 h-[28rem] w-[28rem] rounded-full bg-accent-300/30 blur-[120px]"
+        className="absolute -right-32 top-96 h-[28rem] w-[28rem] rounded-full bg-neutral-300/30 blur-[120px]"
         animate={{ x: [0, -50, 0], y: [0, 30, 0] }}
         transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut' }}
       />
@@ -238,9 +238,8 @@ function CinematicHero({
       <motion.div className="absolute inset-0" style={{ y: heroY, opacity: heroOpacity }}>
         <img src={cover} alt={store.name} className="absolute inset-0 h-full w-full object-cover" />
         {/* Gradient overlay — bottom dark for readability */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/70" />
-        {/* Mesh tone */}
-        <div className="absolute inset-0 bg-gradient-to-tr from-primary-900/30 via-transparent to-cyan-900/20 mix-blend-overlay" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/10 to-black/75" />
+        <div className="absolute inset-0 bg-gradient-to-tr from-neutral-950/40 via-transparent to-amber-950/15 mix-blend-overlay" />
       </motion.div>
 
       {/* Top floating bar — share/like */}
@@ -317,7 +316,7 @@ function CinematicHero({
             />
             <Divider />
             <Stat
-              icon={<ShoppingBag className="h-4 w-4 text-emerald-300" />}
+              icon={<ShoppingBag className="h-4 w-4 text-amber-400" />}
               value={
                 <span className="tabular-nums">
                   <AnimatedNumber value={store.totalPenjualan} />
@@ -327,7 +326,7 @@ function CinematicHero({
             />
             <Divider />
             <Stat
-              icon={<Eye className="h-4 w-4 text-cyan-300" />}
+              icon={<Eye className="h-4 w-4 text-white/75" />}
               value={
                 <span className="tabular-nums">
                   <AnimatedNumber value={store.profileViews} />
@@ -389,12 +388,12 @@ function StoreHeroBadges({ store }: { store: PublicStoreDetailDto }) {
           className={cn(
             heroBadge,
             badge === 'trusted-store'
-              ? 'border-emerald-200/90 bg-gradient-to-r from-emerald-400 via-green-400 to-emerald-500 text-emerald-950 shadow-[0_4px_24px_-4px_rgba(16,185,129,0.55)]'
+              ? 'border-yellow-200/90 bg-gradient-to-r from-yellow-300 via-amber-300 to-yellow-400 text-amber-950 shadow-[0_4px_24px_-4px_rgba(251,191,36,0.55)]'
               : 'border-slate-200/90 bg-gradient-to-r from-slate-300 via-slate-100 to-zinc-300 text-slate-800 shadow-[0_4px_24px_-4px_rgba(148,163,184,0.5)]',
           )}
         >
           <Award
-            className={cn('h-3.5 w-3.5', badge === 'trusted-store' ? 'text-emerald-900' : 'text-slate-700')}
+            className={cn('h-3.5 w-3.5', badge === 'trusted-store' ? 'text-amber-900' : 'text-slate-700')}
             weight="fill"
           />
           {badge === 'trusted-store' ? 'Trusted Store' : 'Top Seller'}
@@ -539,20 +538,20 @@ function ContactRow({
     >
       <Wrapper
         {...(item.href ? { href: item.href } : {})}
-        className="group/row relative grid items-center gap-4 px-6 py-5 transition-colors hover:bg-gradient-to-r hover:from-primary-50/40 hover:via-primary-50/20 hover:to-transparent sm:grid-cols-[140px_auto_1fr_auto] sm:px-8"
+        className="group/row relative grid items-center gap-4 px-6 py-5 transition-colors hover:bg-gradient-to-r hover:from-amber-50/40 hover:via-amber-50/20 hover:to-transparent sm:grid-cols-[140px_auto_1fr_auto] sm:px-8"
       >
         {/* Index column with label */}
         <div className="flex items-baseline gap-3 sm:flex-col sm:items-start sm:gap-1">
           <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-surface-400">
             {String(idx + 1).padStart(2, '0')}
           </span>
-          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary-700">
+          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-700">
             {item.label}
           </span>
         </div>
 
         {/* Icon — outline only, not a colored box */}
-        <div className="hidden h-10 w-10 items-center justify-center rounded-full border border-surface-300/70 text-surface-700 transition-colors group-hover/row:border-primary-600 group-hover/row:text-primary-700 sm:inline-flex">
+        <div className="hidden h-10 w-10 items-center justify-center rounded-full border border-surface-300/70 text-surface-700 transition-colors group-hover/row:border-amber-500 group-hover/row:text-amber-700 sm:inline-flex">
           <Icon className="h-4 w-4" />
         </div>
 
@@ -568,14 +567,14 @@ function ContactRow({
 
         {/* Arrow */}
         {item.href && (
-          <div className="hidden items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-primary-700 transition-transform group-hover/row:translate-x-1 sm:flex">
+          <div className="hidden items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-amber-700 transition-transform group-hover/row:translate-x-1 sm:flex">
             <span>Open</span>
             <ArrowRight className="h-3.5 w-3.5" />
           </div>
         )}
 
         {/* Left accent on hover */}
-        <span className="pointer-events-none absolute inset-y-3 left-0 w-[2px] origin-bottom scale-y-0 bg-primary-600 transition-transform duration-300 group-hover/row:scale-y-100" />
+        <span className="pointer-events-none absolute inset-y-3 left-0 w-[2px] origin-bottom scale-y-0 bg-amber-600 transition-transform duration-300 group-hover/row:scale-y-100" />
       </Wrapper>
     </motion.li>
   )
@@ -614,7 +613,7 @@ function AboutSplit({
         <p className="mt-2 max-w-lg text-[12.5px] leading-relaxed text-surface-500">{intro}</p>
 
         <div className="relative mt-8">
-          <div className="absolute bottom-0 left-5 top-0 w-px bg-gradient-to-b from-primary-600 via-primary-400 to-surface-200 sm:left-7" />
+          <div className="absolute bottom-0 left-5 top-0 w-px bg-gradient-to-b from-amber-600 via-amber-400 to-surface-200 sm:left-7" />
 
           <div className="space-y-0">
             {journey.map((step, idx) => {
@@ -635,8 +634,8 @@ function AboutSplit({
                       className={cn(
                         'flex h-10 w-10 items-center justify-center rounded-xl border-2 border-white shadow-soft-md transition-colors sm:h-14 sm:w-14 sm:rounded-2xl',
                         isLast
-                          ? 'bg-gradient-to-br from-primary-600 to-emerald-600 text-white'
-                          : 'bg-white text-surface-700 group-hover:bg-primary-50 group-hover:text-primary-700',
+                          ? 'bg-gradient-to-br from-amber-600 to-yellow-600 text-white'
+                          : 'bg-white text-surface-700 group-hover:bg-amber-50 group-hover:text-amber-700',
                       )}
                     >
                       <Icon className="h-4 w-4 sm:h-5 sm:w-5" weight={isLast ? 'fill' : 'duotone'} />
@@ -645,14 +644,14 @@ function AboutSplit({
 
                   <div className="min-w-0 flex-1 pt-1">
                     <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                      <span className="font-mono text-[11px] font-bold tabular-nums text-primary-700">
+                      <span className="font-mono text-[11px] font-bold tabular-nums text-amber-700">
                         {step.year}
                       </span>
                       <h4 className="text-[15px] font-black tracking-tight text-ink sm:text-[16px]">
                         {step.title}
                       </h4>
                       {isLast && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-primary-100 px-2 py-0.5 text-[8.5px] font-black uppercase tracking-[0.18em] text-primary-700">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[8.5px] font-black uppercase tracking-[0.18em] text-amber-800">
                           <Sparkles className="h-2.5 w-2.5" weight="fill" />
                           Sekarang
                         </span>
@@ -694,15 +693,15 @@ function ServicesList({ layanan }: { layanan: string[] }) {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-30px' }}
             transition={{ delay: idx * 0.06 }}
-            className="group/svc relative flex items-baseline gap-4 border-t border-surface-200/70 py-4 transition-colors hover:bg-primary-50/20"
+            className="group/svc relative flex items-baseline gap-4 border-t border-surface-200/70 py-4 transition-colors hover:bg-amber-50/20"
           >
-            <span className="font-mono text-[12px] font-bold tracking-[0.16em] text-surface-400 transition-colors group-hover/svc:text-primary-700">
+            <span className="font-mono text-[12px] font-bold tracking-[0.16em] text-surface-400 transition-colors group-hover/svc:text-amber-700">
               {String(idx + 1).padStart(2, '0')}
             </span>
             <span className="flex-1 text-[18px] font-black tracking-tight text-ink transition-transform group-hover/svc:translate-x-1">
               {service}
             </span>
-            <ArrowRight className="h-4 w-4 -translate-x-2 text-surface-400 opacity-0 transition-all group-hover/svc:translate-x-0 group-hover/svc:text-primary-700 group-hover/svc:opacity-100" />
+            <ArrowRight className="h-4 w-4 -translate-x-2 text-surface-400 opacity-0 transition-all group-hover/svc:translate-x-0 group-hover/svc:text-amber-700 group-hover/svc:opacity-100" />
           </motion.li>
         ))}
         {/* Bottom divider */}
@@ -737,7 +736,7 @@ function ProductsGallery({ store }: { store: PublicStoreDetailDto }) {
         <SectionEyebrow eyebrow="Etalase" title="Produk Terkurasi" />
         <Link
           href={`/toko/${store.id}/produk`}
-          className="group inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-primary-700 hover:text-primary-800"
+          className="group inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-amber-700 hover:text-amber-800"
         >
           Lihat semua
           <span className="font-mono text-[10px] tabular-nums text-surface-400">
@@ -785,11 +784,11 @@ function ProductCard({ product, idx }: { product: PublicStoreProductDto; idx: nu
           </div>
         </div>
         <div className="p-3">
-          <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-primary-700">
+          <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-amber-700">
             {categoryLabel(product.category)}
           </p>
           <p className="mt-1 line-clamp-2 text-[12px] font-bold leading-snug text-ink">{product.name}</p>
-          <p className="mt-2 text-[14px] font-black tabular-nums text-primary-700">{formatPrice(product.price)}</p>
+          <p className="mt-2 text-[14px] font-black tabular-nums text-amber-700">{formatPrice(product.price)}</p>
         </div>
       </motion.div>
     </Link>
@@ -804,59 +803,39 @@ function TeknisiCTA({ store }: { store: PublicStoreDetailDto }) {
     <Link href={`/teknisi/${store.teknisiId}`} className="group block">
       <motion.div
         whileHover={{ y: -4 }}
-        className="relative overflow-hidden rounded-3xl shadow-[0_24px_60px_-24px_rgba(16,185,129,0.45)]"
+        className="relative overflow-hidden rounded-3xl border border-neutral-800/80 shadow-[0_24px_60px_-24px_rgba(0,0,0,0.45)]"
       >
-        {/* Animated mesh background */}
-        <motion.div
+        <div
           className="absolute inset-0"
           style={{
             backgroundImage:
-              'radial-gradient(circle at 20% 30%, rgba(16,185,129,0.95), transparent 55%), radial-gradient(circle at 80% 70%, rgba(8,145,178,0.85), transparent 55%), linear-gradient(135deg,#022c22 0%,#047857 50%,#0e7490 100%)',
+              'radial-gradient(circle at 18% 22%, rgba(251,191,36,0.16), transparent 52%), radial-gradient(circle at 82% 78%, rgba(255,255,255,0.07), transparent 55%), linear-gradient(135deg, #0a0a0a 0%, #171717 38%, #262626 72%, #404040 100%)',
           }}
-          animate={{ backgroundPosition: ['0% 0%', '100% 100%', '0% 0%'] }}
-          transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
         />
 
-        {/* Floating sparkles */}
-        <motion.div
-          className="pointer-events-none absolute right-12 top-10 text-white/30"
-          animate={{ y: [-6, 6, -6], rotate: [0, 30, 0] }}
-          transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-        >
-          <Sparkles className="h-8 w-8" weight="fill" />
-        </motion.div>
-        <motion.div
-          className="pointer-events-none absolute left-1/2 top-6 text-white/30"
-          animate={{ y: [-4, 8, -4] }}
-          transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-        >
-          <Sparkles className="h-5 w-5" weight="fill" />
-        </motion.div>
-
-        {/* Dot pattern */}
         <div
-          className="absolute inset-0 opacity-20"
+          className="absolute inset-0 opacity-[0.14]"
           style={{
-            backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.5) 1px, transparent 1px)',
+            backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.45) 1px, transparent 1px)',
             backgroundSize: '20px 20px',
           }}
         />
 
         <div className="relative grid gap-5 p-8 text-white sm:grid-cols-[1fr_auto] sm:items-center sm:gap-8 sm:p-10">
           <div>
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/15 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-white backdrop-blur-md">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-200 backdrop-blur-md">
               <Wrench className="h-3 w-3" weight="fill" />
               Toko ini dikelola teknisi
             </span>
-            <h3 className="mt-3 text-2xl font-black tracking-tight sm:text-3xl">
+            <h3 className="mt-3 text-2xl font-black tracking-tight text-white sm:text-3xl">
               Konsultasi langsung dengan teknisi pemilik toko
             </h3>
-            <p className="mt-2 max-w-xl text-[13px] leading-relaxed text-white/80">
+            <p className="mt-2 max-w-xl text-[13px] leading-relaxed text-neutral-300">
               Lihat profil, jam respons, dan booking sesi konsultasi sebelum atau setelah pembelian.
             </p>
           </div>
           <div className="flex flex-wrap gap-2 sm:flex-col sm:items-end">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-2 text-[12px] font-bold backdrop-blur-md transition-colors group-hover:bg-white group-hover:text-ink">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/50 bg-gradient-to-r from-yellow-300 via-amber-300 to-yellow-400 px-4 py-2.5 text-[12px] font-bold text-amber-950 shadow-[0_4px_20px_-6px_rgba(251,191,36,0.55)] transition-transform group-hover:scale-[1.02]">
               <User className="h-4 w-4" />
               Lihat profil teknisi
               <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
@@ -874,7 +853,7 @@ function TeknisiCTA({ store }: { store: PublicStoreDetailDto }) {
 function SectionEyebrow({ eyebrow, title }: { eyebrow: string; title: string }) {
   return (
     <div>
-      <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary-700">{eyebrow}</p>
+      <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-amber-700">{eyebrow}</p>
       <h2 className="mt-1 text-2xl font-black tracking-tight text-ink sm:text-3xl">{title}</h2>
     </div>
   )
@@ -962,7 +941,7 @@ function TeknisiTeamPanel({ store }: { store: PublicStoreDetailDto }) {
       {/* Footer note */}
       <div className="border-t border-surface-200/70 bg-surface-50/50 px-5 py-3">
         <p className="inline-flex items-center gap-1.5 text-[10.5px] text-surface-500">
-          <Sparkles className="h-3 w-3 text-primary-600" weight="fill" />
+          <Sparkles className="h-3 w-3 text-amber-600" weight="fill" />
           Verified by IndoTeknizi
         </p>
       </div>
@@ -986,7 +965,7 @@ function TeamMemberRow({
     >
       <Link
         href={`/teknisi/${member.id}`}
-        className="group/m relative flex items-start gap-3 px-5 py-4 transition-colors hover:bg-gradient-to-r hover:from-primary-50/40 hover:via-primary-50/20 hover:to-transparent"
+        className="group/m relative flex items-start gap-3 px-5 py-4 transition-colors hover:bg-gradient-to-r hover:from-amber-50/40 hover:via-amber-50/20 hover:to-transparent"
       >
         {/* Avatar with rotating ring */}
         <div className="relative flex-shrink-0">
@@ -997,11 +976,11 @@ function TeamMemberRow({
             transition={{ duration: 18, repeat: Infinity, ease: 'linear' }}
             style={{
               background:
-                'conic-gradient(from 0deg, rgba(16,185,129,0.55), rgba(6,182,212,0.55), rgba(16,185,129,0.55))',
+                'conic-gradient(from 0deg, rgba(251,191,36,0.55), rgba(217,119,6,0.55), rgba(251,191,36,0.55))',
               filter: 'blur(6px)',
             }}
           />
-          <div className="relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border-2 border-white bg-gradient-to-br from-primary-500 to-emerald-600 text-base font-black text-white shadow-soft-md">
+          <div className="relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border-2 border-white bg-gradient-to-br from-amber-500 to-yellow-600 text-base font-black text-white shadow-soft-md">
             {member.image ? (
               <img src={member.image} alt={member.name} className="h-full w-full object-cover" />
             ) : (
@@ -1010,8 +989,8 @@ function TeamMemberRow({
           </div>
           {member.isOnline && (
             <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-500" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
+              <span className="relative inline-flex h-3.5 w-3.5 rounded-full border-2 border-white bg-amber-500" />
             </span>
           )}
         </div>
@@ -1030,7 +1009,7 @@ function TeamMemberRow({
 
           {/* Role + experience */}
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10.5px] text-surface-500">
-            <span className="font-bold uppercase tracking-[0.16em] text-primary-700">
+            <span className="font-bold uppercase tracking-[0.16em] text-amber-700">
               {member.role === 'owner' ? 'Owner & Lead Teknisi' : 'Staff Teknisi'}
             </span>
             {member.experience && (
@@ -1064,10 +1043,10 @@ function TeamMemberRow({
         </div>
 
         {/* Arrow indicator */}
-        <ArrowRight className="mt-1 h-4 w-4 flex-shrink-0 text-surface-400 transition-all group-hover/m:translate-x-1 group-hover/m:text-primary-700" />
+        <ArrowRight className="mt-1 h-4 w-4 flex-shrink-0 text-surface-400 transition-all group-hover/m:translate-x-1 group-hover/m:text-amber-700" />
 
         {/* Left accent on hover */}
-        <span className="pointer-events-none absolute inset-y-3 left-0 w-[2px] origin-bottom scale-y-0 bg-primary-600 transition-transform duration-300 group-hover/m:scale-y-100" />
+        <span className="pointer-events-none absolute inset-y-3 left-0 w-[2px] origin-bottom scale-y-0 bg-amber-600 transition-transform duration-300 group-hover/m:scale-y-100" />
       </Link>
     </motion.li>
   )
@@ -1109,7 +1088,7 @@ function StoreGallery({ gallery, storeName }: { gallery: string[]; storeName: st
       {/* Header — editorial */}
       <div className="flex items-end justify-between gap-4">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary-700">Galeri</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-amber-700">Galeri</p>
           <h2 className="mt-1 text-2xl font-black tracking-tight text-ink sm:text-3xl">
             Suasana &amp; Workshop
           </h2>
@@ -1371,7 +1350,7 @@ function Lightbox({
               className={cn(
                 'relative h-16 w-20 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all',
                 idx === activeIdx
-                  ? 'border-primary-400 opacity-100 ring-1 ring-primary-400/50'
+                  ? 'border-amber-400 opacity-100 ring-1 ring-amber-400/50'
                   : 'border-white/10 opacity-50 hover:opacity-100',
               )}
             >

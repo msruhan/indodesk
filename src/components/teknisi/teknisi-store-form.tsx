@@ -34,6 +34,7 @@ export type TeknisiStoreFormValues = {
   layanan: string[]
   journey: StoreJourneyMilestone[]
   gallery: string[]
+  profileImage: string | null
 }
 
 export const defaultStoreFormValues: TeknisiStoreFormValues = {
@@ -50,6 +51,7 @@ export const defaultStoreFormValues: TeknisiStoreFormValues = {
   layanan: ['Service HP', 'Jual Beli', 'Unlock', 'Flashing'],
   journey: DEFAULT_STORE_JOURNEY.map((m) => ({ ...m })),
   gallery: [],
+  profileImage: null,
 }
 
 function moveItem<T>(list: T[], from: number, to: number): T[] {
@@ -341,6 +343,9 @@ export function TeknisiStoreForm({
     const coverInput = (e.target as HTMLFormElement).elements.namedItem('cover') as HTMLInputElement
     if (coverInput?.files?.[0]) fd.append('cover', coverInput.files[0])
 
+    const profileInput = (e.target as HTMLFormElement).elements.namedItem('profile') as HTMLInputElement
+    if (profileInput?.files?.[0]) fd.append('profile', profileInput.files[0])
+
     buildStoreGalleryFormData(gallerySlots, fd)
 
     await onSubmit(fd)
@@ -384,6 +389,18 @@ export function TeknisiStoreForm({
                   onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
                   placeholder="Jl. Thamrin No. 123, Jakarta Pusat"
                 />
+              </div>
+              <div className="md:col-span-2">
+                <label className="mb-1 block text-sm font-medium text-surface-700">Foto profil toko</label>
+                {form.profileImage && (
+                  <div className="mb-2 h-20 w-20 overflow-hidden rounded-2xl border border-surface-200 bg-surface-50">
+                    <img src={form.profileImage} alt="" className="h-full w-full object-cover" />
+                  </div>
+                )}
+                <Input type="file" name="profile" accept="image/jpeg,image/png,image/webp,image/gif" />
+                <p className="mt-1 text-[11px] text-surface-500">
+                  Foto kotak di daftar toko dan kartu informasi penjual di halaman produk.
+                </p>
               </div>
               <div className="md:col-span-2">
                 <label className="mb-1 block text-sm font-medium text-surface-700">Foto cover</label>

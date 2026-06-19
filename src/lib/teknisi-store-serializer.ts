@@ -33,6 +33,7 @@ export type TeknisiStoreDto = {
   jamWeekdays: string | null
   jamWeekend: string | null
   operatingHours: StoreOperatingHours
+  profileImage: string | null
   coverImage: string | null
   gallery: string[]
   layanan: string[]
@@ -65,6 +66,7 @@ export function serializeTeknisiStore(
     jamWeekdays,
     jamWeekend,
     operatingHours: hours,
+    profileImage: resolveDisplayImageUrl(store.profileImage),
     coverImage: resolveDisplayImageUrl(store.coverImage),
     gallery: store.gallery.map((url) => resolveDisplayImageUrl(url) ?? url),
     layanan: store.layanan,
@@ -94,6 +96,7 @@ export type PublicStoreDto = {
   jamWeekdays: string | null
   jamWeekend: string | null
   operatingHours: StoreOperatingHours
+  profileImage: string | null
   coverImage: string | null
   gallery: string[]
   layanan: string[]
@@ -122,6 +125,7 @@ export function serializePublicStore(
     jamWeekdays,
     jamWeekend,
     operatingHours: hours,
+    profileImage: resolveDisplayImageUrl(store.profileImage),
     coverImage: resolveDisplayImageUrl(store.coverImage),
     gallery: store.gallery.map((url) => resolveDisplayImageUrl(url) ?? url),
     layanan: store.layanan,

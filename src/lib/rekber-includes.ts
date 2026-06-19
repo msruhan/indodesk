@@ -5,6 +5,7 @@ export const REKBER_PARTY_SELECT = {
   name: true,
   email: true,
   image: true,
+  role: true,
 } satisfies Record<keyof RekberParty, true>
 
 export const REKBER_INCLUDE = {
