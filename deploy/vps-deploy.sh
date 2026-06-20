@@ -57,7 +57,7 @@ for i in $(seq 1 30); do
   sleep 2
 done
 
-log "prisma migrate deploy ..."
+log "prisma migrate deploy + shipping location seed ..."
 PG_URL="postgresql://indoteknizi:${POSTGRES_PASSWORD}@postgres:5432/indoteknizi?schema=public"
 MIGRATE_ARGS=(run --rm -e "DATABASE_URL=${PG_URL}" -e "DIRECT_URL=${PG_URL}")
 if [[ -f "$INSTALL_DIR/prisma.config.ts" ]]; then

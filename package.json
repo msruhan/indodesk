@@ -23,7 +23,7 @@
     "db:studio": "npx prisma studio",
     "db:reset": "npx prisma migrate reset --force",
     "db:generate": "npx prisma generate",
-    "db:setup:production": "prisma migrate deploy",
+    "db:setup:production": "prisma migrate deploy && npm run db:seed:shipping-locations",
     "db:seed:shipping-locations": "tsx scripts/seed-shipping-locations.ts",
     "db:bootstrap-admin": "tsx scripts/bootstrap-admin.ts",
     "test:r2": "npx tsx scripts/test-r2-upload.ts",

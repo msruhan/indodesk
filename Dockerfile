@@ -43,6 +43,8 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/scripts ./scripts
+RUN mkdir -p src/lib
+COPY --from=builder /app/src/lib/shipping-locations.ts ./src/lib/shipping-locations.ts
 
 RUN mkdir -p public/uploads \
  && chown -R nextjs:nodejs public/uploads
