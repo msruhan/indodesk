@@ -73,7 +73,7 @@ export const TELEGRAM_EVENT_CATALOG: Record<TelegramEventKey, TelegramEventDefin
   'product.published': {
     eventKey: 'product.published',
     label: 'Produk dipublish',
-    description: 'Broadcast ke channel saat iklan produk disetujui dan tampil di marketplace. Foto utama produk otomatis dilampirkan jika tersedia.',
+    description: 'Broadcast ke channel saat iklan produk disetujui dan tampil di marketplace. Semua foto iklan dikirim sebagai album (maks. 10); caption dari template.',
     audience: 'CHANNEL',
     placeholders: [
       'namaProduk',

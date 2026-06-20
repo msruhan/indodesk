@@ -17,6 +17,27 @@ const checkoutSchema = z.object({
     .min(1),
   shippingAddress: z.string().max(500).optional(),
   shippingPhone: z.string().max(20).optional(),
+  shippingLocationId: z.string().max(64).optional(),
+  shippingProfile: z
+    .object({
+      cityId: z.string().nullable().optional(),
+      cityLabel: z.string().nullable().optional(),
+      districtId: z.string().nullable().optional(),
+      districtLabel: z.string().nullable().optional(),
+      locationId: z.string().nullable().optional(),
+      locationLabel: z.string().nullable().optional(),
+      street: z.string().nullable().optional(),
+    })
+    .optional(),
+  shippingSelections: z
+    .array(
+      z.object({
+        sellerId: z.string().min(1),
+        courier: z.string().min(1).max(32),
+        service: z.string().min(1).max(32),
+      }),
+    )
+    .optional(),
   requiresShipping: z.boolean().optional(),
   couponCode: z.string().max(20).optional(),
 })
@@ -36,6 +57,26 @@ const ERROR_MAP: Record<string, { message: string; status: number }> = {
   SHIPPING_ADDRESS_REQUIRED: {
     message: 'Alamat pengiriman wajib diisi (minimal 10 karakter)',
     status: 400,
+  },
+  SHIPPING_LOCATION_REQUIRED: {
+    message: 'Kelurahan/Desa tujuan wajib dipilih',
+    status: 400,
+  },
+  SHIPPING_PHONE_REQUIRED: {
+    message: 'Nomor HP penerima wajib diisi',
+    status: 400,
+  },
+  SHIPPING_PHONE_INVALID: {
+    message: 'Format nomor HP tidak valid',
+    status: 400,
+  },
+  SHIPPING_SELECTION_REQUIRED: {
+    message: 'Pilih layanan pengiriman untuk setiap penjual',
+    status: 400,
+  },
+  SHIPPING_RATE_INVALID: {
+    message: 'Tarif ongkir tidak valid atau sudah berubah. Muat ulang halaman.',
+    status: 409,
   },
   INVALID_COUPON: {
     message: 'Kode kupon tidak valid untuk produk di keranjang',
@@ -79,6 +120,9 @@ export async function POST(req: Request) {
       {
         shippingAddress: parsed.data.shippingAddress,
         shippingPhone: parsed.data.shippingPhone,
+        shippingLocationId: parsed.data.shippingLocationId,
+        shippingProfile: parsed.data.shippingProfile,
+        shippingSelections: parsed.data.shippingSelections,
         requiresShipping: parsed.data.requiresShipping ?? false,
         couponCode: parsed.data.couponCode,
       },

@@ -7,6 +7,7 @@ export type TeknisiKonsultasiStatus =
   | 'awaiting_payment'
   | 'pending'
   | 'active'
+  | 'awaiting_confirmation'
   | 'completed'
   | 'cancelled'
 
@@ -19,6 +20,8 @@ export type TeknisiKonsultasiDto = {
   userImage: string | null
   service: string
   amount: number
+  platformFee: number
+  teknisiEarning: number
   status: TeknisiKonsultasiStatus
   statusLabel: string
   paymentStatus: string
@@ -33,6 +36,10 @@ export type TeknisiKonsultasiDto = {
   date: string
   createdAt: string
   canStart: boolean
+  canMarkDone: boolean
+  teknisiMarkedDoneAt: string | null
+  confirmDeadlineAt: string | null
+  chatHref: string
 }
 
 export type TeknisiRemoteUiStatus = 'waiting' | 'active' | 'rejected' | 'completed'
@@ -76,6 +83,8 @@ export function mapKonsultasiUiStatus(dbStatus: string): TeknisiKonsultasiStatus
       return 'pending'
     case 'ACTIVE':
       return 'active'
+    case 'AWAITING_CONFIRMATION':
+      return 'awaiting_confirmation'
     case 'COMPLETED':
       return 'completed'
     case 'CANCELLED':
@@ -93,6 +102,8 @@ export function konsultasiStatusLabel(status: TeknisiKonsultasiStatus): string {
       return 'Menunggu'
     case 'active':
       return 'Berjalan'
+    case 'awaiting_confirmation':
+      return 'Menunggu user'
     case 'completed':
       return 'Selesai'
     case 'cancelled':
@@ -142,6 +153,8 @@ export function serializeTeknisiKonsultasi(
     userImage: session.user.image,
     service: session.service,
     amount: Number(session.price),
+    platformFee: Number(session.platformFee),
+    teknisiEarning: Number(session.teknisiEarning),
     status,
     statusLabel: konsultasiStatusLabel(status),
     paymentStatus: session.paymentStatus,
@@ -159,6 +172,10 @@ export function serializeTeknisiKonsultasi(
     date: formatMonitoringRelativeTime(session.updatedAt),
     createdAt: session.createdAt.toISOString(),
     canStart: session.status === 'PENDING' && session.paymentStatus === 'SECURED',
+    canMarkDone: session.status === 'ACTIVE',
+    teknisiMarkedDoneAt: session.teknisiMarkedDoneAt?.toISOString() ?? null,
+    confirmDeadlineAt: session.confirmDeadlineAt?.toISOString() ?? null,
+    chatHref: `/teknisi/chat?peer=${session.user.id}`,
   }
 }
 
@@ -188,7 +205,7 @@ export function buildKonsultasiStats(items: TeknisiKonsultasiDto[]): TeknisiKons
     total: items.length,
     awaitingPayment: items.filter((i) => i.status === 'awaiting_payment').length,
     pending: items.filter((i) => i.status === 'pending').length,
-    active: items.filter((i) => i.status === 'active').length,
+    active: items.filter((i) => i.status === 'active' || i.status === 'awaiting_confirmation').length,
     completed: items.filter((i) => i.status === 'completed').length,
   }
 }

@@ -180,6 +180,67 @@ export async function sendTelegramPhoto(
   }
 }
 
+/** Kirim album foto (2–10) dengan caption di foto pertama. */
+export async function sendTelegramMediaGroup(
+  chatId: string | number,
+  photoUrls: string[],
+  caption: string,
+  options?: {
+    parse_mode?: 'Markdown' | 'HTML'
+    disable_notification?: boolean
+  },
+): Promise<{ success: boolean; error?: string }> {
+  if (!TELEGRAM_BOT_TOKEN) {
+    return { success: false, error: 'Bot token tidak dikonfigurasi' }
+  }
+
+  const urls = photoUrls.filter(Boolean).slice(0, 10)
+  if (urls.length < 2) {
+    return { success: false, error: 'Media group membutuhkan minimal 2 foto' }
+  }
+
+  if (isStressTestMode()) {
+    await mockDelay(50)
+    return { success: true }
+  }
+
+  const safeCaption = caption.length > 1024 ? `${caption.slice(0, 1021)}…` : caption
+  const parseMode = options?.parse_mode
+
+  const media = urls.map((url, index) => {
+    const item: Record<string, string> = { type: 'photo', media: url }
+    if (index === 0 && safeCaption) {
+      item.caption = safeCaption
+      if (parseMode) item.parse_mode = parseMode
+    }
+    return item
+  })
+
+  try {
+    const response = await fetch(`${TELEGRAM_API_BASE}/bot${TELEGRAM_BOT_TOKEN}/sendMediaGroup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        media,
+        disable_notification: options?.disable_notification,
+      }),
+    })
+
+    const data = await response.json()
+
+    if (!response.ok || !data.ok) {
+      console.error('[Telegram] Gagal kirim media group:', data)
+      return { success: false, error: data.description || 'Gagal mengirim album foto' }
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('[Telegram] Error kirim media group:', error)
+    return { success: false, error: 'Network error' }
+  }
+}
+
 let cachedBotUsername: string | null | undefined
 
 /** Username bot: env (konfigurasi eksplisit) lalu getMe sebagai fallback. */

@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess } from '@/lib/api-auth'
+import { getTeknisiResponseTimeLabel } from '@/lib/teknisi-platform-stats'
 import { serializeMarketplaceProduct } from '@/lib/marketplace-product-serializer'
 
 export const dynamic = 'force-dynamic'
@@ -32,7 +33,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       data: { views: { increment: 1 } },
     })
 
-    return apiSuccess(serializeMarketplaceProduct(product))
+    const responseTime = await getTeknisiResponseTimeLabel(product.seller.id)
+
+    return apiSuccess(serializeMarketplaceProduct(product, responseTime))
   } catch (e) {
     console.error('[MARKETPLACE_PRODUCT_GET]', e)
     return apiError('Gagal mengambil produk', 500)

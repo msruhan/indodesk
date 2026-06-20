@@ -13,6 +13,7 @@ export interface CartItem {
   quantity: number
   seller: string
   sellerId?: string
+  weightKg?: number
   badge?: string
   coupon?: ProductCouponConfig | null
 }
@@ -26,6 +27,7 @@ export type ProductForCart = {
   image: string | null
   description?: string | null
   stock?: number
+  weightKg?: number
   coupon?: ProductCouponConfig | null
   seller: {
     id: string
@@ -54,6 +56,7 @@ export function productToCartItem(product: ProductForCart, quantity = 1): CartIt
     quantity,
     seller: product.seller.storeName,
     sellerId: product.seller.id,
+    weightKg: product.weightKg,
     badge: product.category,
     coupon: product.coupon ?? null,
   }

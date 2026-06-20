@@ -31,6 +31,8 @@ export type UserKonsultasiDto = {
   canCancel: boolean
   canRate: boolean
   canConfirmPayment: boolean
+  canConfirmComplete: boolean
+  confirmDeadlineAt: string | null
   payHref: string | null
   needsChannelPayment: boolean
   chatHref: string
@@ -64,6 +66,8 @@ export function serializeUserKonsultasi(
     canCancel: session.status === 'PENDING' || session.status === 'AWAITING_PAYMENT',
     canRate: session.status === 'COMPLETED' && session.rating == null,
     canConfirmPayment: session.status === 'AWAITING_PAYMENT' && session.pgProvider === 'stub',
+    canConfirmComplete: session.status === 'AWAITING_CONFIRMATION',
+    confirmDeadlineAt: session.confirmDeadlineAt?.toISOString() ?? null,
     payHref:
       session.status === 'AWAITING_PAYMENT' && session.pgExternalRef
         ? `/payments/${session.pgExternalRef}`

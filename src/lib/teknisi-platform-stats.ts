@@ -42,6 +42,64 @@ function formatResponseMinutes(avgMinutes: number): string {
   return `~${hours} jam`
 }
 
+function collectResponseSampleMinutes(
+  createdAt: Date,
+  respondedAt: Date | null | undefined,
+): number | null {
+  if (!respondedAt) return null
+  const mins = (respondedAt.getTime() - createdAt.getTime()) / 60_000
+  if (mins >= 0 && mins < 24 * 60) return mins
+  return null
+}
+
+function responseTimeLabelFromSamples(samples: number[]): string {
+  if (samples.length === 0) return '—'
+  const avg = samples.reduce((s, m) => s + m, 0) / samples.length
+  return formatResponseMinutes(avg)
+}
+
+/** Estimasi respons per teknisi (batch) dari sesi konsultasi & remote. */
+export async function getTeknisiResponseTimeLabels(
+  teknisiIds: string[],
+): Promise<Map<string, string>> {
+  const uniqueIds = [...new Set(teknisiIds.filter(Boolean))]
+  if (uniqueIds.length === 0) return new Map()
+
+  const [konsultasi, remote] = await Promise.all([
+    prisma.konsultasiSession.findMany({
+      where: { teknisiId: { in: uniqueIds } },
+      select: { teknisiId: true, createdAt: true, startedAt: true },
+    }),
+    prisma.remoteSession.findMany({
+      where: { teknisiId: { in: uniqueIds } },
+      select: { teknisiId: true, createdAt: true, acceptedAt: true },
+    }),
+  ])
+
+  const samplesByTeknisi = new Map<string, number[]>()
+  for (const id of uniqueIds) samplesByTeknisi.set(id, [])
+
+  for (const k of konsultasi) {
+    const mins = collectResponseSampleMinutes(k.createdAt, k.startedAt)
+    if (mins != null) samplesByTeknisi.get(k.teknisiId)?.push(mins)
+  }
+  for (const r of remote) {
+    const mins = collectResponseSampleMinutes(r.createdAt, r.acceptedAt)
+    if (mins != null) samplesByTeknisi.get(r.teknisiId)?.push(mins)
+  }
+
+  const labels = new Map<string, string>()
+  for (const id of uniqueIds) {
+    labels.set(id, responseTimeLabelFromSamples(samplesByTeknisi.get(id) ?? []))
+  }
+  return labels
+}
+
+export async function getTeknisiResponseTimeLabel(teknisiId: string): Promise<string> {
+  const labels = await getTeknisiResponseTimeLabels([teknisiId])
+  return labels.get(teknisiId) ?? '—'
+}
+
 /** Statistik performa teknisi dihitung dari data sesi & ulasan di platform. */
 export async function getTeknisiPlatformStats(teknisiId: string): Promise<TeknisiPlatformStatsDto> {
   const [konsultasi, remote, unifiedReviews, profile] = await Promise.all([
@@ -62,22 +120,15 @@ export async function getTeknisiPlatformStats(teknisiId: string): Promise<Teknis
 
   const responseSamples: number[] = []
   for (const k of konsultasi) {
-    if (!k.startedAt) continue
-    const mins = (k.startedAt.getTime() - k.createdAt.getTime()) / 60_000
-    if (mins >= 0 && mins < 24 * 60) responseSamples.push(mins)
+    const mins = collectResponseSampleMinutes(k.createdAt, k.startedAt)
+    if (mins != null) responseSamples.push(mins)
   }
   for (const r of remote) {
-    if (!r.acceptedAt) continue
-    const mins = (r.acceptedAt.getTime() - r.createdAt.getTime()) / 60_000
-    if (mins >= 0 && mins < 24 * 60) responseSamples.push(mins)
+    const mins = collectResponseSampleMinutes(r.createdAt, r.acceptedAt)
+    if (mins != null) responseSamples.push(mins)
   }
 
-  const responseTimeLabel =
-    responseSamples.length > 0
-      ? formatResponseMinutes(
-          responseSamples.reduce((s, m) => s + m, 0) / responseSamples.length,
-        )
-      : '—'
+  const responseTimeLabel = responseTimeLabelFromSamples(responseSamples)
 
   const averageResponseMinutes =
     responseSamples.length > 0

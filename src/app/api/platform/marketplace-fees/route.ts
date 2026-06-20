@@ -15,6 +15,7 @@ export async function GET() {
       success: true,
       data: {
         buyerFeePercent: DEFAULT_PLATFORM_SETTINGS.buyerFeePercent,
+        buyerFlatFeePerItem: DEFAULT_PLATFORM_SETTINGS.buyerFlatFeePerItem,
         sellerFeePercent: DEFAULT_PLATFORM_SETTINGS.sellerFeePercent,
       },
     })

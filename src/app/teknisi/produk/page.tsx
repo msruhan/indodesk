@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import type { ProductCategory } from '@prisma/client'
+import type { ProductCategory, ProductSaleCondition } from '@prisma/client'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -50,7 +50,10 @@ import {
   emptyBenchmarkForm,
   type BenchmarkFormState,
 } from '@/components/teknisi/product-benchmark-fields'
-import { categorySupportsThreeUtools } from '@/lib/product-category-config'
+import {
+  categorySupportsBenchmark,
+  categorySupportsThreeUtools,
+} from '@/lib/product-category-config'
 import { normalizeReplacedParts } from '@/lib/replaced-parts'
 import {
   ProductCouponFields,
@@ -61,9 +64,21 @@ import {
 } from '@/components/teknisi/product-coupon-fields'
 import { validateProductCouponInput } from '@/lib/product-coupon'
 import { validateProductSpecs } from '@/lib/product-specs'
+import {
+  categoryRequiresShippingWeight,
+  MAX_PRODUCT_WEIGHT_KG,
+  MIN_PRODUCT_WEIGHT_KG,
+  validateProductWeightKg,
+} from '@/lib/product-weight'
 import { FilterDropdown, type FilterDropdownOption } from '@/components/ui/filter-dropdown'
 import { DataPagination } from '@/components/ui/data-pagination'
 import { useClientPagination } from '@/hooks/use-client-pagination'
+import { TeknisiProductShippingSettings } from '@/components/teknisi/teknisi-product-shipping-settings'
+import {
+  PRODUCT_SALE_CONDITION_OPTIONS,
+  newProductBenchmarkFormState,
+  shouldSkipUsedProductBenchmarkInput,
+} from '@/lib/product-sale-condition'
 
 const categoryTone: Record<string, string> = {
   iPhone: 'border-primary-200/50 bg-primary-50/80 text-primary-800',
@@ -77,15 +92,25 @@ const categoryTone: Record<string, string> = {
   Lainnya: 'border-surface-200/70 bg-surface-50 text-surface-700',
 }
 
+import { MapPin } from '@/lib/icons'
+
 const emptyForm = {
   name: '',
   category: 'IPHONE' as ProductCategory,
   price: '',
   description: '',
   stock: '1',
+  weightKg: '0.5',
+  saleCondition: 'USED' as ProductSaleCondition,
 }
 
 type CategoryFilter = 'all' | ProductCategory
+type PageTab = 'products' | 'shipping'
+
+const PAGE_TABS: Array<{ id: PageTab; label: string; icon: typeof Package }> = [
+  { id: 'products', label: 'Daftar Produk', icon: Package },
+  { id: 'shipping', label: 'Pengiriman', icon: MapPin },
+]
 
 export default function TeknisiProdukPage() {
   const confirmDialog = useConfirm()
@@ -104,6 +129,7 @@ export default function TeknisiProdukPage() {
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [actionId, setActionId] = useState<string | null>(null)
+  const [pageTab, setPageTab] = useState<PageTab>('products')
   const formPanelRef = useRef<HTMLDivElement>(null)
 
   const scrollToForm = useCallback(() => {
@@ -164,6 +190,17 @@ export default function TeknisiProdukPage() {
   const pendingCount = products.filter((p) => p.status === 'pending').length
   const publishedCount = products.filter((p) => p.isPublished).length
   const draftCount = products.filter((p) => p.status === 'approved' && !p.isPublished).length
+  const isNewProductForm = shouldSkipUsedProductBenchmarkInput(form.saleCondition, form.category)
+
+  const handleSaleConditionChange = (saleCondition: ProductSaleCondition) => {
+    setForm((current) => ({ ...current, saleCondition }))
+    if (saleCondition === 'NEW') {
+      setBenchmark(newProductBenchmarkFormState())
+      setThreeUtoolsSlots([])
+      return
+    }
+    setBenchmark(emptyBenchmarkForm)
+  }
 
   const resetForm = () => {
     setForm(emptyForm)
@@ -190,6 +227,8 @@ export default function TeknisiProdukPage() {
       price: String(p.price),
       description: p.description ?? '',
       stock: String(p.stock),
+      weightKg: String(p.weightKg),
+      saleCondition: p.saleCondition,
     })
     setSpecs({
       color: p.color,
@@ -237,12 +276,28 @@ export default function TeknisiProdukPage() {
       return
     }
 
+    const weightError = validateProductWeightKg(
+      Number(form.weightKg),
+      form.category,
+    )
+    if (weightError) {
+      setFormError(weightError)
+      setSaving(false)
+      return
+    }
+
     const fd = new FormData()
     fd.append('name', form.name.trim())
     fd.append('category', form.category)
     fd.append('price', form.price)
     fd.append('description', form.description.trim())
     fd.append('stock', form.stock)
+    if (categoryRequiresShippingWeight(form.category)) {
+      fd.append('weightKg', form.weightKg)
+    }
+    if (categorySupportsBenchmark(form.category)) {
+      fd.append('saleCondition', form.saleCondition)
+    }
     fd.append('color', specs.color.trim())
     fd.append('ram', specs.ram.trim())
     fd.append('processor', specs.processor.trim())
@@ -250,21 +305,31 @@ export default function TeknisiProdukPage() {
     fd.append('warranty', specs.warranty)
     fd.append('completeness', JSON.stringify(specs.completeness))
 
-    // Benchmark fields
-    if (benchmark.conditionGrade) fd.append('conditionGrade', benchmark.conditionGrade)
-    if (benchmark.conditionPercent) fd.append('conditionPercent', benchmark.conditionPercent)
-    if (benchmark.minusNotes.trim()) fd.append('minusNotes', benchmark.minusNotes.trim())
-    if (benchmark.batteryHealth) fd.append('batteryHealth', benchmark.batteryHealth)
-    if (benchmark.batteryCycle) fd.append('batteryCycle', benchmark.batteryCycle)
-    if (benchmark.isAllOriginal !== null) fd.append('isAllOriginal', String(benchmark.isAllOriginal))
-    if (benchmark.replacedParts.length > 0) {
-      fd.append('replacedParts', benchmark.replacedParts.join(','))
+    const isNewProduct = shouldSkipUsedProductBenchmarkInput(
+      form.saleCondition,
+      form.category,
+    )
+
+    if (!isNewProduct) {
+      if (benchmark.conditionGrade) fd.append('conditionGrade', benchmark.conditionGrade)
+      if (benchmark.conditionPercent) fd.append('conditionPercent', benchmark.conditionPercent)
+      if (benchmark.minusNotes.trim()) fd.append('minusNotes', benchmark.minusNotes.trim())
+      if (benchmark.batteryHealth) fd.append('batteryHealth', benchmark.batteryHealth)
+      if (benchmark.batteryCycle) fd.append('batteryCycle', benchmark.batteryCycle)
+      if (benchmark.isAllOriginal !== null) {
+        fd.append('isAllOriginal', String(benchmark.isAllOriginal))
+      }
+      if (benchmark.replacedParts.length > 0) {
+        fd.append('replacedParts', benchmark.replacedParts.join(','))
+      }
+      if (benchmark.trueToneActive !== null) {
+        fd.append('trueToneActive', String(benchmark.trueToneActive))
+      }
+      if (benchmark.faceIdWorks !== null) fd.append('faceIdWorks', String(benchmark.faceIdWorks))
+      buildProductImagesFormData(threeUtoolsSlots, fd, '3utools_')
     }
-    if (benchmark.trueToneActive !== null) fd.append('trueToneActive', String(benchmark.trueToneActive))
-    if (benchmark.faceIdWorks !== null) fd.append('faceIdWorks', String(benchmark.faceIdWorks))
 
     buildProductImagesFormData(imageSlots, fd)
-    buildProductImagesFormData(threeUtoolsSlots, fd, '3utools_')
     appendCouponToFormData(fd, coupon)
 
     try {
@@ -354,6 +419,7 @@ export default function TeknisiProdukPage() {
         title="Iklan Produk"
         description="Kelola produk dan software yang Anda jual di marketplace Bantoo."
         actions={
+          pageTab === 'products' ? (
           <Button
             variant="primary"
             size="sm"
@@ -370,8 +436,10 @@ export default function TeknisiProdukPage() {
             <Plus className="h-3.5 w-3.5" />
             {showForm ? 'Tutup Form' : 'Tambah Produk'}
           </Button>
+          ) : undefined
         }
         meta={
+          pageTab === 'products' ? (
           <motion.div className="flex flex-wrap items-center gap-2 text-xs text-surface-500">
             <span className="inline-flex items-center gap-1 rounded-full border border-primary-200/70 bg-primary-50 px-2.5 py-1 font-medium text-primary-800">
               <CheckCircle className="h-3.5 w-3.5 text-primary-600" />
@@ -388,9 +456,44 @@ export default function TeknisiProdukPage() {
               {approvedCount} disetujui
             </span>
           </motion.div>
+          ) : undefined
         }
       />
 
+      <div className="-mx-1 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="inline-flex w-max gap-1 rounded-full border border-surface-200/70 bg-white p-1 shadow-soft-xs">
+          {PAGE_TABS.map((t) => {
+            const Icon = t.icon
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => {
+                  setPageTab(t.id)
+                  if (t.id === 'shipping') {
+                    setShowForm(false)
+                    resetForm()
+                  }
+                }}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors',
+                  pageTab === t.id
+                    ? 'bg-primary-600 text-white shadow-soft-sm'
+                    : 'text-surface-600 hover:text-primary-700',
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {t.label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {pageTab === 'shipping' ? (
+        <TeknisiProductShippingSettings />
+      ) : (
+        <>
       {showForm && (
         <div ref={formPanelRef} className="scroll-mt-24">
         <DashboardPanel
@@ -458,6 +561,58 @@ export default function TeknisiProdukPage() {
                   onChange={(e) => setForm((f) => ({ ...f, stock: e.target.value }))}
                 />
               </div>
+              {categoryRequiresShippingWeight(form.category) && (
+                <div
+                  className={cn(
+                    'grid gap-3',
+                    categorySupportsBenchmark(form.category) ? 'sm:col-span-2 sm:grid-cols-2' : '',
+                  )}
+                >
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-surface-700">
+                      Berat produk (kg)
+                    </label>
+                    <Input
+                      required
+                      type="number"
+                      min={MIN_PRODUCT_WEIGHT_KG}
+                      max={MAX_PRODUCT_WEIGHT_KG}
+                      step={0.01}
+                      value={form.weightKg}
+                      onChange={(e) => setForm((f) => ({ ...f, weightKg: e.target.value }))}
+                      placeholder="0.5"
+                    />
+                    <p className="mt-1 text-[11px] text-surface-500">
+                      Dipakai untuk hitung ongkir. Contoh: HP ~0,2 kg, laptop ~2 kg.
+                    </p>
+                  </div>
+                  {categorySupportsBenchmark(form.category) && (
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-surface-700">
+                        Kondisi
+                      </label>
+                      <select
+                        value={form.saleCondition}
+                        onChange={(e) =>
+                          handleSaleConditionChange(e.target.value as ProductSaleCondition)
+                        }
+                        className="w-full rounded-xl border border-surface-200 bg-white px-3 py-2.5 text-sm text-ink shadow-soft-xs focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-200/50"
+                      >
+                        {PRODUCT_SALE_CONDITION_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      {isNewProductForm && (
+                        <p className="mt-1 text-[11px] text-primary-700">
+                          Produk baru — benchmark otomatis sempurna, tanpa upload 3uTools.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <ProductCouponFields
                 value={coupon}
@@ -467,7 +622,7 @@ export default function TeknisiProdukPage() {
 
               <ProductImagesEditor slots={imageSlots} onChange={setImageSlots} />
 
-              {categorySupportsThreeUtools(form.category) && (
+              {categorySupportsThreeUtools(form.category) && !isNewProductForm && (
                 <div className="space-y-2">
                   <div>
                     <p className="text-sm font-medium text-surface-700">
@@ -486,11 +641,13 @@ export default function TeknisiProdukPage() {
               )}
 
               <ProductSpecsFields category={form.category} value={specs} onChange={setSpecs} />
-              <ProductBenchmarkFields
-                category={form.category}
-                value={benchmark}
-                onChange={setBenchmark}
-              />
+              {!isNewProductForm && (
+                <ProductBenchmarkFields
+                  category={form.category}
+                  value={benchmark}
+                  onChange={setBenchmark}
+                />
+              )}
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-surface-700">Deskripsi</label>
@@ -778,6 +935,8 @@ export default function TeknisiProdukPage() {
           onPageSizeChange={setPageSize}
           className="mt-4"
         />
+      )}
+        </>
       )}
     </motion.div>
   )

@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/db'
 import { categoryLabel } from '@/lib/product-catalog'
 import { dispatchTelegramEvent } from '@/lib/telegram/dispatch'
-import { resolveTelegramProductPhotoUrl } from '@/lib/telegram/product-photo-url'
+import { resolveTelegramProductPhotoUrls } from '@/lib/telegram/product-photo-url'
 import { formatIdr } from '@/lib/format'
 
 function appBaseUrl(): string {
@@ -27,10 +27,10 @@ export async function notifyProductPublished(productId: string): Promise<void> {
   const usernameTelegram = tgUser ? `@${tgUser.replace(/^@/, '')}` : '—'
 
   const base = appBaseUrl()
-  const photoUrl = resolveTelegramProductPhotoUrl(product, base)
+  const photoUrls = resolveTelegramProductPhotoUrls(product, base)
 
   await dispatchTelegramEvent('product.published', {
-    photoUrl,
+    photoUrls,
     vars: {
       namaProduk: product.name,
       harga: formatIdr(Number(product.price)),

@@ -27,6 +27,13 @@ export type TeknisiStoreDto = {
   city: string | null
   address: string | null
   phone: string | null
+  shipOriginLocationId: string | null
+  shipOriginLocationLabel: string | null
+  shipOriginCityId: string | null
+  shipOriginCityLabel: string | null
+  shipOriginDistrictId: string | null
+  shipOriginDistrictLabel: string | null
+  shipOriginStreet: string | null
   email: string | null
   instagram: string | null
   tiktok: string | null
@@ -60,6 +67,13 @@ export function serializeTeknisiStore(
     city: store.city,
     address: store.address,
     phone: store.phone,
+    shipOriginLocationId: store.shipOriginLocationId,
+    shipOriginLocationLabel: store.shipOriginLocationLabel,
+    shipOriginCityId: store.shipOriginCityId,
+    shipOriginCityLabel: store.shipOriginCityLabel,
+    shipOriginDistrictId: store.shipOriginDistrictId,
+    shipOriginDistrictLabel: store.shipOriginDistrictLabel,
+    shipOriginStreet: store.shipOriginStreet,
     email: store.email,
     instagram: store.instagram,
     tiktok: store.tiktok,

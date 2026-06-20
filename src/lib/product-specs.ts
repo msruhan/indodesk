@@ -7,8 +7,13 @@ import {
   categoryRequiresRam,
   categoryRequiresSpecs,
   categorySpecProfile,
+  categorySupportsBenchmark,
   deviceTypeForCategory,
 } from '@/lib/product-category-config'
+import {
+  newProductBenchmarkDbValues,
+  parseSaleConditionFromForm,
+} from '@/lib/product-sale-condition'
 
 export { CATEGORIES_WITH_SPECS, categoryRequiresSpecs }
 
@@ -324,7 +329,13 @@ export function parseBenchmarkFieldsFromForm(
   form: FormData,
   category: ProductCategory,
 ): Record<string, unknown> {
-  const data: Record<string, unknown> = {}
+  const saleCondition = parseSaleConditionFromForm(form)
+
+  if (saleCondition === 'NEW' && categorySupportsBenchmark(category)) {
+    return newProductBenchmarkDbValues(category)
+  }
+
+  const data: Record<string, unknown> = { saleCondition }
 
   const inferredDeviceType = deviceTypeForCategory(category)
   if (inferredDeviceType) {

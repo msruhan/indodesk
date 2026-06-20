@@ -14,6 +14,14 @@ import {
   specsToDb,
   validateProductSpecs,
 } from '@/lib/product-specs'
+import {
+  parseProductWeightKg,
+  validateProductWeightKg,
+} from '@/lib/product-weight'
+import {
+  parseSaleConditionFromForm,
+  shouldSkipUsedProductBenchmarkInput,
+} from '@/lib/product-sale-condition'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,6 +63,7 @@ export async function POST(req: Request) {
       const priceRaw = String(form.get('price') ?? '')
       const description = String(form.get('description') ?? '').trim() || null
       const stockRaw = String(form.get('stock') ?? '1')
+      const weightRaw = form.get('weightKg')
 
       const parsed = createJsonSchema.safeParse({
         name,
@@ -67,19 +76,33 @@ export async function POST(req: Request) {
         return apiError(parsed.error.issues[0]?.message ?? 'Data tidak valid')
       }
 
+      const weightKg = parseProductWeightKg(weightRaw)
+      const weightError = validateProductWeightKg(weightKg, parsed.data.category)
+      if (weightError) return apiError(weightError)
+
       const specs = parseProductSpecsFromForm(form, parsed.data.category)
       const specsError = validateProductSpecs(specs)
       if (specsError) return apiError(specsError)
 
       const { images, image } = await resolveProductImagesFromForm(form, session.user.id)
-      const { images: threeUtoolsImages } = await resolveProductImagesFromForm(
-        form,
-        session.user.id,
-        undefined,
-        '3utools_',
+      const saleCondition = parseSaleConditionFromForm(form)
+      const skipBenchmarkInput = shouldSkipUsedProductBenchmarkInput(
+        saleCondition,
+        parsed.data.category,
       )
+      let threeUtoolsImages: Awaited<
+        ReturnType<typeof resolveProductImagesFromForm>
+      >['images'] = []
+      if (!skipBenchmarkInput) {
+        const resolved3u = await resolveProductImagesFromForm(
+          form,
+          session.user.id,
+          undefined,
+          '3utools_',
+        )
+        threeUtoolsImages = resolved3u.images
+      }
       const benchmarkData = parseBenchmarkFieldsFromForm(form, parsed.data.category)
-      // Auto-verify jika ada screenshot 3uTools
       if (threeUtoolsImages.length > 0) {
         benchmarkData.verified3uTools = true
       }
@@ -102,6 +125,7 @@ export async function POST(req: Request) {
           images: images as object,
           threeUtoolsImages: threeUtoolsImages as object,
           stock: parsed.data.stock ?? 1,
+          weightKg: weightKg ?? 1,
           ...specsToDb(specs),
           ...benchmarkData,
           ...couponData,
@@ -119,6 +143,10 @@ export async function POST(req: Request) {
     if (!parsed.success) {
       return apiError(parsed.error.issues[0]?.message ?? 'Data tidak valid')
     }
+
+    const weightKg = parseProductWeightKg(body.weightKg)
+    const weightError = validateProductWeightKg(weightKg, parsed.data.category)
+    if (weightError) return apiError(weightError)
 
     if (categoryRequiresSpecs(parsed.data.category)) {
       const specs = {
@@ -142,6 +170,7 @@ export async function POST(req: Request) {
           description: parsed.data.description ?? null,
           images: [],
           stock: parsed.data.stock ?? 1,
+          weightKg: weightKg ?? 1,
           ...specsToDb(specs),
           listingStatus: 'PENDING',
           isPublished: false,
@@ -160,6 +189,7 @@ export async function POST(req: Request) {
         description: parsed.data.description ?? null,
         images: [],
         stock: parsed.data.stock ?? 1,
+        weightKg: weightKg ?? 1,
         listingStatus: 'PENDING',
         isPublished: false,
         pendingChangeSummary: NEW_PRODUCT_CHANGE_SUMMARY,

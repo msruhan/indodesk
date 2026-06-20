@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { findConsultationService } from '@/lib/konsultasi-services'
 import { getPublicFeatureFlags } from '@/lib/platform-settings'
+import { calculateKonsultasiFees } from '@/lib/service-platform-fees-server'
 import { KONSULTASI_PAYMENT_TTL_MS } from '@/lib/payment-gateway'
 import { getTripayConfig } from '@/lib/tripay/config'
 import { serializeUserKonsultasi } from '@/lib/user-konsultasi-serializer'
@@ -115,6 +116,7 @@ export async function POST(req: Request) {
     }
 
     const amount = new Prisma.Decimal(price)
+    const fees = await calculateKonsultasiFees(price)
 
     if (!getTripayConfig().isConfigured) {
       return apiError('Metode pembayaran belum tersedia. Hubungi admin.', 503)
@@ -133,6 +135,8 @@ export async function POST(req: Request) {
         remoteId: matched.requiresRemote ? remoteId!.trim() : null,
         remoteOtp: matched.requiresRemote ? remoteOtp!.trim() : null,
         price: amount,
+        platformFee: new Prisma.Decimal(fees.platformFee),
+        teknisiEarning: new Prisma.Decimal(fees.teknisiEarning),
         status: 'AWAITING_PAYMENT',
         paymentMethod: 'PAYMENT_GATEWAY',
         paymentStatus: 'UNPAID',

@@ -5,6 +5,7 @@ import { hash } from 'bcryptjs'
 import 'dotenv/config'
 import { seedTopupCatalog } from './seed-topup-catalog'
 import { seedPlatformContent } from './seed-platform-content'
+import { seedShippingLocations } from './seed-shipping-locations'
 import { ensureMarketplaceOrderSettlement } from '../src/lib/marketplace-wallet'
 import {
   DEFAULT_BRAND_FOCUS,
@@ -60,6 +61,7 @@ async function main() {
   await prisma.helpArticle.deleteMany()
   await prisma.platformSetting.deleteMany()
   await prisma.marketplaceBanner.deleteMany()
+  await prisma.shippingLocation.deleteMany()
   await prisma.user.deleteMany()
 
   const passwordHash = await hash('password123', 12)
@@ -991,6 +993,7 @@ async function main() {
 
   await seedTopupCatalog(prisma)
   await seedPlatformContent(prisma)
+  await seedShippingLocations(prisma)
 
   // ---- IMEI SERVICE ----
   // API Providers

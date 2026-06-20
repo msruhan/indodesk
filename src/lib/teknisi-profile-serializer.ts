@@ -1,5 +1,7 @@
 import type { TeknisiProfile, User } from '@prisma/client'
+import { prisma } from '@/lib/db'
 import { resolveDisplayImageUrl } from '@/lib/image-url-utils'
+import { getTeknisiResponseTimeLabel } from '@/lib/teknisi-platform-stats'
 import {
   resolveTeknisiBadgeFromProfile,
   type TeknisiBadgeTier,
@@ -18,9 +20,18 @@ export type TeknisiAccountProfileDto = {
   specialty: string[]
   experience: string | null
   location: string | null
+  shipOriginCityId: string | null
+  shipOriginCityLabel: string | null
+  shipOriginDistrictId: string | null
+  shipOriginDistrictLabel: string | null
+  shipOriginLocationId: string | null
+  shipOriginLocationLabel: string | null
+  shipOriginStreet: string | null
+  shipOriginCouriers: string[]
   description: string | null
   price: number
-  responseTime: string | null
+  /** Estimasi respons dihitung otomatis dari sesi konsultasi & remote. */
+  responseTime: string
   rating: number
   reviewCount: number
   totalKonsultasi: number
@@ -37,6 +48,7 @@ export type TeknisiAccountProfileDto = {
 export function serializeTeknisiAccountProfile(
   user: Pick<User, 'id' | 'name' | 'email' | 'phone' | 'image'>,
   profile: TeknisiProfile,
+  responseTime: string,
 ): TeknisiAccountProfileDto {
   const content = profileContentFromDb(profile)
   return {
@@ -48,9 +60,17 @@ export function serializeTeknisiAccountProfile(
     specialty: profile.specialty ?? [],
     experience: profile.experience,
     location: profile.location,
+    shipOriginCityId: profile.shipOriginCityId,
+    shipOriginCityLabel: profile.shipOriginCityLabel,
+    shipOriginDistrictId: profile.shipOriginDistrictId,
+    shipOriginDistrictLabel: profile.shipOriginDistrictLabel,
+    shipOriginLocationId: profile.shipOriginLocationId,
+    shipOriginLocationLabel: profile.shipOriginLocationLabel,
+    shipOriginStreet: profile.shipOriginStreet,
+    shipOriginCouriers: profile.shipOriginCouriers ?? [],
     description: profile.description,
     price: Number(profile.price),
-    responseTime: profile.responseTime,
+    responseTime,
     rating: Number(profile.rating),
     reviewCount: profile.reviewCount,
     totalKonsultasi: profile.totalKonsultasi,
@@ -66,4 +86,16 @@ export function serializeTeknisiAccountProfile(
     coverImage: resolveDisplayImageUrl(profile.coverImage),
     ...content,
   }
+}
+
+export async function loadTeknisiAccountProfile(
+  userId: string,
+): Promise<TeknisiAccountProfileDto | null> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { teknisiProfile: true },
+  })
+  if (!user?.teknisiProfile) return null
+  const responseTime = await getTeknisiResponseTimeLabel(userId)
+  return serializeTeknisiAccountProfile(user, user.teknisiProfile, responseTime)
 }

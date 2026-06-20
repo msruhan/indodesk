@@ -485,7 +485,7 @@ export function AccountSettingsView({
                     value={editingProfile ? phone : profile.phone ?? ''}
                     onChange={(e) => setPhone(e.target.value)}
                     readOnly={!editingProfile}
-                    placeholder="Opsional"
+                    placeholder="081234567890"
                     className={cn('h-10', !editingProfile && 'bg-surface-50')}
                   />
                 </div>

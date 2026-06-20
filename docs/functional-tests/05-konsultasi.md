@@ -6,11 +6,11 @@
 
 Konsultasi adalah sesi tanya-jawab real-time antara USER dan TEKNISI yang difasilitasi platform. USER booking sesi (memilih layanan + harga), bayar via wallet, TEKNISI menerima request lalu sesi berlangsung di chat / video / remote. Setelah sesi `COMPLETED`, dana otomatis settle ke wallet TEKNISI dan USER bisa memberikan review.
 
-State machine: `PENDING → ACTIVE → COMPLETED` (atau `CANCELLED` di jalur error).
+State machine: `PENDING → ACTIVE → AWAITING_CONFIRMATION → COMPLETED` (payout saat user konfirmasi atau auto 48 jam; atau `CANCELLED` di jalur error).
 
 ## Cakupan Test
 
-- Core Flow (DetailedTestCase): booking sesi, payment via wallet, TEKNISI accept, sesi berlangsung, completion oleh TEKNISI, USER beri review.
+- Core Flow (DetailedTestCase): booking sesi, payment via wallet, TEKNISI accept, sesi berlangsung, teknisi mark-done, USER konfirmasi selesai (atau auto 48 jam), USER beri review.
 - Edge Flow (GWTChecklist): pembatalan setelah TEKNISI accept (refund utuh), TEKNISI reject sebelum start, sesi expired.
 - RBAC: USER tidak boleh start/end sesi orang lain.
 
@@ -76,24 +76,45 @@ State machine: `PENDING → ACTIVE → COMPLETED` (atau `CANCELLED` di jalur err
   - USER & TEKNISI bisa berkomunikasi di sesi
 - **References**: `src/lib/konsultasi-*.ts`, `src/app/api/teknisi/konsultasi/...`
 
-### FT-KON-004 — TEKNISI mark as COMPLETED
+### FT-KON-004 — TEKNISI mark-done (tanpa payout)
 - **Role**: TEKNISI
 - **Priority**: P0
 - **Preconditions**:
-  - Login sebagai `ahmad@indoteknizi.com`
+  - Login sebagai teknisi
   - Sesi status `ACTIVE`
 - **Steps**:
-  1. Buka detail sesi
-  2. Klik "Selesaikan Sesi"
-  3. Konfirmasi
+  1. Buka `/teknisi/konsultasi`
+  2. Klik **Selesai melayani**
+  3. Konfirmasi dialog
 - **Expected Result**:
-  - Status `ACTIVE → COMPLETED`, `endedAt` terisi
-  - WalletLedger entry `EARNING` untuk TEKNISI sebesar `price` (potong fee jika ada)
-  - Saldo TEKNISI bertambah
-  - Notifikasi USER untuk beri review
-- **Postconditions**:
-  - Sesi muncul di "Riwayat Konsultasi"
-- **References**: `src/lib/konsultasi-*.ts`, contoh seed konsultasi COMPLETED dengan WalletLedger EARNING di `prisma/seed.ts`
+  - Status `ACTIVE → AWAITING_CONFIRMATION`
+  - `teknisiMarkedDoneAt` dan `confirmDeadlineAt` (+48 jam) terisi
+  - **Tidak ada** payout / WalletLedger EARNING teknisi
+  - User menerima notifikasi konfirmasi
+
+### FT-KON-004b — USER confirm-complete → payout
+- **Role**: USER
+- **Priority**: P0
+- **Preconditions**:
+  - Sesi `AWAITING_CONFIRMATION` (setelah FT-KON-004)
+- **Steps**:
+  1. Buka `/user/konsultasi`
+  2. Klik **Konfirmasi selesai**
+  3. Konfirmasi dialog
+- **Expected Result**:
+  - Status `COMPLETED`, `endedAt` terisi
+  - WalletLedger EARNING teknisi
+  - User dapat beri rating
+
+### FT-KON-004c — Auto-complete setelah deadline
+- **Role**: SYSTEM (cron)
+- **Priority**: P1
+- **Preconditions**:
+  - Sesi `AWAITING_CONFIRMATION` dengan `confirmDeadlineAt` lewat
+- **Steps**:
+  1. Panggil `POST /api/cron/konsultasi-confirm-deadlines`
+- **Expected Result**:
+  - Status `COMPLETED` + payout teknisi (sama seperti FT-KON-004b)
 
 ### FT-KON-005 — USER beri review setelah COMPLETED
 - **Role**: USER

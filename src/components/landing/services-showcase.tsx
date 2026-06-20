@@ -9,6 +9,7 @@ import { RemoteOnlineIllustration } from '@/components/illustrations/remote-onli
 import { InspectionIllustration } from '@/components/illustrations/inspection-illustration'
 import { CompareProductsIllustration } from '@/components/illustrations/compare-products-illustration'
 import { RekberIllustration } from '@/components/illustrations/rekber-illustration'
+import { TelegramNotificationIllustration } from '@/components/illustrations/telegram-notification-illustration'
 
 const ALL_SERVICES = [
   {
@@ -42,6 +43,16 @@ const ALL_SERVICES = [
     illustration: CompareProductsIllustration,
   },
   {
+    eyebrow: 'Telegram',
+    title: 'Notifikasi real-time untuk teknisi',
+    description:
+      'Teknisi terima alert langsung di Telegram: pesanan marketplace baru, permintaan konsultasi, dan request inspeksi dari pelanggan — cepat, tanpa buka dashboard dulu.',
+    href: '/register/teknisi',
+    cta: 'Daftar sebagai teknisi',
+    accent: 'sky' as const,
+    illustration: TelegramNotificationIllustration,
+  },
+  {
     eyebrow: 'Transaksi Aman',
     title: 'Transaksi aman platform',
     description:
@@ -54,7 +65,7 @@ const ALL_SERVICES = [
 ]
 
 const ACCENT_CLASSES: Record<
-  'primary' | 'teal' | 'amber',
+  'primary' | 'teal' | 'amber' | 'sky',
   { badge: string; cta: string; halo: string }
 > = {
   primary: {
@@ -72,6 +83,11 @@ const ACCENT_CLASSES: Record<
     badge: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200/70',
     cta: 'text-amber-700 hover:text-amber-800',
     halo: 'from-amber-300/30 via-transparent to-transparent',
+  },
+  sky: {
+    badge: 'bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200/70',
+    cta: 'text-sky-700 hover:text-sky-800',
+    halo: 'from-sky-300/30 via-transparent to-transparent',
   },
 }
 
@@ -93,11 +109,11 @@ export function ServicesShowcase() {
             Layanan inti
           </Badge>
           <h2 className="text-balance text-[34px] font-semibold leading-[1.05] tracking-tightest text-ink sm:text-5xl">
-            Empat layanan,
+            Layanan lengkap,
             <span className="gradient-text-static"> satu ekosistem</span>
           </h2>
           <p className="mt-4 text-pretty text-base text-surface-600 sm:text-lg">
-            Dari diagnosa jarak jauh, inspeksi sebelum beli, perbandingan produk objektif, hingga transaksi yang dijamin admin — semuanya berjalan mulus dalam satu platform.
+            Dari diagnosa jarak jauh, inspeksi sebelum beli, perbandingan produk objektif, notifikasi Telegram untuk teknisi, hingga transaksi yang dijamin admin — semuanya berjalan mulus dalam satu platform.
           </p>
         </Reveal>
 
@@ -152,18 +168,20 @@ export function ServicesShowcase() {
 
                   <Link
                     href={service.href}
-                    className={`group mt-6 inline-flex items-center gap-1.5 text-sm font-bold tracking-tight transition-colors ${accent.cta}`}
-                  >
-                    {service.cta}
-                    <span
-                      className={`inline-flex h-7 w-7 items-center justify-center rounded-full border bg-white transition-all group-hover:translate-x-0.5 group-hover:shadow-soft-xs ${
-                        service.accent === 'primary'
-                          ? 'border-primary-200 group-hover:border-primary-700'
-                          : service.accent === 'teal'
-                            ? 'border-teal-200 group-hover:border-teal-700'
-                            : 'border-amber-200 group-hover:border-amber-700'
-                      }`}
+                      className={`group mt-6 inline-flex items-center gap-1.5 text-sm font-bold tracking-tight transition-colors ${accent.cta}`}
                     >
+                      {service.cta}
+                      <span
+                        className={`inline-flex h-7 w-7 items-center justify-center rounded-full border bg-white transition-all group-hover:translate-x-0.5 group-hover:shadow-soft-xs ${
+                          service.accent === 'primary'
+                            ? 'border-primary-200 group-hover:border-primary-700'
+                            : service.accent === 'teal'
+                              ? 'border-teal-200 group-hover:border-teal-700'
+                              : service.accent === 'sky'
+                                ? 'border-sky-200 group-hover:border-sky-700'
+                                : 'border-amber-200 group-hover:border-amber-700'
+                        }`}
+                      >
                       <ArrowRight className="h-3.5 w-3.5" />
                     </span>
                   </Link>

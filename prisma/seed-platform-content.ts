@@ -70,7 +70,10 @@ export async function seedPlatformContent(prisma: PrismaClient) {
       { key: 'support_phone', value: s.supportPhone },
       { key: 'admin_email', value: s.adminEmail },
       { key: 'buyer_fee_percent', value: String(s.buyerFeePercent) },
+      { key: 'buyer_flat_fee_per_item', value: String(s.buyerFlatFeePerItem) },
       { key: 'seller_fee_percent', value: String(s.sellerFeePercent) },
+      { key: 'konsultasi_fee_percent', value: String(s.konsultasiFeePercent) },
+      { key: 'inspeksi_fee_percent', value: String(s.inspeksiFeePercent) },
       { key: 'maintenance_mode', value: s.maintenanceMode ? 'true' : 'false' },
       {
         key: 'imei_service_enabled',

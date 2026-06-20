@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { deleteProfileCover, saveProfileCover } from '@/lib/profile-cover-image'
-import { serializeTeknisiAccountProfile } from '@/lib/teknisi-profile-serializer'
+import { loadTeknisiAccountProfile } from '@/lib/teknisi-profile-serializer'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,12 +27,15 @@ export async function POST(req: Request) {
     const coverImage = await saveProfileCover(file, session.user.id)
     await deleteProfileCover(user.teknisiProfile.coverImage)
 
-    const profile = await prisma.teknisiProfile.update({
+    await prisma.teknisiProfile.update({
       where: { userId: session.user.id },
       data: { coverImage },
     })
 
-    return apiSuccess(serializeTeknisiAccountProfile(user, profile))
+    const profile = await loadTeknisiAccountProfile(session.user.id)
+    if (!profile) return apiError('Profil teknisi tidak ditemukan', 404)
+
+    return apiSuccess(profile)
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Gagal mengunggah cover'
     console.error('[TEKNISI_PROFILE_COVER_POST]', e)

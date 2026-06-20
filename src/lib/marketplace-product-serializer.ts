@@ -22,6 +22,8 @@ import {
   formatCouponLabel,
   type ProductCouponConfig,
 } from '@/lib/product-coupon'
+import { getTeknisiResponseTimeLabels } from '@/lib/teknisi-platform-stats'
+import { formatShipOriginCityDisplay } from '@/lib/teknisi-ship-origin'
 
 export type MarketplaceProductDto = {
   id: string
@@ -38,6 +40,7 @@ export type MarketplaceProductDto = {
   reviewCount: number
   views: number
   stock: number
+  weightKg: number
   color: string
   ram: string
   processor: string
@@ -79,7 +82,10 @@ type ProductWithSeller = Product & {
   }
 }
 
-export function serializeMarketplaceProduct(p: ProductWithSeller): MarketplaceProductDto {
+export function serializeMarketplaceProduct(
+  p: ProductWithSeller,
+  responseTime?: string | null,
+): MarketplaceProductDto {
   const profile = p.seller.teknisiProfile
   const store = p.seller.teknisiStore
   const images = resolveProductImagesForDisplay(parseProductImagesField(p))
@@ -103,6 +109,7 @@ export function serializeMarketplaceProduct(p: ProductWithSeller): MarketplacePr
     reviewCount: profile?.reviewCount ?? 0,
     views: p.views,
     stock: p.stock,
+    weightKg: Number(p.weightKg),
     color: p.color,
     ram: p.ram,
     processor: p.processor,
@@ -131,9 +138,16 @@ export function serializeMarketplaceProduct(p: ProductWithSeller): MarketplacePr
       verified: profile?.isVerified ?? false,
       rating: profile ? Number(profile.rating) : 0,
       totalSales: store?.totalSold ?? p.soldCount,
-      responseTime: profile?.responseTime ?? null,
-      location: store?.city ?? profile?.location ?? null,
+      responseTime: responseTime ?? null,
+      location: formatShipOriginCityDisplay(profile?.shipOriginCityLabel),
       image: resolveDisplayImageUrl(store?.profileImage ?? p.seller.image),
     },
   }
+}
+
+export async function serializeMarketplaceProducts(
+  products: ProductWithSeller[],
+): Promise<MarketplaceProductDto[]> {
+  const labels = await getTeknisiResponseTimeLabels(products.map((p) => p.seller.id))
+  return products.map((p) => serializeMarketplaceProduct(p, labels.get(p.seller.id) ?? null))
 }

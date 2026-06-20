@@ -17,7 +17,8 @@ import {
   type OrderPackagingProofDto,
 } from '@/lib/marketplace-packaging-proof-serializer'
 import { orderRequiresPhysicalPackaging } from '@/lib/marketplace-physical-order'
-import { isTerminalTrackingStatus, SHIPPING_COURIER_OPTIONS } from '@/lib/shipping-courier'
+import { canDownloadShippingLabelForSeller } from '@/lib/shipping-label'
+import { isTerminalTrackingStatus, SHIPPING_COURIER_OPTIONS, fromBinderbyteCourier, courierLabelFromBinderbyteCode } from '@/lib/shipping-courier'
 
 export type MarketplaceOrderUiStatus =
   | 'awaiting_payment'
@@ -74,6 +75,11 @@ export type MarketplaceOrderDto = {
   } | null
   shippingAddress: string | null
   shippingPhone: string | null
+  shippingCost: number
+  checkoutShippingCourier: string | null
+  checkoutShippingCourierLabel: string | null
+  checkoutShippingCourierEnum: ShippingCourier | null
+  checkoutShippingService: string | null
   deliveredAt: string | null
   buyerActionDeadline: string | null
   autoCompletedAt: string | null
@@ -91,6 +97,7 @@ export type MarketplaceOrderDto = {
   packagingProof: OrderPackagingProofDto | null
   requiresPackagingProof: boolean
   canSubmitPackagingProof: boolean
+  canDownloadShippingLabel: boolean
 }
 
 type OrderRow = Order & {
@@ -206,6 +213,15 @@ export function serializeMarketplaceOrder(
     !packagingPending &&
     (!packagingRejected || beforeResubmitDeadline)
 
+  const canDownloadShippingLabel = canDownloadShippingLabelForSeller(
+    {
+      status: row.status,
+      shippingAddress: row.shippingAddress,
+      items: row.items,
+    },
+    role,
+  )
+
   const canAdvance =
     role === 'seller' &&
     nextStatus != null &&
@@ -303,6 +319,11 @@ export function serializeMarketplaceOrder(
     tracking,
     shippingAddress: row.shippingAddress,
     shippingPhone: row.shippingPhone,
+    shippingCost: Number(row.shippingCost),
+    checkoutShippingCourier: row.checkoutShippingCourier,
+    checkoutShippingCourierLabel: courierLabelFromBinderbyteCode(row.checkoutShippingCourier),
+    checkoutShippingCourierEnum: fromBinderbyteCourier(row.checkoutShippingCourier),
+    checkoutShippingService: row.shippingService,
     deliveredAt: row.deliveredAt?.toISOString() ?? null,
     buyerActionDeadline: row.buyerActionDeadline?.toISOString() ?? null,
     autoCompletedAt: row.autoCompletedAt?.toISOString() ?? null,
@@ -320,5 +341,6 @@ export function serializeMarketplaceOrder(
     packagingProof: packagingProofDto,
     requiresPackagingProof,
     canSubmitPackagingProof,
+    canDownloadShippingLabel,
   }
 }

@@ -177,6 +177,16 @@ export function KonsultasiDetailModal({ konsultasi, onClose }: KonsultasiDetailM
                 <dl className="space-y-2.5">
                   <DetailRow label="Layanan">{konsultasi.service}</DetailRow>
                   <DetailRow label="Nilai">{formatPrice(konsultasi.amount)}</DetailRow>
+                  {konsultasi.platformFee > 0 && (
+                    <>
+                      <DetailRow label="Fee platform">
+                        {formatPrice(konsultasi.platformFee)}
+                      </DetailRow>
+                      <DetailRow label="Pendapatan teknisi">
+                        {formatPrice(konsultasi.teknisiEarning)}
+                      </DetailRow>
+                    </>
+                  )}
                   <DetailRow label="Pembayaran">
                     {paymentStatusLabel(konsultasi.paymentStatus)}
                   </DetailRow>

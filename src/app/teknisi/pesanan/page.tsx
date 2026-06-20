@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -13,7 +14,9 @@ import { isDateInPeriod } from '@/lib/dashboard-period'
 import { OrderTrackingTimeline } from '@/components/marketplace/order-tracking-timeline'
 import { MarketplaceOrderDetailModal } from '@/components/marketplace/marketplace-order-detail-modal'
 import { PackagingProofForm } from '@/components/marketplace/packaging-proof-form'
-import { SHIPPING_COURIER_OPTIONS } from '@/lib/shipping-courier'
+import { SellerShipmentCourierField } from '@/components/shipping/seller-shipment-courier-field'
+import { CheckoutShippingOrderHint } from '@/components/shipping/checkout-shipping-order-hint'
+import { ShippingLabelDownloadButton } from '@/components/shipping/shipping-label-download-button'
 import type { ShippingCourier } from '@prisma/client'
 import { cn } from '@/lib/utils'
 import { useConfirm } from '@/components/ui/confirm-dialog'
@@ -66,6 +69,7 @@ const formatDate = (iso: string) => {
 }
 
 export default function TeknisiPesananPage() {
+  const searchParams = useSearchParams()
   const { period, label: periodLabel } = useDashboardPeriod()
   const confirmDialog = useConfirm()
   const [items, setItems] = useState<MarketplaceOrderDto[]>([])
@@ -106,6 +110,17 @@ export default function TeknisiPesananPage() {
 
   useEffect(() => { void load() }, [load])
 
+  const focusHandled = useRef(false)
+  useEffect(() => {
+    const focusId = searchParams.get('focus')
+    if (!focusId || focusHandled.current || loading) return
+    focusHandled.current = true
+    setExpandedId(focusId)
+    requestAnimationFrame(() => {
+      document.getElementById(`order-${focusId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+  }, [searchParams, loading])
+
   const periodItems = useMemo(
     () => items.filter((o) => isDateInPeriod(o.createdAt, period)),
     [items, period],
@@ -138,9 +153,17 @@ export default function TeknisiPesananPage() {
     return list
   }, [periodItems, statusFilter, debouncedQ])
 
-  const getShipmentForm = (id: string) => shipmentForms[id] ?? { courier: 'JNE' as ShippingCourier, trackingNumber: '' }
-  const setShipmentField = (id: string, patch: Partial<{ courier: ShippingCourier; trackingNumber: string }>) => {
-    setShipmentForms((prev) => ({ ...prev, [id]: { ...getShipmentForm(id), ...patch } }))
+  const getShipmentForm = (order: MarketplaceOrderDto) =>
+    shipmentForms[order.id] ?? {
+      courier: order.checkoutShippingCourierEnum ?? ('JNE' as ShippingCourier),
+      trackingNumber: '',
+    }
+
+  const setShipmentField = (
+    order: MarketplaceOrderDto,
+    patch: Partial<{ courier: ShippingCourier; trackingNumber: string }>,
+  ) => {
+    setShipmentForms((prev) => ({ ...prev, [order.id]: { ...getShipmentForm(order), ...patch } }))
   }
 
   const advance = async (id: string) => {
@@ -188,17 +211,17 @@ export default function TeknisiPesananPage() {
     }
   }
 
-  const submitShipment = async (id: string) => {
-    const form = getShipmentForm(id)
+  const submitShipment = async (order: MarketplaceOrderDto) => {
+    const form = getShipmentForm(order)
     if (!form.trackingNumber.trim()) { setError('Nomor resi wajib diisi'); return }
-    setActingId(id)
+    setActingId(order.id)
     setError(null)
     try {
-      const res = await fetch(`/api/teknisi/marketplace/orders/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'set_shipment', courier: form.courier, trackingNumber: form.trackingNumber.trim() }) })
+      const res = await fetch(`/api/teknisi/marketplace/orders/${order.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'set_shipment', courier: form.courier, trackingNumber: form.trackingNumber.trim() }) })
       const json = await res.json()
       if (!res.ok || !json.success) { setError(json.error ?? 'Gagal menyimpan resi'); return }
       setToast('Resi berhasil disimpan, paket ditandai dikirim')
-      setExpandedId(id)
+      setExpandedId(order.id)
       await load()
     } catch { setError('Gagal menyimpan resi') }
     finally { setActingId(null) }
@@ -392,13 +415,14 @@ export default function TeknisiPesananPage() {
             const cfg = statusConfig[order.status]
             const StatusIcon = cfg.icon
             const isExpanded = expandedId === order.id
-            const form = getShipmentForm(order.id)
+            const form = getShipmentForm(order)
             const showTracking = order.tracking && (order.status === 'shipped' || order.status === 'completed')
             const needsAction = order.status === 'paid' || order.status === 'processing'
 
             return (
               <motion.div
                 key={order.id}
+                id={`order-${order.id}`}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.03, duration: 0.25 }}
@@ -488,6 +512,12 @@ export default function TeknisiPesananPage() {
                           Input Resi & Kirim
                         </Button>
                       )}
+                      {order.canDownloadShippingLabel && (
+                        <ShippingLabelDownloadButton
+                          orderId={order.id}
+                          orderCode={order.orderCode}
+                        />
+                      )}
                       {order.canCancelOrder && (
                         <Button
                           variant="outline"
@@ -548,25 +578,25 @@ export default function TeknisiPesananPage() {
                               <TruckIcon className="h-4 w-4 text-primary-700" />
                               <p className="text-[12px] font-semibold text-ink">Input Data Pengiriman</p>
                             </div>
+                            <CheckoutShippingOrderHint
+                              courierLabel={order.checkoutShippingCourierLabel}
+                              service={order.checkoutShippingService}
+                              shippingCost={order.shippingCost}
+                            />
                             <div className="grid gap-3 sm:grid-cols-2">
                               <div>
                                 <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.14em] text-surface-600">Kurir</label>
-                                <select
-                                  className="h-10 w-full rounded-xl border border-surface-200/80 bg-white px-3 text-sm text-ink shadow-soft-xs focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100"
+                                <SellerShipmentCourierField
                                   value={form.courier}
-                                  onChange={(e) => setShipmentField(order.id, { courier: e.target.value as ShippingCourier })}
-                                >
-                                  {SHIPPING_COURIER_OPTIONS.map((o) => (
-                                    <option key={o.value} value={o.value}>{o.label}</option>
-                                  ))}
-                                </select>
+                                  lockedCourier={order.checkoutShippingCourierEnum}
+                                />
                               </div>
                               <div>
                                 <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.14em] text-surface-600">Nomor Resi / AWB</label>
                                 <Input
                                   placeholder="Contoh: JNE1234567890"
                                   value={form.trackingNumber}
-                                  onChange={(e) => setShipmentField(order.id, { trackingNumber: e.target.value })}
+                                  onChange={(e) => setShipmentField(order, { trackingNumber: e.target.value })}
                                   className="font-mono"
                                 />
                               </div>
@@ -576,7 +606,7 @@ export default function TeknisiPesananPage() {
                               size="sm"
                               className="h-9 w-full"
                               disabled={actingId === order.id || !form.trackingNumber.trim()}
-                              onClick={() => void submitShipment(order.id)}
+                              onClick={() => void submitShipment(order)}
                             >
                               {actingId === order.id ? 'Memvalidasi resi…' : 'Simpan Resi & Tandai Dikirim'}
                             </Button>

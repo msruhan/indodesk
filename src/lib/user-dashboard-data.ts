@@ -114,7 +114,12 @@ export async function getUserDashboardData(userId: string): Promise<UserDashboar
 
   const totalSpent = ledgerPayments.reduce((s, l) => s + Math.abs(Number(l.amount)), 0)
   const totalOrders = marketplaceOrders.length
-  const activeKonsultasi = konsultasi.filter((k) => k.status === 'PENDING' || k.status === 'ACTIVE').length
+  const activeKonsultasi = konsultasi.filter(
+    (k) =>
+      k.status === 'PENDING' ||
+      k.status === 'ACTIVE' ||
+      k.status === 'AWAITING_CONFIRMATION',
+  ).length
   const activeRekber = rekber.filter((r) =>
     ['PENDING', 'HELD', 'PROCESSING', 'SHIPPED', 'DISPUTED'].includes(r.status),
   ).length

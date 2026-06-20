@@ -316,6 +316,7 @@ export function TeknisiStoreForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
     const layanan = form.layanan.map((s) => s.trim()).filter(Boolean)
     const journey = assignJourneyIcons(
       form.journey

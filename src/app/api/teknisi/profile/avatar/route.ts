@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { deleteAvatarFile, saveAvatarFile } from '@/lib/avatar-upload'
-import { serializeTeknisiAccountProfile } from '@/lib/teknisi-profile-serializer'
+import { loadTeknisiAccountProfile } from '@/lib/teknisi-profile-serializer'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,17 +27,15 @@ export async function POST(req: Request) {
     const imageUrl = await saveAvatarFile(file, session.user.id)
     await deleteAvatarFile(existing.image)
 
-    const user = await prisma.user.update({
+    await prisma.user.update({
       where: { id: session.user.id },
       data: { image: imageUrl },
-      include: { teknisiProfile: true },
     })
 
-    if (!user.teknisiProfile) {
-      return apiError('Profil teknisi tidak ditemukan', 404)
-    }
+    const profile = await loadTeknisiAccountProfile(session.user.id)
+    if (!profile) return apiError('Profil teknisi tidak ditemukan', 404)
 
-    return apiSuccess(serializeTeknisiAccountProfile(user, user.teknisiProfile))
+    return apiSuccess(profile)
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Gagal mengunggah foto'
     console.error('[TEKNISI_PROFILE_AVATAR_POST]', e)

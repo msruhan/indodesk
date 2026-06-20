@@ -68,7 +68,7 @@ const checklistItems = [
   'Konsultasi online real-time',
   'Sistem transaksi aman',
   'Rating & review terpercaya',
-  'Lowongan kerja teknisi',
+  'Notifikasi Telegram untuk teknisi',
   'Chat real-time',
 ] as const
 

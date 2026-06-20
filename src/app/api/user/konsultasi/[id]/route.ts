@@ -5,6 +5,10 @@ import { logCommunicationEvent } from '@/lib/activity-log'
 import { secureKonsultasiPaymentByRef } from '@/lib/konsultasi-payment'
 import { fulfillKonsultasiPaymentInTx } from '@/lib/payments/fulfill/konsultasi'
 import { refundKonsultasiPayment } from '@/lib/konsultasi-wallet'
+import {
+  completeKonsultasiSession,
+  finalizeKonsultasiCompletionSideEffects,
+} from '@/lib/konsultasi-complete'
 import { walletTransaction } from '@/lib/wallet/transaction'
 import { serializeUserKonsultasi } from '@/lib/user-konsultasi-serializer'
 
@@ -20,6 +24,9 @@ const TEKNISI_SELECT = {
 const patchSchema = z.discriminatedUnion('action', [
   z.object({
     action: z.literal('cancel'),
+  }),
+  z.object({
+    action: z.literal('confirm-complete'),
   }),
   z.object({
     action: z.literal('rate'),
@@ -123,6 +130,33 @@ export async function PATCH(
       }
 
       return apiSuccess(serializeUserKonsultasi(updated))
+    }
+
+    if (parsed.data.action === 'confirm-complete') {
+      if (existing.status !== 'AWAITING_CONFIRMATION') {
+        return apiError('Konsultasi belum menunggu konfirmasi')
+      }
+
+      const updated = await walletTransaction(async (tx) =>
+        completeKonsultasiSession(tx, existing, {
+          source: 'user',
+          actorUserId: session.user.id,
+        }),
+      )
+
+      await finalizeKonsultasiCompletionSideEffects(updated, {
+        source: 'user',
+        actorName: session.user.name,
+        actorEmail: session.user.email,
+        userName: session.user.name,
+      })
+
+      const row = await prisma.konsultasiSession.findUniqueOrThrow({
+        where: { id },
+        include: { teknisi: { select: TEKNISI_SELECT } },
+      })
+
+      return apiSuccess(serializeUserKonsultasi(row))
     }
 
     if (parsed.data.action === 'cancel') {

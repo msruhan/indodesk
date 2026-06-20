@@ -29,6 +29,38 @@ export function toBinderbyteCourier(courier: ShippingCourier): string {
   return BINDERBYTE_COURIER_CODE[courier]
 }
 
+const BINDERBYTE_TO_COURIER = Object.fromEntries(
+  Object.entries(BINDERBYTE_COURIER_CODE).map(([enumKey, code]) => [code, enumKey as ShippingCourier]),
+) as Record<string, ShippingCourier>
+
+/** Kode BinderByte (mis. "jne") → enum Prisma. */
+export function fromBinderbyteCourier(code: string | null | undefined): ShippingCourier | null {
+  if (!code) return null
+  return BINDERBYTE_TO_COURIER[code.toLowerCase().trim()] ?? null
+}
+
+export function binderbyteCourierMatchesEnum(
+  binderbyteCode: string | null | undefined,
+  courier: ShippingCourier,
+): boolean {
+  if (!binderbyteCode) return true
+  return toBinderbyteCourier(courier) === binderbyteCode.toLowerCase().trim()
+}
+
+export function courierLabelFromEnum(courier: ShippingCourier): string {
+  return SHIPPING_COURIER_OPTIONS.find((o) => o.value === courier)?.label ?? courier
+}
+
+export function courierLabelFromBinderbyteCode(code: string | null | undefined): string | null {
+  const enumVal = fromBinderbyteCourier(code)
+  return enumVal ? courierLabelFromEnum(enumVal) : null
+}
+
+/** Kurir yang tersedia di checkout marketplace (subset populer). */
+export const CHECKOUT_SHIPPING_COURIER_OPTIONS = SHIPPING_COURIER_OPTIONS.filter((o) =>
+  ['WAHANA', 'ANTERAJA', 'JNE', 'JNT', 'SICEPAT', 'POS'].includes(o.value),
+)
+
 export function isTerminalTrackingStatus(status: string | null | undefined): boolean {
   if (!status) return false
   const s = status.toUpperCase()

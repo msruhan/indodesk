@@ -5,10 +5,16 @@ import { DashboardPageHeader, DashboardPanel, MetricCard } from '@/components/da
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AdminMarketplaceFinanceForm } from '@/components/admin/admin-marketplace-finance-form'
-import { DollarSign, RefreshCw, ShoppingBag, TrendingUp, Users } from '@/lib/icons'
+import { DollarSign, MessageCircle, RefreshCw, ShoppingBag, TrendingUp, Users } from '@/lib/icons'
 
 type FinanceData = {
-  settings: { buyerFeePercent: number; sellerFeePercent: number }
+  settings: {
+    buyerFeePercent: number
+    buyerFlatFeePerItem: number
+    sellerFeePercent: number
+    konsultasiFeePercent: number
+    inspeksiFeePercent: number
+  }
   stats: {
     totalBuyerFee: string
     totalSellerFee: string
@@ -16,6 +22,11 @@ type FinanceData = {
     todayPlatformFee: string
     last30dPlatformFee: string
     completedOrderCount: number
+    totalKonsultasiFee: string
+    totalInspeksiFee: string
+    totalServiceFee: string
+    todayServiceFee: string
+    last30dServiceFee: string
   }
   recentOrders: Array<{
     id: string
@@ -76,8 +87,8 @@ export function AdminMarketplaceFinanceView() {
     <div className="space-y-6">
       <DashboardPageHeader
         eyebrow="Analitik"
-        title="Keuangan Marketplace"
-        description="Pantau pendapatan fee pembeli dan penjual, serta atur persentase fee platform."
+        title="Keuangan & Fee Platform"
+        description="Pantau pendapatan fee marketplace, konsultasi, dan inspeksi. Atur persentase fee per kanal."
         actions={
           <Button type="button" variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -127,9 +138,34 @@ export function AdminMarketplaceFinanceView() {
         />
       </div>
 
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <MetricCard
+          title="Fee Konsultasi"
+          value={data ? formatIdr(data.stats.totalKonsultasiFee) : '—'}
+          icon={Users}
+          footnote={`30 hari: ${data ? formatIdr(data.stats.last30dServiceFee) : '—'} (konsultasi + inspeksi)`}
+          compact
+        />
+        <MetricCard
+          title="Fee Inspeksi"
+          value={data ? formatIdr(data.stats.totalInspeksiFee) : '—'}
+          icon={MessageCircle}
+          footnote="Akumulasi sesi selesai"
+          compact
+        />
+        <MetricCard
+          title="Total Fee Layanan"
+          value={data ? formatIdr(data.stats.totalServiceFee) : '—'}
+          icon={TrendingUp}
+          footnote={`Hari ini: ${data ? formatIdr(data.stats.todayServiceFee) : '—'}`}
+          tone="primary"
+          compact
+        />
+      </div>
+
       <DashboardPanel
         title="Pengaturan Fee"
-        description="Fee platform untuk pembeli (ditambahkan ke checkout) dan penjual (dipotong saat pesanan selesai)."
+        description="Atur persentase fee marketplace, konsultasi, dan inspeksi."
       >
         <AdminMarketplaceFinanceForm
           initialSettings={data?.settings ?? null}

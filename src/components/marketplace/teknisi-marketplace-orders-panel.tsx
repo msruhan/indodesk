@@ -7,7 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { OrderTrackingTimeline } from '@/components/marketplace/order-tracking-timeline'
-import { SHIPPING_COURIER_OPTIONS } from '@/lib/shipping-courier'
+import { SellerShipmentCourierField } from '@/components/shipping/seller-shipment-courier-field'
+import { CheckoutShippingOrderHint } from '@/components/shipping/checkout-shipping-order-hint'
+import { ShippingLabelDownloadButton } from '@/components/shipping/shipping-label-download-button'
 import type { ShippingCourier } from '@prisma/client'
 import { ArrowRight, RefreshCw, ShoppingBag } from '@/lib/icons'
 import { cn } from '@/lib/utils'
@@ -77,16 +79,19 @@ export function TeknisiMarketplaceOrdersPanel({ variant = 'embedded' }: Props) {
     void load()
   }, [load])
 
-  const getShipmentForm = (orderId: string) =>
-    shipmentForms[orderId] ?? { courier: 'JNE' as ShippingCourier, trackingNumber: '' }
+  const getShipmentForm = (order: MarketplaceOrderDto) =>
+    shipmentForms[order.id] ?? {
+      courier: order.checkoutShippingCourierEnum ?? ('JNE' as ShippingCourier),
+      trackingNumber: '',
+    }
 
   const setShipmentField = (
-    orderId: string,
+    order: MarketplaceOrderDto,
     patch: Partial<{ courier: ShippingCourier; trackingNumber: string }>,
   ) => {
     setShipmentForms((prev) => ({
       ...prev,
-      [orderId]: { ...getShipmentForm(orderId), ...patch },
+      [order.id]: { ...getShipmentForm(order), ...patch },
     }))
   }
 
@@ -112,16 +117,16 @@ export function TeknisiMarketplaceOrdersPanel({ variant = 'embedded' }: Props) {
     }
   }
 
-  const submitShipment = async (id: string) => {
-    const form = getShipmentForm(id)
+  const submitShipment = async (order: MarketplaceOrderDto) => {
+    const form = getShipmentForm(order)
     if (!form.trackingNumber.trim()) {
       setError('Nomor resi wajib diisi')
       return
     }
-    setActingId(id)
+    setActingId(order.id)
     setError(null)
     try {
-      const res = await fetch(`/api/teknisi/marketplace/orders/${id}`, {
+      const res = await fetch(`/api/teknisi/marketplace/orders/${order.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -135,7 +140,7 @@ export function TeknisiMarketplaceOrdersPanel({ variant = 'embedded' }: Props) {
         setError(json.error ?? 'Gagal menyimpan resi')
         return
       }
-      setExpandedTrackingId(id)
+      setExpandedTrackingId(order.id)
       await load()
     } catch {
       setError('Gagal menyimpan resi')
@@ -193,7 +198,7 @@ export function TeknisiMarketplaceOrdersPanel({ variant = 'embedded' }: Props) {
       ) : (
         <div className="space-y-3">
           {displayed.map((order) => {
-            const form = getShipmentForm(order.id)
+            const form = getShipmentForm(order)
             const showTracking =
               order.tracking && (order.status === 'shipped' || order.status === 'completed')
 
@@ -240,6 +245,12 @@ export function TeknisiMarketplaceOrdersPanel({ variant = 'embedded' }: Props) {
                         {order.nextStatus === 'PROCESSING' ? 'Proses' : 'Lanjutkan'}
                       </Button>
                     )}
+                    {order.canDownloadShippingLabel && (
+                      <ShippingLabelDownloadButton
+                        orderId={order.id}
+                        orderCode={order.orderCode}
+                      />
+                    )}
                     {showTracking && (
                       <Button
                         size="sm"
@@ -260,26 +271,21 @@ export function TeknisiMarketplaceOrdersPanel({ variant = 'embedded' }: Props) {
                     <p className="text-[11px] font-semibold text-ink">
                       Input pengiriman (wajib untuk tandai dikirim)
                     </p>
-                    <select
-                      className={selectClass}
+                    <CheckoutShippingOrderHint
+                      courierLabel={order.checkoutShippingCourierLabel}
+                      service={order.checkoutShippingService}
+                      shippingCost={order.shippingCost}
+                    />
+                    <SellerShipmentCourierField
                       value={form.courier}
-                      onChange={(e) =>
-                        setShipmentField(order.id, {
-                          courier: e.target.value as ShippingCourier,
-                        })
-                      }
-                    >
-                      {SHIPPING_COURIER_OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </select>
+                      lockedCourier={order.checkoutShippingCourierEnum}
+                      className={selectClass}
+                    />
                     <Input
                       placeholder="Nomor resi / AWB"
                       value={form.trackingNumber}
                       onChange={(e) =>
-                        setShipmentField(order.id, { trackingNumber: e.target.value })
+                        setShipmentField(order, { trackingNumber: e.target.value })
                       }
                       className="h-9 font-mono text-xs"
                     />
@@ -288,7 +294,7 @@ export function TeknisiMarketplaceOrdersPanel({ variant = 'embedded' }: Props) {
                       variant="primary"
                       className="h-8 w-full"
                       disabled={actingId === order.id}
-                      onClick={() => void submitShipment(order.id)}
+                      onClick={() => void submitShipment(order)}
                     >
                       {actingId === order.id ? 'Memvalidasi…' : 'Simpan & tandai dikirim'}
                     </Button>

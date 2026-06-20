@@ -9,6 +9,7 @@ import { useCart } from '@/contexts/cart-context'
 import { useChat } from '@/contexts/chat-context'
 import { openTeknisiChat } from '@/lib/open-teknisi-chat'
 import type { MarketplaceProductDto } from '@/lib/marketplace-product-serializer'
+import { isOwnMarketplaceProduct } from '@/lib/marketplace-own-product'
 import { MOCK_MARKETPLACE_PRODUCTS } from '@/lib/marketplace-mock-products'
 import {
   ProductDetailSpecsCard,
@@ -148,6 +149,10 @@ export default function ProductDetailPage() {
 
   const handleBuyNow = useCallback(() => {
     if (!product) return
+    if (isOwnMarketplaceProduct(product.seller.id, session?.user?.id)) {
+      alert('Anda tidak dapat membeli produk sendiri.')
+      return
+    }
     if (product.stock <= 0) {
       alert('Stok produk habis')
       return
@@ -161,6 +166,7 @@ export default function ProductDetailPage() {
       image: product.image,
       description: product.description,
       stock: product.stock,
+      weightKg: product.weightKg,
       seller: {
         id: product.seller.id,
         storeName: product.seller.storeName,
@@ -168,7 +174,7 @@ export default function ProductDetailPage() {
       coupon: product.coupon,
     })
     router.push('/cart')
-  }, [product, addItem, router])
+  }, [product, addItem, router, session?.user?.id])
 
   const handleChatSeller = useCallback(() => {
     if (!product) return
@@ -227,6 +233,8 @@ export default function ProductDetailPage() {
       </div>
     )
   }
+
+  const isOwnProduct = isOwnMarketplaceProduct(product.seller.id, session?.user?.id)
 
   const display = {
     id: product.id,
@@ -562,10 +570,21 @@ export default function ProductDetailPage() {
                   })}
                 </div>
 
+                {isOwnProduct && (
+                  <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    Ini produk milik Anda. Penjual tidak dapat membeli barang sendiri.
+                  </p>
+                )}
+
                 <div className="mt-3.5 flex gap-2">
-                  <Button variant="primary" className="flex-1" onClick={handleBuyNow}>
+                  <Button
+                    variant="primary"
+                    className="flex-1"
+                    onClick={handleBuyNow}
+                    disabled={isOwnProduct || product.stock <= 0}
+                  >
                     <ShoppingCart className="h-5 w-5" />
-                    Beli sekarang
+                    {isOwnProduct ? 'Produk Anda' : 'Beli sekarang'}
                   </Button>
                   <Button
                     type="button"
@@ -635,7 +654,9 @@ export default function ProductDetailPage() {
                       <span>{display.teknisi.totalSales} penjualan</span>
                       <span>{display.teknisi.responseTime}</span>
                     </div>
-                    <p className="mt-1 text-xs text-surface-500">{display.teknisi.location}</p>
+                    {display.teknisi.location && (
+                      <p className="mt-1 text-xs text-surface-500">{display.teknisi.location}</p>
+                    )}
                   </div>
                 </div>
 
@@ -703,9 +724,14 @@ export default function ProductDetailPage() {
             <p className="truncate text-xs font-medium text-surface-500">{product.name}</p>
             <p className="text-lg font-bold text-primary-700">{formatPrice(product.price)}</p>
           </div>
-          <Button variant="primary" size="sm" onClick={handleBuyNow}>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleBuyNow}
+            disabled={isOwnProduct || product.stock <= 0}
+          >
             <ShoppingCart className="h-4 w-4" />
-            Beli
+            {isOwnProduct ? 'Produk Anda' : 'Beli'}
           </Button>
           <Button
             type="button"

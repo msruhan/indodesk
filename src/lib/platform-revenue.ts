@@ -14,6 +14,12 @@ export type { PlatformRevenueSummary } from '@/lib/platform-revenue-types'
 const MARKETPLACE_ESTIMATED_STATUSES = ['PAID', 'PROCESSING', 'SHIPPED'] as const
 const REKBER_ESTIMATED_STATUSES = ['HELD', 'PROCESSING', 'SHIPPED'] as const
 const INSPECTION_ESTIMATED_STATUSES = ['ACCEPTED', 'IN_PROGRESS', 'REPORT_SUBMITTED'] as const
+const KONSULTASI_ESTIMATED_STATUSES = ['PENDING', 'ACTIVE', 'AWAITING_CONFIRMATION'] as const
+
+const konsultasiEstimatedWhere = {
+  status: { in: [...KONSULTASI_ESTIMATED_STATUSES] },
+  paymentStatus: { in: ['SECURED', 'PAID'] as ('SECURED' | 'PAID')[] },
+}
 
 function sumDecimalPair(buyer: unknown, seller: unknown): number {
   return Number(buyer ?? 0) + Number(seller ?? 0)
@@ -56,6 +62,16 @@ async function sumRekberFees(where: object): Promise<number> {
   }, 0)
 }
 
+async function sumKonsultasiFees(where: object): Promise<number> {
+  return tryPrismaQuery('konsultasi-fees', async () => {
+    const agg = await prisma.konsultasiSession.aggregate({
+      _sum: { platformFee: true },
+      where,
+    })
+    return Number(agg._sum.platformFee ?? 0)
+  }, 0)
+}
+
 async function sumInspectionFees(where: object): Promise<number> {
   return tryPrismaQuery('inspection-fees', async () => {
     const agg = await prisma.inspectionOrder.aggregate({
@@ -95,8 +111,12 @@ export async function getPlatformRevenueSummary(): Promise<PlatformRevenueSummar
     inspEstimatedTotal,
     inspCountRealized,
     inspCountEstimated,
+    konsRealizedTotal,
+    konsRealizedToday,
+    konsRealized30d,
+    konsEstimatedTotal,
     konsCountRealized,
-    konsGmvRealized,
+    konsCountEstimated,
     ...dailyResults
   ] = await Promise.all([
     sumMarketplaceFees({ status: 'COMPLETED' }),
@@ -129,45 +149,44 @@ export async function getPlatformRevenueSummary(): Promise<PlatformRevenueSummar
     countQuery('inspection-estimated', () =>
       prisma.inspectionOrder.count({ where: { status: { in: [...INSPECTION_ESTIMATED_STATUSES] } } }),
     ),
+    sumKonsultasiFees({ status: 'COMPLETED' }),
+    sumKonsultasiFees({ status: 'COMPLETED', endedAt: { gte: startOfToday } }),
+    sumKonsultasiFees({ status: 'COMPLETED', endedAt: { gte: startOf30d } }),
+    sumKonsultasiFees(konsultasiEstimatedWhere),
     countQuery('konsultasi-completed', () =>
       prisma.konsultasiSession.count({ where: { status: 'COMPLETED' } }),
     ),
-    tryPrismaQuery(
-      'konsultasi-gmv',
-      () =>
-        prisma.konsultasiSession.aggregate({
-          _sum: { price: true },
-          where: { status: 'COMPLETED' },
-        }),
-      { _sum: { price: null } },
+    countQuery('konsultasi-estimated', () =>
+      prisma.konsultasiSession.count({ where: konsultasiEstimatedWhere }),
     ),
     ...dailyRanges.flatMap((range) => [
       sumMarketplaceFees({ status: 'COMPLETED', completedAt: range }),
       sumRekberFees({ status: 'RELEASED', releasedAt: range }),
       sumInspectionFees({ status: 'COMPLETED', completedAt: range }),
+      sumKonsultasiFees({ status: 'COMPLETED', endedAt: range }),
     ]),
   ])
-
-  const konsGmv = Number(konsGmvRealized._sum.price ?? 0)
 
   const dailyMarketplace: number[] = []
   const dailyRekber: number[] = []
   const dailyInspeksi: number[] = []
+  const dailyKonsultasi: number[] = []
   for (let i = 0; i < 7; i++) {
-    const offset = i * 3
+    const offset = i * 4
     dailyMarketplace.push(dailyResults[offset] as number)
     dailyRekber.push(dailyResults[offset + 1] as number)
     dailyInspeksi.push(dailyResults[offset + 2] as number)
+    dailyKonsultasi.push(dailyResults[offset + 3] as number)
   }
 
   const realizedTotal =
-    mktRealizedTotal + rekRealizedTotal + inspRealizedTotal
+    mktRealizedTotal + rekRealizedTotal + inspRealizedTotal + konsRealizedTotal
   const realizedToday =
-    mktRealizedToday + rekRealizedToday + inspRealizedToday
+    mktRealizedToday + rekRealizedToday + inspRealizedToday + konsRealizedToday
   const realized30d =
-    mktRealized30d + rekRealized30d + inspRealized30d
+    mktRealized30d + rekRealized30d + inspRealized30d + konsRealized30d
   const estimatedTotal =
-    mktEstimatedTotal + rekEstimatedTotal + inspEstimatedTotal
+    mktEstimatedTotal + rekEstimatedTotal + inspEstimatedTotal + konsEstimatedTotal
 
   const byChannel: Record<PlatformRevenueChannel, ChannelRevenueStats> = {
     marketplace: {
@@ -189,12 +208,10 @@ export async function getPlatformRevenueSummary(): Promise<PlatformRevenueSummar
       countEstimated: inspCountEstimated,
     },
     konsultasi: {
-      realized: '0',
-      estimated: '0',
+      realized: str(konsRealizedTotal),
+      estimated: str(konsEstimatedTotal),
       countRealized: konsCountRealized,
-      countEstimated: 0,
-      gmvRealized: str(konsGmv),
-      note: 'Fee platform belum dikenakan — 100% ke teknisi',
+      countEstimated: konsCountEstimated,
     },
   }
 
@@ -203,6 +220,7 @@ export async function getPlatformRevenueSummary(): Promise<PlatformRevenueSummar
       { channel: 'marketplace' as const, amount: mktRealizedTotal },
       { channel: 'rekber' as const, amount: rekRealizedTotal },
       { channel: 'inspeksi' as const, amount: inspRealizedTotal },
+      { channel: 'konsultasi' as const, amount: konsRealizedTotal },
     ] as const
   ).filter((x) => x.amount > 0)
 
@@ -383,6 +401,7 @@ export async function getPlatformRevenueSummary(): Promise<PlatformRevenueSummar
         marketplace: dailyMarketplace,
         rekber: dailyRekber,
         inspeksi: dailyInspeksi,
+        konsultasi: dailyKonsultasi,
       },
     },
     recent,

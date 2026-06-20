@@ -20,6 +20,7 @@ import type { ProductCouponConfig } from '@/lib/product-coupon'
 export type CartProductSync = {
   id: string
   price: number
+  weightKg: number
   coupon: ProductCouponConfig | null
   available: boolean
 }
@@ -87,6 +88,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return {
           ...item,
           price: sync.available ? sync.price : item.price,
+          weightKg: sync.available ? sync.weightKg : item.weightKg,
           coupon: sync.coupon,
         }
       }),

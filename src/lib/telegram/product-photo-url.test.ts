@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   resolveTelegramProductPhotoUrl,
+  resolveTelegramProductPhotoUrls,
   toTelegramAccessibleImageUrl,
 } from '@/lib/telegram/product-photo-url'
 
@@ -14,6 +15,40 @@ describe('toTelegramAccessibleImageUrl', () => {
     expect(toTelegramAccessibleImageUrl('/uploads/x.jpg', 'https://bantoo.in')).toBe(
       'https://bantoo.in/uploads/x.jpg',
     )
+  })
+})
+
+describe('resolveTelegramProductPhotoUrls', () => {
+  it('returns all images with primary first', () => {
+    const urls = resolveTelegramProductPhotoUrls(
+      {
+        image: null,
+        images: [
+          { url: 'https://cdn.example/a.jpg', isPrimary: false },
+          { url: 'https://cdn.example/main.jpg', isPrimary: true },
+          { url: 'https://cdn.example/c.jpg', isPrimary: false },
+        ],
+      },
+      'https://bantoo.in',
+    )
+    expect(urls).toEqual([
+      'https://cdn.example/main.jpg',
+      'https://cdn.example/a.jpg',
+      'https://cdn.example/c.jpg',
+    ])
+  })
+
+  it('deduplicates identical URLs', () => {
+    const urls = resolveTelegramProductPhotoUrls(
+      {
+        images: [
+          { url: 'https://cdn.example/same.jpg', isPrimary: true },
+          { url: 'https://cdn.example/same.jpg', isPrimary: false },
+        ],
+      },
+      'https://bantoo.in',
+    )
+    expect(urls).toHaveLength(1)
   })
 })
 

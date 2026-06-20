@@ -18,6 +18,7 @@ import {
   type TeknisiPortfolioItemDto,
 } from '@/lib/teknisi-portfolio'
 import type { TeknisiPlatformStatsDto } from '@/lib/teknisi-platform-stats'
+import { formatShipOriginCityDisplay } from '@/lib/teknisi-ship-origin'
 
 export type PublicTeknisiDetailDto = PublicTeknisiDto &
   TeknisiProfileContent & {
@@ -101,9 +102,9 @@ export function serializePublicTeknisiDetail(
     ...base,
     experience: profile.experience,
     coverImage: resolveDisplayImageUrl(profile.coverImage),
-    location: profile.location,
+    location: formatShipOriginCityDisplay(profile.shipOriginCityLabel),
     description: profile.description,
-    responseTime: profile.responseTime,
+    responseTime: platformStats.responseTimeLabel === '—' ? null : platformStats.responseTimeLabel,
     completionRate: profile.completionRate,
     isVerified: profile.isVerified,
     memberSinceAt: profile.user.createdAt.toISOString(),

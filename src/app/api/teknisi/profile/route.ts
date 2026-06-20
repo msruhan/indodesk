@@ -3,7 +3,11 @@ import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { getPublicFeatureFlags } from '@/lib/platform-settings'
 import { normalizeProfileContentForDb } from '@/lib/teknisi-profile-content'
-import { serializeTeknisiAccountProfile } from '@/lib/teknisi-profile-serializer'
+import { loadTeknisiAccountProfile } from '@/lib/teknisi-profile-serializer'
+import {
+  normalizeShipOriginCouriers,
+  validateShipOriginCouriers,
+} from '@/lib/shipping-config'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,12 +25,19 @@ const patchSchema = z.object({
   phone: z.string().max(30).nullable().optional(),
   experience: z.string().max(80).nullable().optional(),
   location: z.string().max(120).nullable().optional(),
+  shipOriginCityId: z.string().max(64).nullable().optional(),
+  shipOriginCityLabel: z.string().max(200).nullable().optional(),
+  shipOriginDistrictId: z.string().max(64).nullable().optional(),
+  shipOriginDistrictLabel: z.string().max(200).nullable().optional(),
+  shipOriginLocationId: z.string().max(64).nullable().optional(),
+  shipOriginLocationLabel: z.string().max(200).nullable().optional(),
+  shipOriginStreet: z.string().max(300).nullable().optional(),
+  shipOriginCouriers: z.array(z.string().min(2).max(16)).max(6).optional(),
   description: z.string().max(5000).nullable().optional(),
   tagline: z.string().max(500).nullable().optional(),
   issuesHandled: z.string().max(500).nullable().optional(),
   brandFocus: z.string().max(500).nullable().optional(),
   workApproach: z.string().max(500).nullable().optional(),
-  responseTime: z.string().max(80).nullable().optional(),
   price: z.number().int().min(0).optional(),
   specialty: z.array(z.string().min(1).max(60)).max(20).optional(),
   serviceScope: z.array(z.string().min(1).max(200)).max(12).optional(),
@@ -39,21 +50,12 @@ const patchSchema = z.object({
   inspectionPriceOffline: z.number().int().min(0).max(50_000_000).nullable().optional(),
 })
 
-async function loadTeknisiProfile(userId: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    include: { teknisiProfile: true },
-  })
-  if (!user?.teknisiProfile) return null
-  return serializeTeknisiAccountProfile(user, user.teknisiProfile)
-}
-
 export async function GET() {
   const { session, error } = await requireApiRole(['TEKNISI'])
   if (error) return error
 
   try {
-    const data = await loadTeknisiProfile(session.user.id)
+    const data = await loadTeknisiAccountProfile(session.user.id)
     if (!data) return apiError('Profil teknisi tidak ditemukan', 404)
     return apiSuccess(data)
   } catch (e) {
@@ -87,12 +89,19 @@ export async function PATCH(req: Request) {
     phone,
     experience,
     location,
+    shipOriginCityId,
+    shipOriginCityLabel,
+    shipOriginDistrictId,
+    shipOriginDistrictLabel,
+    shipOriginLocationId,
+    shipOriginLocationLabel,
+    shipOriginStreet,
+    shipOriginCouriers,
     description,
     tagline,
     issuesHandled,
     brandFocus,
     workApproach,
-    responseTime,
     price,
     specialty,
     serviceScope,
@@ -117,6 +126,31 @@ export async function PATCH(req: Request) {
       if (normalized.length === 0) {
         return apiError('Minimal satu spesialisasi utama')
       }
+    }
+
+    const hasShipOriginInput =
+      shipOriginLocationId !== undefined ||
+      shipOriginCityId !== undefined ||
+      shipOriginCouriers !== undefined
+
+    const resolvedShipOriginLocationId =
+      shipOriginLocationId !== undefined
+        ? shipOriginLocationId
+        : existing.teknisiProfile.shipOriginLocationId
+
+    let normalizedCouriers: string[] | undefined
+    if (shipOriginCouriers !== undefined) {
+      normalizedCouriers = normalizeShipOriginCouriers(shipOriginCouriers)
+      const courierErr = validateShipOriginCouriers(normalizedCouriers, {
+        requireAtLeastOne: Boolean(resolvedShipOriginLocationId),
+      })
+      if (courierErr) return apiError(courierErr)
+    } else if (hasShipOriginInput && resolvedShipOriginLocationId) {
+      const existingCouriers = normalizeShipOriginCouriers(
+        existing.teknisiProfile.shipOriginCouriers,
+      )
+      const courierErr = validateShipOriginCouriers(existingCouriers, { requireAtLeastOne: true })
+      if (courierErr) return apiError(courierErr)
     }
 
     const contentPatch = normalizeProfileContentForDb({
@@ -147,11 +181,16 @@ export async function PATCH(req: Request) {
         data: {
           ...(experience !== undefined ? { experience: experience?.trim() || null } : {}),
           ...(location !== undefined ? { location: location?.trim() || null } : {}),
+          ...(shipOriginCityId !== undefined ? { shipOriginCityId } : {}),
+          ...(shipOriginCityLabel !== undefined ? { shipOriginCityLabel } : {}),
+          ...(shipOriginDistrictId !== undefined ? { shipOriginDistrictId } : {}),
+          ...(shipOriginDistrictLabel !== undefined ? { shipOriginDistrictLabel } : {}),
+          ...(shipOriginLocationId !== undefined ? { shipOriginLocationId } : {}),
+          ...(shipOriginLocationLabel !== undefined ? { shipOriginLocationLabel } : {}),
+          ...(shipOriginStreet !== undefined ? { shipOriginStreet } : {}),
+          ...(normalizedCouriers !== undefined ? { shipOriginCouriers: normalizedCouriers } : {}),
           ...(description !== undefined
             ? { description: description?.trim() || null }
-            : {}),
-          ...(responseTime !== undefined
-            ? { responseTime: responseTime?.trim() || null }
             : {}),
           ...(price !== undefined ? { price } : {}),
           ...(specialty !== undefined
@@ -179,7 +218,7 @@ export async function PATCH(req: Request) {
       })
     })
 
-    const result = await loadTeknisiProfile(session.user.id)
+    const result = await loadTeknisiAccountProfile(session.user.id)
     if (!result) return apiError('Profil teknisi tidak ditemukan', 404)
     return apiSuccess(result)
   } catch (e) {

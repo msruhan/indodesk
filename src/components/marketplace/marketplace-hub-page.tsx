@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { searchInputIconClass } from '@/components/ui/search-input'
@@ -27,6 +27,7 @@ import {
   ChevronDown,
   ShoppingBag,
   Package,
+  MapPin,
 } from '@/lib/icons'
 import Link from 'next/link'
 import type { MarketplaceProductDto } from '@/lib/marketplace-product-serializer'
@@ -69,6 +70,90 @@ const filterChipClass = (active: boolean) =>
 
 const filterChipIconClass = 'h-3.5 w-3.5 flex-shrink-0 sm:h-4 sm:w-4'
 
+type SortOption = 'relevance' | 'price-low' | 'price-high' | 'rating'
+type PriceRangeKey = 'all' | 'under-500k' | '500k-2m' | '2m-10m' | 'over-10m'
+type RatingFilterKey = 'all' | '4' | '4.5' | '4.8'
+
+const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: 'relevance', label: 'Relevansi' },
+  { value: 'price-low', label: 'Harga: Terendah' },
+  { value: 'price-high', label: 'Harga: Tertinggi' },
+  { value: 'rating', label: 'Rating Tertinggi' },
+]
+
+const PRICE_RANGE_OPTIONS: { value: PriceRangeKey; label: string; min?: number; max?: number }[] = [
+  { value: 'all', label: 'Semua harga' },
+  { value: 'under-500k', label: 'Di bawah Rp 500rb', max: 500_000 },
+  { value: '500k-2m', label: 'Rp 500rb – 2 jt', min: 500_000, max: 2_000_000 },
+  { value: '2m-10m', label: 'Rp 2 jt – 10 jt', min: 2_000_000, max: 10_000_000 },
+  { value: 'over-10m', label: 'Di atas Rp 10 jt', min: 10_000_000 },
+]
+
+const RATING_FILTER_OPTIONS: { value: RatingFilterKey; label: string; min?: number }[] = [
+  { value: 'all', label: 'Semua rating' },
+  { value: '4', label: '4.0+ bintang', min: 4 },
+  { value: '4.5', label: '4.5+ bintang', min: 4.5 },
+  { value: '4.8', label: '4.8+ bintang', min: 4.8 },
+]
+
+function FilterDropdown<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+  active,
+  open,
+  onToggle,
+}: {
+  label: string
+  value: T
+  options: { value: T; label: string }[]
+  onChange: (value: T) => void
+  active: boolean
+  open: boolean
+  onToggle: () => void
+}) {
+  const selected = options.find((o) => o.value === value)
+
+  return (
+    <div className="relative flex-shrink-0">
+      <button
+        type="button"
+        onClick={onToggle}
+        className={filterChipClass(active)}
+      >
+        <span className="max-w-[7rem] truncate sm:max-w-none">{selected?.label ?? label}</span>
+        <ChevronDown
+          className={cn(filterChipIconClass, 'transition-transform', open && 'rotate-180')}
+        />
+      </button>
+
+      {open && (
+        <div className="absolute top-full left-0 z-50 mt-2 w-56 rounded-xl border border-surface-200 bg-white py-2 shadow-lg">
+          <div className="border-b border-surface-100 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-surface-500">
+            {label}
+          </div>
+          {options.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => onChange(option.value)}
+              className={cn(
+                'w-full px-4 py-2 text-left text-sm transition-colors',
+                value === option.value
+                  ? 'bg-primary-50 font-medium text-primary-600'
+                  : 'text-surface-700 hover:bg-surface-50',
+              )}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 type MarketplaceHubPageProps = {
   placement: BannerPlacement
 }
@@ -84,8 +169,11 @@ export function MarketplaceHubPage({ placement }: MarketplaceHubPageProps) {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<ProductCategory>('all')
-  const [sortBy, setSortBy] = useState<'relevance' | 'price-low' | 'price-high' | 'rating'>('relevance')
-  const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false)
+  const [sortBy, setSortBy] = useState<SortOption>('relevance')
+  const [selectedLocation, setSelectedLocation] = useState<string>('all')
+  const [priceRange, setPriceRange] = useState<PriceRangeKey>('all')
+  const [ratingFilter, setRatingFilter] = useState<RatingFilterKey>('all')
+  const [openFilter, setOpenFilter] = useState<'sort' | 'location' | 'price' | 'rating' | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -112,25 +200,50 @@ export function MarketplaceHubPage({ placement }: MarketplaceHubPageProps) {
     }
   }, [selectedCategory, searchQuery])
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const isInside = dropdownRef.current && dropdownRef.current.contains(event.target as Node)
-      if (!isInside) {
-        setIsSortDropdownOpen(false)
-      }
+      if (!isInside) setOpenFilter(null)
     }
 
-    if (isSortDropdownOpen) {
+    if (openFilter) {
       document.addEventListener('mousedown', handleClickOutside)
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [isSortDropdownOpen])
+  }, [openFilter])
 
-  const filteredProducts = [...products].sort((a, b) => {
+  const locationOptions = useMemo(() => {
+    const cities = new Set<string>()
+    for (const product of products) {
+      if (product.seller.location) cities.add(product.seller.location)
+    }
+    return [
+      { value: 'all', label: 'Semua lokasi' },
+      ...[...cities].sort((a, b) => a.localeCompare(b, 'id')).map((city) => ({
+        value: city,
+        label: city,
+      })),
+    ]
+  }, [products])
+
+  const filteredProducts = useMemo(() => {
+    const pricePreset = PRICE_RANGE_OPTIONS.find((option) => option.value === priceRange)
+    const ratingPreset = RATING_FILTER_OPTIONS.find((option) => option.value === ratingFilter)
+
+    const list = products.filter((product) => {
+      if (selectedLocation !== 'all' && product.seller.location !== selectedLocation) return false
+      if (pricePreset?.min != null && product.price < pricePreset.min) return false
+      if (pricePreset?.max != null && product.price > pricePreset.max) return false
+      if (ratingPreset?.min != null && product.rating < ratingPreset.min) return false
+      return true
+    })
+
+    if (sortBy === 'relevance') return list
+
+    return [...list].sort((a, b) => {
       switch (sortBy) {
         case 'price-low':
           return a.price - b.price
@@ -142,6 +255,13 @@ export function MarketplaceHubPage({ placement }: MarketplaceHubPageProps) {
           return 0
       }
     })
+  }, [products, selectedLocation, priceRange, ratingFilter, sortBy])
+
+  const hasActiveFilters =
+    sortBy !== 'relevance' ||
+    selectedLocation !== 'all' ||
+    priceRange !== 'all' ||
+    ratingFilter !== 'all'
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -206,69 +326,18 @@ export function MarketplaceHubPage({ placement }: MarketplaceHubPageProps) {
               </div>
 
               <div className="relative">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-surface-500">
+                  Filter kategori
+                </p>
                 <div className="overflow-x-auto scrollbar-hide -mx-4 px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
-                  <div className="flex gap-1.5 min-w-max sm:gap-2">
-                    <div className="relative flex-shrink-0" ref={dropdownRef}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedCategory('all')
-                          setIsSortDropdownOpen(!isSortDropdownOpen)
-                        }}
-                        className={filterChipClass(selectedCategory === 'all')}
-                      >
-                        <Filter className={filterChipIconClass} />
-                        Semua
-                        <ChevronDown
-                          className={cn(
-                            filterChipIconClass,
-                            'transition-transform',
-                            isSortDropdownOpen && 'rotate-180',
-                          )}
-                        />
-                      </button>
-
-                      {isSortDropdownOpen && (
-                        <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-surface-200 z-50 py-2">
-                          <div className="px-3 py-2 text-xs font-semibold text-surface-500 uppercase tracking-wide border-b border-surface-100">
-                            Urutkan
-                          </div>
-                          {[
-                            { value: 'relevance', label: 'Relevansi' },
-                            { value: 'price-low', label: 'Harga: Terendah' },
-                            { value: 'price-high', label: 'Harga: Tertinggi' },
-                            { value: 'rating', label: 'Rating Tertinggi' },
-                          ].map((option) => (
-                            <button
-                              key={option.value}
-                              type="button"
-                              onClick={() => {
-                                setSortBy(option.value as any)
-                                setIsSortDropdownOpen(false)
-                              }}
-                              className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                                sortBy === option.value
-                                  ? 'bg-primary-50 text-primary-600 font-medium'
-                                  : 'text-surface-700 hover:bg-surface-50'
-                              }`}
-                            >
-                              {option.label}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {categories.filter(cat => cat.id !== 'all').map((cat) => {
+                  <div className="flex min-w-max gap-1.5 sm:gap-2">
+                    {categories.map((cat) => {
                       const Icon = cat.icon
                       return (
                         <button
                           key={cat.id}
                           type="button"
-                          onClick={() => {
-                            setSelectedCategory(cat.id as ProductCategory)
-                            setIsSortDropdownOpen(false)
-                          }}
+                          onClick={() => setSelectedCategory(cat.id as ProductCategory)}
                           className={filterChipClass(selectedCategory === cat.id)}
                         >
                           <Icon className={filterChipIconClass} />
@@ -294,9 +363,79 @@ export function MarketplaceHubPage({ placement }: MarketplaceHubPageProps) {
 
       <div className="mx-auto max-w-7xl px-4 pb-6 pt-4 sm:px-6 sm:py-8 lg:px-8">
 
-        {/* Results Count */}
-        <div className="mb-4 text-sm text-surface-500">
-          {loading ? 'Memuat produk…' : `Menampilkan ${filteredProducts.length} produk`}
+        <div className="mb-4 space-y-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <p className="text-sm text-surface-500">
+              {loading ? 'Memuat produk…' : `Menampilkan ${filteredProducts.length} produk`}
+            </p>
+            <div className="overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
+              <div className="flex min-w-max gap-1.5 sm:gap-2" ref={dropdownRef}>
+                <FilterDropdown
+                  label="Urutkan"
+                  value={sortBy}
+                  options={SORT_OPTIONS}
+                  active={sortBy !== 'relevance'}
+                  open={openFilter === 'sort'}
+                  onToggle={() => setOpenFilter((prev) => (prev === 'sort' ? null : 'sort'))}
+                  onChange={(value) => {
+                    setSortBy(value)
+                    setOpenFilter(null)
+                  }}
+                />
+                <FilterDropdown
+                  label="Lokasi"
+                  value={selectedLocation}
+                  options={locationOptions}
+                  active={selectedLocation !== 'all'}
+                  open={openFilter === 'location'}
+                  onToggle={() => setOpenFilter((prev) => (prev === 'location' ? null : 'location'))}
+                  onChange={(value) => {
+                    setSelectedLocation(value)
+                    setOpenFilter(null)
+                  }}
+                />
+                <FilterDropdown
+                  label="Rentang harga"
+                  value={priceRange}
+                  options={PRICE_RANGE_OPTIONS}
+                  active={priceRange !== 'all'}
+                  open={openFilter === 'price'}
+                  onToggle={() => setOpenFilter((prev) => (prev === 'price' ? null : 'price'))}
+                  onChange={(value) => {
+                    setPriceRange(value)
+                    setOpenFilter(null)
+                  }}
+                />
+                <FilterDropdown
+                  label="Rating"
+                  value={ratingFilter}
+                  options={RATING_FILTER_OPTIONS}
+                  active={ratingFilter !== 'all'}
+                  open={openFilter === 'rating'}
+                  onToggle={() => setOpenFilter((prev) => (prev === 'rating' ? null : 'rating'))}
+                  onChange={(value) => {
+                    setRatingFilter(value)
+                    setOpenFilter(null)
+                  }}
+                />
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSortBy('relevance')
+                      setSelectedLocation('all')
+                      setPriceRange('all')
+                      setRatingFilter('all')
+                      setOpenFilter(null)
+                    }}
+                    className={filterChipClass(false)}
+                  >
+                    Reset filter
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Products Grid */}
@@ -344,13 +483,23 @@ export function MarketplaceHubPage({ placement }: MarketplaceHubPageProps) {
                   <div className="text-sm sm:text-base font-bold text-primary-600 mb-1.5 sm:mb-2">
                     {formatPrice(product.price)}
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-start gap-1.5">
                     <img
                       src={product.seller.image ?? PLACEHOLDER_IMAGE}
                       alt={product.seller.storeName}
-                      className="w-4 h-4 sm:w-5 sm:h-5 rounded-full object-cover border border-surface-200 flex-shrink-0"
+                      className="mt-0.5 h-4 w-4 flex-shrink-0 rounded-full border border-surface-200 object-cover sm:h-5 sm:w-5"
                     />
-                    <span className="text-[10px] sm:text-xs text-surface-500 truncate">{product.seller.storeName}</span>
+                    <div className="min-w-0">
+                      <p className="truncate text-[10px] text-surface-500 sm:text-xs">
+                        {product.seller.storeName}
+                      </p>
+                      {product.seller.location && (
+                        <p className="mt-0.5 flex items-center gap-0.5 truncate text-[9px] text-surface-400 sm:text-[10px]">
+                          <MapPin className="h-2.5 w-2.5 flex-shrink-0 text-primary-600" />
+                          {product.seller.location}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>

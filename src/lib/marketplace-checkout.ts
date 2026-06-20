@@ -16,6 +16,13 @@ import {
   normalizeCouponCode,
   type ProductCouponConfig,
 } from '@/lib/product-coupon'
+import { DEFAULT_SHIPPING_WEIGHT_KG } from '@/lib/shipping-config'
+import { loadWeightBySellerFromLines } from '@/lib/product-weight-server'
+import {
+  isValidIndonesianPhone,
+  normalizeIndonesianPhone,
+} from '@/lib/shipping-address'
+import { resolveShippingSelectionCost } from '@/lib/shipping-rates-server'
 
 export type CheckoutLineInput = {
   productId: string
@@ -56,9 +63,26 @@ function groupLinesBySeller(lines: ResolvedLine[]): Map<string, ResolvedLine[]> 
   return map
 }
 
+export type CheckoutShippingSelection = {
+  sellerId: string
+  courier: string
+  service: string
+}
+
 export type MarketplaceCheckoutOptions = {
   shippingAddress?: string | null
   shippingPhone?: string | null
+  shippingLocationId?: string | null
+  shippingProfile?: {
+    cityId?: string | null
+    cityLabel?: string | null
+    districtId?: string | null
+    districtLabel?: string | null
+    locationId?: string | null
+    locationLabel?: string | null
+    street?: string | null
+  } | null
+  shippingSelections?: CheckoutShippingSelection[]
   requiresShipping?: boolean
   couponCode?: string | null
 }
@@ -95,8 +119,14 @@ async function resolveCheckoutContext(
   if (lines.length === 0) throw new Error('EMPTY_CART')
 
   const address = options.shippingAddress?.trim() ?? ''
-  if (options.requiresShipping && address.length < 10) {
-    throw new Error('SHIPPING_ADDRESS_REQUIRED')
+  const phone = normalizeIndonesianPhone(options.shippingPhone ?? '')
+  const locationId = options.shippingLocationId?.trim() ?? ''
+
+  if (options.requiresShipping) {
+    if (address.length < 10) throw new Error('SHIPPING_ADDRESS_REQUIRED')
+    if (!locationId) throw new Error('SHIPPING_LOCATION_REQUIRED')
+    if (!phone) throw new Error('SHIPPING_PHONE_REQUIRED')
+    if (!isValidIndonesianPhone(phone)) throw new Error('SHIPPING_PHONE_INVALID')
   }
 
   const productIds = [...new Set(lines.map((l) => l.productId))]
@@ -113,6 +143,8 @@ async function resolveCheckoutContext(
       sellerId: true,
       stock: true,
       price: true,
+      category: true,
+      weightKg: true,
       couponCode: true,
       couponDiscountType: true,
       couponDiscountValue: true,
@@ -164,7 +196,43 @@ async function resolveCheckoutContext(
   const platformSettings = await getPlatformSettings()
   let grandHoldTotal = new Prisma.Decimal(0)
 
-  for (const group of sellerGroups.values()) {
+  const shippingBySeller = new Map<string, { cost: number; courier: string; service: string }>()
+
+  if (options.requiresShipping && locationId) {
+    const sellerIds = [...sellerGroups.keys()]
+    const selectionMap = new Map(
+      (options.shippingSelections ?? []).map((s) => [s.sellerId, s]),
+    )
+    const weightBySeller = await loadWeightBySellerFromLines(
+      lines.map((line) => ({ productId: line.productId, quantity: line.quantity })),
+    )
+
+    for (const sellerId of sellerIds) {
+      const picked = selectionMap.get(sellerId)
+      if (!picked?.courier || !picked.service) {
+        throw new Error('SHIPPING_SELECTION_REQUIRED')
+      }
+      const sellerWeightKg = Math.max(
+        1,
+        Math.ceil(weightBySeller[sellerId] ?? DEFAULT_SHIPPING_WEIGHT_KG),
+      )
+      const resolved = await resolveShippingSelectionCost(
+        sellerId,
+        locationId,
+        picked.courier,
+        picked.service,
+        sellerWeightKg,
+      )
+      if (!resolved) throw new Error('SHIPPING_RATE_INVALID')
+      shippingBySeller.set(sellerId, {
+        cost: resolved.cost,
+        courier: picked.courier,
+        service: picked.service,
+      })
+    }
+  }
+
+  for (const [sellerId, group] of sellerGroups) {
     let subtotal = new Prisma.Decimal(0)
     let discount = new Prisma.Decimal(0)
     for (const line of group) {
@@ -178,11 +246,22 @@ async function resolveCheckoutContext(
       discount = discount.add(new Prisma.Decimal(lineDiscount))
     }
     const total = subtotal.sub(discount)
-    const fees = computeMarketplaceFees(Number(total), platformSettings)
-    grandHoldTotal = grandHoldTotal.add(fees.buyerHoldAmount)
+    const itemCount = group.reduce((sum, line) => sum + line.quantity, 0)
+    const fees = computeMarketplaceFees(Number(total), platformSettings, itemCount)
+    const shippingCost = shippingBySeller.get(sellerId)?.cost ?? 0
+    grandHoldTotal = grandHoldTotal.add(fees.buyerHoldAmount).add(shippingCost)
   }
 
-  return { address, sellerGroups, enteredCoupon, platformSettings, grandHoldTotal }
+  return {
+    address,
+    phone,
+    locationId,
+    sellerGroups,
+    enteredCoupon,
+    platformSettings,
+    grandHoldTotal,
+    shippingBySeller,
+  }
 }
 
 export async function processMarketplaceCheckout(
@@ -228,7 +307,12 @@ async function createAwaitingPaymentOrders(
         discount = discount.add(new Prisma.Decimal(lineDiscount))
       }
       const total = subtotal.sub(discount)
-      const fees = computeMarketplaceFees(Number(total), ctx.platformSettings)
+      const itemCount = groupLines.reduce((sum, line) => sum + line.quantity, 0)
+      const fees = computeMarketplaceFees(Number(total), ctx.platformSettings, itemCount)
+      const shipping = ctx.shippingBySeller.get(sellerId)
+      const shippingCost = new Prisma.Decimal(shipping?.cost ?? 0)
+      const buyerHoldAmount = fees.buyerHoldAmount.add(shippingCost)
+      const sellerNetAmount = fees.sellerNetAmount.add(shippingCost)
 
       const orderCode = generateMarketplaceOrderCode()
       const order = await tx.order.create({
@@ -242,16 +326,22 @@ async function createAwaitingPaymentOrders(
           total,
           buyerFeeAmount: fees.buyerFeeAmount,
           sellerFeeAmount: fees.sellerFeeAmount,
-          buyerHoldAmount: fees.buyerHoldAmount,
-          sellerNetAmount: fees.sellerNetAmount,
+          buyerHoldAmount,
+          sellerNetAmount,
+          shippingCost,
           settlementVersion: 2,
           paymentMethod: 'PAYMENT_GATEWAY',
           status: 'AWAITING_PAYMENT',
           checkoutBatchId,
           paymentExpiresAt,
           ...(ctx.address ? { shippingAddress: ctx.address } : {}),
-          ...(options.shippingPhone?.trim()
-            ? { shippingPhone: options.shippingPhone.trim() }
+          ...(ctx.phone ? { shippingPhone: ctx.phone } : {}),
+          ...(ctx.locationId ? { shippingLocationId: ctx.locationId } : {}),
+          ...(shipping
+            ? {
+                checkoutShippingCourier: shipping.courier,
+                shippingService: shipping.service,
+              }
             : {}),
           items: {
             create: groupLines.map((line) => ({

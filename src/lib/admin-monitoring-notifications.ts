@@ -48,6 +48,8 @@ function konsultasiStatusLabel(status: string): { label: string; tone: 'success'
       return { label: 'Menunggu', tone: 'warning' }
     case 'ACTIVE':
       return { label: 'Berjalan', tone: 'info' }
+    case 'AWAITING_CONFIRMATION':
+      return { label: 'Menunggu konfirmasi', tone: 'warning' }
     case 'COMPLETED':
       return { label: 'Selesai', tone: 'success' }
     case 'CANCELLED':
@@ -74,7 +76,7 @@ function remoteStatusLabel(status: string): { label: string; tone: 'success' | '
 }
 
 function shouldNotifyKonsultasi(status: string, updatedAt: Date, createdAt: Date, since: Date): boolean {
-  if (status === 'PENDING' || status === 'ACTIVE') return true
+  if (status === 'PENDING' || status === 'ACTIVE' || status === 'AWAITING_CONFIRMATION') return true
   if (status === 'COMPLETED' || status === 'CANCELLED') {
     return updatedAt >= since || createdAt >= since
   }

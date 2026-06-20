@@ -1,6 +1,6 @@
 'use client'
 
-import { useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useLayoutEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
@@ -23,9 +23,26 @@ import { cn } from '@/lib/utils'
 import { useCart } from '@/contexts/cart-context'
 import type { CartItem } from '@/lib/cart'
 import { calcCartCouponDiscount } from '@/lib/product-coupon'
-import { floorIdr } from '@/lib/marketplace-fees'
+import { computeMarketplaceFees } from '@/lib/marketplace-fees'
+import type { MarketplaceFeeSettings } from '@/lib/marketplace-fees'
 import { TripayChannelPicker } from '@/components/payments/tripay-channel-picker'
 import { BackButton } from '@/components/shared/back-button'
+import { CheckoutShippingAddressPanel } from '@/components/shipping/checkout-shipping-address-panel'
+import { SellerShippingSelector } from '@/components/shipping/seller-shipping-selector'
+import type { SellerShippingQuote } from '@/lib/shipping-rates-server'
+import {
+  EMPTY_STRUCTURED_SHIPPING_ADDRESS,
+  formatStructuredShippingAddress,
+  parseShippingOptionKey,
+  shippingOptionKey,
+  validateStructuredShippingAddress,
+  type StructuredShippingAddress,
+} from '@/lib/shipping-address'
+import {
+  findOwnProductsInCart,
+  isOwnMarketplaceProduct,
+  OWN_PRODUCT_CHECKOUT_MESSAGE,
+} from '@/lib/marketplace-own-product'
 import {
   ArrowRight,
   CheckCircle,
@@ -95,7 +112,7 @@ const typeBadgeColor = {
 
 export default function CartPage() {
   const router = useRouter()
-  const { status: sessionStatus } = useSession()
+  const { status: sessionStatus, data: session } = useSession()
   const { items, updateQuantity, removeItem, hydrated, syncProducts } = useCart()
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
@@ -109,10 +126,21 @@ export default function CartPage() {
   const [promoApplied, setPromoApplied] = useState(false)
   const [promoError, setPromoError] = useState<string | null>(null)
   const [promoLoading, setPromoLoading] = useState(false)
-  const [shippingAddress, setShippingAddress] = useState('')
-  const [shippingPhone, setShippingPhone] = useState('')
+  const [shippingAddress, setShippingAddress] = useState<StructuredShippingAddress>(
+    EMPTY_STRUCTURED_SHIPPING_ADDRESS,
+  )
   const [addressError, setAddressError] = useState<string | null>(null)
-  const [buyerFeePercent, setBuyerFeePercent] = useState(2)
+  const [shippingQuotes, setShippingQuotes] = useState<SellerShippingQuote[]>([])
+  const [shippingSelections, setShippingSelections] = useState<Record<string, string>>({})
+  const [shippingLoading, setShippingLoading] = useState(false)
+  const [shippingFetchError, setShippingFetchError] = useState<string | null>(null)
+  const [buyerFeeSettings, setBuyerFeeSettings] = useState<Pick<
+    MarketplaceFeeSettings,
+    'buyerFeePercent' | 'buyerFlatFeePerItem'
+  >>({
+    buyerFeePercent: 2,
+    buyerFlatFeePerItem: 0,
+  })
 
   const marketplaceItems = items.filter((i) => i.type !== 'topup')
   const marketplaceItemIds = marketplaceItems.map((i) => i.id).join(',')
@@ -120,40 +148,28 @@ export default function CartPage() {
   const requiresShipping =
     marketplaceItems.length > 0 &&
     !marketplaceItems.every((i) => i.type === 'software')
-  const profilePrefilled = useRef(false)
-
-  useLayoutEffect(() => {
-    if (sessionStatus !== 'authenticated') return
-    void (async () => {
-      try {
-        const profileRes = profilePrefilled.current ? null : await fetch('/api/user/profile')
-        if (profileRes) {
-          const profileJson = await profileRes.json()
-          if (profileRes.ok && profileJson.success && !profilePrefilled.current) {
-            profilePrefilled.current = true
-            const addr = profileJson.data?.address
-            if (typeof addr === 'string' && addr.trim()) {
-              setShippingAddress(addr.trim())
-            }
-            const phone = profileJson.data?.phone
-            if (typeof phone === 'string' && phone.trim()) {
-              setShippingPhone(phone.trim())
-            }
-          }
-        }
-      } catch {
-        /* ignore */
-      }
-    })()
-  }, [sessionStatus])
-
+  const sellerIds = useMemo(
+    () => [...new Set(marketplaceItems.map((i) => i.sellerId).filter(Boolean))] as string[],
+    [marketplaceItems],
+  )
+  const shippingLinesKey = useMemo(
+    () =>
+      marketplaceItems
+        .filter((i) => i.type !== 'software')
+        .map((i) => `${i.id}:${i.quantity}`)
+        .join('|'),
+    [marketplaceItems],
+  )
   useLayoutEffect(() => {
     void (async () => {
       try {
         const res = await fetch('/api/platform/marketplace-fees')
         const json = await res.json()
-        if (res.ok && json.success && json.data?.buyerFeePercent != null) {
-          setBuyerFeePercent(Number(json.data.buyerFeePercent))
+        if (res.ok && json.success && json.data) {
+          setBuyerFeeSettings({
+            buyerFeePercent: Number(json.data.buyerFeePercent ?? 2),
+            buyerFlatFeePerItem: Number(json.data.buyerFlatFeePerItem ?? 0),
+          })
         }
       } catch {
         /* ignore */
@@ -182,6 +198,56 @@ export default function CartPage() {
     })()
   }, [hydrated, marketplaceItemIds, syncProducts])
 
+  useLayoutEffect(() => {
+    if (!requiresShipping || !shippingAddress.locationId || sellerIds.length === 0) {
+      setShippingQuotes([])
+      setShippingSelections({})
+      return
+    }
+
+    void (async () => {
+      setShippingLoading(true)
+      setShippingFetchError(null)
+      try {
+        const res = await fetch('/api/shipping/rates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            destinationLocationId: shippingAddress.locationId,
+            sellerIds,
+            lines: marketplaceItems
+              .filter((i) => i.type !== 'software')
+              .map((i) => ({ productId: i.id, quantity: i.quantity })),
+          }),
+        })
+        const json = await res.json()
+        if (!res.ok || !json.success) {
+          setShippingFetchError(json.error ?? 'Gagal menghitung ongkir')
+          setShippingQuotes([])
+          return
+        }
+        const quotes = (json.data?.bySeller ?? []) as SellerShippingQuote[]
+        setShippingQuotes(quotes)
+        setShippingSelections((prev) => {
+          const next = { ...prev }
+          for (const quote of quotes) {
+            if (next[quote.sellerId]) continue
+            const cheapest = quote.options[0]
+            if (cheapest) {
+              next[quote.sellerId] = shippingOptionKey(cheapest.courier, cheapest.service)
+            }
+          }
+          return next
+        })
+      } catch {
+        setShippingFetchError('Gagal menghitung ongkir')
+        setShippingQuotes([])
+      } finally {
+        setShippingLoading(false)
+      }
+    })()
+  }, [requiresShipping, shippingAddress.locationId, sellerIds.join(','), shippingLinesKey])
+
   const handleCheckout = async () => {
     if (marketplaceItems.length === 0) {
       setCheckoutError('Tidak ada produk marketplace di keranjang')
@@ -193,16 +259,46 @@ export default function CartPage() {
       return
     }
 
-    const addr = shippingAddress.trim()
-    if (requiresShipping && addr.length < 10) {
-      setAddressError('Alamat pengiriman wajib diisi (minimal 10 karakter)')
+    const ownProducts = findOwnProductsInCart(marketplaceItems, session?.user?.id)
+    if (ownProducts.length > 0) {
+      setCheckoutError(OWN_PRODUCT_CHECKOUT_MESSAGE)
       return
     }
+
+    const validationError = requiresShipping
+      ? validateStructuredShippingAddress(shippingAddress)
+      : null
+    if (validationError) {
+      setAddressError(validationError)
+      return
+    }
+
+    if (requiresShipping) {
+      const missingSelection = sellerIds.some((id) => !shippingSelections[id])
+      const hasQuoteError = shippingQuotes.some((q) => q.error)
+      if (missingSelection || hasQuoteError || shippingLoading) {
+        setAddressError('Pilih layanan pengiriman untuk semua penjual')
+        return
+      }
+    }
     setAddressError(null)
+
+    const formattedAddress = requiresShipping
+      ? formatStructuredShippingAddress(shippingAddress)
+      : ''
 
     setCheckoutLoading(true)
     setCheckoutError(null)
     try {
+      const shippingSelectionsPayload = sellerIds
+        .map((sellerId) => {
+          const key = shippingSelections[sellerId]
+          const parsed = key ? parseShippingOptionKey(key) : null
+          if (!parsed) return null
+          return { sellerId, courier: parsed.courier, service: parsed.service }
+        })
+        .filter(Boolean)
+
       const res = await fetch('/api/marketplace/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -214,8 +310,19 @@ export default function CartPage() {
           requiresShipping,
           ...(requiresShipping
             ? {
-                shippingAddress: addr,
-                shippingPhone: shippingPhone.trim() || undefined,
+                shippingAddress: formattedAddress,
+                shippingPhone: shippingAddress.phone,
+                shippingLocationId: shippingAddress.locationId,
+                shippingProfile: {
+                  cityId: shippingAddress.cityId,
+                  cityLabel: shippingAddress.cityLabel,
+                  districtId: shippingAddress.districtId,
+                  districtLabel: shippingAddress.districtLabel,
+                  locationId: shippingAddress.locationId,
+                  locationLabel: shippingAddress.locationLabel,
+                  street: shippingAddress.street,
+                },
+                shippingSelections: shippingSelectionsPayload,
               }
             : {}),
           ...(promoApplied && appliedPromoCode ? { couponCode: appliedPromoCode } : {}),
@@ -255,10 +362,32 @@ export default function CartPage() {
     ? calcCartCouponDiscount(marketplaceItems, appliedPromoCode)
     : 0
   const total = subtotal - discount
-  const buyerFee =
-    marketplaceItems.length > 0 ? floorIdr((total * buyerFeePercent) / 100) : 0
-  const checkoutTotal = total + buyerFee
-  const addressInvalid = requiresShipping && shippingAddress.trim().length < 10
+  const itemCount = marketplaceItems.reduce((sum, item) => sum + item.quantity, 0)
+  const buyerFeeBreakdown =
+    marketplaceItems.length > 0
+      ? computeMarketplaceFees(
+          total,
+          { ...buyerFeeSettings, sellerFeePercent: 0 },
+          itemCount,
+        )
+      : null
+  const buyerFee = buyerFeeBreakdown?.buyerFee ?? 0
+  const shippingTotal = shippingQuotes.reduce((sum, quote) => {
+    const key = shippingSelections[quote.sellerId]
+    if (!key) return sum
+    const opt = quote.options.find((o) => shippingOptionKey(o.courier, o.service) === key)
+    return sum + (opt?.price ?? 0)
+  }, 0)
+  const checkoutTotal = total + buyerFee + shippingTotal
+  const ownProductItems = findOwnProductsInCart(marketplaceItems, session?.user?.id)
+  const hasOwnProducts = ownProductItems.length > 0
+  const addressInvalid =
+    requiresShipping &&
+    (Boolean(validateStructuredShippingAddress(shippingAddress)) ||
+      shippingLoading ||
+      sellerIds.some((id) => !shippingSelections[id]) ||
+      shippingQuotes.some((q) => q.error))
+  const checkoutBlocked = hasOwnProducts || addressInvalid
   const checkoutLabel = 'Lanjut ke pembayaran'
 
   const applyPromo = async () => {
@@ -361,6 +490,21 @@ export default function CartPage() {
           </p>
         )}
 
+        {hasOwnProducts && (
+          <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <p>{OWN_PRODUCT_CHECKOUT_MESSAGE}. Hapus produk milik Anda dari keranjang untuk melanjutkan checkout.</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-2 border-amber-300 bg-white text-amber-900 hover:bg-amber-100"
+              onClick={() => ownProductItems.forEach((item) => removeItem(item.id))}
+            >
+              Hapus produk sendiri ({ownProductItems.length})
+            </Button>
+          </div>
+        )}
+
         {/* Header */}
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -416,6 +560,7 @@ export default function CartPage() {
               <AnimatePresence>
                 {items.map((item) => {
                   const TypeIcon = typeIcon[item.type]
+                  const isOwnProduct = isOwnMarketplaceProduct(item.sellerId, session?.user?.id)
                   return (
                     <motion.div
                       key={item.id}
@@ -425,7 +570,10 @@ export default function CartPage() {
                       exit={{ opacity: 0, x: 10, height: 0, marginBottom: 0 }}
                       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
                     >
-                      <Card className="overflow-hidden transition-shadow hover:shadow-soft-md">
+                      <Card className={cn(
+                        'overflow-hidden transition-shadow hover:shadow-soft-md',
+                        isOwnProduct && 'border-amber-200 bg-amber-50/30',
+                      )}>
                         <CardContent className="flex gap-3 p-3 sm:p-4">
                           {/* Image */}
                           <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl bg-surface-100 sm:h-24 sm:w-24">
@@ -453,6 +601,11 @@ export default function CartPage() {
                               <p className="mt-0.5 text-[10px] text-surface-400">
                                 Seller: {item.seller}
                               </p>
+                              {isOwnProduct && (
+                                <p className="mt-1 text-[10px] font-medium text-amber-700">
+                                  Produk milik Anda — tidak bisa dibeli sendiri
+                                </p>
+                              )}
                             </div>
 
                             <div className="mt-2 flex items-center justify-between gap-2">
@@ -513,29 +666,30 @@ export default function CartPage() {
                   </h2>
 
                   {requiresShipping && (
-                    <div className="mb-4 space-y-2">
-                      <p className="text-xs font-semibold text-ink">Alamat pengiriman</p>
-                      <textarea
-                        aria-label="Alamat pengiriman"
+                    <div className="mb-4 space-y-3">
+                      <p className="text-sm font-medium text-surface-700">Alamat pengiriman</p>
+                      <CheckoutShippingAddressPanel
                         value={shippingAddress}
-                        onChange={(e) => {
-                          setShippingAddress(e.target.value)
+                        isAuthenticated={sessionStatus === 'authenticated'}
+                        onChange={(next) => {
+                          setShippingAddress(next)
                           if (addressError) setAddressError(null)
                         }}
-                        placeholder="Nama penerima, jalan, RT/RW, kelurahan, kota, kode pos"
-                        rows={3}
-                        className={cn(
-                          'w-full rounded-xl border bg-white px-3 py-2 text-xs text-ink placeholder:text-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-100',
-                          addressError
-                            ? 'border-rose-300 focus:border-rose-400'
-                            : 'border-surface-200 focus:border-primary-400',
-                        )}
+                        onErrorClear={() => {
+                          if (addressError) setAddressError(null)
+                        }}
                       />
-                      <Input
-                        value={shippingPhone}
-                        onChange={(e) => setShippingPhone(e.target.value)}
-                        placeholder="No. HP penerima (opsional)"
-                        className="h-9 text-xs"
+                      {shippingFetchError && (
+                        <p className="text-[11px] text-rose-600">{shippingFetchError}</p>
+                      )}
+                      <SellerShippingSelector
+                        quotes={shippingQuotes}
+                        selections={shippingSelections}
+                        loading={shippingLoading}
+                        onSelect={(sellerId, optionKey) => {
+                          setShippingSelections((prev) => ({ ...prev, [sellerId]: optionKey }))
+                          if (addressError) setAddressError(null)
+                        }}
                       />
                       {addressError && (
                         <p className="text-[11px] text-rose-600">{addressError}</p>
@@ -618,12 +772,39 @@ export default function CartPage() {
                         <span className="font-medium tabular-nums">- {formatPrice(discount)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between">
-                      <span className="text-surface-500">Fee platform ({buyerFeePercent}%)</span>
-                      <span className="font-medium text-ink tabular-nums">
-                        {buyerFee > 0 ? formatPrice(buyerFee) : 'Gratis'}
-                      </span>
-                    </div>
+                    {buyerFeeBreakdown && buyerFeeBreakdown.buyerFeePercentPart > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-surface-500">Biaya Platform</span>
+                        <span className="font-medium text-ink tabular-nums">
+                          {formatPrice(buyerFeeBreakdown.buyerFeePercentPart)}
+                        </span>
+                      </div>
+                    )}
+                    {buyerFeeBreakdown && buyerFeeBreakdown.buyerFlatFeePart > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-surface-500">
+                          Biaya layanan (
+                          {formatPrice(buyerFeeSettings.buyerFlatFeePerItem)} × {itemCount} item)
+                        </span>
+                        <span className="font-medium text-ink tabular-nums">
+                          {formatPrice(buyerFeeBreakdown.buyerFlatFeePart)}
+                        </span>
+                      </div>
+                    )}
+                    {buyerFeeBreakdown && buyerFee === 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-surface-500">Biaya Platform</span>
+                        <span className="font-medium text-ink tabular-nums">Gratis</span>
+                      </div>
+                    )}
+                    {shippingTotal > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-surface-500">Estimasi ongkir</span>
+                        <span className="font-medium text-ink tabular-nums">
+                          {formatPrice(shippingTotal)}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between border-t border-surface-100 pt-2">
                       <span className="text-sm font-bold text-ink">Total dibayar</span>
                       <motion.span
@@ -645,7 +826,7 @@ export default function CartPage() {
                     disabled={
                       checkoutLoading ||
                       marketplaceItems.length === 0 ||
-                      addressInvalid
+                      checkoutBlocked
                     }
                     onClick={() => void handleCheckout()}
                   >
@@ -687,7 +868,7 @@ export default function CartPage() {
                   Total ({items.length} item)
                 </p>
                 <p className="text-base font-bold tracking-tight text-primary-700 tabular-nums">
-                  {formatPrice(total)}
+                  {formatPrice(checkoutTotal)}
                 </p>
               </div>
               <Button
@@ -697,7 +878,7 @@ export default function CartPage() {
                 disabled={
                   checkoutLoading ||
                   marketplaceItems.length === 0 ||
-                  addressInvalid
+                  checkoutBlocked
                 }
                 onClick={() => void handleCheckout()}
               >

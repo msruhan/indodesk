@@ -21,6 +21,8 @@ import {
 } from '@/lib/icons'
 import { DashboardMonthFilter, FilterSelect, MetricCard } from '@/components/dashboard'
 import { KonsultasiDetailModal } from '@/components/teknisi/konsultasi-detail-modal'
+import { useConfirm } from '@/components/ui/confirm-dialog'
+import { useChat } from '@/contexts/chat-context'
 import { useDashboardPeriod } from '@/contexts/dashboard-period-context'
 import { isDateInPeriod } from '@/lib/dashboard-period'
 import { cn } from '@/lib/utils'
@@ -42,6 +44,8 @@ function statusBadgeVariant(status: TeknisiKonsultasiDto['status']) {
       return 'warning' as const
     case 'active':
       return 'default' as const
+    case 'awaiting_confirmation':
+      return 'warning' as const
     case 'cancelled':
       return 'danger' as const
   }
@@ -71,6 +75,8 @@ async function copyText(label: string, value: string) {
 export default function TeknisiKonsultasiPage() {
   const { period, label: periodLabel } = useDashboardPeriod()
   const router = useRouter()
+  const confirmDialog = useConfirm()
+  const { openChatWithPeer } = useChat()
   const searchParams = useSearchParams()
   const [items, setItems] = useState<TeknisiKonsultasiDto[]>([])
   const [loading, setLoading] = useState(true)
@@ -114,7 +120,7 @@ export default function TeknisiKonsultasiPage() {
     }
   }, [searchParams, router])
 
-  const patchAction = async (id: string, action: 'start' | 'complete' | 'cancel') => {
+  const patchAction = async (id: string, action: 'start' | 'mark-done' | 'cancel') => {
     setActingId(id)
     try {
       const res = await fetch(`/api/teknisi/konsultasi/${id}`, {
@@ -146,7 +152,9 @@ export default function TeknisiKonsultasiPage() {
       pending: periodItems.filter(
         (i) => i.status === 'pending' || i.status === 'awaiting_payment',
       ).length,
-      active: periodItems.filter((i) => i.status === 'active').length,
+      active: periodItems.filter(
+        (i) => i.status === 'active' || i.status === 'awaiting_confirmation',
+      ).length,
       completed: periodItems.filter((i) => i.status === 'completed').length,
     }),
     [periodItems],
@@ -177,7 +185,9 @@ export default function TeknisiKonsultasiPage() {
       if (statusTab === 'pending' && !['pending', 'awaiting_payment'].includes(item.status)) {
         return false
       }
-      if (statusTab === 'active' && item.status !== 'active') return false
+      if (statusTab === 'active' && !['active', 'awaiting_confirmation'].includes(item.status)) {
+        return false
+      }
       if (statusTab === 'completed' && item.status !== 'completed') return false
       if (statusTab === 'cancelled' && item.status !== 'cancelled') return false
       if (remoteFilter === 'remote' && !item.requiresRemote) return false
@@ -218,6 +228,16 @@ export default function TeknisiKonsultasiPage() {
     setStatusTab('all')
     setRemoteFilter('all')
     setRatingFilter('all')
+  }
+
+  const openUserChat = (userId: string, chatHref: string) => {
+    const isDesktop =
+      typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
+    if (isDesktop) {
+      openChatWithPeer(userId)
+      return
+    }
+    router.push(chatHref)
   }
 
   return (
@@ -428,7 +448,17 @@ export default function TeknisiKonsultasiPage() {
                             </Button>
                           </TableCell>
                           <TableCell>
-                            <div className="flex flex-wrap gap-1.5">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <Button
+                                type="button"
+                                size="icon-sm"
+                                variant="outline"
+                                className="h-8 w-8 shrink-0"
+                                aria-label={`Chat dengan ${k.userName}`}
+                                onClick={() => openUserChat(k.userId, k.chatHref)}
+                              >
+                                <MessageCircle className="h-3.5 w-3.5" />
+                              </Button>
                               {k.status === 'awaiting_payment' && (
                                 <span className="text-[11px] text-amber-700">
                                   Menunggu pembayaran user
@@ -458,11 +488,30 @@ export default function TeknisiKonsultasiPage() {
                                 <Button
                                   size="sm"
                                   variant="primary"
-                                  disabled={actingId === k.id}
-                                  onClick={() => void patchAction(k.id, 'complete')}
+                                  disabled={actingId === k.id || !k.canMarkDone}
+                                  onClick={async () => {
+                                    const ok = await confirmDialog({
+                                      title: 'Selesai melayani?',
+                                      description:
+                                        'User akan diminta konfirmasi. Dana cair setelah user setuju atau otomatis dalam 48 jam.',
+                                      confirmLabel: 'Selesai melayani',
+                                    })
+                                    if (ok) void patchAction(k.id, 'mark-done')
+                                  }}
                                 >
-                                  Selesai
+                                  Selesai melayani
                                 </Button>
+                              )}
+                              {k.status === 'awaiting_confirmation' && k.confirmDeadlineAt && (
+                                <span className="text-[11px] text-amber-700">
+                                  Menunggu konfirmasi user · batas{' '}
+                                  {new Intl.DateTimeFormat('id-ID', {
+                                    day: 'numeric',
+                                    month: 'short',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  }).format(new Date(k.confirmDeadlineAt))}
+                                </span>
                               )}
                             </div>
                           </TableCell>

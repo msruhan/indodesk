@@ -38,8 +38,12 @@ import {
   XCircle,
 } from '@/lib/icons'
 
-/** Interval refresh monitoring (selaras dengan chat messenger). */
-const MONITORING_POLL_MS = 5000
+/** Interval refresh daftar monitoring. */
+const MONITORING_LIST_POLL_MS = 5000
+/** Interval refresh transkrip chat (selaras dengan chat messenger). */
+const MONITORING_CHAT_DETAIL_POLL_MS = 3000
+/** Interval refresh detail konsultasi / remote. */
+const MONITORING_DETAIL_POLL_MS = 5000
 
 const emptyStats: MonitoringStats = {
   totalChat: 0,
@@ -379,9 +383,18 @@ function DetailBody({ detail }: { detail: MonitoringDetailDto }) {
 
 function ChatTranscript({ detail }: { detail: MonitoringDetailDto }) {
   const transcript = detail.transcript ?? []
+  const scrollRef = useRef<HTMLDivElement>(null)
   const transcriptEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    const container = scrollRef.current
+    if (!container) return
+
+    const nearBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight < 96
+
+    if (!nearBottom) return
+
     const frame = requestAnimationFrame(() => {
       transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     })
@@ -402,7 +415,7 @@ function ChatTranscript({ detail }: { detail: MonitoringDetailDto }) {
           Belum ada pesan dalam percakapan ini.
         </p>
       ) : (
-        <div className="max-h-[min(50vh,420px)] space-y-2 overflow-y-auto px-1">
+        <div ref={scrollRef} className="max-h-[min(50vh,420px)] space-y-2 overflow-y-auto px-1">
           {transcript.map((msg) => (
             <div
               key={msg.id}
@@ -549,7 +562,7 @@ export function AdminMonitoringView() {
       const params = new URLSearchParams()
       if (tab !== 'all') params.set('tab', tab)
       if (debouncedSearch.trim()) params.set('q', debouncedSearch.trim())
-      const res = await fetch(`/api/admin/monitoring?${params.toString()}`)
+      const res = await fetch(`/api/admin/monitoring?${params.toString()}`, { cache: 'no-store' })
       const data = await res.json()
       if (!data.success) {
         if (!silent) setError(data.error || 'Gagal memuat data monitoring')
@@ -573,7 +586,7 @@ export function AdminMonitoringView() {
         setDetailError(null)
       }
       try {
-        const res = await fetch(`/api/admin/monitoring/${channel}/${id}`)
+        const res = await fetch(`/api/admin/monitoring/${channel}/${id}`, { cache: 'no-store' })
         const data = await res.json()
         if (requestId !== detailRequestRef.current) return
         if (!data.success) {
@@ -599,19 +612,53 @@ export function AdminMonitoringView() {
   }, [loadList])
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    const tick = () => {
       if (document.visibilityState === 'visible') void loadList(true)
-    }, MONITORING_POLL_MS)
+    }
+    tick()
+    const interval = setInterval(tick, MONITORING_LIST_POLL_MS)
     return () => clearInterval(interval)
   }, [loadList])
 
   useEffect(() => {
     if (!openDetailId || !openChannel) return
-    const interval = setInterval(() => {
-      if (document.visibilityState === 'visible') void loadDetail(openChannel, openDetailId, true)
-    }, MONITORING_POLL_MS)
+
+    const pollMs =
+      openChannel === 'chat' ? MONITORING_CHAT_DETAIL_POLL_MS : MONITORING_DETAIL_POLL_MS
+
+    const tick = () => {
+      if (document.visibilityState === 'visible') {
+        void loadDetail(openChannel, openDetailId, true)
+      }
+    }
+
+    tick()
+    const interval = setInterval(tick, pollMs)
     return () => clearInterval(interval)
   }, [openDetailId, openChannel, loadDetail])
+
+  useEffect(() => {
+    if (!openDetailId || !openChannel || !detail) return
+
+    const listItem = items.find((i) => i.id === openDetailId && i.channel === openChannel)
+    if (!listItem) return
+    if (listItem.updatedAt === detail.activity.updatedAt) return
+
+    void loadDetail(openChannel, openDetailId, true)
+  }, [items, openDetailId, openChannel, detail?.activity.updatedAt, loadDetail])
+
+  useEffect(() => {
+    if (!openDetailId || !openChannel) return
+
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      void loadDetail(openChannel, openDetailId, true)
+      void loadList(true)
+    }
+
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [openDetailId, openChannel, loadDetail, loadList])
 
   const handleOpen = useCallback(
     async (item: MonitoringActivityItem) => {

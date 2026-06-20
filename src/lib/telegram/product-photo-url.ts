@@ -10,17 +10,45 @@ type ProductImageSource = {
   images?: unknown
 }
 
-/** URL gambar utama produk yang dapat di-fetch Telegram (HTTPS absolut). */
+/** URL semua foto produk (utama dulu) yang dapat di-fetch Telegram. Maks. 10 (batas album Telegram). */
+export function resolveTelegramProductPhotoUrls(
+  product: ProductImageSource,
+  appBaseUrl: string,
+): string[] {
+  const entries = parseProductImagesField(product)
+  const sorted = [...entries].sort((a, b) => {
+    if (a.isPrimary && !b.isPrimary) return -1
+    if (!a.isPrimary && b.isPrimary) return 1
+    return 0
+  })
+
+  const urls: string[] = []
+  const seen = new Set<string>()
+
+  for (const entry of sorted) {
+    const raw = entry.url?.trim()
+    if (!raw) continue
+    const resolved = toTelegramAccessibleImageUrl(raw, appBaseUrl)
+    if (resolved && !seen.has(resolved)) {
+      seen.add(resolved)
+      urls.push(resolved)
+    }
+  }
+
+  if (urls.length === 0 && product.image?.trim()) {
+    const legacy = toTelegramAccessibleImageUrl(product.image.trim(), appBaseUrl)
+    if (legacy) urls.push(legacy)
+  }
+
+  return urls.slice(0, 10)
+}
+
+/** URL gambar utama produk — shortcut ke foto pertama. */
 export function resolveTelegramProductPhotoUrl(
   product: ProductImageSource,
   appBaseUrl: string,
 ): string | null {
-  const raw = getPrimaryProductImageUrl(
-    parseProductImagesField(product),
-    product.image,
-  )
-  if (!raw?.trim()) return null
-  return toTelegramAccessibleImageUrl(raw.trim(), appBaseUrl)
+  return resolveTelegramProductPhotoUrls(product, appBaseUrl)[0] ?? null
 }
 
 export function toTelegramAccessibleImageUrl(

@@ -28,6 +28,8 @@ export type TeknisiProductDto = {
   views: number
   sold: number
   stock: number
+  weightKg: number
+  saleCondition: Product['saleCondition']
   color: string
   ram: string
   processor: string
@@ -71,6 +73,8 @@ export function serializeTeknisiProduct(p: Product): TeknisiProductDto {
     views: p.views,
     sold: p.soldCount,
     stock: p.stock,
+    weightKg: Number(p.weightKg),
+    saleCondition: p.saleCondition,
     color: p.color,
     ram: p.ram,
     processor: p.processor,

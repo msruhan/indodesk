@@ -337,7 +337,7 @@ function MixDonutChart({
       <Card>
         <CardHeader className="border-b border-surface-100 pb-3">
           <CardTitle className="text-base">Mix Pendapatan Terealisasi</CardTitle>
-          <p className="mt-0.5 text-[11px] text-surface-500">Proporsi fee per kanal (excl. konsultasi)</p>
+          <p className="mt-0.5 text-[11px] text-surface-500">Proporsi fee per kanal</p>
         </CardHeader>
         <CardContent className="pt-4">
           {mix.length === 0 ? (

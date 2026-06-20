@@ -1,17 +1,15 @@
 import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
-import { logCommunicationEvent, logPaymentEvent } from '@/lib/activity-log'
-import {
-  finalizeKonsultasiPaymentToTeknisi,
-  refundKonsultasiPayment,
-} from '@/lib/konsultasi-wallet'
+import { logCommunicationEvent } from '@/lib/activity-log'
+import { computeConfirmDeadline } from '@/lib/konsultasi-completion'
+import { refundKonsultasiPayment } from '@/lib/konsultasi-wallet'
 import { serializeTeknisiKonsultasi, type UserParty } from '@/lib/teknisi-layanan-serializer'
 
 export const dynamic = 'force-dynamic'
 
 const patchSchema = z.object({
-  action: z.enum(['start', 'complete', 'cancel']),
+  action: z.enum(['start', 'mark-done', 'cancel']),
 })
 
 const USER_SELECT = {
@@ -50,11 +48,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     const now = new Date()
     let data: {
-      status: 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED'
+      status:
+        | 'PENDING'
+        | 'ACTIVE'
+        | 'AWAITING_CONFIRMATION'
+        | 'COMPLETED'
+        | 'CANCELLED'
       startedAt?: Date | null
       endedAt?: Date | null
       remoteOtp?: null
       paymentStatus?: 'CAPTURED' | 'RELEASED'
+      teknisiMarkedDoneAt?: Date | null
+      confirmDeadlineAt?: Date | null
     }
 
     switch (parsed.data.action) {
@@ -67,11 +72,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         }
         data = { status: 'ACTIVE', startedAt: now }
         break
-      case 'complete':
+      case 'mark-done':
         if (existing.status !== 'ACTIVE') {
-          return apiError('Hanya konsultasi berjalan yang bisa diselesaikan')
+          return apiError('Hanya konsultasi berjalan yang bisa ditandai selesai')
         }
-        data = { status: 'COMPLETED', endedAt: now, remoteOtp: null, paymentStatus: 'CAPTURED' }
+        if (existing.paymentStatus !== 'SECURED') {
+          return apiError('Pembayaran belum dikonfirmasi')
+        }
+        data = {
+          status: 'AWAITING_CONFIRMATION',
+          remoteOtp: null,
+          teknisiMarkedDoneAt: now,
+          confirmDeadlineAt: computeConfirmDeadline(now),
+        }
         break
       case 'cancel':
         if (existing.status !== 'PENDING' && existing.status !== 'ACTIVE') {
@@ -81,6 +94,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           status: 'CANCELLED',
           endedAt: now,
           remoteOtp: null,
+          teknisiMarkedDoneAt: null,
+          confirmDeadlineAt: null,
           ...(existing.status === 'PENDING' ? { paymentStatus: 'RELEASED' as const } : {}),
         }
         break
@@ -92,18 +107,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         data,
         include: { user: { select: USER_SELECT } },
       })
-
-      if (parsed.data.action === 'complete') {
-        await finalizeKonsultasiPaymentToTeknisi(
-          tx,
-          session.user.id,
-          existing.userId,
-          existing.price,
-          id,
-          existing.service,
-          existing.paymentMethod,
-        )
-      }
 
       if (parsed.data.action === 'cancel' && existing.status === 'PENDING') {
         await refundKonsultasiPayment(
@@ -136,23 +139,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         actor,
         target: { type: 'konsultasi', id, label: existing.service },
       })
-    } else if (parsed.data.action === 'complete') {
-      void logPaymentEvent({
-        action: 'konsultasi.earning',
-        severity: 'SUCCESS',
-        summary: `Pendapatan konsultasi: ${existing.service} — ${userLabel}`,
-        actor,
-        target: { type: 'konsultasi', id, label: existing.service },
-      })
+    } else if (parsed.data.action === 'mark-done') {
       void logCommunicationEvent({
-        action: 'konsultasi.completed',
-        severity: 'SUCCESS',
-        summary: `Konsultasi selesai: ${existing.service} — ${userLabel}`,
+        action: 'konsultasi.marked_done',
+        severity: 'INFO',
+        summary: `Teknisi menandai layanan selesai: ${existing.service} — ${userLabel}`,
         actor,
         target: { type: 'konsultasi', id, label: existing.service },
       })
-      const { syncTeknisiCompletedSessions } = await import('@/lib/teknisi-stats-server')
-      await syncTeknisiCompletedSessions(session.user.id)
     } else {
       void logCommunicationEvent({
         action: 'konsultasi.cancelled',

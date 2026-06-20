@@ -89,6 +89,13 @@ model User {
   isActive           Boolean   @default(true)
   phone              String?
   address            String?
+  shippingCityId         String?
+  shippingCityLabel      String?
+  shippingDistrictId     String?
+  shippingDistrictLabel  String?
+  shippingLocationId     String?
+  shippingLocationLabel  String?
+  shippingStreet         String?
   twoFactorEnabled   Boolean   @default(false)
   twoFactorSecret    String?   @db.Text
   passwordChangedAt  DateTime?
@@ -247,6 +254,15 @@ model TeknisiProfile {
   experience      String? // e.g. "8 tahun"
   coverImage      String? // banner profil publik
   location        String?
+  shipOriginCityId        String?
+  shipOriginCityLabel     String?
+  shipOriginDistrictId    String?
+  shipOriginDistrictLabel String?
+  shipOriginLocationId    String?
+  shipOriginLocationLabel String?
+  shipOriginStreet        String?
+  /** Kode kurir BinderByte yang dipakai penjual (mis. jne, jnt). Pembeli hanya bisa pilih dari daftar ini. */
+  shipOriginCouriers      String[] @default([])
   description     String?  @db.Text
   tagline         String?  @db.Text
   issuesHandled   String?  @db.Text
@@ -359,6 +375,13 @@ model TeknisiStore {
   instagram     String?
   threads       String?
   tiktok        String?
+  shipOriginLocationId    String?
+  shipOriginLocationLabel String?
+  shipOriginCityId        String?
+  shipOriginCityLabel     String?
+  shipOriginDistrictId    String?
+  shipOriginDistrictLabel String?
+  shipOriginStreet        String?
   jamWeekdays   String?
   jamWeekend    String?
   operatingHours Json                 @default("{}")
@@ -432,6 +455,11 @@ enum ProductCouponDiscountType {
   FIXED
 }
 
+enum ProductSaleCondition {
+  NEW
+  USED
+}
+
 model Product {
   id             String               @id @default(cuid())
   sellerId       String
@@ -452,6 +480,8 @@ model Product {
   threeUtoolsImages Json              @default("[]") // Array URL screenshot 3uTools
 
   // ---- Kondisi terstruktur (untuk benchmark objektif) ----
+  /** Baru vs bekas — produk baru otomatis benchmark sempurna tanpa 3uTools. */
+  saleCondition  ProductSaleCondition   @default(USED)
   conditionGrade   ConditionGrade?
   conditionPercent Int?               // 0-100, estimasi kondisi fisik
   minusNotes       String?            @db.Text
@@ -470,6 +500,8 @@ model Product {
   views          Int                  @default(0)
   soldCount      Int                  @default(0)
   stock          Int                  @default(1)
+  /** Berat produk (kg) untuk perhitungan ongkir — diisi penjual. */
+  weightKg       Decimal              @default(1) @db.Decimal(6, 2)
   listingStatus  ProductListingStatus @default(DRAFT)
   isPublished    Boolean              @default(false)
   /** Ringkasan singkat perubahan terakhir yang menunggu review admin. */
@@ -583,6 +615,13 @@ enum ShippingCourier {
   LION
 }
 
+enum ShippingLocationType {
+  PROVINCE
+  CITY
+  DISTRICT
+  VILLAGE
+}
+
 enum OrderPaymentMethod {
   WALLET
   PAYMENT_GATEWAY
@@ -613,6 +652,10 @@ model Order {
   note      String?
   shippingAddress       String?   @db.Text
   shippingPhone         String?
+  shippingLocationId    String?
+  shippingCost          Decimal   @default(0) @db.Decimal(12, 0)
+  shippingService       String?
+  checkoutShippingCourier String?
   completedAt           DateTime?
   deliveredAt           DateTime?
   buyerActionDeadline   DateTime?
@@ -628,6 +671,9 @@ model Order {
   trackingActive        Boolean          @default(false)
   trackingSyncFailures  Int              @default(0)
   shippedAt             DateTime?
+
+  shippingLabelToken       String?   @unique
+  shippingLabelGeneratedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -646,6 +692,25 @@ model Order {
   @@index([checkoutBatchId, status])
   @@index([pgExternalRef])
   @@index([status, paymentExpiresAt])
+}
+
+model ShippingLocation {
+  id           String               @id
+  type         ShippingLocationType
+  code         String
+  name         String
+  label        String
+  parentId     String?
+  binderbyteId String?
+  postalCode   String?
+  sortOrder    Int                  @default(0)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  @@unique([type, code])
+  @@index([type, parentId])
+  @@index([parentId, sortOrder])
+  @@index([type, name])
 }
 
 model OrderComplaint {
@@ -1232,6 +1297,7 @@ enum KonsultasiStatus {
   AWAITING_PAYMENT
   PENDING
   ACTIVE
+  AWAITING_CONFIRMATION
   COMPLETED
   CANCELLED
 }
@@ -1262,6 +1328,8 @@ model KonsultasiSession {
   teknisiId String
   service   String // e.g. "Konsultasi Unlock"
   price     Decimal          @db.Decimal(12, 0)
+  platformFee Decimal        @default(0) @db.Decimal(12, 0)
+  teknisiEarning Decimal     @db.Decimal(12, 0)
   status    KonsultasiStatus @default(PENDING)
   note      String?          @db.Text
   device    String?
@@ -1281,11 +1349,14 @@ model KonsultasiSession {
   updatedAt DateTime         @updatedAt
   startedAt DateTime?
   endedAt   DateTime?
+  teknisiMarkedDoneAt DateTime?
+  confirmDeadlineAt   DateTime?
 
   user    User @relation("KonsultasiUser", fields: [userId], references: [id])
   teknisi User @relation("KonsultasiTeknisi", fields: [teknisiId], references: [id])
 
   @@index([status, paymentStatus])
+  @@index([status, confirmDeadlineAt])
   @@index([userId, status])
   @@index([teknisiId, status])
 }

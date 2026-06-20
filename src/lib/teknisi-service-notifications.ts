@@ -23,10 +23,16 @@ function teknisiNotification(
 export async function fetchTeknisiServiceNotifications(
   teknisiId: string,
 ): Promise<PlatformNotification[]> {
-  const [konsultasiPending, marketplacePending] = await Promise.all([
+  const [konsultasiPending, konsultasiAwaitingConfirm, marketplacePending] = await Promise.all([
     prisma.konsultasiSession.findMany({
       where: { teknisiId, status: 'PENDING' },
       orderBy: { createdAt: 'desc' },
+      take: LIMIT,
+      include: { user: { select: { name: true } } },
+    }),
+    prisma.konsultasiSession.findMany({
+      where: { teknisiId, status: 'AWAITING_CONFIRMATION' },
+      orderBy: { teknisiMarkedDoneAt: 'desc' },
       take: LIMIT,
       include: { user: { select: { name: true } } },
     }),
@@ -56,6 +62,21 @@ export async function fetchTeknisiServiceNotifications(
         icon: 'message' as NotificationIconKey,
         createdAt: row.createdAt.toISOString(),
         href: row.requiresRemote ? '/teknisi/konsultasi?filter=remote' : '/teknisi/konsultasi',
+      }),
+    )
+  }
+
+  for (const row of konsultasiAwaitingConfirm) {
+    const userName = row.user.name ?? 'Pelanggan'
+    items.push(
+      teknisiNotification({
+        id: `teknisi-konsultasi-awaiting-${row.id}`,
+        title: 'Menunggu konfirmasi user',
+        body: `${userName} — ${row.service}. Dana cair setelah user konfirmasi atau otomatis 48 jam.`,
+        tone: 'warning' as NotificationTone,
+        icon: 'message' as NotificationIconKey,
+        createdAt: (row.teknisiMarkedDoneAt ?? row.updatedAt).toISOString(),
+        href: '/teknisi/konsultasi',
       }),
     )
   }

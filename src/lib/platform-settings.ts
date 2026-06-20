@@ -38,7 +38,10 @@ const KEY_MAP: Record<PlatformSettingKey, keyof PlatformSettingsDto | null> = {
   support_phone: 'supportPhone',
   admin_email: 'adminEmail',
   buyer_fee_percent: 'buyerFeePercent',
+  buyer_flat_fee_per_item: 'buyerFlatFeePerItem',
   seller_fee_percent: 'sellerFeePercent',
+  konsultasi_fee_percent: 'konsultasiFeePercent',
+  inspeksi_fee_percent: 'inspeksiFeePercent',
   fee_percent: null,
   maintenance_mode: 'maintenanceMode',
   imei_service_enabled: 'imeiServiceEnabled',
@@ -66,7 +69,10 @@ function dtoToRows(dto: PlatformSettingsDto): Array<{ key: string; value: string
     { key: 'support_phone', value: dto.supportPhone },
     { key: 'admin_email', value: dto.adminEmail },
     { key: 'buyer_fee_percent', value: String(dto.buyerFeePercent) },
+    { key: 'buyer_flat_fee_per_item', value: String(dto.buyerFlatFeePerItem) },
     { key: 'seller_fee_percent', value: String(dto.sellerFeePercent) },
+    { key: 'konsultasi_fee_percent', value: String(dto.konsultasiFeePercent) },
+    { key: 'inspeksi_fee_percent', value: String(dto.inspeksiFeePercent) },
     { key: 'maintenance_mode', value: dto.maintenanceMode ? 'true' : 'false' },
     { key: 'imei_service_enabled', value: dto.imeiServiceEnabled ? 'true' : 'false' },
     {
@@ -118,10 +124,19 @@ function rowToDto(rows: Array<{ key: string; value: string }>): PlatformSettings
     buyerFeePercent: Number(
       map.get('buyer_fee_percent') ?? DEFAULT_PLATFORM_SETTINGS.buyerFeePercent,
     ),
+    buyerFlatFeePerItem: Number(
+      map.get('buyer_flat_fee_per_item') ?? DEFAULT_PLATFORM_SETTINGS.buyerFlatFeePerItem,
+    ),
     sellerFeePercent: Number(
       map.get('seller_fee_percent') ??
         map.get('fee_percent') ??
         DEFAULT_PLATFORM_SETTINGS.sellerFeePercent,
+    ),
+    konsultasiFeePercent: Number(
+      map.get('konsultasi_fee_percent') ?? DEFAULT_PLATFORM_SETTINGS.konsultasiFeePercent,
+    ),
+    inspeksiFeePercent: Number(
+      map.get('inspeksi_fee_percent') ?? DEFAULT_PLATFORM_SETTINGS.inspeksiFeePercent,
     ),
     maintenanceMode: map.get('maintenance_mode') === 'true',
     // Default ke true bila belum pernah disimpan supaya behaviour existing tidak berubah.
@@ -208,6 +223,7 @@ export async function getPublicMarketplaceFeeRates() {
   const s = await getPlatformSettings()
   return {
     buyerFeePercent: s.buyerFeePercent,
+    buyerFlatFeePerItem: s.buyerFlatFeePerItem,
     sellerFeePercent: s.sellerFeePercent,
   }
 }

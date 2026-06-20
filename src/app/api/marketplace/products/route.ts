@@ -2,7 +2,7 @@ import { ProductCategory } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess } from '@/lib/api-auth'
 import { MARKETPLACE_CATEGORY_SLUGS } from '@/lib/product-category-config'
-import { serializeMarketplaceProduct } from '@/lib/marketplace-product-serializer'
+import { serializeMarketplaceProduct, serializeMarketplaceProducts } from '@/lib/marketplace-product-serializer'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,7 +42,7 @@ export async function GET(req: Request) {
       orderBy: { createdAt: 'desc' },
     })
 
-    return apiSuccess(products.map(serializeMarketplaceProduct))
+    return apiSuccess(await serializeMarketplaceProducts(products))
   } catch (e) {
     console.error('[MARKETPLACE_PRODUCTS_GET]', e)
     return apiError('Gagal memuat produk', 500)

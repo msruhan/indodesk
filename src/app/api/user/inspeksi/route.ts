@@ -2,8 +2,8 @@ import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { logCommunicationEvent, logPaymentEvent } from '@/lib/activity-log'
+import { calculateInspectionFeesFromSettings } from '@/lib/service-platform-fees-server'
 import {
-  calculateInspectionFees,
   generateInspectionOrderCode,
   getInspectionBasePrice,
 } from '@/lib/inspection-pricing'
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
     }
 
     const basePrice = getInspectionBasePrice(data.mode, data.category)
-    const fees = calculateInspectionFees(basePrice)
+    const fees = await calculateInspectionFeesFromSettings(basePrice)
     const amount = new Prisma.Decimal(fees.price)
 
     const orderCode = generateInspectionOrderCode()

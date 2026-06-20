@@ -1,6 +1,8 @@
 import type { InspectionDeviceCategory, InspectionMode } from '@prisma/client'
+import { calculateServicePlatformFees } from '@/lib/service-platform-fees'
+import { DEFAULT_PLATFORM_SETTINGS } from '@/lib/platform-settings-shared'
 
-const PLATFORM_FEE_RATE = 0.2
+const LEGACY_PLATFORM_FEE_RATE = DEFAULT_PLATFORM_SETTINGS.inspeksiFeePercent
 
 const DEFAULT_PRICES: Record<InspectionMode, Record<InspectionDeviceCategory, number>> = {
   ONLINE: {
@@ -20,10 +22,11 @@ export function getInspectionBasePrice(
   return DEFAULT_PRICES[mode][category]
 }
 
-export function calculateInspectionFees(price: number) {
-  const platformFee = Math.round(price * PLATFORM_FEE_RATE)
-  const teknisiEarning = price - platformFee
-  return { price, platformFee, teknisiEarning }
+export function calculateInspectionFees(
+  price: number,
+  feePercent: number = LEGACY_PLATFORM_FEE_RATE,
+) {
+  return calculateServicePlatformFees(price, feePercent)
 }
 
 export function generateInspectionOrderCode(): string {

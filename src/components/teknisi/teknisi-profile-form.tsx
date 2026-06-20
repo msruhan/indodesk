@@ -49,13 +49,12 @@ function profileToForm(p: TeknisiAccountProfileDto) {
     name: p.name,
     phone: p.phone ?? '',
     experience: p.experience ?? '',
-    location: p.location ?? '',
     description: p.description ?? '',
     tagline: p.tagline ?? '',
     issuesHandled: p.issuesHandled ?? '',
     brandFocus: p.brandFocus ?? '',
     workApproach: p.workApproach ?? '',
-    responseTime: p.responseTime ?? '',
+    responseTime: p.responseTime,
     price: String(p.price),
     specialty: mergeSkillTags(p.specialty, p.secondarySkills),
     serviceScope: [...p.serviceScope],
@@ -283,6 +282,7 @@ export function TeknisiProfileForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
     setSaving(true)
     setFormMsg(null)
     try {
@@ -293,13 +293,11 @@ export function TeknisiProfileForm({
           name: form.name.trim(),
           phone: form.phone.trim() || null,
           experience: form.experience.trim() || null,
-          location: form.location.trim() || null,
           description: form.description.trim() || null,
           tagline: form.tagline.trim() || null,
           issuesHandled: form.issuesHandled.trim() || null,
           brandFocus: form.brandFocus.trim() || null,
           workApproach: form.workApproach.trim() || null,
-          responseTime: form.responseTime.trim() || null,
           price: Number(form.price) || 0,
           specialty: form.specialty,
           serviceScope: form.serviceScope.map((s) => s.trim()).filter(Boolean),
@@ -488,14 +486,6 @@ export function TeknisiProfileForm({
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-surface-700">Lokasi</label>
-            <Input
-              value={form.location}
-              onChange={(e) => patchForm('location', e.target.value)}
-              placeholder="Jakarta Selatan"
-            />
-          </div>
-          <div>
             <label className="mb-1 block text-sm font-medium text-surface-700">Pengalaman</label>
             <Input
               value={form.experience}
@@ -507,11 +497,12 @@ export function TeknisiProfileForm({
             <label className="mb-1 block text-sm font-medium text-surface-700">
               Estimasi respons
             </label>
-            <Input
-              value={form.responseTime}
-              onChange={(e) => patchForm('responseTime', e.target.value)}
-              placeholder="< 5 menit"
-            />
+            <p className="rounded-lg border border-surface-200 bg-surface-50 px-3 py-2 text-sm text-surface-700">
+              {form.responseTime}
+            </p>
+            <p className="mt-1 text-[11px] text-surface-500">
+              Dihitung otomatis dari rata-rata waktu respons sesi konsultasi dan remote Anda.
+            </p>
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-surface-700">

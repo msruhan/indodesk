@@ -10,7 +10,10 @@ export const dynamic = 'force-dynamic'
 
 const feeSchema = z.object({
   buyerFeePercent: z.number().min(0).max(100),
+  buyerFlatFeePerItem: z.number().int().min(0).max(1_000_000),
   sellerFeePercent: z.number().min(0).max(100),
+  konsultasiFeePercent: z.number().min(0).max(100),
+  inspeksiFeePercent: z.number().min(0).max(100),
   ...adminStepUpFields,
 })
 
@@ -39,6 +42,12 @@ export async function GET() {
       last30Seller,
       completedOrderCount,
       recentOrders,
+      totalKonsultasiFee,
+      totalInspeksiFee,
+      todayKonsultasiFee,
+      todayInspeksiFee,
+      last30KonsultasiFee,
+      last30InspeksiFee,
     ] = await Promise.all([
       prisma.order.aggregate({ _sum: { buyerFeeAmount: true }, where: completedWhere }),
       prisma.order.aggregate({ _sum: { sellerFeeAmount: true }, where: completedWhere }),
@@ -74,15 +83,44 @@ export async function GET() {
           completedAt: true,
         },
       }),
+      prisma.konsultasiSession.aggregate({
+        _sum: { platformFee: true },
+        where: { status: 'COMPLETED' },
+      }),
+      prisma.inspectionOrder.aggregate({
+        _sum: { platformFee: true },
+        where: { status: 'COMPLETED' },
+      }),
+      prisma.konsultasiSession.aggregate({
+        _sum: { platformFee: true },
+        where: { status: 'COMPLETED', endedAt: { gte: startOfToday } },
+      }),
+      prisma.inspectionOrder.aggregate({
+        _sum: { platformFee: true },
+        where: { status: 'COMPLETED', completedAt: { gte: startOfToday } },
+      }),
+      prisma.konsultasiSession.aggregate({
+        _sum: { platformFee: true },
+        where: { status: 'COMPLETED', endedAt: { gte: startOf30d } },
+      }),
+      prisma.inspectionOrder.aggregate({
+        _sum: { platformFee: true },
+        where: { status: 'COMPLETED', completedAt: { gte: startOf30d } },
+      }),
     ])
 
     const totalBuyerFee = Number(totalBuyer._sum.buyerFeeAmount ?? 0)
     const totalSellerFee = Number(totalSeller._sum.sellerFeeAmount ?? 0)
+    const totalKonsFee = Number(totalKonsultasiFee._sum.platformFee ?? 0)
+    const totalInspFee = Number(totalInspeksiFee._sum.platformFee ?? 0)
 
     return apiSuccess({
       settings: {
         buyerFeePercent: settings.buyerFeePercent,
+        buyerFlatFeePerItem: settings.buyerFlatFeePerItem,
         sellerFeePercent: settings.sellerFeePercent,
+        konsultasiFeePercent: settings.konsultasiFeePercent,
+        inspeksiFeePercent: settings.inspeksiFeePercent,
       },
       stats: {
         totalBuyerFee: String(totalBuyerFee),
@@ -95,6 +133,17 @@ export async function GET() {
           sumFees(last30Buyer._sum.buyerFeeAmount, last30Seller._sum.sellerFeeAmount),
         ),
         completedOrderCount,
+        totalKonsultasiFee: String(totalKonsFee),
+        totalInspeksiFee: String(totalInspFee),
+        totalServiceFee: String(totalKonsFee + totalInspFee),
+        todayServiceFee: String(
+          Number(todayKonsultasiFee._sum.platformFee ?? 0) +
+            Number(todayInspeksiFee._sum.platformFee ?? 0),
+        ),
+        last30dServiceFee: String(
+          Number(last30KonsultasiFee._sum.platformFee ?? 0) +
+            Number(last30InspeksiFee._sum.platformFee ?? 0),
+        ),
       },
       recentOrders: recentOrders.map((o) => ({
         id: o.id,
@@ -138,24 +187,33 @@ export async function PATCH(req: Request) {
     const settings = await savePlatformSettings({
       ...current,
       buyerFeePercent: parsed.data.buyerFeePercent,
+      buyerFlatFeePerItem: parsed.data.buyerFlatFeePerItem,
       sellerFeePercent: parsed.data.sellerFeePercent,
+      konsultasiFeePercent: parsed.data.konsultasiFeePercent,
+      inspeksiFeePercent: parsed.data.inspeksiFeePercent,
     })
 
     logAdminGovernance({
       req,
       actor: session.user,
       action: 'admin.marketplace.finance.update',
-      summary: 'Fee marketplace diperbarui',
+      summary: 'Pengaturan fee platform diperbarui',
       severity: 'CRITICAL',
       metadata: {
         buyerFeePercent: settings.buyerFeePercent,
+        buyerFlatFeePerItem: settings.buyerFlatFeePerItem,
         sellerFeePercent: settings.sellerFeePercent,
+        konsultasiFeePercent: settings.konsultasiFeePercent,
+        inspeksiFeePercent: settings.inspeksiFeePercent,
       },
     })
 
     return apiSuccess({
       buyerFeePercent: settings.buyerFeePercent,
+      buyerFlatFeePerItem: settings.buyerFlatFeePerItem,
       sellerFeePercent: settings.sellerFeePercent,
+      konsultasiFeePercent: settings.konsultasiFeePercent,
+      inspeksiFeePercent: settings.inspeksiFeePercent,
     })
   } catch (e) {
     console.error('[ADMIN_MARKETPLACE_FINANCE_PATCH]', e)

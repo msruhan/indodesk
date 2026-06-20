@@ -7,6 +7,13 @@ export type UserProfileDto = {
   image: string | null
   phone: string | null
   address: string | null
+  shippingCityId: string | null
+  shippingCityLabel: string | null
+  shippingDistrictId: string | null
+  shippingDistrictLabel: string | null
+  shippingLocationId: string | null
+  shippingLocationLabel: string | null
+  shippingStreet: string | null
   role: User['role']
   twoFactorEnabled: boolean
   hasPassword: boolean
@@ -27,6 +34,13 @@ export function serializeUserProfile(
     image: user.image,
     phone: user.phone,
     address: user.address,
+    shippingCityId: user.shippingCityId,
+    shippingCityLabel: user.shippingCityLabel,
+    shippingDistrictId: user.shippingDistrictId,
+    shippingDistrictLabel: user.shippingDistrictLabel,
+    shippingLocationId: user.shippingLocationId,
+    shippingLocationLabel: user.shippingLocationLabel,
+    shippingStreet: user.shippingStreet,
     role: user.role,
     twoFactorEnabled: user.twoFactorEnabled,
     hasPassword: Boolean(user.password),

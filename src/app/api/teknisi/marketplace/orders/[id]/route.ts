@@ -5,6 +5,7 @@ import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { BinderbyteError, isBinderbyteConfigured } from '@/lib/binderbyte-client'
 import { logOrderEvent } from '@/lib/activity-log'
 import { syncOrderTrackingFromBinderbyte } from '@/lib/order-tracking-sync'
+import { binderbyteCourierMatchesEnum, courierLabelFromBinderbyteCode } from '@/lib/shipping-courier'
 import { serializeMarketplaceOrder } from '@/lib/marketplace-order-serializer'
 import { MARKETPLACE_ORDER_INCLUDE } from '@/lib/marketplace-order-includes'
 import {
@@ -157,6 +158,22 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       }
 
       const { courier, trackingNumber } = parsed.data
+
+      if (
+        existing.checkoutShippingCourier &&
+        !binderbyteCourierMatchesEnum(existing.checkoutShippingCourier, courier)
+      ) {
+        const expectedLabel =
+          courierLabelFromBinderbyteCode(existing.checkoutShippingCourier) ??
+          existing.checkoutShippingCourier.toUpperCase()
+        const serviceHint = existing.shippingService
+          ? ` · layanan ${existing.shippingService}`
+          : ''
+        return apiError(
+          `Kurir harus sama dengan pilihan pembeli (${expectedLabel}${serviceHint})`,
+          400,
+        )
+      }
 
       try {
         await syncOrderTrackingFromBinderbyte({

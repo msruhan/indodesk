@@ -16,6 +16,7 @@ export type ProductContentPatch = {
   price?: number
   description?: string | null
   stock?: number
+  weightKg?: number
   color?: string
   ram?: string
   processor?: string
@@ -38,6 +39,7 @@ export function hasMeaningfulProductContentChange(
     | 'price'
     | 'description'
     | 'stock'
+    | 'weightKg'
     | 'color'
     | 'ram'
     | 'processor'
@@ -62,6 +64,7 @@ export function hasMeaningfulProductContentChange(
     return true
   }
   if (patch.stock !== undefined && patch.stock !== existing.stock) return true
+  if (patch.weightKg !== undefined && patch.weightKg !== Number(existing.weightKg)) return true
   if (patch.color !== undefined && patch.color !== existing.color) return true
   if (patch.ram !== undefined && patch.ram !== existing.ram) return true
   if (patch.processor !== undefined && patch.processor !== existing.processor) return true
@@ -109,6 +112,7 @@ export function buildProductChangeSummary(
     | 'price'
     | 'description'
     | 'stock'
+    | 'weightKg'
     | 'color'
     | 'ram'
     | 'processor'
@@ -144,6 +148,9 @@ export function buildProductChangeSummary(
   }
   if (patch.stock !== undefined && patch.stock !== existing.stock) {
     lines.push(`Stok: ${existing.stock.toLocaleString('id-ID')} → ${patch.stock.toLocaleString('id-ID')}`)
+  }
+  if (patch.weightKg !== undefined && patch.weightKg !== Number(existing.weightKg)) {
+    lines.push(`Berat: ${Number(existing.weightKg)} kg → ${patch.weightKg} kg`)
   }
   if (patch.color !== undefined && patch.color !== existing.color) {
     lines.push(`Warna: ${existing.color || '—'} → ${patch.color || '—'}`)
@@ -228,6 +235,7 @@ export function queueProductContentReview(
     | 'price'
     | 'description'
     | 'stock'
+    | 'weightKg'
     | 'color'
     | 'ram'
     | 'processor'

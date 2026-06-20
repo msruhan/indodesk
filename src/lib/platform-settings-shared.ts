@@ -15,7 +15,10 @@ export const PLATFORM_SETTING_KEYS = [
   'support_phone',
   'admin_email',
   'buyer_fee_percent',
+  'buyer_flat_fee_per_item',
   'seller_fee_percent',
+  'konsultasi_fee_percent',
+  'inspeksi_fee_percent',
   'fee_percent',
   'maintenance_mode',
   'imei_service_enabled',
@@ -38,7 +41,13 @@ export type PlatformSettingsDto = {
   supportPhone: string
   adminEmail: string
   buyerFeePercent: number
+  /** Biaya layanan flat per kuantitas item (pembeli). Isi 0 untuk menonaktifkan. */
+  buyerFlatFeePerItem: number
   sellerFeePercent: number
+  /** Potongan platform dari harga konsultasi (sisanya ke teknisi). */
+  konsultasiFeePercent: number
+  /** Potongan platform dari harga inspeksi (sisanya ke teknisi). */
+  inspeksiFeePercent: number
   maintenanceMode: boolean
   /**
    * Apakah menu "Layanan Perangkat" (IMEI/Server services) ditampilkan untuk
@@ -85,7 +94,10 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettingsDto = {
   supportPhone: '0800-1234-5678',
   adminEmail: 'admin@bantoo.in',
   buyerFeePercent: 2,
+  buyerFlatFeePerItem: 0,
   sellerFeePercent: 2.5,
+  konsultasiFeePercent: 10,
+  inspeksiFeePercent: 20,
   maintenanceMode: false,
   imeiServiceEnabled: true,
   remoteServiceEnabled: true,

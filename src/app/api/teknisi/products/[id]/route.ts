@@ -21,6 +21,14 @@ import {
   specsToDb,
   validateProductSpecs,
 } from '@/lib/product-specs'
+import {
+  parseProductWeightKg,
+  validateProductWeightKg,
+} from '@/lib/product-weight'
+import {
+  parseSaleConditionFromForm,
+  shouldSkipUsedProductBenchmarkInput,
+} from '@/lib/product-sale-condition'
 
 export const dynamic = 'force-dynamic'
 
@@ -117,6 +125,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         data.stock = patch.stock
       }
 
+      const weightField = form.get('weightKg')
+      if (weightField !== null) {
+        const resolvedCategory =
+          typeof form.get('category') === 'string' && form.get('category')
+            ? (form.get('category') as ProductCategory)
+            : existing.category
+        const weightKg = parseProductWeightKg(weightField)
+        const weightError = validateProductWeightKg(weightKg, resolvedCategory)
+        if (weightError) return apiError(weightError)
+        patch.weightKg = weightKg ?? 1
+        data.weightKg = patch.weightKg
+      }
+
       if (
         form.has('color') ||
         form.has('ram') ||
@@ -151,7 +172,20 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         data.image = resolved.image
       }
 
-      if (has3uToolsPayload) {
+      const resolvedCategory =
+        typeof form.get('category') === 'string' && form.get('category')
+          ? (form.get('category') as ProductCategory)
+          : existing.category
+      const saleCondition = parseSaleConditionFromForm(form)
+      const skipBenchmarkInput = shouldSkipUsedProductBenchmarkInput(
+        saleCondition,
+        resolvedCategory,
+      )
+
+      if (skipBenchmarkInput) {
+        data.threeUtoolsImages = []
+        data.verified3uTools = false
+      } else if (has3uToolsPayload) {
         const resolved3u = await resolveProductImagesFromForm(
           form,
           session.user.id,
@@ -164,11 +198,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         }
       }
 
-      // Benchmark fields (kondisi + 3uTools data)
-      const resolvedCategory =
-        typeof form.get('category') === 'string' && form.get('category')
-          ? (form.get('category') as ProductCategory)
-          : existing.category
       const benchmarkData = parseBenchmarkFieldsFromForm(form, resolvedCategory)
       Object.assign(data, benchmarkData)
 

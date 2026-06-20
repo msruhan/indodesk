@@ -32,6 +32,7 @@ export type PlatformRevenueSummary = {
       marketplace: number[]
       rekber: number[]
       inspeksi: number[]
+      konsultasi: number[]
     }
   }
   recent: PlatformRevenueRecentRow[]

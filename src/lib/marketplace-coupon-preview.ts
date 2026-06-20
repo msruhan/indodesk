@@ -54,6 +54,7 @@ export async function previewMarketplaceCouponDiscount(
 export type CartSyncProduct = {
   id: string
   price: number
+  weightKg: number
   coupon: ReturnType<typeof couponFromProduct>
   available: boolean
 }
@@ -73,6 +74,7 @@ export async function fetchCartProductSync(
     select: {
       id: true,
       price: true,
+      weightKg: true,
       couponCode: true,
       couponDiscountType: true,
       couponDiscountValue: true,
@@ -84,11 +86,12 @@ export async function fetchCartProductSync(
   return productIds.map((id) => {
     const product = productMap.get(id)
     if (!product) {
-      return { id, price: 0, coupon: null, available: false }
+      return { id, price: 0, weightKg: 1, coupon: null, available: false }
     }
     return {
       id,
       price: Number(product.price),
+      weightKg: Number(product.weightKg),
       coupon: couponFromProduct(product),
       available: true,
     }

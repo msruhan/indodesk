@@ -51,6 +51,8 @@ function konsultasiBadge(status: string): { label: string; tone: MonitoringActiv
       return { label: 'Menunggu', tone: 'warning' }
     case 'ACTIVE':
       return { label: 'Berjalan', tone: 'info' }
+    case 'AWAITING_CONFIRMATION':
+      return { label: 'Menunggu konfirmasi', tone: 'warning' }
     case 'COMPLETED':
       return { label: 'Selesai', tone: 'success' }
     case 'CANCELLED':
@@ -160,6 +162,17 @@ async function loadKonsultasiItems(q: string | null): Promise<MonitoringActivity
     ]
     if (durasi) meta.push({ label: 'Durasi', value: durasi })
     if (s.rating) meta.push({ label: 'Rating', value: `${s.rating} / 5` })
+    if (s.confirmDeadlineAt) {
+      meta.push({
+        label: 'Batas konfirmasi',
+        value: new Intl.DateTimeFormat('id-ID', {
+          day: 'numeric',
+          month: 'short',
+          hour: '2-digit',
+          minute: '2-digit',
+        }).format(s.confirmDeadlineAt),
+      })
+    }
 
     return {
       id: s.id,
@@ -241,7 +254,9 @@ async function loadStats(): Promise<MonitoringStats> {
     prisma.chatConversation.count(),
     prisma.konsultasiSession.count(),
     prisma.remoteSession.count(),
-    prisma.konsultasiSession.count({ where: { status: 'ACTIVE' } }),
+    prisma.konsultasiSession.count({
+      where: { status: { in: ['ACTIVE', 'AWAITING_CONFIRMATION'] } },
+    }),
     prisma.remoteSession.count({ where: { status: { in: ['ACCEPTED', 'IN_PROGRESS'] } } }),
     prisma.konsultasiSession.count({ where: { status: 'PENDING' } }),
     prisma.remoteSession.count({ where: { status: 'WAITING' } }),

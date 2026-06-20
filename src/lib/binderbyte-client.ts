@@ -102,6 +102,11 @@ export async function trackShipment(
     awb: normalizedAwb,
   })
 
+  // JNE memerlukan param `number` tambahan (Postman BinderByte).
+  if (toBinderbyteCourier(courier) === 'jne') {
+    params.set('number', normalizedAwb)
+  }
+
   const res = await fetch(`${TRACK_URL}?${params.toString()}`, {
     method: 'GET',
     headers: { Accept: 'application/json' },

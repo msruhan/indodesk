@@ -125,11 +125,13 @@ async function loadKonsultasiDetail(id: string): Promise<MonitoringDetailDto | n
     status === 'COMPLETED' ? 'success'
     : status === 'CANCELLED' ? 'danger'
     : status === 'ACTIVE' ? 'info'
+    : status === 'AWAITING_CONFIRMATION' ? 'warning'
     : 'warning'
   const statusLabel =
     status === 'COMPLETED' ? 'Selesai'
     : status === 'CANCELLED' ? 'Dibatalkan'
     : status === 'ACTIVE' ? 'Berjalan'
+    : status === 'AWAITING_CONFIRMATION' ? 'Menunggu konfirmasi'
     : 'Menunggu'
 
   const meta: Array<{ label: string; value: string }> = [
@@ -137,6 +139,17 @@ async function loadKonsultasiDetail(id: string): Promise<MonitoringDetailDto | n
   ]
   if (durasi) meta.push({ label: 'Durasi', value: durasi })
   if (session.rating) meta.push({ label: 'Rating', value: `${session.rating} / 5` })
+  if (session.confirmDeadlineAt) {
+    meta.push({
+      label: 'Batas konfirmasi',
+      value: new Intl.DateTimeFormat('id-ID', {
+        day: 'numeric',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(session.confirmDeadlineAt),
+    })
+  }
 
   const activity: MonitoringActivityItem = {
     id: session.id,

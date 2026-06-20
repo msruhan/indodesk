@@ -14,6 +14,7 @@ import {
   fetchTicketNotificationsForReporter,
 } from '@/lib/ticket-notifications'
 import { fetchUserRatingPromptNotifications } from '@/lib/user-rating-prompt-notifications'
+import { fetchUserKonsultasiConfirmNotifications } from '@/lib/user-konsultasi-confirm-notifications'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,7 +29,7 @@ export async function GET() {
     const isAdmin = session.user.role === 'ADMIN'
     const isTeknisi = session.user.role === 'TEKNISI'
 
-    const [rows, orderNotifications, teknisiNotifications, monitoringNotifications, marketplaceNotifications, ticketNotifications, ratingPrompts] =
+    const [rows, orderNotifications, teknisiNotifications, monitoringNotifications, marketplaceNotifications, ticketNotifications, ratingPrompts, konsultasiConfirmPrompts] =
       await Promise.all([
         prisma.platformNotification.findMany({
           where: { active: true },
@@ -45,6 +46,9 @@ export async function GET() {
           ? fetchTicketNotificationsForAdmin()
           : fetchTicketNotificationsForReporter(userId, session.user.role),
         session.user.role === 'USER' ? fetchUserRatingPromptNotifications(userId) : Promise.resolve([]),
+        session.user.role === 'USER'
+          ? fetchUserKonsultasiConfirmNotifications(userId)
+          : Promise.resolve([]),
       ])
 
     const broadcasts = rows
@@ -52,6 +56,7 @@ export async function GET() {
       .filter((n) => notificationMatchesRole(n, session.user.role))
 
     const items = sortNotificationsNewestFirst([
+      ...konsultasiConfirmPrompts,
       ...ratingPrompts,
       ...monitoringNotifications,
       ...marketplaceNotifications,

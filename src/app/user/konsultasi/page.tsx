@@ -31,6 +31,7 @@ import { cn } from '@/lib/utils'
 import type { UserKonsultasiDto } from '@/lib/user-konsultasi-serializer'
 import type { TeknisiKonsultasiStatus } from '@/lib/teknisi-layanan-serializer'
 import { TripayChannelPicker } from '@/components/payments/tripay-channel-picker'
+import { useConfirm } from '@/components/ui/confirm-dialog'
 
 const formatPrice = (price: number) =>
   new Intl.NumberFormat('id-ID', {
@@ -48,6 +49,8 @@ function statusBadgeVariant(status: UserKonsultasiDto['status']) {
       return 'warning' as const
     case 'active':
       return 'default' as const
+    case 'awaiting_confirmation':
+      return 'warning' as const
     case 'cancelled':
       return 'danger' as const
   }
@@ -63,12 +66,18 @@ const statusConfig: Record<
   awaiting_payment: { label: 'Menunggu bayar', variant: 'warning', icon: Clock },
   pending: { label: 'Menunggu', variant: 'warning', icon: Clock },
   active: { label: 'Berjalan', variant: 'default', icon: Radio },
+  awaiting_confirmation: {
+    label: 'Menunggu konfirmasi',
+    variant: 'warning',
+    icon: Clock,
+  },
   completed: { label: 'Selesai', variant: 'success', icon: CheckCircle },
   cancelled: { label: 'Dibatalkan', variant: 'danger', icon: XCircle },
 }
 
 export default function UserKonsultasiPage() {
   const router = useRouter()
+  const confirmDialog = useConfirm()
   const { period } = useDashboardPeriod()
   const searchParams = useSearchParams()
   const [items, setItems] = useState<UserKonsultasiDto[]>([])
@@ -137,6 +146,7 @@ export default function UserKonsultasiPage() {
     id: string,
     body:
       | { action: 'cancel' }
+      | { action: 'confirm-complete' }
       | { action: 'rate'; rating: number; review?: string }
       | { action: 'confirm-payment'; pgExternalRef?: string },
   ) => {
@@ -174,7 +184,8 @@ export default function UserKonsultasiPage() {
         (i) =>
           i.status === 'pending' ||
           i.status === 'awaiting_payment' ||
-          i.status === 'active',
+          i.status === 'active' ||
+          i.status === 'awaiting_confirmation',
       ).length,
       completed: periodItems.filter((i) => i.status === 'completed').length,
       pendingRating: periodItems.filter((i) => i.canRate).length,
@@ -188,6 +199,7 @@ export default function UserKonsultasiPage() {
       { id: 'pending' as const, label: statusConfig.pending.label },
       { id: 'awaiting_payment' as const, label: statusConfig.awaiting_payment.label },
       { id: 'active' as const, label: statusConfig.active.label },
+      { id: 'awaiting_confirmation' as const, label: statusConfig.awaiting_confirmation.label },
       { id: 'completed' as const, label: statusConfig.completed.label },
       { id: 'cancelled' as const, label: statusConfig.cancelled.label },
     ],
@@ -398,6 +410,37 @@ export default function UserKonsultasiPage() {
                             Chat
                           </Button>
                         </Link>
+                        {k.canConfirmComplete && (
+                          <Button
+                            type="button"
+                            variant="primary"
+                            size="sm"
+                            className="h-7 px-2 text-[10px]"
+                            disabled={actingId === k.id}
+                            onClick={async () => {
+                              const ok = await confirmDialog({
+                                title: 'Konfirmasi selesai?',
+                                description:
+                                  'Dana akan dicairkan ke teknisi. Pastikan layanan sudah sesuai.',
+                                confirmLabel: 'Konfirmasi selesai',
+                              })
+                              if (ok) void patchAction(k.id, { action: 'confirm-complete' })
+                            }}
+                          >
+                            Konfirmasi selesai
+                          </Button>
+                        )}
+                        {k.canConfirmComplete && k.confirmDeadlineAt && (
+                          <span className="w-full text-[10px] text-amber-700">
+                            Otomatis selesai{' '}
+                            {new Intl.DateTimeFormat('id-ID', {
+                              day: 'numeric',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            }).format(new Date(k.confirmDeadlineAt))}
+                          </span>
+                        )}
                         {k.canConfirmPayment && (
                           <Button
                             type="button"

@@ -11,7 +11,7 @@ import {
 } from '@/components/motion'
 import {
   Briefcase,
-  Clock,
+  Send,
   Users,
   Smartphone,
   Globe,
@@ -42,11 +42,11 @@ const features = [
     accent: 'from-violet-500/15 via-violet-400/10 to-transparent',
   },
   {
-    icon: Clock,
-    title: 'Lowongan Kerja',
+    icon: Send,
+    title: 'Notifikasi Telegram',
     description:
-      'Cari kesempatan karir sebagai teknisi handphone. Banyak lowongan dari toko dan service center terpercaya.',
-    accent: 'from-amber-400/20 via-amber-300/15 to-transparent',
+      'Teknisi dapat alert langsung ke Telegram: pesanan marketplace baru, permintaan konsultasi, dan request inspeksi dari pelanggan — real-time, tidak ketinggalan.',
+    accent: 'from-sky-500/20 via-sky-400/15 to-transparent',
   },
   {
     icon: Scales,
