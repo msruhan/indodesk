@@ -110,6 +110,9 @@ export async function submitPackagingProof(
     actor,
     target: { type: 'marketplace_order', id: orderId, label: order.orderCode },
   })
+
+  const { notifyMarketplacePackagingSubmitted } = await import('@/lib/telegram/notify')
+  void notifyMarketplacePackagingSubmitted(orderId)
 }
 
 export async function reviewPackagingProof(

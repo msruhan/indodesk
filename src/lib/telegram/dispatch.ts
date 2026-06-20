@@ -66,7 +66,7 @@ export async function dispatchTelegramEvent(
     if (!text.trim()) return
 
     const audience = getEventAudience(eventKey)
-    if (audience === 'CHANNEL') {
+    if (audience === 'CHANNEL' || audience === 'ADMIN') {
       const chatId = await getTelegramChannelChatId()
       if (!chatId) {
         console.warn(`[Telegram] Channel chat ID belum dikonfigurasi (${eventKey})`)

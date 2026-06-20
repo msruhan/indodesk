@@ -1,18 +1,19 @@
-import { ImageResponse } from 'next/og'
+import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { apiError, requireApiAuth } from '@/lib/api-auth'
 import {
   SHIPPING_LABEL_ORDER_SELECT,
-  buildLabelQrDataUrl,
+  buildLabelQrBuffer,
   buildShippingLabelData,
   canAccessShippingLabel,
   ensureShippingLabelToken,
-  loadBrandWordmarkDataUrl,
+  loadBrandWordmarkBuffer,
   orderEligibleForShippingLabel,
 } from '@/lib/shipping-label'
-import { ShippingLabelImage } from '@/lib/shipping-label-image'
+import { renderShippingLabelPng } from '@/lib/shipping-label-png'
 
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { session, error } = await requireApiAuth()
@@ -37,26 +38,23 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   try {
     const token = await ensureShippingLabelToken(order.id)
-    const [labelData, qrDataUrl, wordmarkDataUrl] = await Promise.all([
+    const [labelData, qrBuffer, wordmarkBuffer] = await Promise.all([
       buildShippingLabelData(order, token),
-      buildLabelQrDataUrl(token),
-      loadBrandWordmarkDataUrl(),
+      buildLabelQrBuffer(token),
+      loadBrandWordmarkBuffer(),
     ])
 
+    const png = await renderShippingLabelPng(labelData, qrBuffer, wordmarkBuffer)
     const filename = `label-${order.orderCode}.png`
 
-    return new ImageResponse(
-      <ShippingLabelImage {...labelData} qrDataUrl={qrDataUrl} wordmarkDataUrl={wordmarkDataUrl} />,
-      {
-        width: 800,
-        height: 1120,
-        headers: {
-          'Content-Type': 'image/png',
-          'Content-Disposition': `attachment; filename="${filename}"`,
-          'Cache-Control': 'private, no-store',
-        },
+    return new NextResponse(new Uint8Array(png), {
+      status: 200,
+      headers: {
+        'Content-Type': 'image/png',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Cache-Control': 'private, no-store',
       },
-    )
+    })
   } catch (e) {
     console.error('[SHIPPING_LABEL_GET]', e)
     return apiError('Gagal membuat label pengiriman', 500)

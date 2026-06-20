@@ -64,6 +64,7 @@ export function AdminSidebar() {
   const pathname = usePathname()
   const hydrated = useHydrated()
   const [pendingApproval, setPendingApproval] = useState<number | undefined>()
+  const [packagingPending, setPackagingPending] = useState<number | undefined>()
   const [ticketUnread, setTicketUnread] = useState<number | undefined>()
   const [rekberDisputed, setRekberDisputed] = useState<number | undefined>()
   const [complaintEscalated, setComplaintEscalated] = useState<number | undefined>()
@@ -72,15 +73,17 @@ export function AdminSidebar() {
     let cancelled = false
     ;(async () => {
       try {
-        const [approvalRes, ticketRes, rekberRes, marketplaceComplaintRes, rekberComplaintRes] =
+        const [approvalRes, packagingRes, ticketRes, rekberRes, marketplaceComplaintRes, rekberComplaintRes] =
           await Promise.all([
           fetch('/api/admin/approval'),
+          fetch('/api/admin/marketplace/packaging-proofs/pending-count'),
           fetch('/api/admin/tickets/unread-count'),
           fetch('/api/admin/rekber'),
           fetch('/api/admin/marketplace/complaints?status=ESCALATED'),
           fetch('/api/admin/rekber/complaints?status=ESCALATED'),
         ])
         const json = await approvalRes.json()
+        const packagingJson = await packagingRes.json()
         const ticketJson = await ticketRes.json()
         const rekberJson = await rekberRes.json()
         const marketplaceComplaintJson = await marketplaceComplaintRes.json()
@@ -89,6 +92,10 @@ export function AdminSidebar() {
         if (approvalRes.ok && json.success) {
           const n = json.data?.stats?.pending
           setPendingApproval(typeof n === 'number' && n > 0 ? n : undefined)
+        }
+        if (packagingRes.ok && packagingJson.success) {
+          const c = packagingJson.data?.count
+          setPackagingPending(typeof c === 'number' && c > 0 ? c : undefined)
         }
         if (ticketRes.ok && ticketJson.success) {
           const c = ticketJson.data?.count
@@ -111,6 +118,7 @@ export function AdminSidebar() {
       } catch {
         if (!cancelled) {
           setPendingApproval(undefined)
+          setPackagingPending(undefined)
           setTicketUnread(undefined)
           setRekberDisputed(undefined)
           setComplaintEscalated(undefined)
@@ -129,6 +137,9 @@ export function AdminSidebar() {
         if (item.href === '/admin/approval' && pendingApproval) {
           return { ...item, badge: pendingApproval }
         }
+        if (item.href === '/admin/marketplace-packaging' && packagingPending) {
+          return { ...item, badge: packagingPending }
+        }
         if (item.href === '/admin/tickets' && ticketUnread) {
           return { ...item, badge: ticketUnread }
         }
@@ -140,7 +151,7 @@ export function AdminSidebar() {
         }
         return item
       }),
-    [hydrated, pendingApproval, ticketUnread, rekberDisputed, complaintEscalated],
+    [hydrated, pendingApproval, packagingPending, ticketUnread, rekberDisputed, complaintEscalated],
   )
 
   return (

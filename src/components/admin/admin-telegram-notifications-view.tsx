@@ -24,7 +24,9 @@ type TelegramConfig = {
 }
 
 function audienceLabel(audience: EffectiveTelegramTemplate['audience']) {
-  return audience === 'CHANNEL' ? 'Channel' : 'Teknisi pribadi'
+  if (audience === 'CHANNEL') return 'Channel'
+  if (audience === 'ADMIN') return 'Admin (grup/channel)'
+  return 'Teknisi pribadi'
 }
 
 function TemplateEditorCard({

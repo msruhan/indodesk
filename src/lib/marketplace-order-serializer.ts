@@ -210,6 +210,7 @@ export function serializeMarketplaceOrder(
     role === 'seller' &&
     row.status === 'PAID' &&
     isPhysical &&
+    !packagingApproved &&
     !packagingPending &&
     (!packagingRejected || beforeResubmitDeadline)
 

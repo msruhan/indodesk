@@ -2,13 +2,14 @@ export const TELEGRAM_EVENT_KEYS = [
   'product.published',
   'marketplace.order.new',
   'marketplace.order.paid',
+  'marketplace.packaging.submitted',
   'konsultasi.new',
   'inspeksi.new',
 ] as const
 
 export type TelegramEventKey = (typeof TELEGRAM_EVENT_KEYS)[number]
 
-export type TelegramEventAudience = 'CHANNEL' | 'TEKNISI'
+export type TelegramEventAudience = 'CHANNEL' | 'TEKNISI' | 'ADMIN'
 
 export type TelegramEventDefinition = {
   eventKey: TelegramEventKey
@@ -68,6 +69,16 @@ const INSPEKSI_NEW_BODY = `🔔 *Request Inspeksi Baru*
 
 Cek dashboard untuk menerima request:
 {{linkDashboard}}`
+
+const PACKAGING_SUBMITTED_BODY = `📦 *Bukti Packaging Menunggu Review*
+
+🔖 Order: \`{{kodeOrder}}\`
+👤 Penjual: {{namaPenjual}}
+💵 Total: {{total}}
+📎 File: {{jumlahFile}}
+
+Review di dashboard admin:
+{{linkReview}}`
 
 export const TELEGRAM_EVENT_CATALOG: Record<TelegramEventKey, TelegramEventDefinition> = {
   'product.published': {
@@ -143,6 +154,22 @@ export const TELEGRAM_EVENT_CATALOG: Record<TelegramEventKey, TelegramEventDefin
       jumlahItem: '1',
       metodeBayar: 'wallet',
       linkPesanan: 'https://bantoo.in/teknisi/pesanan',
+    },
+  },
+  'marketplace.packaging.submitted': {
+    eventKey: 'marketplace.packaging.submitted',
+    label: 'Bukti packaging menunggu review',
+    description:
+      'Notifikasi ke grup/channel Telegram admin saat penjual mengirim bukti packaging marketplace.',
+    audience: 'ADMIN',
+    placeholders: ['kodeOrder', 'namaPenjual', 'total', 'jumlahFile', 'linkReview'],
+    defaultBody: PACKAGING_SUBMITTED_BODY,
+    sampleVars: {
+      kodeOrder: 'ORD-2026-MSU5WN',
+      namaPenjual: 'Masruhan Teknisi',
+      total: 'Rp 10.000',
+      jumlahFile: '2',
+      linkReview: 'https://bantoo.in/admin/marketplace-packaging',
     },
   },
   'konsultasi.new': {

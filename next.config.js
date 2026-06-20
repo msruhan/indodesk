@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  serverExternalPackages: ['pdfkit', '@aws-sdk/client-s3', '@aws-sdk/s3-request-presigner'],
+  serverExternalPackages: ['pdfkit', '@aws-sdk/client-s3', '@aws-sdk/s3-request-presigner', 'sharp'],
   typescript: {
     // Local iteration: SKIP_TYPECHECK=1 npm run build  (use npm run typecheck separately)
     ignoreBuildErrors: process.env.SKIP_TYPECHECK === '1',

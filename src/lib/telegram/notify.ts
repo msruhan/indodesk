@@ -142,3 +142,26 @@ export async function notifyInspeksiNew(orderId: string): Promise<void> {
     },
   })
 }
+
+export async function notifyMarketplacePackagingSubmitted(orderId: string): Promise<void> {
+  const proof = await prisma.orderPackagingProof.findUnique({
+    where: { orderId },
+    include: {
+      order: { select: { orderCode: true, total: true } },
+      seller: { select: { name: true } },
+      media: { select: { id: true } },
+    },
+  })
+  if (!proof || proof.status !== 'PENDING') return
+
+  const base = appBaseUrl()
+  await dispatchTelegramEvent('marketplace.packaging.submitted', {
+    vars: {
+      kodeOrder: proof.order.orderCode,
+      namaPenjual: proof.seller.name ?? 'Penjual',
+      total: formatIdr(Number(proof.order.total)),
+      jumlahFile: String(proof.media.length),
+      linkReview: `${base}/admin/marketplace-packaging`,
+    },
+  })
+}

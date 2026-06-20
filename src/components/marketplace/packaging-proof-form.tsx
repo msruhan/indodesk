@@ -72,7 +72,9 @@ export function PackagingProofForm({
         )}
       </div>
       <p className="text-[11px] text-surface-600">
-        Upload foto dan video produk dalam kemasan sebelum memproses pesanan. Admin akan mereview terlebih dahulu.
+        {proof?.status === 'APPROVED'
+          ? 'Bukti packaging sudah disetujui admin.'
+          : 'Upload foto dan video produk dalam kemasan sebelum memproses pesanan. Admin akan mereview terlebih dahulu.'}
       </p>
 
       {proof?.status === 'REJECTED' && proof.rejectionNote && (
@@ -99,7 +101,7 @@ export function PackagingProofForm({
         </p>
       )}
 
-      {canSubmit && (
+      {canSubmit && proof?.status !== 'APPROVED' && (
         <>
           <div>
             <label className="mb-1 block text-xs font-medium text-surface-700">

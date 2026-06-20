@@ -4,7 +4,7 @@
 
 FROM node:22-bookworm-slim AS base
 RUN apt-get update \
- && apt-get install -y --no-install-recommends curl ca-certificates gnupg openssl \
+ && apt-get install -y --no-install-recommends curl ca-certificates gnupg openssl fontconfig fonts-dejavu-core \
  && install -d /usr/share/postgresql-common/pgdg \
  && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
  | gpg --dearmor -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.gpg \

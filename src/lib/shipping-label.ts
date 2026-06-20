@@ -130,16 +130,36 @@ export async function buildLabelQrDataUrl(token: string): Promise<string> {
   })
 }
 
+export async function buildLabelQrBuffer(token: string): Promise<Buffer> {
+  return QRCode.toBuffer(buildShippingLabelQrUrl(token), {
+    width: 220,
+    margin: 1,
+    errorCorrectionLevel: 'M',
+    type: 'png',
+  })
+}
+
 let cachedWordmarkDataUrl: string | null = null
+let cachedWordmarkBuffer: Buffer | null = null
+
+async function readWordmarkFile(): Promise<Buffer> {
+  const relative = BRAND_WORDMARK_SRC.replace(/^\//, '')
+  const filePath = path.join(process.cwd(), 'public', relative)
+  return readFile(filePath)
+}
 
 /** Wordmark PNG as data URL — aman untuk ImageResponse tanpa HTTP fetch. */
 export async function loadBrandWordmarkDataUrl(): Promise<string> {
   if (cachedWordmarkDataUrl) return cachedWordmarkDataUrl
-  const relative = BRAND_WORDMARK_SRC.replace(/^\//, '')
-  const filePath = path.join(process.cwd(), 'public', relative)
-  const buffer = await readFile(filePath)
+  const buffer = await readWordmarkFile()
   cachedWordmarkDataUrl = `data:image/png;base64,${buffer.toString('base64')}`
   return cachedWordmarkDataUrl
+}
+
+export async function loadBrandWordmarkBuffer(): Promise<Buffer> {
+  if (cachedWordmarkBuffer) return cachedWordmarkBuffer
+  cachedWordmarkBuffer = await readWordmarkFile()
+  return cachedWordmarkBuffer
 }
 
 function formatWeightKg(total: number): number {
