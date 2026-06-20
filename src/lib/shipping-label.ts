@@ -62,7 +62,9 @@ export function generateShippingLabelToken(): string {
 }
 
 export function orderEligibleForShippingLabel(
-  order: Pick<ShippingLabelOrderRow, 'status' | 'shippingAddress' | 'items'>,
+  order: Pick<ShippingLabelOrderRow, 'status' | 'shippingAddress'> & {
+    items: Array<{ product: { category?: ProductCategory } }>
+  },
 ): boolean {
   if (!LABEL_ELIGIBLE_STATUSES.includes(order.status)) return false
   if (!order.shippingAddress?.trim()) return false
@@ -100,15 +102,14 @@ export async function ensureShippingLabelToken(orderId: string): Promise<string>
   for (let attempt = 0; attempt < 5; attempt++) {
     const token = generateShippingLabelToken()
     try {
-      const updated = await prisma.order.update({
+      const updated = await prisma.order.updateMany({
         where: { id: orderId, shippingLabelToken: null },
         data: {
           shippingLabelToken: token,
           shippingLabelGeneratedAt: new Date(),
         },
-        select: { shippingLabelToken: true },
       })
-      if (updated.shippingLabelToken) return updated.shippingLabelToken
+      if (updated.count === 1) return token
     } catch {
       const row = await prisma.order.findUnique({
         where: { id: orderId },
@@ -215,7 +216,7 @@ export const SHIPPING_LABEL_ORDER_SELECT = {
 
 export function canDownloadShippingLabelForSeller(
   order: Pick<Order, 'status' | 'shippingAddress'> & {
-    items: ShippingLabelOrderRow['items']
+    items: Array<{ product: { category?: ProductCategory } }>
   },
   role: 'buyer' | 'seller' | 'admin',
 ): boolean {
