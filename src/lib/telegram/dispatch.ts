@@ -1,5 +1,9 @@
 import { prisma } from '@/lib/db'
-import { getTelegramChannelChatId } from '@/lib/telegram/channel-config'
+import {
+  getTelegramChannelChatId,
+  getTelegramGroupChatId,
+  getTelegramGroupTopicThreadId,
+} from '@/lib/telegram/channel-config'
 import { getEventAudience, type TelegramEventKey } from '@/lib/telegram/template-defaults'
 import { renderTelegramTemplate } from '@/lib/telegram/template-render'
 import { getEffectiveTemplate } from '@/lib/telegram/template-store'
@@ -8,6 +12,7 @@ import {
   sendTelegramMediaGroup,
   sendTelegramMessage,
   sendTelegramPhoto,
+  type TelegramSendOptions,
 } from '@/lib/telegram'
 
 export type TelegramDispatchContext = {
@@ -22,12 +27,19 @@ async function deliverTelegramNotification(
   text: string,
   photoUrls: string[] | null | undefined,
   eventKey: string,
+  sendOptions?: Pick<TelegramSendOptions, 'message_thread_id'>,
 ): Promise<void> {
   const parseMode = { parse_mode: 'Markdown' as const }
+  const deliveryOptions: TelegramSendOptions = {
+    ...parseMode,
+    ...(sendOptions?.message_thread_id != null
+      ? { message_thread_id: sendOptions.message_thread_id }
+      : {}),
+  }
   const urls = (photoUrls ?? []).map((u) => u.trim()).filter(Boolean)
 
   if (urls.length >= 2) {
-    const albumResult = await sendTelegramMediaGroup(chatId, urls, text, parseMode)
+    const albumResult = await sendTelegramMediaGroup(chatId, urls, text, deliveryOptions)
     if (albumResult.success) return
     console.warn(
       `[Telegram] sendMediaGroup gagal untuk ${eventKey}, coba foto tunggal:`,
@@ -36,7 +48,7 @@ async function deliverTelegramNotification(
   }
 
   if (urls.length >= 1) {
-    const photoResult = await sendTelegramPhoto(chatId, urls[0], text, parseMode)
+    const photoResult = await sendTelegramPhoto(chatId, urls[0], text, deliveryOptions)
     if (photoResult.success) return
     console.warn(
       `[Telegram] sendPhoto gagal untuk ${eventKey}, fallback ke teks:`,
@@ -44,7 +56,7 @@ async function deliverTelegramNotification(
     )
   }
 
-  const result = await sendTelegramMessage(chatId, text, parseMode)
+  const result = await sendTelegramMessage(chatId, text, deliveryOptions)
   if (!result.success) {
     console.error(`[Telegram] Gagal kirim ${eventKey}:`, result.error)
   }
@@ -73,6 +85,20 @@ export async function dispatchTelegramEvent(
         return
       }
       await deliverTelegramNotification(chatId, text, context.photoUrls, eventKey)
+
+      if (eventKey === 'product.published') {
+        const groupChatId = await getTelegramGroupChatId()
+        const topicThreadId = await getTelegramGroupTopicThreadId()
+        if (groupChatId && topicThreadId) {
+          await deliverTelegramNotification(
+            groupChatId,
+            text,
+            context.photoUrls,
+            `${eventKey}.group_topic`,
+            { message_thread_id: topicThreadId },
+          )
+        }
+      }
       return
     }
 

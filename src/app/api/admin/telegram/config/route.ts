@@ -3,8 +3,11 @@ import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { logAdminGovernance } from '@/lib/admin-audit'
 import {
   getTelegramChannelChatId,
+  getTelegramGroupChatId,
+  getTelegramGroupTopicThreadId,
   maskChatId,
   saveTelegramChannelChatId,
+  saveTelegramGroupTopicConfig,
 } from '@/lib/telegram/channel-config'
 import { isTelegramEnabled } from '@/lib/telegram'
 import { verifyAdminStepUp, StepUpAuthError } from '@/lib/wallet/admin-step-up'
@@ -14,6 +17,8 @@ export const dynamic = 'force-dynamic'
 
 const patchSchema = z.object({
   channelChatId: z.string().min(1, 'Chat ID channel wajib diisi').max(32),
+  groupChatId: z.string().max(32).optional(),
+  groupTopicThreadId: z.string().max(16).optional(),
   ...adminStepUpFields,
 })
 
@@ -23,11 +28,17 @@ export async function GET() {
 
   try {
     const channelChatId = await getTelegramChannelChatId()
+    const groupChatId = await getTelegramGroupChatId()
+    const groupTopicThreadId = await getTelegramGroupTopicThreadId()
     return apiSuccess({
       botEnabled: isTelegramEnabled(),
       channelChatId,
       channelChatIdMasked: maskChatId(channelChatId),
       channelConfigured: Boolean(channelChatId),
+      groupChatId,
+      groupChatIdMasked: maskChatId(groupChatId),
+      groupTopicThreadId: groupTopicThreadId != null ? String(groupTopicThreadId) : null,
+      groupTopicConfigured: Boolean(groupChatId && groupTopicThreadId),
     })
   } catch (e) {
     console.error('[ADMIN_TELEGRAM_CONFIG_GET]', e)
@@ -59,7 +70,19 @@ export async function PATCH(req: Request) {
     }
 
     await saveTelegramChannelChatId(parsed.data.channelChatId)
+    try {
+      await saveTelegramGroupTopicConfig(
+        parsed.data.groupChatId?.trim() ?? '',
+        parsed.data.groupTopicThreadId?.trim() ?? '',
+      )
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Konfigurasi grup/topic tidak valid'
+      return apiError(message)
+    }
+
     const channelChatId = await getTelegramChannelChatId()
+    const groupChatId = await getTelegramGroupChatId()
+    const groupTopicThreadId = await getTelegramGroupTopicThreadId()
 
     logAdminGovernance({
       req,
@@ -67,7 +90,11 @@ export async function PATCH(req: Request) {
       action: 'admin.telegram.config.update',
       summary: 'Konfigurasi channel Telegram diperbarui',
       severity: 'WARNING',
-      metadata: { channelChatIdMasked: maskChatId(channelChatId) },
+      metadata: {
+        channelChatIdMasked: maskChatId(channelChatId),
+        groupChatIdMasked: maskChatId(groupChatId),
+        groupTopicThreadId,
+      },
     })
 
     return apiSuccess({
@@ -75,6 +102,10 @@ export async function PATCH(req: Request) {
       channelChatId,
       channelChatIdMasked: maskChatId(channelChatId),
       channelConfigured: Boolean(channelChatId),
+      groupChatId,
+      groupChatIdMasked: maskChatId(groupChatId),
+      groupTopicThreadId: groupTopicThreadId != null ? String(groupTopicThreadId) : null,
+      groupTopicConfigured: Boolean(groupChatId && groupTopicThreadId),
     })
   } catch (e) {
     console.error('[ADMIN_TELEGRAM_CONFIG_PATCH]', e)

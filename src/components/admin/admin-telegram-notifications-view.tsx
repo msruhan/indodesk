@@ -17,6 +17,10 @@ type TelegramConfig = {
   channelChatId: string | null
   channelChatIdMasked: string | null
   channelConfigured: boolean
+  groupChatId: string | null
+  groupChatIdMasked: string | null
+  groupTopicThreadId: string | null
+  groupTopicConfigured: boolean
   webhookConfigured?: boolean
   webhookUrl?: string | null
   webhookPendingUpdates?: number
@@ -218,6 +222,8 @@ export function AdminTelegramNotificationsView() {
   const [templates, setTemplates] = useState<EffectiveTelegramTemplate[]>([])
   const [loading, setLoading] = useState(true)
   const [channelChatId, setChannelChatId] = useState('')
+  const [groupChatId, setGroupChatId] = useState('')
+  const [groupTopicThreadId, setGroupTopicThreadId] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [totp, setTotp] = useState('')
   const [adminTwoFa, setAdminTwoFa] = useState(false)
@@ -251,6 +257,8 @@ export function AdminTelegramNotificationsView() {
             : undefined,
         })
         setChannelChatId(configJson.data.channelChatId ?? '')
+        setGroupChatId(configJson.data.groupChatId ?? '')
+        setGroupTopicThreadId(configJson.data.groupTopicThreadId ?? '')
       }
       if (templatesRes.ok && templatesJson.success) {
         setTemplates(templatesJson.data ?? [])
@@ -280,6 +288,8 @@ export function AdminTelegramNotificationsView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           channelChatId,
+          groupChatId,
+          groupTopicThreadId,
           confirmPassword: adminTwoFa ? undefined : confirmPassword || undefined,
           totp: adminTwoFa ? totp || undefined : undefined,
         }),
@@ -292,7 +302,7 @@ export function AdminTelegramNotificationsView() {
       setConfig(json.data)
       setConfirmPassword('')
       setTotp('')
-      setConfigMessage('Konfigurasi channel disimpan.')
+      setConfigMessage('Konfigurasi Telegram disimpan.')
     } catch {
       setConfigError('Gagal menyimpan')
     } finally {
@@ -331,7 +341,12 @@ export function AdminTelegramNotificationsView() {
         setConfigError(json.error ?? 'Gagal kirim pesan uji')
         return
       }
-      setConfigMessage('Pesan uji terkirim ke channel.')
+      const sentTopic = Boolean(json.data?.groupTopicSent)
+      setConfigMessage(
+        sentTopic
+          ? 'Pesan uji terkirim ke channel dan topic grup.'
+          : 'Pesan uji terkirim ke channel.',
+      )
     } catch {
       setConfigError('Gagal kirim pesan uji')
     } finally {
@@ -358,7 +373,7 @@ export function AdminTelegramNotificationsView() {
       <TabsContent value="koneksi" className="space-y-4">
         <DashboardPanel
           title="Channel Telegram"
-          description="Notifikasi produk baru yang sudah dipublish akan dikirim ke channel/grup ini."
+          description="Notifikasi produk baru yang sudah dipublish akan dikirim ke channel ini, dan opsional ke topic lapak di grup."
         >
           <div className="space-y-4">
             <div className="flex flex-wrap gap-2">
@@ -370,6 +385,9 @@ export function AdminTelegramNotificationsView() {
               </Badge>
               <Badge variant={config?.channelConfigured ? 'success' : 'outline'}>
                 Channel: {config?.channelConfigured ? 'Dikonfigurasi' : 'Belum diatur'}
+              </Badge>
+              <Badge variant={config?.groupTopicConfigured ? 'success' : 'outline'}>
+                Topic lapak: {config?.groupTopicConfigured ? 'Dikonfigurasi' : 'Opsional'}
               </Badge>
             </div>
 
@@ -392,7 +410,7 @@ export function AdminTelegramNotificationsView() {
             <div className="rounded-xl border border-surface-200/70 bg-surface-50/80 p-3 text-xs leading-relaxed text-surface-600">
               <p className="font-medium text-surface-700">Cara setup channel:</p>
               <ol className="mt-1 list-decimal space-y-1 pl-4">
-                <li>Tambahkan bot Bantoo sebagai admin di channel/grup Telegram.</li>
+                <li>Tambahkan bot Bantoo sebagai admin di channel Telegram.</li>
                 <li>Dapatkan Chat ID channel (biasanya dimulai dengan -100…).</li>
                 <li>Paste Chat ID di bawah, simpan, lalu kirim pesan uji.</li>
               </ol>
@@ -410,6 +428,49 @@ export function AdminTelegramNotificationsView() {
                   Tersimpan: {config.channelChatIdMasked}
                 </p>
               ) : null}
+            </div>
+
+            <div className="rounded-xl border border-surface-200/70 bg-surface-50/80 p-3 text-xs leading-relaxed text-surface-600">
+              <p className="font-medium text-surface-700">Topic lapak di grup (opsional):</p>
+              <ol className="mt-1 list-decimal space-y-1 pl-4">
+                <li>Tambahkan bot sebagai admin di grup dengan Topics aktif.</li>
+                <li>
+                  Dari link topic (mis. <code className="rounded bg-white px-1">t.me/c/3934891588/2</code>
+                  ): Chat ID grup = <code className="rounded bg-white px-1">-1003934891588</code>, Topic
+                  ID = <code className="rounded bg-white px-1">2</code>.
+                </li>
+                <li>Isi kedua field di bawah agar notifikasi produk juga masuk ke topic lapak.</li>
+              </ol>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-ink">Chat ID grup</label>
+                <Input
+                  value={groupChatId}
+                  onChange={(e) => setGroupChatId(e.target.value)}
+                  placeholder="-1003934891588"
+                />
+                {config?.groupChatIdMasked ? (
+                  <p className="mt-1 text-xs text-surface-500">
+                    Tersimpan: {config.groupChatIdMasked}
+                  </p>
+                ) : null}
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-ink">Topic ID</label>
+                <Input
+                  value={groupTopicThreadId}
+                  onChange={(e) => setGroupTopicThreadId(e.target.value)}
+                  placeholder="2"
+                  inputMode="numeric"
+                />
+                {config?.groupTopicThreadId ? (
+                  <p className="mt-1 text-xs text-surface-500">
+                    Tersimpan: topic #{config.groupTopicThreadId}
+                  </p>
+                ) : null}
+              </div>
             </div>
 
             <AdminStepUpFields
@@ -431,7 +492,7 @@ export function AdminTelegramNotificationsView() {
                 {registeringWebhook ? 'Mendaftar…' : 'Daftar Webhook'}
               </Button>
               <Button type="button" onClick={() => void saveConfig()} disabled={savingConfig}>
-                {savingConfig ? 'Menyimpan…' : 'Simpan channel'}
+                {savingConfig ? 'Menyimpan…' : 'Simpan konfigurasi'}
               </Button>
               <Button
                 type="button"

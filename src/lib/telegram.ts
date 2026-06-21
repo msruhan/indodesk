@@ -85,14 +85,18 @@ export { issueTelegramLinkToken as generateTelegramLinkToken } from '@/lib/teleg
 /**
  * Kirim pesan teks ke chat Telegram
  */
+export type TelegramSendOptions = {
+  parse_mode?: 'Markdown' | 'HTML'
+  disable_web_page_preview?: boolean
+  disable_notification?: boolean
+  /** Forum topic ID — wajib untuk kirim ke topic tertentu di supergroup. */
+  message_thread_id?: number
+}
+
 export async function sendTelegramMessage(
   chatId: string | number,
   text: string,
-  options?: {
-    parse_mode?: 'Markdown' | 'HTML'
-    disable_web_page_preview?: boolean
-    disable_notification?: boolean
-  }
+  options?: TelegramSendOptions,
 ): Promise<{ success: boolean; error?: string }> {
   if (!TELEGRAM_BOT_TOKEN) {
     console.warn('[Telegram] Bot token tidak dikonfigurasi')
@@ -137,10 +141,7 @@ export async function sendTelegramPhoto(
   chatId: string | number,
   photoUrl: string,
   caption: string,
-  options?: {
-    parse_mode?: 'Markdown' | 'HTML'
-    disable_notification?: boolean
-  },
+  options?: TelegramSendOptions,
 ): Promise<{ success: boolean; error?: string }> {
   if (!TELEGRAM_BOT_TOKEN) {
     console.warn('[Telegram] Bot token tidak dikonfigurasi')
@@ -185,10 +186,7 @@ export async function sendTelegramMediaGroup(
   chatId: string | number,
   photoUrls: string[],
   caption: string,
-  options?: {
-    parse_mode?: 'Markdown' | 'HTML'
-    disable_notification?: boolean
-  },
+  options?: TelegramSendOptions,
 ): Promise<{ success: boolean; error?: string }> {
   if (!TELEGRAM_BOT_TOKEN) {
     return { success: false, error: 'Bot token tidak dikonfigurasi' }
@@ -224,6 +222,9 @@ export async function sendTelegramMediaGroup(
         chat_id: chatId,
         media,
         disable_notification: options?.disable_notification,
+        ...(options?.message_thread_id != null
+          ? { message_thread_id: options.message_thread_id }
+          : {}),
       }),
     })
 
