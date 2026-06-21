@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Edit, Trash2 } from '@/lib/icons'
 import { ManagementToolbar } from '@/components/admin/admin-management-toolbar'
+import { AdminHelpSupportContactPanel } from '@/components/admin/admin-help-support-contact-panel'
 import type { HelpArticleDto } from '@/lib/help-serializer'
 import { DataPagination } from '@/components/ui/data-pagination'
 import { useClientPagination } from '@/hooks/use-client-pagination'
@@ -146,12 +147,14 @@ export function AdminHelpManageView() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-surface-500">
-          Kelola pertanyaan umum untuk halaman Help user, teknisi, dan admin.
+          Kelola kontak support dan pertanyaan umum untuk halaman Help user, teknisi, dan admin.
         </p>
         <Link href="/admin/help/preview" className="text-sm font-medium text-primary-600 hover:underline">
           Pratinjau halaman Help
         </Link>
       </div>
+
+      <AdminHelpSupportContactPanel />
 
       <ManagementToolbar
         searchValue={q}

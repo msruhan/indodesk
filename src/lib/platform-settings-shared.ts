@@ -13,6 +13,10 @@ export const PLATFORM_SETTING_KEYS = [
   'platform_name',
   'support_email',
   'support_phone',
+  'help_support_user_email',
+  'help_support_user_phone',
+  'help_support_teknisi_email',
+  'help_support_teknisi_phone',
   'admin_email',
   'buyer_fee_percent',
   'buyer_flat_fee_per_item',
@@ -58,6 +62,12 @@ export type PlatformSettingsDto = {
   platformName: string
   supportEmail: string
   supportPhone: string
+  /** Kosong = pakai kontak global di Pusat Bantuan user */
+  helpSupportUserEmail: string
+  helpSupportUserPhone: string
+  /** Kosong = pakai kontak global di Pusat Bantuan teknisi */
+  helpSupportTeknisiEmail: string
+  helpSupportTeknisiPhone: string
   adminEmail: string
   buyerFeePercent: number
   /** Biaya layanan flat per kuantitas item (pembeli). Isi 0 untuk menonaktifkan. */
@@ -115,6 +125,10 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettingsDto = {
   platformName: 'Bantoo',
   supportEmail: 'hello@bantoo.in',
   supportPhone: '0800-1234-5678',
+  helpSupportUserEmail: '',
+  helpSupportUserPhone: '',
+  helpSupportTeknisiEmail: '',
+  helpSupportTeknisiPhone: '',
   adminEmail: 'admin@bantoo.in',
   buyerFeePercent: 2,
   buyerFlatFeePerItem: 0,

@@ -8,7 +8,7 @@ export default function AdminHelpPage() {
           Pusat Bantuan
         </h1>
         <p className="mt-1 text-sm text-surface-500">
-          Kelola pertanyaan umum yang ditampilkan di pusat bantuan untuk setiap peran.
+          Kelola kontak support dan pertanyaan umum yang ditampilkan di pusat bantuan untuk setiap peran.
         </p>
       </div>
       <AdminHelpManageView />

@@ -21,7 +21,7 @@ export async function GET(req: Request) {
         where: { audience, isActive: true },
         orderBy: { sortOrder: 'asc' },
       }),
-      getPublicPlatformContact(),
+      getPublicPlatformContact(audience as 'user' | 'teknisi' | 'admin'),
     ])
     return apiSuccess({
       articles: articles.map(serializeHelpArticle),

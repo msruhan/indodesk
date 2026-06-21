@@ -39,6 +39,10 @@ const KEY_MAP: Record<PlatformSettingKey, keyof PlatformSettingsDto | null> = {
   platform_name: 'platformName',
   support_email: 'supportEmail',
   support_phone: 'supportPhone',
+  help_support_user_email: 'helpSupportUserEmail',
+  help_support_user_phone: 'helpSupportUserPhone',
+  help_support_teknisi_email: 'helpSupportTeknisiEmail',
+  help_support_teknisi_phone: 'helpSupportTeknisiPhone',
   admin_email: 'adminEmail',
   buyer_fee_percent: 'buyerFeePercent',
   buyer_flat_fee_per_item: 'buyerFlatFeePerItem',
@@ -119,6 +123,10 @@ function dtoToRows(dto: PlatformSettingsDto): Array<{ key: string; value: string
     { key: 'platform_name', value: dto.platformName },
     { key: 'support_email', value: dto.supportEmail },
     { key: 'support_phone', value: dto.supportPhone },
+    { key: 'help_support_user_email', value: dto.helpSupportUserEmail },
+    { key: 'help_support_user_phone', value: dto.helpSupportUserPhone },
+    { key: 'help_support_teknisi_email', value: dto.helpSupportTeknisiEmail },
+    { key: 'help_support_teknisi_phone', value: dto.helpSupportTeknisiPhone },
     { key: 'admin_email', value: dto.adminEmail },
     { key: 'buyer_fee_percent', value: String(dto.buyerFeePercent) },
     { key: 'buyer_flat_fee_per_item', value: String(dto.buyerFlatFeePerItem) },
@@ -177,6 +185,14 @@ function rowToDto(rows: Array<{ key: string; value: string }>): PlatformSettings
     platformName: map.get('platform_name') ?? DEFAULT_PLATFORM_SETTINGS.platformName,
     supportEmail: map.get('support_email') ?? DEFAULT_PLATFORM_SETTINGS.supportEmail,
     supportPhone: map.get('support_phone') ?? DEFAULT_PLATFORM_SETTINGS.supportPhone,
+    helpSupportUserEmail:
+      map.get('help_support_user_email') ?? DEFAULT_PLATFORM_SETTINGS.helpSupportUserEmail,
+    helpSupportUserPhone:
+      map.get('help_support_user_phone') ?? DEFAULT_PLATFORM_SETTINGS.helpSupportUserPhone,
+    helpSupportTeknisiEmail:
+      map.get('help_support_teknisi_email') ?? DEFAULT_PLATFORM_SETTINGS.helpSupportTeknisiEmail,
+    helpSupportTeknisiPhone:
+      map.get('help_support_teknisi_phone') ?? DEFAULT_PLATFORM_SETTINGS.helpSupportTeknisiPhone,
     adminEmail: map.get('admin_email') ?? DEFAULT_PLATFORM_SETTINGS.adminEmail,
     buyerFeePercent: Number(
       map.get('buyer_fee_percent') ?? DEFAULT_PLATFORM_SETTINGS.buyerFeePercent,
@@ -268,13 +284,65 @@ export async function getPublicComingSoonConfig(): Promise<ComingSoonConfig> {
 }
 
 /** Public subset for help pages & footer */
-export async function getPublicPlatformContact() {
+export type HelpContactAudience = 'user' | 'teknisi' | 'admin'
+
+function resolveHelpSupportContact(
+  settings: PlatformSettingsDto,
+  audience: HelpContactAudience,
+): { supportEmail: string; supportPhone: string } {
+  if (audience === 'user') {
+    return {
+      supportEmail: settings.helpSupportUserEmail.trim() || settings.supportEmail,
+      supportPhone: settings.helpSupportUserPhone.trim() || settings.supportPhone,
+    }
+  }
+  if (audience === 'teknisi') {
+    return {
+      supportEmail: settings.helpSupportTeknisiEmail.trim() || settings.supportEmail,
+      supportPhone: settings.helpSupportTeknisiPhone.trim() || settings.supportPhone,
+    }
+  }
+  return {
+    supportEmail: settings.supportEmail,
+    supportPhone: settings.supportPhone,
+  }
+}
+
+export async function getPublicPlatformContact(audience: HelpContactAudience = 'user') {
   const s = await getPlatformSettings()
+  const contact = resolveHelpSupportContact(s, audience)
   return {
     platformName: s.platformName,
-    supportEmail: s.supportEmail,
-    supportPhone: s.supportPhone,
+    supportEmail: contact.supportEmail,
+    supportPhone: contact.supportPhone,
     maintenanceMode: s.maintenanceMode,
+  }
+}
+
+export function serializeHelpSupportContactSettings(settings: PlatformSettingsDto) {
+  return {
+    user: {
+      email: settings.helpSupportUserEmail,
+      phone: settings.helpSupportUserPhone,
+    },
+    teknisi: {
+      email: settings.helpSupportTeknisiEmail,
+      phone: settings.helpSupportTeknisiPhone,
+    },
+    globalFallback: {
+      email: settings.supportEmail,
+      phone: settings.supportPhone,
+    },
+    effective: {
+      user: {
+        email: resolveHelpSupportContact(settings, 'user').supportEmail,
+        phone: resolveHelpSupportContact(settings, 'user').supportPhone,
+      },
+      teknisi: {
+        email: resolveHelpSupportContact(settings, 'teknisi').supportEmail,
+        phone: resolveHelpSupportContact(settings, 'teknisi').supportPhone,
+      },
+    },
   }
 }
 
