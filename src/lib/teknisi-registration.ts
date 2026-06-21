@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 export const TEKNISI_SPECIALTY_OPTIONS = [
-  'Unlock / FRP',
+  'FRP',
   'Flashing / Firmware',
   'Hardware Repair',
   'Software Repair',
@@ -9,9 +9,39 @@ export const TEKNISI_SPECIALTY_OPTIONS = [
   'Android Specialist',
   'Data Recovery',
   'Battery / LCD',
-  'Motherboard',
+  'Motherboard / IC',
+  'Water Damage',
   'Konsultasi Remote',
 ] as const
+
+export type TeknisiSpecialtyOption = (typeof TEKNISI_SPECIALTY_OPTIONS)[number]
+
+/** Sentinel value for "Lainnya" in the multi-select UI (not stored in DB). */
+export const TEKNISI_SPECIALTY_OTHER = '__other__'
+
+export function isPresetSpecialty(value: string): value is TeknisiSpecialtyOption {
+  return (TEKNISI_SPECIALTY_OPTIONS as readonly string[]).includes(value)
+}
+
+export function splitTeknisiSpecialty(value: string[]) {
+  const presets = value.filter(isPresetSpecialty)
+  const custom = value.filter((v) => !isPresetSpecialty(v))
+  return { presets, custom }
+}
+
+export function mergeTeknisiSpecialty(presets: string[], custom: string[]) {
+  const seen = new Set<string>()
+  const merged: string[] = []
+  for (const item of [...presets, ...custom]) {
+    const trimmed = item.trim()
+    if (!trimmed) continue
+    const key = trimmed.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    merged.push(trimmed)
+  }
+  return merged
+}
 
 export const TEKNISI_WORKSHOP_TYPES = [
   { value: 'COUNTER', label: 'Counter HP' },
@@ -39,12 +69,21 @@ export const teknisiRegisterSchema = z.object({
     .min(10, 'Nomor WhatsApp minimal 10 digit')
     .max(20, 'Nomor WhatsApp terlalu panjang')
     .regex(/^[0-9+\-\s()]+$/, 'Format nomor tidak valid'),
-  location: z.string().min(2, 'Lokasi wajib diisi').max(120),
+  shippingCityId: z
+    .string()
+    .min(1, 'Kota wajib dipilih')
+    .max(64)
+    .refine((v) => v.startsWith('city_'), { message: 'Kota tidak valid' }),
+  shippingCityLabel: z.string().min(1, 'Kota wajib dipilih').max(120),
   experience: z.string().min(1, 'Pengalaman wajib diisi').max(80),
   workshopType: z.enum(['COUNTER', 'WORKSHOP', 'FREELANCE', 'ONLINE'], {
     message: 'Jenis usaha wajib dipilih',
   }),
   brandsHandled: z.string().min(2, 'Merek yang ditangani wajib diisi').max(300),
+  specialty: z
+    .array(z.string().trim().min(1, 'Spesialisasi tidak boleh kosong').max(80))
+    .min(1, 'Pilih minimal satu spesialisasi')
+    .max(15, 'Maksimal 15 spesialisasi'),
   portfolioUrl: z
     .string()
     .max(300)
@@ -75,7 +114,7 @@ export type TeknisiRegisterInput = z.infer<typeof teknisiRegisterSchema>
 export function buildApplicationData(
   input: Pick<
     TeknisiRegisterInput,
-    'workshopType' | 'brandsHandled' | 'portfolioUrl' | 'motivation'
+    'workshopType' | 'brandsHandled' | 'portfolioUrl' | 'motivation' | 'specialty'
   >,
 ): TeknisiApplicationData {
   return {
@@ -87,6 +126,23 @@ export function buildApplicationData(
   }
 }
 
+export function normalizeRegisterSpecialty(specialty: string[]): string[] {
+  return mergeTeknisiSpecialty(
+    specialty.filter(isPresetSpecialty),
+    specialty.filter((s) => !isPresetSpecialty(s)),
+  )
+}
+
 export function workshopTypeLabel(value: string): string {
   return TEKNISI_WORKSHOP_TYPES.find((w) => w.value === value)?.label ?? value
+}
+
+/** Simpan kota kerja ke profil teknisi + prefilled checkout (User.shippingCity*). */
+export function teknisiWorkCityFields(input: Pick<TeknisiRegisterInput, 'shippingCityId' | 'shippingCityLabel'>) {
+  const label = input.shippingCityLabel.trim()
+  return {
+    location: label,
+    shippingCityId: input.shippingCityId.trim(),
+    shippingCityLabel: label,
+  }
 }

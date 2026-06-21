@@ -77,8 +77,9 @@ const LOGIN_OAUTH_ERROR_DETAILS: Record<string, Omit<OAuthLoginErrorDetails, 'co
     message: 'Akun teknisi belum dapat digunakan. Periksa status pendaftaran atau hubungi admin.',
   },
   coming_soon_admin_only: {
-    title: 'Soft launch',
-    message: 'Platform dalam soft launch. Hanya admin yang dapat login saat ini.',
+    title: 'Situs masih dalam mode Coming Soon',
+    message:
+      'Terima kasih sudah mendaftar! Saat ini Bantoo.in masih dalam tahap persiapan peluncuran. Login untuk pengguna dan teknisi belum dibuka — kami akan memberitahu Anda segera setelah platform resmi diluncurkan. Untuk info lebih lanjut, hubungi kami di hello@bantoo.in.',
   },
   AccessDenied: {
     title: 'Login Google ditolak',

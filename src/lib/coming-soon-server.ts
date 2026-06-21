@@ -2,8 +2,10 @@ import { getCachedComingSoon } from '@/lib/coming-soon-cache'
 import { isComingSoonForceDisabled } from '@/lib/coming-soon-shared'
 import { getPublicComingSoonConfig } from '@/lib/platform-settings'
 
-export const COMING_SOON_ADMIN_ONLY_LOGIN_MESSAGE =
-  'Platform dalam soft launch. Hanya admin yang dapat login saat ini.'
+export {
+  COMING_SOON_LOGIN_BLOCKED_MESSAGE,
+  COMING_SOON_LOGIN_BLOCKED_MESSAGE as COMING_SOON_ADMIN_ONLY_LOGIN_MESSAGE,
+} from '@/lib/coming-soon-shared'
 
 /** Apakah mode coming soon aktif (server / API routes). */
 export async function isComingSoonEnabled(): Promise<boolean> {

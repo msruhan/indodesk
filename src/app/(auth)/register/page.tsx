@@ -18,6 +18,8 @@ import { Mail, Lock, User, Wrench } from '@/lib/icons'
 import { BrandLogo } from '@/components/brand/brand-logo'
 import { AuroraBackground } from '@/components/motion'
 import { motion } from 'framer-motion'
+import { GoogleRegisterDivider } from '@/components/auth/google-register-divider'
+import { RegisterOAuthErrorAlert } from '@/components/auth/register-oauth-error-alert'
 
 export default function RegisterPage() {
   const { register } = useAuth()
@@ -113,6 +115,9 @@ export default function RegisterPage() {
           </CardHeader>
 
           <CardContent>
+            <RegisterOAuthErrorAlert />
+            <GoogleRegisterDivider role="USER" callbackUrl="/register/lengkapi" className="mb-6" />
+
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
                 <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">

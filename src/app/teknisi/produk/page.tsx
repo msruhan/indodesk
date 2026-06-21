@@ -631,6 +631,9 @@ export default function TeknisiProdukPage() {
                     <p className="text-[11px] text-surface-500">
                       Upload screenshot dari 3uTools untuk membuktikan kualitas hardware iPhone/iPad (baterai, True Tone, Face ID, dll).
                     </p>
+                    <p className="mt-1 text-xs font-medium text-red-600">
+                      Serial Number dan IMEI dan UDID pastikan sudah disamarkan atau di-blur.
+                    </p>
                   </div>
                   <ProductImagesEditor
                     slots={threeUtoolsSlots}

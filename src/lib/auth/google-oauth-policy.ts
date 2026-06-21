@@ -3,6 +3,11 @@ import { prisma } from '@/lib/db'
 import { logAuthEvent } from '@/lib/activity-log'
 import { checkTeknisiLoginGuard } from '@/lib/teknisi-login-guard'
 import { readGoogleLinkIntentUserId } from '@/lib/auth/google-link-cookie'
+import {
+  readGoogleRegisterIntent,
+  setTeknisiRegisterCompleteCookie,
+  type GoogleRegisterRole,
+} from '@/lib/auth/google-register-cookie'
 import { isComingSoonEnabled } from '@/lib/coming-soon-server'
 
 type DbUserPick = Pick<User, 'id' | 'isActive' | 'role' | 'twoFactorEnabled' | 'email'>
@@ -15,7 +20,7 @@ export type GoogleSignInInput = {
 }
 
 export type GoogleSignInResult =
-  | { ok: true }
+  | { ok: true; mode: 'login' | 'link' | 'register'; role?: GoogleRegisterRole }
   | { ok: false; error: string }
 
 async function resolveDbUser(userId?: string | null, email?: string | null): Promise<DbUserPick | null> {
@@ -51,12 +56,20 @@ async function runLoginGuards(dbUser: DbUserPick): Promise<GoogleSignInResult> {
   if (!base.ok) return base
 
   const guard = await checkTeknisiLoginGuard(dbUser.id, dbUser.role)
-  if (!guard.allowed) return deny('teknisi_blocked')
+  if (!guard.allowed) {
+    if (guard.code === 'NO_PROFILE') {
+      await setTeknisiRegisterCompleteCookie(dbUser.id)
+      return deny('teknisi_profile_incomplete')
+    }
+    return deny('teknisi_blocked')
+  }
 
-  return { ok: true }
+  return { ok: true, mode: 'login' }
 }
 
-async function runBaseGuards(dbUser: DbUserPick): Promise<GoogleSignInResult> {
+async function runBaseGuards(
+  dbUser: DbUserPick,
+): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!dbUser.isActive) return deny('account_inactive')
   if (dbUser.role === 'ADMIN') return deny('admin_google')
 
@@ -75,27 +88,38 @@ async function runBaseGuards(dbUser: DbUserPick): Promise<GoogleSignInResult> {
 }
 
 /**
- * Kebijakan login/link Google — pendaftaran hanya via form; Google untuk login setelah link.
+ * Kebijakan Google OAuth: register (intent cookie), link profil, atau login.
  */
 export async function evaluateGoogleSignIn(input: GoogleSignInInput): Promise<GoogleSignInResult> {
   const email = input.email?.toLowerCase().trim()
   if (!email) return deny('google_email_missing')
 
+  const registerRole = await readGoogleRegisterIntent()
+  const linkIntentUserId = input.linkIntentUserId ?? (await readGoogleLinkIntentUserId())
   const dbUser = await resolveDbUser(input.userId, email)
+
+  if (registerRole && !linkIntentUserId) {
+    if (dbUser) {
+      return deny('email_already_registered')
+    }
+    return { ok: true, mode: 'register', role: registerRole }
+  }
+
   if (!dbUser) return deny('not_registered')
 
   if ((await isComingSoonEnabled()) && dbUser.role !== 'ADMIN') {
     return deny('coming_soon_admin_only')
   }
 
-  const linkIntentUserId = input.linkIntentUserId ?? (await readGoogleLinkIntentUserId())
   const googleAccount = await findGoogleAccount(dbUser.id)
 
   if (linkIntentUserId) {
     if (linkIntentUserId !== dbUser.id) return deny('google_link_mismatch')
     if (email !== dbUser.email.toLowerCase()) return deny('google_email_mismatch')
     if (googleAccount) return deny('google_already_linked')
-    return runBaseGuards(dbUser)
+    const base = await runBaseGuards(dbUser)
+    if (!base.ok) return base
+    return { ok: true, mode: 'link' }
   }
 
   if (!googleAccount) return deny('google_not_linked')

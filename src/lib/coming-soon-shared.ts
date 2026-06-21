@@ -13,6 +13,15 @@ export const DEFAULT_COMING_SOON_HEADLINE = 'Sesuatu yang Besar Segera Hadir'
 export const DEFAULT_COMING_SOON_MESSAGE =
   'Kami sedang menyiapkan platform terbaik untuk ekosistem HP Indonesia. Nantikan peluncurannya!'
 
+export const COMING_SOON_LOGIN_BLOCKED_TITLE = 'Situs masih dalam mode Coming Soon'
+
+/** Pesan saat user/teknisi mencoba login saat soft launch. */
+export const COMING_SOON_LOGIN_BLOCKED_MESSAGE =
+  'Terima kasih sudah mendaftar! Saat ini Bantoo.in masih dalam tahap persiapan peluncuran. Login untuk pengguna dan teknisi belum dibuka — kami akan memberitahu Anda segera setelah platform resmi diluncurkan. Untuk info lebih lanjut, hubungi kami di hello@bantoo.in.'
+
+/** @deprecated Use COMING_SOON_LOGIN_BLOCKED_MESSAGE */
+export const COMING_SOON_ADMIN_ONLY_LOGIN_MESSAGE = COMING_SOON_LOGIN_BLOCKED_MESSAGE
+
 export const DEFAULT_COMING_SOON_CONFIG: ComingSoonConfig = {
   enabled: false,
   launchAt: null,
@@ -33,9 +42,10 @@ export function isComingSoonBypassPath(pathname: string): boolean {
   if (pathname.startsWith('/api/platform/')) return true
   if (pathname.startsWith('/api/telegram/')) return true
   if (pathname.startsWith('/api/teknisi/telegram/')) return true
-  /** Registrasi ditutup saat soft launch */
-  if (pathname === '/register' || pathname.startsWith('/register/')) return false
-  if (pathname.startsWith('/api/auth/register')) return false
+  /** Registrasi user & teknisi tetap dibuka saat soft launch */
+  if (pathname === '/register' || pathname.startsWith('/register/')) return true
+  if (pathname.startsWith('/api/auth/register')) return true
+  if (pathname.startsWith('/api/auth/google/register-intent')) return true
   if (pathname.startsWith('/api/auth')) return true
   /** Logo & aset statis publik — harus tetap bisa dimuat di halaman coming soon */
   if (pathname.startsWith('/icon/')) return true

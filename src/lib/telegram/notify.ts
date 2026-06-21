@@ -56,22 +56,39 @@ export async function notifyMarketplaceOrderNew(orderId: string): Promise<void> 
     where: { id: orderId },
     include: {
       buyer: { select: { name: true } },
+      seller: { select: { name: true } },
       items: { take: 1, include: { product: { select: { name: true } } } },
     },
   })
   if (!order) return
 
   const base = appBaseUrl()
+  const productName = order.items[0]?.product.name ?? 'Produk'
+  const buyerName = order.buyer.name ?? 'Pembeli'
+  const sellerName = order.seller.name ?? 'Penjual'
+  const total = formatIdr(Number(order.total))
+
   await dispatchTelegramEvent('marketplace.order.new', {
     teknisiUserId: order.sellerId,
     vars: {
       kodeOrder: order.orderCode,
-      namaProduk: order.items[0]?.product.name ?? 'Produk',
-      namaPembeli: order.buyer.name ?? 'Pembeli',
-      total: formatIdr(Number(order.total)),
+      namaProduk: productName,
+      namaPembeli: buyerName,
+      total,
       jumlahItem: String(order.items.length),
       metodeBayar: 'wallet',
       linkPesanan: `${base}/teknisi/pesanan`,
+    },
+  })
+
+  await dispatchTelegramEvent('admin.marketplace.order.new', {
+    vars: {
+      kodeOrder: order.orderCode,
+      namaProduk: productName,
+      namaPembeli: buyerName,
+      namaPenjual: sellerName,
+      total,
+      linkDashboard: `${base}/admin/transactions`,
     },
   })
 }
@@ -82,22 +99,39 @@ export async function notifyMarketplaceOrderPaid(orderId: string): Promise<void>
     where: { id: orderId },
     include: {
       buyer: { select: { name: true } },
+      seller: { select: { name: true } },
       items: { take: 1, include: { product: { select: { name: true } } } },
     },
   })
   if (!order || order.status !== 'PAID') return
 
   const base = appBaseUrl()
+  const productName = order.items[0]?.product.name ?? 'Produk'
+  const buyerName = order.buyer.name ?? 'Pembeli'
+  const sellerName = order.seller.name ?? 'Penjual'
+  const total = formatIdr(Number(order.total))
+
   await dispatchTelegramEvent('marketplace.order.paid', {
     teknisiUserId: order.sellerId,
     vars: {
       kodeOrder: order.orderCode,
-      namaProduk: order.items[0]?.product.name ?? 'Produk',
-      namaPembeli: order.buyer.name ?? 'Pembeli',
-      total: formatIdr(Number(order.total)),
+      namaProduk: productName,
+      namaPembeli: buyerName,
+      total,
       jumlahItem: String(order.items.length),
       metodeBayar: 'wallet',
       linkPesanan: `${base}/teknisi/pesanan`,
+    },
+  })
+
+  await dispatchTelegramEvent('admin.marketplace.order.paid', {
+    vars: {
+      kodeOrder: order.orderCode,
+      namaProduk: productName,
+      namaPembeli: buyerName,
+      namaPenjual: sellerName,
+      total,
+      linkDashboard: `${base}/admin/transactions`,
     },
   })
 }
@@ -105,19 +139,35 @@ export async function notifyMarketplaceOrderPaid(orderId: string): Promise<void>
 export async function notifyKonsultasiNew(sessionId: string): Promise<void> {
   const row = await prisma.konsultasiSession.findUnique({
     where: { id: sessionId },
-    include: { user: { select: { name: true } } },
+    include: {
+      user: { select: { name: true } },
+      teknisi: { select: { name: true } },
+    },
   })
   if (!row || row.status !== 'PENDING') return
 
   const base = appBaseUrl()
+  const userName = row.user.name ?? 'Pelanggan'
+  const teknisiName = row.teknisi.name ?? 'Teknisi'
+
   await dispatchTelegramEvent('konsultasi.new', {
     teknisiUserId: row.teknisiId,
     vars: {
-      namaUser: row.user.name ?? 'Pelanggan',
+      namaUser: userName,
       layanan: row.service,
       kodeSesi: row.id,
       remoteId: row.remoteId ?? '',
       linkDashboard: `${base}/teknisi/konsultasi`,
+    },
+  })
+
+  await dispatchTelegramEvent('admin.konsultasi.new', {
+    vars: {
+      namaUser: userName,
+      namaTeknisi: teknisiName,
+      layanan: row.service,
+      kodeSesi: row.id,
+      linkDashboard: `${base}/admin/monitoring?tab=konsultasi`,
     },
   })
 }
@@ -125,20 +175,37 @@ export async function notifyKonsultasiNew(sessionId: string): Promise<void> {
 export async function notifyInspeksiNew(orderId: string): Promise<void> {
   const row = await prisma.inspectionOrder.findUnique({
     where: { id: orderId },
-    include: { user: { select: { name: true } } },
+    include: {
+      user: { select: { name: true } },
+      teknisi: { select: { name: true } },
+    },
   })
   if (!row) return
 
   const base = appBaseUrl()
   const modeLabel = row.mode === 'ONLINE' ? 'online' : 'offline'
+  const userName = row.user.name ?? 'Pelanggan'
+  const teknisiName = row.teknisi.name ?? 'Teknisi'
+
   await dispatchTelegramEvent('inspeksi.new', {
     teknisiUserId: row.teknisiId,
     vars: {
-      namaUser: row.user.name ?? 'Pelanggan',
+      namaUser: userName,
       namaProduk: row.productName,
       mode: modeLabel,
       kodeOrder: row.orderCode,
       linkDashboard: `${base}/teknisi/inspeksi`,
+    },
+  })
+
+  await dispatchTelegramEvent('admin.inspeksi.new', {
+    vars: {
+      namaUser: userName,
+      namaTeknisi: teknisiName,
+      namaProduk: row.productName,
+      mode: modeLabel,
+      kodeOrder: row.orderCode,
+      linkDashboard: `${base}/admin/inspeksi`,
     },
   })
 }
@@ -155,13 +222,63 @@ export async function notifyMarketplacePackagingSubmitted(orderId: string): Prom
   if (!proof || proof.status !== 'PENDING') return
 
   const base = appBaseUrl()
-  await dispatchTelegramEvent('marketplace.packaging.submitted', {
+  const vars = {
+    kodeOrder: proof.order.orderCode,
+    namaPenjual: proof.seller.name ?? 'Penjual',
+    total: formatIdr(Number(proof.order.total)),
+    jumlahFile: String(proof.media.length),
+    linkReview: `${base}/admin/marketplace-packaging`,
+  }
+
+  await dispatchTelegramEvent('marketplace.packaging.submitted', { vars })
+  await dispatchTelegramEvent('admin.marketplace.packaging.submitted', { vars })
+}
+
+export async function notifyAdminUserRegistered(userId: string): Promise<void> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { name: true, email: true, phone: true, role: true },
+  })
+  if (!user || user.role !== 'USER') return
+
+  const base = appBaseUrl()
+  await dispatchTelegramEvent('admin.user.registered', {
     vars: {
-      kodeOrder: proof.order.orderCode,
-      namaPenjual: proof.seller.name ?? 'Penjual',
-      total: formatIdr(Number(proof.order.total)),
-      jumlahFile: String(proof.media.length),
-      linkReview: `${base}/admin/marketplace-packaging`,
+      namaUser: user.name,
+      email: user.email,
+      telepon: user.phone?.trim() || '—',
+      linkDashboard: `${base}/admin/management`,
+    },
+  })
+}
+
+export async function notifyAdminTeknisiRegistered(userId: string): Promise<void> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      name: true,
+      email: true,
+      phone: true,
+      role: true,
+      shippingCityLabel: true,
+      teknisiProfile: { select: { location: true } },
+    },
+  })
+  if (!user || user.role !== 'TEKNISI') return
+
+  const base = appBaseUrl()
+  const kota =
+    user.shippingCityLabel?.trim() ||
+    user.teknisiProfile?.location?.trim() ||
+    '—'
+
+  await dispatchTelegramEvent('admin.teknisi.registered', {
+    vars: {
+      namaTeknisi: user.name,
+      email: user.email,
+      telepon: user.phone?.trim() || '—',
+      kota,
+      linkDashboard: `${base}/admin/approval`,
     },
   })
 }

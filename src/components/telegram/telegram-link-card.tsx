@@ -13,7 +13,37 @@ interface TelegramStatus {
   linkedAt?: string | null
 }
 
-export function TelegramLinkCard() {
+export type TelegramLinkEndpoints = {
+  status: string
+  link: string
+  sync: string
+  unlink: string
+}
+
+const DEFAULT_ENDPOINTS: TelegramLinkEndpoints = {
+  status: '/api/teknisi/telegram/status',
+  link: '/api/teknisi/telegram/link',
+  sync: '/api/teknisi/telegram/sync',
+  unlink: '/api/teknisi/telegram/unlink',
+}
+
+type TelegramLinkCardProps = {
+  endpoints?: TelegramLinkEndpoints
+  subtitle?: string
+  notificationItems?: string[]
+  linkedNote?: string
+}
+
+export function TelegramLinkCard({
+  endpoints = DEFAULT_ENDPOINTS,
+  subtitle = 'Terima notifikasi request urgent langsung ke Telegram',
+  notificationItems = [
+    'Request konsultasi baru',
+    'Request remote & inspeksi',
+    'Pesanan marketplace baru',
+  ],
+  linkedNote = 'Username Telegram Anda ikut tercatat untuk broadcast iklan produk di channel.',
+}: TelegramLinkCardProps) {
   const [status, setStatus] = useState<TelegramStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [linking, setLinking] = useState(false)
@@ -39,7 +69,7 @@ export function TelegramLinkCard() {
 
   const fetchStatus = useCallback(async (): Promise<TelegramStatus | null> => {
     try {
-      const res = await fetch('/api/teknisi/telegram/status', { cache: 'no-store' })
+      const res = await fetch(endpoints.status, { cache: 'no-store' })
       if (!res.ok) throw new Error('Gagal mengecek status')
       const result = await res.json()
       if (result.success && result.data) {
@@ -55,7 +85,7 @@ export function TelegramLinkCard() {
       console.error('Error fetch status:', error)
     }
     return null
-  }, [applyStatus])
+  }, [applyStatus, endpoints.status])
 
   const syncLink = useCallback(
     async (opts?: { silent?: boolean }): Promise<boolean> => {
@@ -66,7 +96,7 @@ export function TelegramLinkCard() {
 
       setSyncing(true)
       try {
-        const res = await fetch('/api/teknisi/telegram/sync', {
+        const res = await fetch(endpoints.sync, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token: verificationToken }),
@@ -103,7 +133,7 @@ export function TelegramLinkCard() {
         setSyncing(false)
       }
     },
-    [verificationToken, fetchStatus],
+    [verificationToken, fetchStatus, endpoints.sync],
   )
 
   useEffect(() => {
@@ -138,7 +168,7 @@ export function TelegramLinkCard() {
   const handleGenerateLink = async () => {
     setLinking(true)
     try {
-      const res = await fetch('/api/teknisi/telegram/link', { method: 'POST' })
+      const res = await fetch(endpoints.link, { method: 'POST' })
       const result = await res.json()
       if (!res.ok || !result.success) {
         throw new Error(result.error || 'Gagal generate link')
@@ -166,7 +196,7 @@ export function TelegramLinkCard() {
 
     setUnlinking(true)
     try {
-      const res = await fetch('/api/teknisi/telegram/unlink', { method: 'DELETE' })
+      const res = await fetch(endpoints.unlink, { method: 'DELETE' })
       const result = await res.json()
       if (!res.ok || !result.success) {
         throw new Error(result.error || 'Gagal unlink')
@@ -213,9 +243,7 @@ export function TelegramLinkCard() {
               <Send className="h-5 w-5 text-primary-600" />
               Telegram Alerts
             </CardTitle>
-            <p className="mt-1 text-sm text-surface-500">
-              Terima notifikasi request urgent langsung ke Telegram
-            </p>
+            <p className="mt-1 text-sm text-surface-500">{subtitle}</p>
           </div>
           <Badge variant={status?.isLinked ? 'success' : 'outline'}>
             {status?.isLinked ? 'Synced' : 'Belum link'}
@@ -249,22 +277,16 @@ export function TelegramLinkCard() {
             <div className="space-y-2">
               <p className="text-xs font-medium text-surface-700">Notifikasi yang akan dikirim:</p>
               <ul className="space-y-1 text-xs text-surface-600">
-                <li className="flex items-center gap-2">
-                  <span className="h-1 w-1 rounded-full bg-primary-500" />
-                  Request konsultasi baru
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-1 w-1 rounded-full bg-primary-500" />
-                  Request remote & inspeksi
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-1 w-1 rounded-full bg-primary-500" />
-                  Pesanan marketplace baru
-                </li>
+                {notificationItems.map((item) => (
+                  <li key={item} className="flex items-center gap-2">
+                    <span className="h-1 w-1 rounded-full bg-primary-500" />
+                    {item}
+                  </li>
+                ))}
               </ul>
-              <p className="text-[11px] text-surface-500">
-                Username Telegram Anda ikut tercatat untuk broadcast iklan produk di channel.
-              </p>
+              {linkedNote ? (
+                <p className="text-[11px] text-surface-500">{linkedNote}</p>
+              ) : null}
             </div>
 
             <Button

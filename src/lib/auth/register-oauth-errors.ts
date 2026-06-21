@@ -5,6 +5,7 @@ export type RegisterOAuthErrorDetails = {
   title: string
   message: string
   showLoginLink?: boolean
+  showLengkapiLink?: boolean
 }
 
 const REGISTER_OAUTH_ERROR_DETAILS: Record<string, Omit<RegisterOAuthErrorDetails, 'code'>> = {
@@ -22,6 +23,12 @@ const REGISTER_OAUTH_ERROR_DETAILS: Record<string, Omit<RegisterOAuthErrorDetail
   google_register_failed: {
     title: 'Pendaftaran Google gagal',
     message: 'Tidak dapat melanjutkan pendaftaran via Google. Coba lagi atau isi formulir di bawah.',
+  },
+  teknisi_profile_incomplete: {
+    title: 'Lengkapi profil teknisi',
+    message:
+      'Akun Google sudah terhubung, tetapi formulir profil teknisi belum lengkap. Lanjutkan pengisian untuk menyelesaikan pendaftaran.',
+    showLengkapiLink: true,
   },
 }
 

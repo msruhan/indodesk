@@ -7,6 +7,7 @@ import { DashboardPageHeader, DashboardPanel } from '@/components/dashboard'
 import { AccountSettingsView } from '@/components/account/account-settings-view'
 import { AdminPlatformSettingsForm } from '@/components/admin/admin-platform-settings-form'
 import { AdminSmtpSettingsForm } from '@/components/admin/admin-smtp-settings-form'
+import { TelegramLinkCard } from '@/components/telegram/telegram-link-card'
 import { Bell, CheckCircle, MessageCircle } from '@/lib/icons'
 
 function SecuritySettingsFallback() {
@@ -72,9 +73,9 @@ export default function AdminSettingsPage() {
             },
             {
               icon: CheckCircle,
-              title: 'Telegram alerts',
+              title: 'Telegram grup/channel',
               status: 'Atur di Pusat Telegram',
-              desc: 'Channel broadcast produk baru & template notifikasi teknisi.',
+              desc: 'Broadcast produk baru & bukti packaging ke grup/channel admin.',
               href: '/admin/telegram-notifications',
             },
           ].map((item) => (
@@ -101,6 +102,29 @@ export default function AdminSettingsPage() {
             </div>
           ))}
         </div>
+      </DashboardPanel>
+
+      <DashboardPanel
+        id="telegram-personal"
+        title="Telegram Alerts (Pribadi Admin)"
+        description="Hubungkan akun Telegram pribadi untuk menerima notifikasi operasional langsung ke DM — pendaftaran, pesanan, pembayaran, konsultasi, inspeksi, dan lainnya."
+      >
+        <TelegramLinkCard
+          endpoints={{
+            status: '/api/admin/telegram/account/status',
+            link: '/api/admin/telegram/account/link',
+            sync: '/api/admin/telegram/account/sync',
+            unlink: '/api/admin/telegram/account/unlink',
+          }}
+          subtitle="Notifikasi penting langsung ke Telegram pribadi Anda"
+          notificationItems={[
+            'Pendaftaran user & teknisi baru',
+            'Pesanan marketplace & pembayaran',
+            'Request konsultasi & inspeksi',
+            'Bukti packaging menunggu review',
+          ]}
+          linkedNote="Template pesan dapat disesuaikan di Pusat Telegram → tab Template Pesan (audience Admin pribadi)."
+        />
       </DashboardPanel>
     </div>
   )

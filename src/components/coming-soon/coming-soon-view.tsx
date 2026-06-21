@@ -13,6 +13,8 @@ import {
 import { SUPPORT_EMAIL } from '@/lib/legal-content'
 import { cn } from '@/lib/utils'
 import { Mail, Sparkles } from '@/lib/icons'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
 
 type ComingSoonViewProps = {
   initialConfig?: ComingSoonConfig
@@ -181,7 +183,29 @@ export function ComingSoonView({
           <motion.div
             variants={fadeUp}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="mt-10 flex flex-col items-center gap-3"
+            className="mt-10 flex flex-col items-center gap-4"
+          >
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <Link href="/register">
+                <Button variant="primary" size="lg">
+                  Daftar sebagai User
+                </Button>
+              </Link>
+              <Link href="/register/teknisi">
+                <Button variant="outline" size="lg">
+                  Daftar sebagai Teknisi
+                </Button>
+              </Link>
+            </div>
+            <p className="max-w-md text-xs leading-relaxed text-surface-500">
+              Pendaftaran sudah dibuka. Login dashboard akan tersedia setelah peluncuran resmi.
+            </p>
+          </motion.div>
+
+          <motion.div
+            variants={fadeUp}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="mt-8 flex flex-col items-center gap-3"
           >
             <p className="text-xs font-medium uppercase tracking-[0.18em] text-surface-400">
               Butuh bantuan?

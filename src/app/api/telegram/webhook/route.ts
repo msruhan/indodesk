@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { linkTeknisiTelegramAccount } from '@/lib/telegram/link-account'
+import { linkTelegramAccount } from '@/lib/telegram/link-account'
 import { sendTelegramMessage, type TelegramUpdate } from '@/lib/telegram'
 import { validateTelegramWebhookSecret } from '@/lib/telegram/webhook-auth'
 
@@ -31,13 +31,13 @@ export async function POST(req: NextRequest) {
         if (!token) {
           await sendTelegramMessage(
             chatId,
-            '👋 Halo! Untuk menghubungkan akun Bantoo, buka dashboard teknisi → Pengaturan → Telegram Alerts, lalu klik *Hubungkan Telegram*.\n\nJangan ketik /start manual — gunakan tombol dari web agar token verifikasi terkirim otomatis.',
+            '👋 Halo! Untuk menghubungkan akun Bantoo:\n\n• *Teknisi:* dashboard → Pengaturan → Telegram Alerts\n• *Admin:* dashboard admin → Profil → Telegram Alerts\n\nKlik *Hubungkan Telegram* di web — jangan ketik /start manual.',
             { parse_mode: 'Markdown' },
           )
           return NextResponse.json({ success: true })
         }
 
-        const result = await linkTeknisiTelegramAccount({
+        const result = await linkTelegramAccount({
           token,
           chatId,
           username: telegramUser?.username ?? null,
@@ -54,6 +54,11 @@ export async function POST(req: NextRequest) {
               chatId,
               '❌ Profil teknisi tidak ditemukan.\n\nPastikan Anda sudah terdaftar sebagai teknisi.',
             )
+          } else if (result.reason === 'unsupported_role') {
+            await sendTelegramMessage(
+              chatId,
+              '❌ Role akun tidak mendukung notifikasi Telegram ini.',
+            )
           }
           return NextResponse.json({ success: true })
         }
@@ -67,14 +72,14 @@ export async function POST(req: NextRequest) {
           `
 📱 *Bantoo Bot*
 
-Bot ini digunakan untuk mengirim notifikasi ke teknisi.
+Bot ini mengirim notifikasi operasional ke teknisi dan admin.
 
 *Perintah:*
-/start <token> - Hubungkan akun dengan token verifikasi dari dashboard
+/start <token> - Hubungkan akun dengan token dari dashboard
 /status - Cek status koneksi
 /help - Tampilkan bantuan ini
 
-Untuk menghubungkan akun, buka dashboard Bantoo → Pengaturan → Telegram Alerts, lalu klik "Hubungkan Telegram".
+Hubungkan dari dashboard Bantoo (teknisi atau admin) lalu klik "Hubungkan Telegram".
           `.trim(),
           { parse_mode: 'Markdown' },
         )
@@ -82,29 +87,48 @@ Untuk menghubungkan akun, buka dashboard Bantoo → Pengaturan → Telegram Aler
       }
 
       if (text === '/status') {
-        const profile = await prisma.teknisiProfile.findFirst({
+        const teknisiProfile = await prisma.teknisiProfile.findFirst({
           where: { telegramChatId: String(chatId) },
           include: { user: true },
         })
 
-        if (!profile) {
+        const adminUser = teknisiProfile
+          ? null
+          : await prisma.user.findFirst({
+              where: {
+                telegramChatId: String(chatId),
+                role: { in: ['ADMIN', 'USER'] },
+              },
+            })
+
+        const linkedUser = teknisiProfile?.user ?? adminUser
+
+        if (!linkedUser) {
           await sendTelegramMessage(
             chatId,
             '❌ Akun Telegram Anda belum terhubung dengan Bantoo.\n\nSilakan hubungkan dari dashboard.',
           )
         } else {
-          const tgLine = profile.telegramUsername
-            ? `\n📱 Telegram: @${profile.telegramUsername}`
-            : ''
+          const tgUsername =
+            teknisiProfile?.telegramUsername ?? adminUser?.telegramUsername ?? null
+          const tgLine = tgUsername ? `\n📱 Telegram: @${tgUsername}` : ''
+          const roleLabel =
+            linkedUser.role === 'ADMIN'
+              ? 'Admin'
+              : linkedUser.role === 'TEKNISI'
+                ? 'Teknisi'
+                : 'User'
+
           await sendTelegramMessage(
             chatId,
             `
 ✅ *Akun Terhubung*
 
-👤 Nama: ${profile.user.name}
-📧 Email: ${profile.user.email}${tgLine}
+👤 Nama: ${linkedUser.name}
+📧 Email: ${linkedUser.email}
+🏷 Role: ${roleLabel}${tgLine}
 
-Anda akan menerima notifikasi untuk request baru dan update penting.
+Anda akan menerima notifikasi untuk event penting di platform.
             `.trim(),
             { parse_mode: 'Markdown' },
           )

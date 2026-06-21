@@ -10,7 +10,7 @@ export type EffectiveTelegramTemplate = {
   eventKey: TelegramEventKey
   label: string
   description: string
-  audience: 'CHANNEL' | 'TEKNISI' | 'ADMIN'
+  audience: 'CHANNEL' | 'TEKNISI' | 'ADMIN' | 'ADMINS'
   placeholders: readonly string[]
   body: string
   isEnabled: boolean

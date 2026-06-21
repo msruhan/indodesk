@@ -76,6 +76,31 @@ export async function dispatchTelegramEvent(
       return
     }
 
+    if (audience === 'ADMINS') {
+      const admins = await prisma.user.findMany({
+        where: {
+          role: 'ADMIN',
+          isActive: true,
+          telegramChatId: { not: null },
+        },
+        select: { telegramChatId: true },
+      })
+
+      if (admins.length === 0) return
+
+      await Promise.all(
+        admins.map((admin) =>
+          deliverTelegramNotification(
+            admin.telegramChatId!,
+            text,
+            context.photoUrls,
+            eventKey,
+          ),
+        ),
+      )
+      return
+    }
+
     const teknisiUserId = context.teknisiUserId
     if (!teknisiUserId) {
       console.warn(`[Telegram] teknisiUserId wajib untuk event ${eventKey}`)

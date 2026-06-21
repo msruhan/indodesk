@@ -21,6 +21,7 @@ import { BrandLogo } from '@/components/brand/brand-logo'
 import { GoogleAuthDivider } from '@/components/auth/google-auth-divider'
 import { OAuthLoginErrorAlert } from '@/components/auth/oauth-login-error-alert'
 import { loginOAuthErrorDetails, type OAuthLoginErrorDetails } from '@/lib/auth/login-oauth-errors'
+import { COMING_SOON_LOGIN_BLOCKED_MESSAGE, COMING_SOON_LOGIN_BLOCKED_TITLE } from '@/lib/coming-soon-shared'
 import { AuroraBackground } from '@/components/motion'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
@@ -319,7 +320,7 @@ function LoginForm() {
                   : needs2FA
                     ? 'Kode 6 digit dari Authenticator, atau kode cadangan (XXXX-XXXX)'
                     : comingSoonActive
-                      ? 'Soft launch — login khusus admin'
+                      ? 'Soft launch — login pengguna & teknisi belum dibuka'
                       : 'Platform ekosistem teknisi handphone Indonesia'}
               </CardDescription>
             </div>
@@ -330,8 +331,24 @@ function LoginForm() {
             <VerifyStatusBanner />
             {comingSoonActive && !resetToken && (
               <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                Platform dalam persiapan peluncuran. Pendaftaran user/teknisi ditutup sementara.
-                Hanya akun <strong>admin</strong> yang dapat masuk.
+                <p className="font-semibold">{COMING_SOON_LOGIN_BLOCKED_TITLE}</p>
+                <p className="mt-1 leading-relaxed">
+                  Pendaftaran user dan teknisi tetap dibuka. Login ke dashboard belum tersedia sampai
+                  peluncuran resmi — kami akan memberitahu Anda segera setelah platform siap.
+                </p>
+                <p className="mt-2">
+                  <Link href="/coming-soon" className="font-medium text-primary-700 hover:underline">
+                    Lihat halaman Coming Soon
+                  </Link>
+                  {' · '}
+                  <Link href="/register" className="font-medium text-primary-700 hover:underline">
+                    Daftar user
+                  </Link>
+                  {' · '}
+                  <Link href="/register/teknisi" className="font-medium text-primary-700 hover:underline">
+                    Daftar teknisi
+                  </Link>
+                </p>
               </div>
             )}
             {resetToken ? (
@@ -345,8 +362,21 @@ function LoginForm() {
               )}
               {oauthError && <OAuthLoginErrorAlert details={oauthError} />}
               {error && !oauthError && (
-                <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                  {error}
+                <div
+                  className={
+                    error === COMING_SOON_LOGIN_BLOCKED_MESSAGE
+                      ? 'rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900'
+                      : 'rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700'
+                  }
+                >
+                  {error === COMING_SOON_LOGIN_BLOCKED_MESSAGE ? (
+                    <>
+                      <p className="font-semibold">{COMING_SOON_LOGIN_BLOCKED_TITLE}</p>
+                      <p className="mt-1 leading-relaxed">{error}</p>
+                    </>
+                  ) : (
+                    error
+                  )}
                 </div>
               )}
               {info && (
@@ -465,24 +495,22 @@ function LoginForm() {
           </CardContent>
 
           <CardFooter className="flex flex-col gap-3">
-            {!comingSoonActive ? (
-              <div className="text-center text-sm text-surface-600">
-                Belum punya akun?{' '}
-                <Link
-                  href="/register"
-                  className="font-medium text-primary-700 hover:text-primary-800 hover:underline underline-offset-4"
-                >
-                  Daftar user
-                </Link>
-                {' · '}
-                <Link
-                  href="/register/teknisi"
-                  className="font-medium text-primary-700 hover:text-primary-800 hover:underline underline-offset-4"
-                >
-                  Daftar teknisi
-                </Link>
-              </div>
-            ) : null}
+            <div className="text-center text-sm text-surface-600">
+              Belum punya akun?{' '}
+              <Link
+                href="/register"
+                className="font-medium text-primary-700 hover:text-primary-800 hover:underline underline-offset-4"
+              >
+                Daftar user
+              </Link>
+              {' · '}
+              <Link
+                href="/register/teknisi"
+                className="font-medium text-primary-700 hover:text-primary-800 hover:underline underline-offset-4"
+              >
+                Daftar teknisi
+              </Link>
+            </div>
             <Link
               href={comingSoonActive ? '/coming-soon' : '/'}
               className="text-center text-sm text-surface-500 hover:text-ink transition-colors"

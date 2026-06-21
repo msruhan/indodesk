@@ -91,9 +91,9 @@ export default function AdminVisibilityPage() {
           <li className="flex items-start gap-2">
             <span className="mt-1 inline-flex h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary-500" />
             <span>
-              <strong>Coming Soon</strong> mengarahkan seluruh halaman publik (landing, marketplace,
-              login, register, dll.) ke halaman soft launch. Hanya <strong>Admin</strong> yang dapat
-              bypass; teknisi dan user juga akan diarahkan sampai mode dimatikan.
+              <strong>Coming Soon</strong> mengarahkan halaman publik ke soft launch. Pendaftaran
+              user &amp; teknisi tetap dapat diakses; login dashboard untuk user/teknisi diblokir
+              sampai mode dimatikan. Hanya <strong>Admin</strong> yang dapat login dan bypass.
             </span>
           </li>
           <li className="flex items-start gap-2">

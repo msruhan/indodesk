@@ -4,25 +4,16 @@ import { extractRequestContext, logAccountEvent } from '@/lib/activity-log'
 import { getClientIp, RATE_LIMITS, rateLimitResponse, withRateLimit } from '@/lib/rate-limit-store'
 import {
   buildApplicationData,
+  normalizeRegisterSpecialty,
   teknisiRegisterProfileSchema,
+  teknisiWorkCityFields,
 } from '@/lib/teknisi-registration'
 import {
   clearTeknisiRegisterCompleteCookie,
   readTeknisiRegisterCompleteUserId,
 } from '@/lib/auth/google-register-cookie'
-import {
-  COMING_SOON_ADMIN_ONLY_LOGIN_MESSAGE,
-  isComingSoonEnabled,
-} from '@/lib/coming-soon-server'
-
+import { notifyAdminTeknisiRegistered } from '@/lib/telegram/notify'
 export async function POST(req: Request) {
-  if (await isComingSoonEnabled()) {
-    return NextResponse.json(
-      { success: false, error: COMING_SOON_ADMIN_ONLY_LOGIN_MESSAGE, code: 'COMING_SOON' },
-      { status: 503 },
-    )
-  }
-
   const ip = getClientIp(req)
   const rl = await withRateLimit(req, ['auth', 'register-teknisi-google', ip], RATE_LIMITS.auth)
   if (!rl.allowed) {
@@ -70,16 +61,20 @@ export async function POST(req: Request) {
     }
 
     const applicationData = buildApplicationData(data)
+    const specialty = normalizeRegisterSpecialty(data.specialty)
+    const workCity = teknisiWorkCityFields(data)
     await prisma.user.update({
       where: { id: user.id },
       data: {
         phone,
+        shippingCityId: workCity.shippingCityId,
+        shippingCityLabel: workCity.shippingCityLabel,
         isActive: false,
         teknisiProfile: {
           create: {
-            specialty: [],
+            specialty,
             experience: data.experience.trim(),
-            location: data.location.trim(),
+            location: workCity.location,
             description: data.motivation.trim(),
             isVerified: false,
             verificationStatus: 'PENDING',
@@ -101,6 +96,10 @@ export async function POST(req: Request) {
       ip: ctx.ip,
       userAgent: ctx.userAgent,
       metadata: { role: user.role, verificationStatus: 'PENDING', provider: 'google' },
+    })
+
+    void notifyAdminTeknisiRegistered(user.id).catch((e) => {
+      console.error('[REGISTER_TEKNISI_GOOGLE_ADMIN_TELEGRAM]', e)
     })
 
     return NextResponse.json(

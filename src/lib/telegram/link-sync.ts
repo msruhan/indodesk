@@ -2,7 +2,7 @@ import 'server-only'
 
 import { createHash } from 'node:crypto'
 import { prisma } from '@/lib/db'
-import { linkTeknisiTelegramAccount } from '@/lib/telegram/link-account'
+import { getTelegramLinkSnapshot, linkTelegramAccount } from '@/lib/telegram/link-account'
 import type { TelegramUpdate } from '@/lib/telegram'
 
 const TELEGRAM_API_BASE = 'https://api.telegram.org'
@@ -50,15 +50,14 @@ export async function syncTelegramLinkFromUpdates(
   if (!row || row.userId !== userId) {
     return { linked: false, error: 'Token tidak valid untuk akun ini' }
   }
+
   if (row.usedAt) {
-    const profile = await prisma.teknisiProfile.findUnique({
-      where: { userId },
-      select: { telegramUsername: true, telegramChatId: true },
-    })
-    if (profile?.telegramChatId) {
-      return { linked: true, username: profile.telegramUsername }
+    const snapshot = await getTelegramLinkSnapshot(userId)
+    if (snapshot?.isLinked) {
+      return { linked: true, username: snapshot.username }
     }
   }
+
   if (row.expiresAt < new Date()) {
     return { linked: false, error: 'Token kedaluwarsa — buat link baru' }
   }
@@ -75,7 +74,7 @@ export async function syncTelegramLinkFromUpdates(
     const from = update.message?.from
     if (!chatId || !from) continue
 
-    const result = await linkTeknisiTelegramAccount({
+    const result = await linkTelegramAccount({
       token: trimmed,
       chatId,
       username: from.username ?? null,
@@ -84,18 +83,21 @@ export async function syncTelegramLinkFromUpdates(
     if (result.ok) {
       return { linked: true, username: result.username }
     }
+
     if (result.reason === 'invalid_token') {
-      const profile = await prisma.teknisiProfile.findUnique({
-        where: { userId },
-        select: { telegramUsername: true, telegramChatId: true },
-      })
-      if (profile?.telegramChatId) {
-        return { linked: true, username: profile.telegramUsername }
+      const snapshot = await getTelegramLinkSnapshot(userId)
+      if (snapshot?.isLinked) {
+        return { linked: true, username: snapshot.username }
       }
       return { linked: false, error: 'Token sudah dipakai atau kedaluwarsa' }
     }
+
     if (result.reason === 'no_profile') {
       return { linked: false, error: 'Profil teknisi tidak ditemukan' }
+    }
+
+    if (result.reason === 'unsupported_role') {
+      return { linked: false, error: 'Role akun tidak mendukung Telegram' }
     }
   }
 

@@ -3,18 +3,15 @@ import { getTelegramLinkSnapshot } from '@/lib/telegram/link-account'
 
 export const dynamic = 'force-dynamic'
 
-/**
- * GET /api/teknisi/telegram/status
- * Check if Telegram is linked for current teknisi
- */
+/** GET /api/admin/telegram/account/status */
 export async function GET() {
-  const { session, error } = await requireApiRole(['TEKNISI'])
+  const { session, error } = await requireApiRole(['ADMIN'])
   if (error) return error
 
   try {
     const snapshot = await getTelegramLinkSnapshot(session.user.id)
     if (!snapshot) {
-      return apiError('Profil teknisi tidak ditemukan', 404)
+      return apiError('Akun admin tidak ditemukan', 404)
     }
 
     return apiSuccess({
@@ -23,7 +20,7 @@ export async function GET() {
       linkedAt: snapshot.linkedAt?.toISOString() ?? null,
     })
   } catch (e) {
-    console.error('[TELEGRAM_STATUS_ERROR]', e)
+    console.error('[ADMIN_TELEGRAM_STATUS_ERROR]', e)
     return apiError('Gagal mengambil status Telegram', 500)
   }
 }

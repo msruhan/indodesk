@@ -4,20 +4,9 @@ import { prisma } from '@/lib/db'
 import { registerSchema } from '@/lib/validations/auth'
 import { extractRequestContext, logAccountEvent } from '@/lib/activity-log'
 import { sendEmailVerification } from '@/lib/email-verification'
+import { notifyAdminUserRegistered } from '@/lib/telegram/notify'
 import { getClientIp, RATE_LIMITS, withRateLimit, rateLimitResponse } from '@/lib/rate-limit-store'
-import {
-  COMING_SOON_ADMIN_ONLY_LOGIN_MESSAGE,
-  isComingSoonEnabled,
-} from '@/lib/coming-soon-server'
-
 export async function POST(req: Request) {
-  if (await isComingSoonEnabled()) {
-    return NextResponse.json(
-      { success: false, error: COMING_SOON_ADMIN_ONLY_LOGIN_MESSAGE, code: 'COMING_SOON' },
-      { status: 503 },
-    )
-  }
-
   // Rate limit: 10 registrations per 15 minutes per IP
   const ip = getClientIp(req)
   const rl = await withRateLimit(req, ['auth', 'register', ip], RATE_LIMITS.auth)
@@ -85,6 +74,10 @@ export async function POST(req: Request) {
 
     void sendEmailVerification(user.id, user.email).catch((e) => {
       console.error('[REGISTER_SEND_VERIFICATION]', e)
+    })
+
+    void notifyAdminUserRegistered(user.id).catch((e) => {
+      console.error('[REGISTER_ADMIN_TELEGRAM]', e)
     })
 
     return NextResponse.json(

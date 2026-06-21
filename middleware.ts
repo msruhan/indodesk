@@ -129,9 +129,11 @@ export const middleware = auth(async (req) => {
   ) {
     const comingSoon = await getCachedComingSoon()
     if (comingSoon?.enabled && pathname !== '/coming-soon' && pathname !== '/login') {
-      return finalize(req, pathname, () =>
-        NextResponse.redirect(new URL('/coming-soon', req.nextUrl.origin)),
-      )
+      if (!pathname.startsWith('/register/') && pathname !== '/register') {
+        return finalize(req, pathname, () =>
+          NextResponse.redirect(new URL('/coming-soon', req.nextUrl.origin)),
+        )
+      }
     }
   }
 

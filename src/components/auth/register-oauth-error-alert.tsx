@@ -44,6 +44,14 @@ function RegisterOAuthErrorAlertInner() {
           Ke halaman login
         </Link>
       )}
+      {details.showLengkapiLink && (
+        <Link
+          href="/register/teknisi/lengkapi"
+          className="mt-3 inline-flex items-center rounded-full border border-primary-300 bg-white px-3 py-1 text-[11px] font-semibold text-primary-800 hover:bg-primary-50"
+        >
+          Lengkapi profil teknisi
+        </Link>
+      )}
     </div>
   )
 }

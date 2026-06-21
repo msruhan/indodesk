@@ -22,6 +22,12 @@ import {
 import { isGoogleAuthEnabled } from '@/lib/google-auth-enabled'
 import { evaluateGoogleSignIn } from '@/lib/auth/google-oauth-policy'
 import { clearGoogleLinkIntentCookie } from '@/lib/auth/google-link-cookie'
+import {
+  clearGoogleRegisterIntentCookie,
+  readGoogleRegisterIntent,
+  registerErrorPath,
+} from '@/lib/auth/google-register-cookie'
+import { finalizeGoogleRegistration } from '@/lib/auth/google-oauth-registration'
 
 const googleClientId = process.env.AUTH_GOOGLE_ID
 const googleClientSecret = process.env.AUTH_GOOGLE_SECRET
@@ -43,7 +49,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           providerAccountId: account.providerAccountId,
         })
         if (!decision.ok) {
-          return `/login?error=${encodeURIComponent(decision.error)}`
+          if (decision.error === 'teknisi_profile_incomplete') {
+            return `/register/teknisi/lengkapi?error=${encodeURIComponent(decision.error)}`
+          }
+          const role = await readGoogleRegisterIntent()
+          const errorPath = registerErrorPath(role)
+          return `${errorPath}?error=${encodeURIComponent(decision.error)}`
+        }
+        if (decision.mode === 'register') {
+          return true
         }
         return true
       }
@@ -128,6 +142,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         create: { userId: user.id, balance: 0 },
         update: {},
       })
+
+      const registerRole = await readGoogleRegisterIntent()
+      if (registerRole) {
+        await finalizeGoogleRegistration(user.id, registerRole, {
+          name: user.name,
+          email: user.email,
+          image: user.image,
+        })
+        await clearGoogleRegisterIntentCookie()
+      }
     },
     async signIn({ user, account }) {
       const actor = user as { id?: string; role?: 'ADMIN' | 'TEKNISI' | 'USER' }

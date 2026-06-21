@@ -13,13 +13,16 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { authFieldIconClass } from '@/components/ui/auth-field-icon'
-import { Mail, User, Phone, MapPin, Wrench } from '@/lib/icons'
+import { Mail, User, Phone, Wrench } from '@/lib/icons'
 import { AuroraBackground } from '@/components/motion'
 import { motion } from 'framer-motion'
 import {
   TEKNISI_WORKSHOP_TYPES,
   type TeknisiWorkshopType,
 } from '@/lib/teknisi-registration'
+import { TeknisiSpecialtyField } from '@/components/auth/teknisi-specialty-field'
+import { WorkCitySelect, type WorkCityValue } from '@/components/shipping/work-city-select'
+import { RegisterOAuthErrorAlert } from '@/components/auth/register-oauth-error-alert'
 
 type TeknisiLengkapiFormProps = {
   name: string
@@ -33,10 +36,12 @@ export function TeknisiLengkapiForm({ name, email }: TeknisiLengkapiFormProps) {
   const [error, setError] = useState<string | null>(null)
 
   const [phone, setPhone] = useState('')
-  const [location, setLocation] = useState('')
+  const [workCity, setWorkCity] = useState<WorkCityValue>({ cityId: null, cityLabel: null })
+  const [cityError, setCityError] = useState<string | null>(null)
   const [experience, setExperience] = useState('')
   const [workshopType, setWorkshopType] = useState<TeknisiWorkshopType | ''>('')
   const [brandsHandled, setBrandsHandled] = useState('')
+  const [specialty, setSpecialty] = useState<string[]>([])
   const [portfolioUrl, setPortfolioUrl] = useState('')
   const [motivation, setMotivation] = useState('')
   const [confirmTechnician, setConfirmTechnician] = useState(false)
@@ -44,6 +49,18 @@ export function TeknisiLengkapiForm({ name, email }: TeknisiLengkapiFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+
+    if (specialty.length === 0) {
+      setError('Pilih minimal satu spesialisasi')
+      return
+    }
+
+    if (!workCity.cityId || !workCity.cityLabel) {
+      setCityError('Kota wajib dipilih')
+      return
+    }
+    setCityError(null)
+
     setIsLoading(true)
 
     try {
@@ -52,10 +69,12 @@ export function TeknisiLengkapiForm({ name, email }: TeknisiLengkapiFormProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           phone,
-          location,
+          shippingCityId: workCity.cityId,
+          shippingCityLabel: workCity.cityLabel,
           experience,
           workshopType,
           brandsHandled,
+          specialty,
           portfolioUrl,
           motivation,
           confirmTechnician,
@@ -157,6 +176,8 @@ export function TeknisiLengkapiForm({ name, email }: TeknisiLengkapiFormProps) {
               </div>
             </div>
 
+            <RegisterOAuthErrorAlert />
+
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
                 <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
@@ -188,22 +209,15 @@ export function TeknisiLengkapiForm({ name, email }: TeknisiLengkapiFormProps) {
               <section className="space-y-4 border-t border-surface-100 pt-6">
                 <h3 className="text-sm font-semibold text-ink">Profil Teknisi</h3>
 
-                <div className="space-y-2">
-                  <label htmlFor="location" className="text-sm font-medium text-surface-700">
-                    Kota / Lokasi kerja <span className="text-rose-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <MapPin className={authFieldIconClass} strokeWidth={2} aria-hidden />
-                    <Input
-                      id="location"
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      className="pl-11"
-                      placeholder="Contoh: Jakarta Selatan, Surabaya"
-                      required
-                    />
-                  </div>
-                </div>
+                <WorkCitySelect
+                  value={workCity}
+                  onChange={(next) => {
+                    setWorkCity(next)
+                    if (next.cityId) setCityError(null)
+                  }}
+                  cityLabel="Kota / Lokasi kerja"
+                  cityError={cityError}
+                />
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
@@ -237,6 +251,13 @@ export function TeknisiLengkapiForm({ name, email }: TeknisiLengkapiFormProps) {
                       ))}
                     </select>
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="specialty" className="text-sm font-medium text-surface-700">
+                    Spesialisasi <span className="text-rose-500">*</span>
+                  </label>
+                  <TeknisiSpecialtyField id="specialty" value={specialty} onChange={setSpecialty} />
                 </div>
 
                 <div className="space-y-2">

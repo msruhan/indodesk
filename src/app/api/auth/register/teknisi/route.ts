@@ -5,22 +5,13 @@ import { extractRequestContext, logAccountEvent } from '@/lib/activity-log'
 import { getClientIp, RATE_LIMITS, withRateLimit, rateLimitResponse } from '@/lib/rate-limit-store'
 import {
   buildApplicationData,
+  normalizeRegisterSpecialty,
   teknisiRegisterSchema,
+  teknisiWorkCityFields,
 } from '@/lib/teknisi-registration'
 import { sendEmailVerification } from '@/lib/email-verification'
-import {
-  COMING_SOON_ADMIN_ONLY_LOGIN_MESSAGE,
-  isComingSoonEnabled,
-} from '@/lib/coming-soon-server'
-
+import { notifyAdminTeknisiRegistered } from '@/lib/telegram/notify'
 export async function POST(req: Request) {
-  if (await isComingSoonEnabled()) {
-    return NextResponse.json(
-      { success: false, error: COMING_SOON_ADMIN_ONLY_LOGIN_MESSAGE, code: 'COMING_SOON' },
-      { status: 503 },
-    )
-  }
-
   const ip = getClientIp(req)
   const rl = await withRateLimit(req, ['auth', 'register-teknisi', ip], RATE_LIMITS.auth)
   if (!rl.allowed) {
@@ -56,6 +47,8 @@ export async function POST(req: Request) {
 
     const hashedPassword = await hash(data.password, 12)
     const applicationData = buildApplicationData(data)
+    const specialty = normalizeRegisterSpecialty(data.specialty)
+    const workCity = teknisiWorkCityFields(data)
     const user = await prisma.user.create({
       data: {
         name: data.name.trim(),
@@ -63,13 +56,15 @@ export async function POST(req: Request) {
         password: hashedPassword,
         role: 'TEKNISI',
         phone,
+        shippingCityId: workCity.shippingCityId,
+        shippingCityLabel: workCity.shippingCityLabel,
         isActive: false,
         wallet: { create: { balance: 0 } },
         teknisiProfile: {
           create: {
-            specialty: [],
+            specialty,
             experience: data.experience.trim(),
-            location: data.location.trim(),
+            location: workCity.location,
             description: data.motivation.trim(),
             isVerified: false,
             verificationStatus: 'PENDING',
@@ -99,6 +94,10 @@ export async function POST(req: Request) {
 
     void sendEmailVerification(user.id, user.email).catch((e) => {
       console.error('[REGISTER_TEKNISI_SEND_VERIFICATION]', e)
+    })
+
+    void notifyAdminTeknisiRegistered(user.id).catch((e) => {
+      console.error('[REGISTER_TEKNISI_ADMIN_TELEGRAM]', e)
     })
 
     return NextResponse.json(

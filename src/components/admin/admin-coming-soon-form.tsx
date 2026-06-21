@@ -160,7 +160,7 @@ export function AdminComingSoonForm() {
             <p className="mt-1 max-w-xl text-xs leading-relaxed text-surface-600">
               Saat diaktifkan, seluruh halaman publik diarahkan ke{' '}
               <code className="rounded bg-surface-100 px-1 py-0.5 text-[11px]">/coming-soon</code>.
-              Admin tetap dapat mengakses dashboard. Cocok untuk soft launch sebelum go-live penuh.
+              Pendaftaran user &amp; teknisi tetap dibuka; login dashboard hanya untuk admin.
             </p>
             <p className="mt-2 max-w-xl text-xs leading-relaxed text-surface-500">
               Jika terlogout saat mode aktif, buka{' '}
