@@ -8,6 +8,16 @@ function appBaseUrl(): string {
   return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') ?? 'http://localhost:3000'
 }
 
+/** Ringkas deskripsi produk agar caption Telegram tidak melebihi batas. */
+function formatTelegramProductDescription(description: string | null | undefined): string {
+  const text = description?.trim()
+  if (!text) return '—'
+  const normalized = text.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n')
+  const max = 400
+  if (normalized.length <= max) return normalized
+  return `${normalized.slice(0, max - 1)}…`
+}
+
 export async function notifyProductPublished(productId: string): Promise<void> {
   const product = await prisma.product.findUnique({
     where: { id: productId },
@@ -35,6 +45,7 @@ export async function notifyProductPublished(productId: string): Promise<void> {
       namaProduk: product.name,
       harga: formatIdr(Number(product.price)),
       kategori: categoryLabel(product.category),
+      deskripsiproduk: formatTelegramProductDescription(product.description),
       namaToko: product.seller.teknisiStore?.name ?? product.seller.name ?? 'Toko',
       namaTeknisi: product.seller.name ?? 'Teknisi',
       usernameTelegram,

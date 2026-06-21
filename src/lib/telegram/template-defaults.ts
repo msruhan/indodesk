@@ -32,6 +32,7 @@ const PRODUCT_PUBLISHED_BODY = `🛍️ *Produk Baru di Marketplace!*
 
 📦 {{namaProduk}}
 💰 {{harga}}
+📝 {{deskripsiproduk}}
 🏪 Toko: {{namaToko}}
 👤 Penjual: {{namaTeknisi}}
 📱 Telegram: {{usernameTelegram}}
@@ -157,6 +158,7 @@ export const TELEGRAM_EVENT_CATALOG: Record<TelegramEventKey, TelegramEventDefin
       'namaProduk',
       'harga',
       'kategori',
+      'deskripsiproduk',
       'namaToko',
       'namaTeknisi',
       'usernameTelegram',
@@ -167,6 +169,7 @@ export const TELEGRAM_EVENT_CATALOG: Record<TelegramEventKey, TelegramEventDefin
       namaProduk: 'iPhone 13 Pro 256GB',
       harga: 'Rp 8.500.000',
       kategori: 'Smartphone',
+      deskripsiproduk: 'Kondisi mulus 98%, baterai 87%, Face ID normal, bebas iCloud.',
       namaToko: 'Ahmad Cell',
       namaTeknisi: 'Ahmad Teknisi',
       usernameTelegram: '@ahmad_teknisi',
