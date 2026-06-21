@@ -128,7 +128,12 @@ export const middleware = auth(async (req) => {
     session.user.role !== 'ADMIN'
   ) {
     const comingSoon = await getCachedComingSoon()
-    if (comingSoon?.enabled && pathname !== '/coming-soon' && pathname !== '/login') {
+    if (
+      comingSoon?.enabled &&
+      pathname !== '/coming-soon' &&
+      pathname !== '/login' &&
+      !pathname.startsWith('/api/')
+    ) {
       if (!pathname.startsWith('/register/') && pathname !== '/register') {
         return finalize(req, pathname, () =>
           NextResponse.redirect(new URL('/coming-soon', req.nextUrl.origin)),

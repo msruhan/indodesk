@@ -46,6 +46,8 @@ export function isComingSoonBypassPath(pathname: string): boolean {
   if (pathname === '/register' || pathname.startsWith('/register/')) return true
   if (pathname.startsWith('/api/auth/register')) return true
   if (pathname.startsWith('/api/auth/google/register-intent')) return true
+  /** Lokasi provinsi/kota untuk formulir registrasi teknisi & checkout */
+  if (pathname.startsWith('/api/shipping/locations')) return true
   if (pathname.startsWith('/api/auth')) return true
   /** Logo & aset statis publik — harus tetap bisa dimuat di halaman coming soon */
   if (pathname.startsWith('/icon/')) return true

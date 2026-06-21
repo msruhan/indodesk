@@ -25,6 +25,7 @@ import { GoogleRegisterDivider } from '@/components/auth/google-register-divider
 import { RegisterOAuthErrorAlert } from '@/components/auth/register-oauth-error-alert'
 import { TeknisiSpecialtyField } from '@/components/auth/teknisi-specialty-field'
 import { WorkCitySelect, type WorkCityValue } from '@/components/shipping/work-city-select'
+import { useComingSoonActive } from '@/hooks/use-coming-soon-active'
 import {
   RegistrationClosedNotice,
   useRegistrationFlags,
@@ -33,6 +34,7 @@ import {
 export default function RegisterTeknisiPage() {
   const { registerTeknisi } = useAuth()
   const registrationFlags = useRegistrationFlags()
+  const comingSoonActive = useComingSoonActive()
   const [submitted, setSubmitted] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -422,15 +424,17 @@ export default function RegisterTeknisiPage() {
                 Formulir user
               </Link>
             </motion.div>
-            <div className="text-center text-sm text-surface-600">
-              Sudah punya akun?{' '}
-              <Link
-                href="/login"
-                className="font-medium text-primary-700 hover:underline underline-offset-4"
-              >
-                Masuk di sini
-              </Link>
-            </div>
+            {!comingSoonActive && (
+              <div className="text-center text-sm text-surface-600">
+                Sudah punya akun?{' '}
+                <Link
+                  href="/login"
+                  className="font-medium text-primary-700 hover:underline underline-offset-4"
+                >
+                  Masuk di sini
+                </Link>
+              </div>
+            )}
           </CardFooter>
         </Card>
       </motion.div>

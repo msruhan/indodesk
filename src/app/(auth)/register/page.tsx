@@ -24,10 +24,12 @@ import {
   RegistrationClosedNotice,
   useRegistrationFlags,
 } from '@/components/auth/registration-closed-notice'
+import { useComingSoonActive } from '@/hooks/use-coming-soon-active'
 
 export default function RegisterPage() {
   const { register } = useAuth()
   const registrationFlags = useRegistrationFlags()
+  const comingSoonActive = useComingSoonActive()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -246,17 +248,19 @@ export default function RegisterPage() {
           </CardContent>
 
           <CardFooter className="flex flex-col gap-3">
-            <div className="text-center text-sm text-surface-600">
-              Sudah punya akun?{' '}
-              <Link
-                href="/login"
-                className="font-medium text-primary-700 hover:text-primary-800 hover:underline underline-offset-4"
-              >
-                Masuk di sini
-              </Link>
-            </div>
+            {!comingSoonActive && (
+              <div className="text-center text-sm text-surface-600">
+                Sudah punya akun?{' '}
+                <Link
+                  href="/login"
+                  className="font-medium text-primary-700 hover:text-primary-800 hover:underline underline-offset-4"
+                >
+                  Masuk di sini
+                </Link>
+              </div>
+            )}
             <Link
-              href="/"
+              href={comingSoonActive ? '/coming-soon' : '/'}
               className="text-center text-sm text-surface-500 hover:text-ink transition-colors"
             >
               ← Kembali ke beranda
