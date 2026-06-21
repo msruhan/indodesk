@@ -15,6 +15,10 @@ export const DEFAULT_COMING_SOON_MESSAGE =
 
 export const COMING_SOON_LOGIN_BLOCKED_TITLE = 'Situs masih dalam mode Coming Soon'
 
+/** Teks banner di halaman login saat coming soon aktif. */
+export const COMING_SOON_LOGIN_BANNER_TEXT =
+  'Situs masih dalam mode Coming Soon. Login belum dibuka sampai peluncuran resmi. Pendaftaran user dan teknisi tetap dibuka.'
+
 /** Pesan saat user/teknisi mencoba login saat soft launch. */
 export const COMING_SOON_LOGIN_BLOCKED_MESSAGE =
   'Terima kasih sudah mendaftar! Saat ini Bantoo.in masih dalam tahap persiapan peluncuran. Login untuk pengguna dan teknisi belum dibuka — kami akan memberitahu Anda segera setelah platform resmi diluncurkan. Untuk info lebih lanjut, hubungi kami di hello@bantoo.in.'

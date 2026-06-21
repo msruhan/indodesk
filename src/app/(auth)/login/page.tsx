@@ -21,7 +21,11 @@ import { BrandLogo } from '@/components/brand/brand-logo'
 import { GoogleAuthDivider } from '@/components/auth/google-auth-divider'
 import { OAuthLoginErrorAlert } from '@/components/auth/oauth-login-error-alert'
 import { loginOAuthErrorDetails, type OAuthLoginErrorDetails } from '@/lib/auth/login-oauth-errors'
-import { COMING_SOON_LOGIN_BLOCKED_MESSAGE, COMING_SOON_LOGIN_BLOCKED_TITLE } from '@/lib/coming-soon-shared'
+import {
+  COMING_SOON_LOGIN_BANNER_TEXT,
+  COMING_SOON_LOGIN_BLOCKED_MESSAGE,
+  COMING_SOON_LOGIN_BLOCKED_TITLE,
+} from '@/lib/coming-soon-shared'
 import { AuroraBackground } from '@/components/motion'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
@@ -320,7 +324,7 @@ function LoginForm() {
                   : needs2FA
                     ? 'Kode 6 digit dari Authenticator, atau kode cadangan (XXXX-XXXX)'
                     : comingSoonActive
-                      ? 'Soft launch — hanya admin yang dapat login'
+                      ? 'Login belum dibuka sampai peluncuran resmi'
                       : 'Platform ekosistem teknisi handphone Indonesia'}
               </CardDescription>
             </div>
@@ -331,27 +335,7 @@ function LoginForm() {
             <VerifyStatusBanner />
             {comingSoonActive && !resetToken && (
               <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                <p className="font-semibold">{COMING_SOON_LOGIN_BLOCKED_TITLE}</p>
-                <p className="mt-1 leading-relaxed">
-                  Login untuk user dan teknisi belum dibuka sampai peluncuran resmi. Pendaftaran
-                  user dan teknisi tetap dibuka.
-                </p>
-                <p className="mt-2 text-[13px] text-amber-950/90">
-                  Akun <strong>admin</strong> tetap dapat masuk untuk mengelola platform.
-                </p>
-                <p className="mt-2">
-                  <Link href="/coming-soon" className="font-medium text-primary-700 hover:underline">
-                    Lihat halaman Coming Soon
-                  </Link>
-                  {' · '}
-                  <Link href="/register" className="font-medium text-primary-700 hover:underline">
-                    Daftar user
-                  </Link>
-                  {' · '}
-                  <Link href="/register/teknisi" className="font-medium text-primary-700 hover:underline">
-                    Daftar teknisi
-                  </Link>
-                </p>
+                <p className="leading-relaxed">{COMING_SOON_LOGIN_BANNER_TEXT}</p>
               </div>
             )}
             {resetToken ? (
