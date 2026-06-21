@@ -1,20 +1,16 @@
 import {
   marketplaceOrderCancelActorLabel,
-  type MarketplaceOrderDto,
-} from '@/lib/marketplace-order-serializer'
+  shouldShowMarketplaceOrderCancelReason,
+  type MarketplaceOrderCancelInfo,
+} from '@/lib/marketplace-order-cancel-labels'
 
-export function shouldShowMarketplaceOrderCancelReason(order: MarketplaceOrderDto): boolean {
-  return (
-    (order.status === 'cancelled' || order.status === 'refunded') &&
-    Boolean(order.cancelReason?.trim())
-  )
-}
+export { shouldShowMarketplaceOrderCancelReason }
 
 export function MarketplaceOrderCancelReasonCard({
   order,
   compact = false,
 }: {
-  order: MarketplaceOrderDto
+  order: MarketplaceOrderCancelInfo
   compact?: boolean
 }) {
   if (!shouldShowMarketplaceOrderCancelReason(order)) return null

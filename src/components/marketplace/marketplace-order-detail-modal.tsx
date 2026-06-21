@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { Package, Store, User, X } from '@/lib/icons'
 import type { MarketplaceOrderDto } from '@/lib/marketplace-order-serializer'
-import { CANCEL_REASON_MIN_LENGTH } from '@/lib/marketplace-order-cancellation'
+import { CANCEL_REASON_MIN_LENGTH } from '@/lib/marketplace-order-cancel-constants'
 import { MarketplaceOrderInvoiceModal } from '@/components/marketplace/marketplace-order-invoice-modal'
 import { MarketplaceOrderCancelReasonCard } from '@/components/marketplace/marketplace-order-cancel-reason'
 

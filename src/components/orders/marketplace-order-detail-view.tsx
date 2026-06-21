@@ -27,7 +27,7 @@ import { MarketplaceComplaintReturnForm } from '@/components/orders/marketplace-
 import type { OrderTrackingDto } from '@/lib/order-tracking-sync'
 import type { ReturnTrackingDto } from '@/lib/return-tracking-sync'
 import type { MarketplaceOrderDto } from '@/lib/marketplace-order-serializer'
-import { CANCEL_REASON_MIN_LENGTH } from '@/lib/marketplace-order-cancellation'
+import { CANCEL_REASON_MIN_LENGTH } from '@/lib/marketplace-order-cancel-constants'
 
 type MarketplaceOrderDetailViewProps = {
   listHref?: string

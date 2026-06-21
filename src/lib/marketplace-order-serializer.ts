@@ -17,6 +17,10 @@ import {
   serializeOrderPackagingProof,
   type OrderPackagingProofDto,
 } from '@/lib/marketplace-packaging-proof-serializer'
+import {
+  marketplaceOrderCancelActorLabel,
+  type MarketplaceOrderCancelActor,
+} from '@/lib/marketplace-order-cancel-labels'
 import { orderRequiresPhysicalPackaging } from '@/lib/marketplace-physical-order'
 import { canDownloadShippingLabelForSeller } from '@/lib/shipping-label'
 import { isTerminalTrackingStatus, SHIPPING_COURIER_OPTIONS, fromBinderbyteCourier, courierLabelFromBinderbyteCode } from '@/lib/shipping-courier'
@@ -121,7 +125,7 @@ export type MarketplaceOrderDto = {
   canSubmitPackagingProof: boolean
   canDownloadShippingLabel: boolean
   cancelReason: string | null
-  cancelledBy: 'BUYER' | 'SELLER' | 'ADMIN' | 'SYSTEM' | null
+  cancelledBy: MarketplaceOrderCancelActor
 }
 
 type OrderRow = Order & {
@@ -179,22 +183,7 @@ export function marketplaceOrderStatusLabel(status: MarketplaceOrderUiStatus): s
   }
 }
 
-export function marketplaceOrderCancelActorLabel(
-  cancelledBy: MarketplaceOrderDto['cancelledBy'],
-): string | null {
-  switch (cancelledBy) {
-    case 'SELLER':
-      return 'penjual'
-    case 'BUYER':
-      return 'pembeli'
-    case 'ADMIN':
-      return 'admin'
-    case 'SYSTEM':
-      return 'sistem'
-    default:
-      return null
-  }
-}
+export { marketplaceOrderCancelActorLabel } from '@/lib/marketplace-order-cancel-labels'
 
 function sellerNextStatus(db: Order['status']): MarketplaceOrderDto['nextStatus'] {
   if (db === 'PAID') return 'PROCESSING'

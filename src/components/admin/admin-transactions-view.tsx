@@ -15,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useClientPagination } from '@/hooks/use-client-pagination'
 import { cn } from '@/lib/utils'
 import { formatIdr, formatDateTime } from '@/lib/format'
-import { marketplaceOrderCancelActorLabel } from '@/lib/marketplace-order-serializer'
+import { marketplaceOrderCancelActorLabel } from '@/lib/marketplace-order-cancel-labels'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import {
   Check,

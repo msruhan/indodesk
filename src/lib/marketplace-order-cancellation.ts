@@ -10,10 +10,12 @@ import {
   debitSellerForMarketplace,
   refundBuyerHoldForMarketplace,
 } from '@/lib/marketplace-wallet'
+import { CANCEL_REASON_MIN_LENGTH } from '@/lib/marketplace-order-cancel-constants'
+
+export { CANCEL_REASON_MIN_LENGTH } from '@/lib/marketplace-order-cancel-constants'
 
 export const INSTANT_CANCEL_MS = 60 * 60 * 1000
 export const SELLER_CANCEL_RESPONSE_HOURS = 48
-export const CANCEL_REASON_MIN_LENGTH = 8
 
 const MS_PER_HOUR = 60 * 60 * 1000
 
