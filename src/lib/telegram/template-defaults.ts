@@ -12,6 +12,7 @@ export const TELEGRAM_EVENT_KEYS = [
   'admin.konsultasi.new',
   'admin.inspeksi.new',
   'admin.marketplace.packaging.submitted',
+  'admin.withdraw.request',
 ] as const
 
 export type TelegramEventKey = (typeof TELEGRAM_EVENT_KEYS)[number]
@@ -147,6 +148,19 @@ const ADMIN_INSPEKSI_NEW_BODY = `🔔 *Request Inspeksi Baru*
 {{linkDashboard}}`
 
 const ADMIN_PACKAGING_SUBMITTED_BODY = PACKAGING_SUBMITTED_BODY
+
+const ADMIN_WITHDRAW_REQUEST_BODY = `💸 *Permintaan Tarik Saldo Baru*
+
+👤 {{namaUser}} ({{role}})
+📧 Email: {{email}}
+💵 Jumlah: {{jumlah}}
+🏦 Bank: {{bank}}
+🔢 Rekening: {{rekening}}
+👤 Atas nama: {{atasNama}}
+⚠️ Risk score: {{riskScore}}
+
+Proses di Manajemen → Saldo → Penarikan:
+{{linkDashboard}}`
 
 export const TELEGRAM_EVENT_CATALOG: Record<TelegramEventKey, TelegramEventDefinition> = {
   'product.published': {
@@ -392,6 +406,36 @@ export const TELEGRAM_EVENT_CATALOG: Record<TelegramEventKey, TelegramEventDefin
       total: 'Rp 10.000',
       jumlahFile: '2',
       linkReview: 'https://bantoo.in/admin/marketplace-packaging',
+    },
+  },
+  'admin.withdraw.request': {
+    eventKey: 'admin.withdraw.request',
+    label: 'Permintaan tarik saldo',
+    description:
+      'Notifikasi pribadi ke admin saat user/teknisi mengajukan penarikan saldo wallet.',
+    audience: 'ADMINS',
+    placeholders: [
+      'namaUser',
+      'role',
+      'email',
+      'jumlah',
+      'bank',
+      'rekening',
+      'atasNama',
+      'riskScore',
+      'linkDashboard',
+    ],
+    defaultBody: ADMIN_WITHDRAW_REQUEST_BODY,
+    sampleVars: {
+      namaUser: 'Masruhan',
+      role: 'Teknisi',
+      email: 'masruhan@example.com',
+      jumlah: 'Rp 100.000',
+      bank: 'BCA',
+      rekening: '1234567890',
+      atasNama: 'Masruhan',
+      riskScore: '40',
+      linkDashboard: 'https://bantoo.in/admin/management?tab=saldo&subtab=withdraw',
     },
   },
 }

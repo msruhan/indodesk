@@ -5,6 +5,7 @@ import { extractRequestContext, logPaymentEvent } from '@/lib/activity-log'
 import { requireEmailVerifiedUser } from '@/lib/require-email-verified'
 import { assertDailyLimit, WalletPolicyError } from '@/lib/wallet/policy'
 import { createWithdrawRequest, serializeWithdrawRequest, WithdrawError } from '@/lib/wallet/withdraw'
+import { notifyAdminWithdrawRequest } from '@/lib/telegram/notify'
 import { verifyWithdrawAuth, WithdrawAuthError } from '@/lib/wallet/verify-withdraw-auth'
 import { withRateLimit, rateLimitResponse } from '@/lib/rate-limit-store'
 
@@ -118,6 +119,10 @@ export async function POST(req: Request) {
         riskScore: request.riskScore,
         balanceAfter: wallet?.balance.toString(),
       },
+    })
+
+    void notifyAdminWithdrawRequest(request.id).catch((e) => {
+      console.error('[WITHDRAW_ADMIN_TELEGRAM]', e)
     })
 
     return apiSuccess({

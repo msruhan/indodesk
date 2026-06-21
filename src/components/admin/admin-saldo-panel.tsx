@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent } from '@/components/ui/card'
@@ -50,6 +51,13 @@ import {
 
 type SubTab = 'balances' | 'deposits' | 'spending' | 'withdraw' | 'security'
 
+const SUB_TABS: SubTab[] = ['balances', 'deposits', 'spending', 'withdraw', 'security']
+
+function parseSaldoSubTab(value: string | null): SubTab | null {
+  if (value && SUB_TABS.includes(value as SubTab)) return value as SubTab
+  return null
+}
+
 type WalletRow = {
   id: string
   user: { id: string; name: string; email: string; role: 'USER' | 'TEKNISI' | 'ADMIN' }
@@ -66,7 +74,13 @@ const emptyStats: AdminSaldoStats = {
 }
 
 export function AdminSaldoPanel() {
-  const [sub, setSub] = useState<SubTab>('balances')
+  const searchParams = useSearchParams()
+  const [sub, setSub] = useState<SubTab>(() => parseSaldoSubTab(searchParams.get('subtab')) ?? 'balances')
+
+  useEffect(() => {
+    const next = parseSaldoSubTab(searchParams.get('subtab'))
+    if (next) setSub(next)
+  }, [searchParams])
 
   return (
     <div className="space-y-4">

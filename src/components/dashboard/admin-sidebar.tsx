@@ -70,12 +70,13 @@ export function AdminSidebar() {
   const [ticketUnread, setTicketUnread] = useState<number | undefined>()
   const [rekberDisputed, setRekberDisputed] = useState<number | undefined>()
   const [complaintEscalated, setComplaintEscalated] = useState<number | undefined>()
+  const [pendingWithdraws, setPendingWithdraws] = useState<number | undefined>()
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       try {
-        const [approvalRes, packagingRes, ticketRes, rekberRes, marketplaceComplaintRes, rekberComplaintRes] =
+        const [approvalRes, packagingRes, ticketRes, rekberRes, marketplaceComplaintRes, rekberComplaintRes, withdrawRes] =
           await Promise.all([
           fetch('/api/admin/approval'),
           fetch('/api/admin/marketplace/packaging-proofs/pending-count'),
@@ -83,6 +84,7 @@ export function AdminSidebar() {
           fetch('/api/admin/rekber'),
           fetch('/api/admin/marketplace/complaints?status=ESCALATED'),
           fetch('/api/admin/rekber/complaints?status=ESCALATED'),
+          fetch('/api/admin/wallet/withdraw/pending-count'),
         ])
         const json = await approvalRes.json()
         const packagingJson = await packagingRes.json()
@@ -90,6 +92,7 @@ export function AdminSidebar() {
         const rekberJson = await rekberRes.json()
         const marketplaceComplaintJson = await marketplaceComplaintRes.json()
         const rekberComplaintJson = await rekberComplaintRes.json()
+        const withdrawJson = await withdrawRes.json()
         if (cancelled) return
         if (approvalRes.ok && json.success) {
           const n = json.data?.stats?.pending
@@ -117,6 +120,10 @@ export function AdminSidebar() {
             : 0
         const totalEscalated = marketplaceEscalated + rekberEscalated
         setComplaintEscalated(totalEscalated > 0 ? totalEscalated : undefined)
+        if (withdrawRes.ok && withdrawJson.success) {
+          const c = withdrawJson.data?.count
+          setPendingWithdraws(typeof c === 'number' && c > 0 ? c : undefined)
+        }
       } catch {
         if (!cancelled) {
           setPendingApproval(undefined)
@@ -124,6 +131,7 @@ export function AdminSidebar() {
           setTicketUnread(undefined)
           setRekberDisputed(undefined)
           setComplaintEscalated(undefined)
+          setPendingWithdraws(undefined)
         }
       }
     })()
@@ -136,6 +144,9 @@ export function AdminSidebar() {
     () =>
       baseAdminNavItems.map((item) => {
         if (!hydrated) return item
+        if (item.href === '/admin/management' && pendingWithdraws) {
+          return { ...item, badge: pendingWithdraws }
+        }
         if (item.href === '/admin/approval' && pendingApproval) {
           return { ...item, badge: pendingApproval }
         }
@@ -153,7 +164,7 @@ export function AdminSidebar() {
         }
         return item
       }),
-    [hydrated, pendingApproval, packagingPending, ticketUnread, rekberDisputed, complaintEscalated],
+    [hydrated, pendingApproval, packagingPending, ticketUnread, rekberDisputed, complaintEscalated, pendingWithdraws],
   )
 
   return (

@@ -293,3 +293,39 @@ export async function notifyAdminTeknisiRegistered(userId: string): Promise<void
     },
   })
 }
+
+function withdrawRoleLabel(role: string): string {
+  switch (role) {
+    case 'TEKNISI':
+      return 'Teknisi'
+    case 'USER':
+      return 'User'
+    case 'ADMIN':
+      return 'Admin'
+    default:
+      return role
+  }
+}
+
+export async function notifyAdminWithdrawRequest(requestId: string): Promise<void> {
+  const row = await prisma.walletWithdrawRequest.findUnique({
+    where: { id: requestId },
+    include: { user: { select: { name: true, email: true, role: true } } },
+  })
+  if (!row) return
+
+  const base = appBaseUrl()
+  await dispatchTelegramEvent('admin.withdraw.request', {
+    vars: {
+      namaUser: row.user.name,
+      role: withdrawRoleLabel(row.user.role),
+      email: row.user.email,
+      jumlah: formatIdr(Number(row.amount.toString())),
+      bank: row.bankName,
+      rekening: row.accountNumber,
+      atasNama: row.accountHolder,
+      riskScore: String(row.riskScore),
+      linkDashboard: `${base}/admin/management?tab=saldo&subtab=withdraw`,
+    },
+  })
+}
