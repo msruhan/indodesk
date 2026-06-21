@@ -12,6 +12,10 @@ import {
   computeEarningsWowPercent,
   type TeknisiWeeklyEarningsRow,
 } from '@/lib/teknisi-earnings-weekly'
+import {
+  evaluateTeknisiProfileCompletion,
+  type ProfileCompletionStatus,
+} from '@/lib/profile-completion'
 
 export type TeknisiDashboardDto = {
   digitalId: TeknisiDigitalIdSource
@@ -43,6 +47,7 @@ export type TeknisiDashboardDto = {
     date: string
   }>
   marketplacePending: number
+  profileCompletion: ProfileCompletionStatus
 }
 
 export async function getTeknisiDashboardData(teknisiId: string): Promise<TeknisiDashboardDto> {
@@ -52,6 +57,7 @@ export async function getTeknisiDashboardData(teknisiId: string): Promise<Teknis
     user,
     profile,
     wallet,
+    portfolioCount,
     konsultasi,
     remote,
     marketplaceOrders,
@@ -60,9 +66,13 @@ export async function getTeknisiDashboardData(teknisiId: string): Promise<Teknis
     completedRemoteRows,
     productAgg,
   ] = await Promise.all([
-      prisma.user.findUnique({ where: { id: teknisiId }, select: { name: true, createdAt: true } }),
+      prisma.user.findUnique({
+        where: { id: teknisiId },
+        select: { name: true, createdAt: true, phone: true },
+      }),
       prisma.teknisiProfile.findUnique({ where: { userId: teknisiId } }),
       prisma.wallet.findUnique({ where: { userId: teknisiId } }),
+      prisma.teknisiPortfolioCase.count({ where: { teknisiId } }),
       prisma.konsultasiSession.findMany({
         where: { teknisiId },
         include: { user: { select: { name: true } } },
@@ -194,6 +204,14 @@ export async function getTeknisiDashboardData(teknisiId: string): Promise<Teknis
     memberSinceAt: (user?.createdAt ?? profile?.createdAt ?? new Date()).toISOString(),
   }
 
+  const profileCompletion = evaluateTeknisiProfileCompletion({
+    phone: user?.phone ?? null,
+    location: profile?.location ?? null,
+    description: profile?.description ?? null,
+    specialty: profile?.specialty ?? [],
+    portfolioCount,
+  })
+
   return {
     digitalId,
     trust: {
@@ -216,5 +234,6 @@ export async function getTeknisiDashboardData(teknisiId: string): Promise<Teknis
     earningsWowPercent,
     recentOrders: rows.sort((a, b) => b.sortAt.getTime() - a.sortAt.getTime()).slice(0, 8).map(({ sortAt: _s, ...r }) => r),
     marketplacePending,
+    profileCompletion,
   }
 }

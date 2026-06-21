@@ -31,4 +31,5 @@ export {
   dashboardHeroCardClass,
   DashboardHeroSheen,
 } from './dashboard-primitives'
+export { ProfileCompletionBanner } from './profile-completion-banner'
 export type { TabPillItem, FilterPillItem, FilterSelectItem } from './dashboard-primitives'

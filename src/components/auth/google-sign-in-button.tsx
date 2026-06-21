@@ -1,8 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import type { GoogleRegisterRole } from '@/lib/auth/google-register-cookie'
 
 type GoogleSignInButtonProps = {
   callbackUrl?: string
@@ -10,6 +12,7 @@ type GoogleSignInButtonProps = {
   className?: string
   size?: 'sm' | 'default' | 'lg'
   fullWidth?: boolean
+  registerRole?: GoogleRegisterRole
 }
 
 function GoogleIcon({ className }: { className?: string }) {
@@ -41,7 +44,31 @@ export function GoogleSignInButton({
   className,
   size = 'lg',
   fullWidth = true,
+  registerRole,
 }: GoogleSignInButtonProps) {
+  const [loading, setLoading] = useState(false)
+
+  const handleClick = async () => {
+    setLoading(true)
+    try {
+      if (registerRole) {
+        const res = await fetch('/api/auth/google/register-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ role: registerRole }),
+        })
+        const json = await res.json()
+        if (!res.ok) {
+          throw new Error(json.error ?? 'Gagal memulai pendaftaran Google')
+        }
+      }
+
+      await signIn('google', { callbackUrl: callbackUrl ?? window.location.href })
+    } catch {
+      setLoading(false)
+    }
+  }
+
   return (
     <Button
       type="button"
@@ -52,10 +79,11 @@ export function GoogleSignInButton({
         'border-surface-200/80 bg-white hover:bg-surface-50',
         className,
       )}
-      onClick={() => void signIn('google', { callbackUrl: callbackUrl ?? window.location.href })}
+      disabled={loading}
+      onClick={() => void handleClick()}
     >
       <GoogleIcon className="h-5 w-5" />
-      {label}
+      {loading ? 'Menghubungkan…' : label}
     </Button>
   )
 }

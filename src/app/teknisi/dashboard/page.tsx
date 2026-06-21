@@ -17,6 +17,7 @@ import {
   DashboardPanel,
   EmptyState,
   MetricCard,
+  ProfileCompletionBanner,
   StatusBadge,
   TeknisiEarningsChart,
   TeknisiServiceChart,
@@ -89,6 +90,7 @@ export default function TeknisiDashboardPage() {
     earningsWowPercent,
     recentOrders,
     marketplacePending,
+    profileCompletion,
   } = data
   const conversionRate =
     profile.totalView > 0
@@ -105,6 +107,8 @@ export default function TeknisiDashboardPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      <ProfileCompletionBanner status={profileCompletion} />
+
       <p className="text-sm text-surface-600 sm:hidden">
         Halo, <span className="font-semibold text-ink">{profile.name}</span>
       </p>

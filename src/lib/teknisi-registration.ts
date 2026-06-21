@@ -67,6 +67,14 @@ export const teknisiRegisterSchema = z.object({
   }),
 })
 
+export const teknisiRegisterProfileSchema = teknisiRegisterSchema.omit({
+  name: true,
+  email: true,
+  password: true,
+})
+
+export type TeknisiRegisterProfileInput = z.infer<typeof teknisiRegisterProfileSchema>
+
 export type TeknisiRegisterInput = z.infer<typeof teknisiRegisterSchema>
 
 export function buildApplicationData(
