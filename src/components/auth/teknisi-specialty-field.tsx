@@ -36,8 +36,8 @@ export function TeknisiSpecialtyField({ value, onChange, id }: TeknisiSpecialtyF
     [],
   )
 
-  const dropdownValue = useMemo(() => {
-    const selected = [...presets]
+  const dropdownValue = useMemo((): string[] => {
+    const selected: string[] = [...presets]
     if (otherEnabled) selected.push(TEKNISI_SPECIALTY_OTHER)
     return selected
   }, [presets, otherEnabled])
