@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { signOut } from 'next-auth/react'
+import { completeClientLogout } from '@/lib/auth/client-logout'
 import { Button } from '@/components/ui/button'
 import { ArrowRight, CheckCircle, Shield } from '@/lib/icons'
 
@@ -13,7 +13,9 @@ export function PasswordChangedSuccessModal({ open }: PasswordChangedSuccessModa
   if (!open) return null
 
   const goToLogin = () => {
-    void signOut({ callbackUrl: '/login?reason=password_changed' })
+    void completeClientLogout({ callbackUrl: '/login?reason=password_changed' }).then(() => {
+      window.location.assign('/login?reason=password_changed')
+    })
   }
 
   return (

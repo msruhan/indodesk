@@ -26,6 +26,7 @@ import {
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { OrderTrackingTimeline } from '@/components/marketplace/order-tracking-timeline'
+import { MarketplaceOrderDetailModal } from '@/components/marketplace/marketplace-order-detail-modal'
 import type { MarketplaceOrderDto } from '@/lib/marketplace-order-serializer'
 import type { PublicTopupOrderDto } from '@/lib/topup-order-serializer'
 import { topupStatusLabelForUi } from '@/lib/user-riwayat-topup'
@@ -258,6 +259,7 @@ function MyOrdersViewContent({ basePath }: MyOrdersViewProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [selectedImeiOrder, setSelectedImeiOrder] = useState<PublicImeiOrder | null>(null)
   const [selectedServerOrder, setSelectedServerOrder] = useState<PublicServerOrder | null>(null)
+  const [selectedShopOrder, setSelectedShopOrder] = useState<MarketplaceOrderDto | null>(null)
   const [didAutoOpenFromQuery, setDidAutoOpenFromQuery] = useState(false)
 
   useEffect(() => {
@@ -422,6 +424,16 @@ function MyOrdersViewContent({ basePath }: MyOrdersViewProps) {
 
   useEffect(() => {
     if (!requestedOrderCode || didAutoOpenFromQuery || loading) return
+    if (activeTab === 'shop') {
+      const match = shopOrders.find(
+        (order) => order.orderCode.toLowerCase() === requestedOrderCode.toLowerCase(),
+      )
+      if (match) {
+        setSelectedShopOrder(match)
+        setDidAutoOpenFromQuery(true)
+      }
+      return
+    }
     if (activeTab === 'imei') {
       const match = imeiOrders.find((order) => order.orderCode.toLowerCase() === requestedOrderCode.toLowerCase())
       if (match) {
@@ -437,7 +449,7 @@ function MyOrdersViewContent({ basePath }: MyOrdersViewProps) {
         setDidAutoOpenFromQuery(true)
       }
     }
-  }, [activeTab, didAutoOpenFromQuery, imeiOrders, loading, requestedOrderCode, serverOrders])
+  }, [activeTab, didAutoOpenFromQuery, imeiOrders, loading, requestedOrderCode, serverOrders, shopOrders])
 
   const list =
     activeTab === 'topup'
@@ -592,9 +604,16 @@ function MyOrdersViewContent({ basePath }: MyOrdersViewProps) {
           ) : (
             <div className="space-y-4">
               {filteredShop.map((order) => (
-                <Card key={order.id}>
+                <Card
+                  key={order.id}
+                  className="transition-all duration-200 hover:border-primary-200/70 hover:shadow-soft-sm"
+                >
                   <CardContent className="p-5">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <button
+                      type="button"
+                      className="flex w-full cursor-pointer flex-col gap-3 rounded-xl text-left transition-colors hover:bg-surface-50/80 sm:flex-row sm:items-start sm:justify-between -m-1 p-1"
+                      onClick={() => setSelectedShopOrder(order)}
+                    >
                       <div>
                         <div className="mb-1 flex flex-wrap items-center gap-2">
                           <span className="font-mono text-sm font-semibold text-ink">
@@ -610,9 +629,9 @@ function MyOrdersViewContent({ basePath }: MyOrdersViewProps) {
                         </p>
                       </div>
                       <p className="text-lg font-bold text-primary-700 tabular-nums">
-                        {formatPrice(order.total)}
+                        {formatPrice(order.buyerHoldAmount)}
                       </p>
-                    </div>
+                    </button>
                     {order.tracking && (
                       <div className="mt-3 border-t border-surface-100 pt-3">
                         <div className="flex gap-2">
@@ -620,7 +639,10 @@ function MyOrdersViewContent({ basePath }: MyOrdersViewProps) {
                             variant="primary"
                             size="sm"
                             className="h-8"
-                            onClick={() => router.push(`${basePath}/${order.id}`)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              router.push(`${basePath}/${order.id}`)
+                            }}
                           >
                             <Package className="h-3.5 w-3.5" />
                             Lacak Paket
@@ -629,9 +651,10 @@ function MyOrdersViewContent({ basePath }: MyOrdersViewProps) {
                             variant="outline"
                             size="sm"
                             className="h-8"
-                            onClick={() =>
+                            onClick={(e) => {
+                              e.stopPropagation()
                               setExpandedTrackingId((id) => (id === order.id ? null : order.id))
-                            }
+                            }}
                           >
                             {expandedTrackingId === order.id ? 'Sembunyikan' : 'Riwayat cepat'}
                           </Button>
@@ -790,6 +813,14 @@ function MyOrdersViewContent({ basePath }: MyOrdersViewProps) {
           </div>
         )}
       </div>
+      <MarketplaceOrderDetailModal
+        order={selectedShopOrder}
+        onClose={() => setSelectedShopOrder(null)}
+        fullDetailHref={selectedShopOrder ? `${basePath}/${selectedShopOrder.id}` : null}
+        onOrderUpdated={(updated) => {
+          setShopOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)))
+        }}
+      />
       <AnimatePresence>
         {selectedImeiOrder && (
           <ImeiOrderDetailSheet order={selectedImeiOrder} onClose={() => setSelectedImeiOrder(null)} />

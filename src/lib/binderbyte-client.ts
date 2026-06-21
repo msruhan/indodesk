@@ -70,15 +70,15 @@ export async function trackShipment(
     return {
       awb: normalizedAwb,
       courier: String(courier),
-      status: 'DELIVERED',
+      status: 'ON PROCESS',
       date: now,
-      desc: 'Stress test mock — paket terkirim',
+      desc: 'Stress test mock — paket dipickup kurir',
       origin: 'JKT',
       destination: 'JKT',
       shipper: 'Stress Test Shipper',
       receiver: 'Stress Test Receiver',
       history: [
-        { date: now, desc: 'Mock event - delivered', location: 'JKT' },
+        { date: now, desc: 'Mock event - picked up', location: 'JKT' },
       ],
     }
   }

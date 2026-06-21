@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client'
 import { trackShipment, BinderbyteError } from '@/lib/binderbyte-client'
+import { validateFreshShipmentRegistration } from '@/lib/shipment-registration'
 import { isTerminalTrackingStatus, SHIPPING_COURIER_OPTIONS } from '@/lib/shipping-courier'
 import type { ShippingCourier } from '@prisma/client'
 import { computeNextTrackingSyncAt } from '@/lib/order-tracking-sync'
@@ -54,6 +55,10 @@ export async function syncRekberTrackingFromBinderbyte(
       }
     }
     throw e
+  }
+
+  if (input.markShipped) {
+    validateFreshShipmentRegistration(trackResult)
   }
 
   const now = new Date()

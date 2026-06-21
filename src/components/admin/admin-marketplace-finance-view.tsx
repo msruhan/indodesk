@@ -12,6 +12,7 @@ type FinanceData = {
     buyerFeePercent: number
     buyerFlatFeePerItem: number
     sellerFeePercent: number
+    sellerFeeTiers: Array<{ minAmount: number; maxAmount: number | null; feePercent: number }>
     konsultasiFeePercent: number
     inspeksiFeePercent: number
   }

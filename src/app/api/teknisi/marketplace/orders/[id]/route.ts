@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { OrderStatus, ShippingCourier } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
+import { apiError, apiSuccess, requireApiRole, type ApiSession } from '@/lib/api-auth'
 import { BinderbyteError, isBinderbyteConfigured } from '@/lib/binderbyte-client'
 import { logOrderEvent } from '@/lib/activity-log'
 import { syncOrderTrackingFromBinderbyte } from '@/lib/order-tracking-sync'
@@ -9,20 +9,18 @@ import { binderbyteCourierMatchesEnum, courierLabelFromBinderbyteCode } from '@/
 import { serializeMarketplaceOrder } from '@/lib/marketplace-order-serializer'
 import { MARKETPLACE_ORDER_INCLUDE } from '@/lib/marketplace-order-includes'
 import {
-  debitSellerForMarketplace,
-  refundBuyerHoldForMarketplace,
-} from '@/lib/marketplace-wallet'
+  canSellerRejectNewOrder,
+  canSellerRespondToCancelRequest,
+  cancelMarketplaceOrderInTx,
+  hasBuyerRefundForOrder,
+  validateCancelReason,
+} from '@/lib/marketplace-order-cancellation'
 
 export const dynamic = 'force-dynamic'
 
-const PARTY_SELECT = {
-  id: true,
-  name: true,
-  email: true,
-  image: true,
-} as const
-
 const courierEnum = z.nativeEnum(ShippingCourier)
+
+const reasonField = z.string().trim().min(20, 'Alasan minimal 20 karakter').max(500)
 
 const patchSchema = z.discriminatedUnion('action', [
   z.object({
@@ -35,9 +33,95 @@ const patchSchema = z.discriminatedUnion('action', [
   }),
   z.object({
     action: z.literal('cancel'),
-    reason: z.string().trim().min(20, 'Alasan pembatalan minimal 20 karakter').max(500),
+    reason: reasonField,
+  }),
+  z.object({
+    action: z.literal('reject_order'),
+    reason: reasonField,
+  }),
+  z.object({
+    action: z.literal('approve_cancel_request'),
+  }),
+  z.object({
+    action: z.literal('reject_cancel_request'),
+    response: z.string().trim().max(500).optional(),
   }),
 ])
+
+async function sellerCancelOrder(
+  existing: Awaited<ReturnType<typeof prisma.order.findFirst>> & {
+    items: { productId: string; quantity: number }[]
+  },
+  cancelReason: string,
+  cancelledBy: 'SELLER',
+  session: ApiSession,
+) {
+  if (await hasBuyerRefundForOrder(existing.id, existing.buyerId)) {
+    return apiError('Pesanan ini sudah dibatalkan / direfund')
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    await cancelMarketplaceOrderInTx(tx, existing, {
+      cancelledBy,
+      cancelReason,
+    })
+
+    return tx.order.findUnique({
+      where: { id: existing.id },
+      include: MARKETPLACE_ORDER_INCLUDE,
+    })
+  })
+
+  if (!updated) return apiError('Pesanan tidak ditemukan', 404)
+
+  void logOrderEvent({
+    action: 'marketplace.cancelled',
+    severity: 'WARNING',
+    summary: `Order ${existing.orderCode} dibatalkan — refund ke Saldo Bantoo`,
+    actor: {
+      id: session.user.id,
+      name: session.user.name,
+      email: session.user.email,
+      role: 'TEKNISI',
+    },
+    target: { type: 'marketplace_order', id: existing.id, label: existing.orderCode },
+  })
+
+  return apiSuccess(
+    serializeMarketplaceOrder(updated, {
+      viewerId: session.user.id,
+      viewerRole: 'TEKNISI',
+    }),
+  )
+}
+
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { session, error } = await requireApiRole(['TEKNISI'])
+  if (error) return error
+
+  const { id } = await params
+
+  try {
+    const row = await prisma.order.findFirst({
+      where: { id, sellerId: session.user.id },
+      include: MARKETPLACE_ORDER_INCLUDE,
+    })
+    if (!row) return apiError('Pesanan tidak ditemukan', 404)
+
+    return apiSuccess(
+      serializeMarketplaceOrder(row, {
+        viewerId: session.user.id,
+        viewerRole: 'TEKNISI',
+      }),
+    )
+  } catch (e) {
+    console.error('[TEKNISI_MARKETPLACE_ORDER_GET]', e)
+    return apiError('Gagal memuat pesanan', 500)
+  }
+}
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { session, error } = await requireApiRole(['TEKNISI'])
@@ -64,74 +148,99 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     })
     if (!existing) return apiError('Pesanan tidak ditemukan', 404)
 
+    if (parsed.data.action === 'reject_order') {
+      if (!canSellerRejectNewOrder(existing)) {
+        return apiError('Hanya pesanan baru (belum diproses) yang bisa ditolak')
+      }
+      return sellerCancelOrder(existing, parsed.data.reason, 'SELLER', session)
+    }
+
     if (parsed.data.action === 'cancel') {
       if (existing.status !== 'PAID' && existing.status !== 'PROCESSING') {
         return apiError('Hanya pesanan dibayar atau diproses yang bisa dibatalkan')
       }
+      return sellerCancelOrder(existing, parsed.data.reason, 'SELLER', session)
+    }
 
-      const alreadyRefunded = await prisma.walletLedger.findFirst({
-        where: {
-          type: 'REFUND',
-          referenceId: id,
-          wallet: { userId: existing.buyerId },
-        },
-      })
-      if (alreadyRefunded) {
+    if (parsed.data.action === 'approve_cancel_request') {
+      const request = existing.cancellationRequest
+      if (!canSellerRespondToCancelRequest(request)) {
+        return apiError('Tidak ada pengajuan pembatalan yang aktif')
+      }
+
+      if (await hasBuyerRefundForOrder(existing.id, existing.buyerId)) {
         return apiError('Pesanan ini sudah dibatalkan / direfund')
       }
 
-      const isEscrow = existing.settlementVersion === 2
-      const refundAmount = isEscrow
-        ? existing.buyerHoldAmount
-        : existing.total
-      const cancelReason = parsed.data.reason
-
       const updated = await prisma.$transaction(async (tx) => {
-        for (const item of existing.items) {
-          await tx.product.update({
-            where: { id: item.productId },
-            data: {
-              stock: { increment: item.quantity },
-              soldCount: { decrement: item.quantity },
-            },
-          })
-        }
+        await cancelMarketplaceOrderInTx(tx, existing, {
+          cancelledBy: 'SELLER',
+          cancelReason: request!.reason,
+        })
 
-        await refundBuyerHoldForMarketplace(
-          tx,
-          existing.buyerId,
-          refundAmount,
-          id,
-          `Refund pembatalan order ${existing.orderCode}`,
-        )
-
-        if (!isEscrow) {
-          await debitSellerForMarketplace(
-            tx,
-            existing.sellerId,
-            existing.total,
-            id,
-            `Pembatalan penjualan ${existing.orderCode}`,
-          )
-        }
-
-        return tx.order.update({
-          where: { id },
-          data: {
-            status: 'CANCELLED',
-            cancelReason,
-            cancelledBy: 'SELLER',
-            trackingActive: false,
-            trackingNextSyncAt: null,
-          },
+        return tx.order.findUnique({
+          where: { id: existing.id },
           include: MARKETPLACE_ORDER_INCLUDE,
         })
       })
 
+      if (!updated) return apiError('Pesanan tidak ditemukan', 404)
+
       void logOrderEvent({
-        action: 'marketplace.cancelled',
-        severity: 'WARNING',
-        summary: `Order ${existing.orderCode} dibatalkan — refund ke pembeli`,
+        action: 'marketplace.cancel_request_approved',
+        severity: 'INFO',
+        summary: `Penjual setujui pembatalan ${existing.orderCode}`,
+        actor: {
+          id: session.user.id,
+          name: session.user.name,
+          email: session.user.email,
+          role: 'TEKNISI',
+        },
+        target: { type: 'marketplace_order', id, label: existing.orderCode },
+      })
+
+      return apiSuccess(
+        serializeMarketplaceOrder(updated, {
+          viewerId: session.user.id,
+          viewerRole: 'TEKNISI',
+        }),
+      )
+    }
+
+    if (parsed.data.action === 'reject_cancel_request') {
+      const request = existing.cancellationRequest
+      if (!canSellerRespondToCancelRequest(request)) {
+        return apiError('Tidak ada pengajuan pembatalan yang aktif')
+      }
+
+      const response = parsed.data.response?.trim() || null
+      if (response) {
+        const responseError = validateCancelReason(response)
+        if (responseError) return apiError(responseError)
+      }
+
+      const updated = await prisma.$transaction(async (tx) => {
+        await tx.orderCancellationRequest.update({
+          where: { id: request!.id },
+          data: {
+            status: 'REJECTED',
+            sellerResponse: response,
+            resolvedAt: new Date(),
+          },
+        })
+
+        return tx.order.findUnique({
+          where: { id: existing.id },
+          include: MARKETPLACE_ORDER_INCLUDE,
+        })
+      })
+
+      if (!updated) return apiError('Pesanan tidak ditemukan', 404)
+
+      void logOrderEvent({
+        action: 'marketplace.cancel_request_rejected',
+        severity: 'INFO',
+        summary: `Penjual tolak pengajuan pembatalan ${existing.orderCode}`,
         actor: {
           id: session.user.id,
           name: session.user.name,
@@ -251,9 +360,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return apiError('Status pesanan tidak dapat diperbarui')
     }
 
+    const now = new Date()
     const updated = await prisma.order.update({
       where: { id },
-      data: { status: nextStatus },
+      data: { status: nextStatus, processingAt: now },
       include: MARKETPLACE_ORDER_INCLUDE,
     })
 

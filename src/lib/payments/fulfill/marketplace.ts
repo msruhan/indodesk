@@ -61,7 +61,7 @@ export async function fulfillMarketplacePaymentInTx(
 
     await tx.order.update({
       where: { id: order.id },
-      data: { status: 'PAID', paymentExpiresAt: null },
+      data: { status: 'PAID', paymentExpiresAt: null, paidAt: now },
     })
     orderIds.push(order.id)
 
@@ -95,6 +95,8 @@ export async function fulfillMarketplacePaymentInTx(
 export async function cancelMarketplaceAwaitingPaymentInTx(
   tx: PrismaNamespace.TransactionClient,
   checkoutBatchId: string,
+  cancelReason = 'Pembayaran dibatalkan atau kedaluwarsa',
+  cancelledBy: 'BUYER' | 'SYSTEM' = 'SYSTEM',
 ) {
   const orders = await tx.order.findMany({
     where: { checkoutBatchId, status: 'AWAITING_PAYMENT' },
@@ -107,7 +109,8 @@ export async function cancelMarketplaceAwaitingPaymentInTx(
       where: { id: order.id },
       data: {
         status: 'CANCELLED',
-        cancelReason: 'Pembayaran dibatalkan atau kedaluwarsa',
+        cancelReason,
+        cancelledBy,
         paymentExpiresAt: null,
       },
     })

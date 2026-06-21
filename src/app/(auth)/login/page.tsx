@@ -19,9 +19,11 @@ import { authFieldIconClass } from '@/components/ui/auth-field-icon'
 import { Zap, Mail, Lock, Shield } from '@/lib/icons'
 import { BrandLogo } from '@/components/brand/brand-logo'
 import { GoogleAuthDivider } from '@/components/auth/google-auth-divider'
-import { loginOAuthErrorMessage } from '@/lib/auth/login-oauth-errors'
+import { OAuthLoginErrorAlert } from '@/components/auth/oauth-login-error-alert'
+import { loginOAuthErrorDetails, type OAuthLoginErrorDetails } from '@/lib/auth/login-oauth-errors'
 import { AuroraBackground } from '@/components/motion'
 import { motion } from 'framer-motion'
+import { toast } from 'sonner'
 
 function isSafeCallbackUrl(url: string): boolean {
   return url.startsWith('/') && !url.startsWith('//')
@@ -165,16 +167,17 @@ function VerifyStatusBanner() {
   return <div className={className}>{banner.text}</div>
 }
 
-function OAuthErrorSync({ onError }: { onError: (message: string) => void }) {
+function OAuthErrorSync({ onError }: { onError: (details: OAuthLoginErrorDetails) => void }) {
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
 
   useEffect(() => {
     const code = searchParams.get('error')
-    const message = loginOAuthErrorMessage(code)
-    if (!message) return
-    onError(message)
+    const details = loginOAuthErrorDetails(code)
+    if (!details) return
+    onError(details)
+    toast.error(details.title, { description: details.message })
     const next = new URLSearchParams(searchParams.toString())
     next.delete('error')
     const qs = next.toString()
@@ -196,6 +199,7 @@ function LoginForm() {
   const [needs2FA, setNeeds2FA] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [oauthError, setOauthError] = useState<OAuthLoginErrorDetails | null>(null)
   const [info, setInfo] = useState<string | null>(null)
   const [emailNotVerified, setEmailNotVerified] = useState(false)
   const [resendingVerification, setResendingVerification] = useState(false)
@@ -210,14 +214,16 @@ function LoginForm() {
       .catch(() => {})
   }, [])
 
-  const handleOAuthError = useCallback((message: string) => {
-    setError(message)
+  const handleOAuthError = useCallback((details: OAuthLoginErrorDetails) => {
+    setOauthError(details)
+    setError(null)
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
+    setOauthError(null)
     setInfo(null)
     setEmailNotVerified(false)
 
@@ -332,12 +338,13 @@ function LoginForm() {
               <ResetPasswordForm token={resetToken} />
             ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
-              {idleLogout && !error && (
+              {idleLogout && !error && !oauthError && (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
                   Sesi berakhir karena tidak ada aktivitas selama 2 jam. Silakan login kembali.
                 </div>
               )}
-              {error && (
+              {oauthError && <OAuthLoginErrorAlert details={oauthError} />}
+              {error && !oauthError && (
                 <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                   {error}
                 </div>

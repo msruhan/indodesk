@@ -67,7 +67,8 @@ export function isTerminalTrackingStatus(status: string | null | undefined): boo
   return (
     s.includes('DELIVERED') ||
     s.includes('TERKIRIM') ||
-    s === 'DELIVERED' ||
+    s.includes('SAMPAI') ||
+    s.includes('TIBA') ||
     s.includes('RETURN') ||
     s.includes('GAGAL') ||
     s.includes('FAILED') ||

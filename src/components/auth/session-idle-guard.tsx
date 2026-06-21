@@ -1,7 +1,8 @@
 'use client'
 
-import { signOut, useSession } from 'next-auth/react'
+import { useSession } from 'next-auth/react'
 import { useEffect, useRef } from 'react'
+import { completeClientLogout } from '@/lib/auth/client-logout'
 import { SESSION_IDLE_MS } from '@/lib/auth/session-policy'
 
 const ACTIVITY_EVENTS = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'] as const
@@ -20,7 +21,9 @@ export function SessionIdleGuard() {
     const scheduleLogout = () => {
       if (timerRef.current) clearTimeout(timerRef.current)
       timerRef.current = setTimeout(() => {
-        void signOut({ callbackUrl: '/login?reason=idle' })
+        void completeClientLogout({ callbackUrl: '/login?reason=idle' }).then(() => {
+          window.location.assign('/login?reason=idle')
+        })
       }, SESSION_IDLE_MS)
     }
 

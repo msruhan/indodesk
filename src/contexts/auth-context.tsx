@@ -2,7 +2,8 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
-import { signIn, signOut, useSession, getSession } from 'next-auth/react'
+import { signIn, useSession, getSession } from 'next-auth/react'
+import { completeClientLogout } from '@/lib/auth/client-logout'
 
 export type UserRole = 'ADMIN' | 'TEKNISI' | 'USER'
 
@@ -184,8 +185,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         /* ignore */
       }
     }
-    await signOut({ redirect: false })
-    router.push('/')
+    await completeClientLogout({ callbackUrl: '/' })
+    router.refresh()
+    router.replace('/')
   }, [router, user?.role])
 
   return (

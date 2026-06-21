@@ -10,7 +10,10 @@ import { USER_BOTTOM_NAV_ITEMS } from '@/lib/user-bottom-nav'
 import { applyDashboardBottomNavSwap, homePathForRole, MARKETPLACE_PATH } from '@/lib/role-routes'
 import { useAuth, type UserRole } from '@/contexts/auth-context'
 import { useFeatureFlags } from '@/contexts/feature-flags-context'
-import { canAccessKonsultasiService } from '@/lib/platform-settings-shared'
+import {
+  getTeknisiLayananActivePrefixes,
+  TEKNISI_LAYANAN_BOTTOM_NAV_HREF,
+} from '@/lib/teknisi-layanan-nav'
 import type { PublicFeatureFlags } from '@/lib/platform-settings-shared'
 import {
   getTeknisiNavHomeModeForPath,
@@ -27,7 +30,6 @@ import {
   BarChart3,
   CheckSquare,
   Package,
-  MessageCircle,
 } from '@/lib/icons'
 
 type NavItem = {
@@ -76,7 +78,7 @@ const teknisiNav: NavItem[] = [
     icon: Package,
     label: 'Iklan',
     href: '/teknisi/produk',
-    activePrefixes: ['/teknisi/produk', '/teknisi/pesanan'],
+    activePrefixes: ['/teknisi/produk', '/teknisi/iklan-konsultasi'],
   },
   {
     icon: Store,
@@ -85,10 +87,10 @@ const teknisiNav: NavItem[] = [
     activePrefixes: ['/teknisi/toko'],
   },
   {
-    icon: MessageCircle,
-    label: 'Konsultasi',
-    href: '/teknisi/konsultasi',
-    activePrefixes: ['/teknisi/konsultasi'],
+    icon: Users,
+    label: 'Layanan',
+    href: TEKNISI_LAYANAN_BOTTOM_NAV_HREF,
+    activePrefixes: [],
   },
   {
     icon: History,
@@ -122,14 +124,14 @@ function getNavItems(
   let items: NavItem[]
   if (resolvedRole === 'ADMIN') items = [...adminNav]
   else if (resolvedRole === 'TEKNISI') {
-    items = teknisiNav.filter((item) => {
-      if (
-        item.href === '/teknisi/konsultasi' &&
-        !canAccessKonsultasiService('TEKNISI', flags)
-      ) {
-        return false
+    items = teknisiNav.map((item) => {
+      if (item.label === 'Layanan') {
+        return {
+          ...item,
+          activePrefixes: getTeknisiLayananActivePrefixes(flags),
+        }
       }
-      return true
+      return item
     })
   } else items = [...userNav]
 
@@ -212,19 +214,19 @@ function DashboardBottomNavContent({ tab }: { tab: string | null }) {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 px-3 pt-2 lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 px-2.5 pt-1.5 lg:hidden"
       style={{
-        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)',
+        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)',
       }}
       aria-label="Dashboard mobile navigation"
     >
       {/* Bottom fade */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-surface-50 via-surface-50/70 to-transparent"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-surface-50 via-surface-50/70 to-transparent"
       />
 
-      <div className="relative mx-auto flex h-[64px] max-w-md items-center justify-around rounded-3xl glass-strong border border-surface-200/70 px-1 shadow-soft-lg">
+      <div className="relative mx-auto flex h-[52px] max-w-md items-center justify-around rounded-2xl glass-strong border border-surface-200/70 px-0.5 shadow-soft-md">
         {navItems.map((item) => {
           const isActive = isNavItemActive(item, pathname, tab)
 
@@ -234,7 +236,7 @@ function DashboardBottomNavContent({ tab }: { tab: string | null }) {
               href={item.href}
               onClick={() => onNavClick(item.href)}
               className={cn(
-                'relative flex h-12 flex-1 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-2xl transition-colors',
+                'relative flex h-10 flex-1 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-xl transition-colors',
                 isActive ? 'text-primary-700' : 'text-surface-500 hover:text-ink',
               )}
               aria-current={isActive ? 'page' : undefined}
@@ -243,29 +245,29 @@ function DashboardBottomNavContent({ tab }: { tab: string | null }) {
                 hydrated ? (
                   <motion.span
                     layoutId="dashboard-bottom-active"
-                    className="absolute inset-x-1 top-1 h-10 rounded-xl bg-gradient-to-br from-primary-50 to-white ring-1 ring-inset ring-primary-200/60 shadow-soft-xs"
+                    className="absolute inset-x-0.5 top-0.5 h-9 rounded-xl bg-gradient-to-br from-primary-50 to-white ring-1 ring-inset ring-primary-200/60 shadow-soft-xs"
                     transition={{ type: 'spring', stiffness: 420, damping: 32 }}
                   />
                 ) : (
-                  <span className="absolute inset-x-1 top-1 h-10 rounded-xl bg-gradient-to-br from-primary-50 to-white ring-1 ring-inset ring-primary-200/60 shadow-soft-xs" />
+                  <span className="absolute inset-x-0.5 top-0.5 h-9 rounded-xl bg-gradient-to-br from-primary-50 to-white ring-1 ring-inset ring-primary-200/60 shadow-soft-xs" />
                 )
               ) : null}
               {hydrated ? (
                 <motion.span
                   className="relative z-10"
-                  animate={isActive ? { y: -0.5, scale: 1.05 } : { y: 0, scale: 1 }}
+                  animate={isActive ? { y: -0.5, scale: 1.04 } : { y: 0, scale: 1 }}
                   transition={{ type: 'spring', stiffness: 480, damping: 26 }}
                 >
-                  <item.icon className="h-[18px] w-[18px]" />
+                  <item.icon className="h-[17px] w-[17px]" />
                 </motion.span>
               ) : (
                 <span className="relative z-10">
-                  <item.icon className="h-[18px] w-[18px]" />
+                  <item.icon className="h-[17px] w-[17px]" />
                 </span>
               )}
               <span
                 className={cn(
-                  'relative z-10 text-[10px] leading-none',
+                  'relative z-10 text-[9px] leading-none',
                   isActive ? 'font-semibold' : 'font-medium',
                 )}
               >
@@ -301,7 +303,7 @@ export function DashboardMobileSpacer() {
       aria-hidden
       className="lg:hidden"
       style={{
-        height: 'calc(64px + 12px + 12px + env(safe-area-inset-bottom, 0px))',
+        height: 'calc(52px + 6px + 8px + env(safe-area-inset-bottom, 0px))',
       }}
     />
   )

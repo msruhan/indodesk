@@ -10,6 +10,7 @@ import { BrandLogo } from '@/components/brand/brand-logo'
 import { PublicHeaderActions } from '@/components/mobile/public-header-actions'
 import {
   mobileHeaderBarRowClass,
+  mobileHeaderLogoWordmarkClass,
   mobileSectionTabsSpacerClass,
 } from '@/components/mobile/header-action-styles'
 import type { Icon as PhosphorIcon } from '@phosphor-icons/react'
@@ -27,7 +28,7 @@ interface SectionTabsProps {
   variant?: 'default' | 'merged'
 }
 
-function isTabActive(tab: SectionTab, pathname: string | null): boolean {
+export function isTabActive(tab: SectionTab, pathname: string | null): boolean {
   if (pathname === tab.href) return true
   if (tab.matchPrefixes) {
     return tab.matchPrefixes.some((p) => pathname === p || pathname?.startsWith(`${p}/`))
@@ -49,7 +50,7 @@ function SectionTabPills({
   return (
     <div
       className={cn(
-        'inline-flex min-w-0 shrink items-center gap-1 rounded-full border p-1 shadow-soft-xs backdrop-blur-md',
+        'inline-flex min-w-0 max-w-full items-center gap-0.5 rounded-full border p-0.5 shadow-soft-xs backdrop-blur-md',
         isMerged ? 'border-white/60 bg-white/55' : 'border-surface-200/70 bg-white/80',
       )}
     >
@@ -60,7 +61,7 @@ function SectionTabPills({
             key={tab.href}
             href={tab.href}
             className={cn(
-              'relative inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors duration-300',
+              'relative inline-flex min-w-0 items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium transition-colors duration-300 sm:px-2.5 sm:text-[11px]',
               active ? 'text-white' : 'text-surface-600 hover:text-ink',
             )}
           >
@@ -71,8 +72,8 @@ function SectionTabPills({
                 transition={{ type: 'spring', stiffness: 380, damping: 30 }}
               />
             )}
-            <tab.icon className="h-3.5 w-3.5" />
-            <span className="relative z-10">{tab.label}</span>
+            <tab.icon className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" />
+            <span className="relative z-10 truncate">{tab.label}</span>
           </Link>
         )
       })}
@@ -80,7 +81,7 @@ function SectionTabPills({
   )
 }
 
-function SectionTabDropdown({
+export function SectionTabDropdown({
   tabs,
   isMerged,
   isActive,
@@ -104,23 +105,25 @@ function SectionTabDropdown({
   }, [open])
 
   return (
-    <div ref={rootRef} className="relative min-w-0 shrink">
+    <div ref={rootRef} className="relative min-w-0 max-w-[6.75rem] shrink sm:max-w-[7.5rem]">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="listbox"
         className={cn(
-          'inline-flex max-w-[9.5rem] items-center gap-1.5 rounded-full border py-1.5 pl-3 pr-2.5 text-xs font-semibold shadow-soft-xs backdrop-blur-md transition-colors',
+          'inline-flex w-full min-w-0 items-center justify-between gap-1 rounded-full border py-1 pl-2 pr-1.5 text-[10px] font-semibold shadow-soft-xs backdrop-blur-md transition-colors sm:text-[11px]',
           isMerged
             ? 'border-white/60 bg-gradient-to-br from-primary-500 to-primary-600 text-white'
             : 'border-surface-200/70 bg-white/80 text-ink',
         )}
       >
-        <ActiveIcon className="h-3.5 w-3.5 shrink-0" />
-        <span className="truncate">{activeTab.label}</span>
+        <span className="inline-flex min-w-0 items-center gap-1">
+          <ActiveIcon className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" />
+          <span className="truncate">{activeTab.label}</span>
+        </span>
         <ChevronDown
-          className={cn('h-3.5 w-3.5 shrink-0 transition-transform', open && 'rotate-180')}
+          className={cn('h-3 w-3 shrink-0 transition-transform sm:h-3.5 sm:w-3.5', open && 'rotate-180')}
         />
       </button>
 
@@ -132,7 +135,7 @@ function SectionTabDropdown({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.98 }}
             transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute left-0 top-[calc(100%+6px)] z-50 min-w-[10.5rem] overflow-hidden rounded-xl border border-surface-200/80 bg-white/95 p-1 shadow-soft-lg backdrop-blur-xl"
+            className="absolute left-0 top-[calc(100%+6px)] z-50 min-w-[9.5rem] overflow-hidden rounded-xl border border-surface-200/80 bg-white/95 p-1 shadow-soft-lg backdrop-blur-xl"
           >
             {tabs.map((tab) => {
               const active = isActive(tab)
@@ -167,7 +170,7 @@ const SCROLL_TRANSPARENT_THRESHOLD = 20
 export function SectionTabs({ tabs, layoutId, variant = 'merged' }: SectionTabsProps) {
   const pathname = usePathname()
   const isMerged = variant === 'merged'
-  const useDropdown = tabs.length >= 3
+  const useDropdown = tabs.length >= 2
   const isActive = (tab: SectionTab) => isTabActive(tab, pathname)
   const [scrolled, setScrolled] = useState(false)
 
@@ -186,7 +189,6 @@ export function SectionTabs({ tabs, layoutId, variant = 'merged' }: SectionTabsP
         className={cn(
           'fixed inset-x-0 top-0 z-50 overflow-visible pt-[env(safe-area-inset-top,0px)] lg:hidden',
           mobileHeaderBarRowClass,
-          'gap-2',
           isMerged
             ? cn('mobile-merged-header-bg', scrolled && 'is-scrolled')
             : cn(
@@ -195,18 +197,23 @@ export function SectionTabs({ tabs, layoutId, variant = 'merged' }: SectionTabsP
               ),
         )}
       >
-        <Link
-          href="/"
-          className="inline-flex shrink-0 items-center"
-          aria-label="Beranda Bantoo"
-        >
-          <BrandLogo variant="icon" iconClassName="h-[4.25rem] w-[4.25rem] scale-[1.45] sm:h-20 sm:w-20 sm:scale-[1.5]" />
-        </Link>
-        <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
+          <Link
+            href="/"
+            className="inline-flex shrink-0 items-center"
+            aria-label="Beranda Bantoo"
+          >
+            <BrandLogo variant="wordmark" wordmarkClassName={mobileHeaderLogoWordmarkClass} />
+          </Link>
           {useDropdown ? (
             <SectionTabDropdown tabs={tabs} isMerged={isMerged} isActive={isActive} />
           ) : (
-            <SectionTabPills tabs={tabs} layoutId={layoutId} isMerged={isMerged} isActive={isActive} />
+            <SectionTabPills
+              tabs={tabs}
+              layoutId={layoutId}
+              isMerged={isMerged}
+              isActive={isActive}
+            />
           )}
         </div>
         <PublicHeaderActions />

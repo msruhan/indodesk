@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Plus, Search, Edit, Trash2, Package } from '@/lib/icons'
 import { parseServerFieldDefs } from '@/lib/server-fields'
 import { AdminServerServiceEditModal } from '@/components/admin/admin-server-service-edit-modal'
+import { FilterGroupSheet } from '@/components/ui/filter-group-sheet'
 
 interface ServerServiceItem {
   id: string
@@ -89,6 +90,23 @@ export function AdminServerServicesPanel() {
     [q, boxFilter, statusFilter, services],
   )
 
+  const boxFilterOptions = useMemo(
+    () => [
+      { id: 'all', label: 'Semua box' },
+      ...boxes.map((b) => ({ id: b.id, label: b.title })),
+    ],
+    [boxes],
+  )
+
+  const statusFilterOptions = useMemo(
+    () => [
+      { id: 'all' as const, label: 'Semua status' },
+      { id: 'ACTIVE' as const, label: 'Aktif' },
+      { id: 'INACTIVE' as const, label: 'Nonaktif' },
+    ],
+    [],
+  )
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-wrap">
@@ -96,27 +114,29 @@ export function AdminServerServicesPanel() {
           <Plus className="h-3.5 w-3.5" />
           Tambah Server Service
         </Button>
-        <select
-          value={boxFilter}
-          onChange={(e) => setBoxFilter(e.target.value)}
-          className="h-9 rounded-xl border border-surface-200/80 bg-white px-3 text-xs text-surface-700"
-        >
-          <option value="all">Semua Box</option>
-          {boxes.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.title}
-            </option>
-          ))}
-        </select>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as 'all' | 'ACTIVE' | 'INACTIVE')}
-          className="h-9 rounded-xl border border-surface-200/80 bg-white px-3 text-xs text-surface-700"
-        >
-          <option value="all">Semua Status</option>
-          <option value="ACTIVE">Aktif</option>
-          <option value="INACTIVE">Nonaktif</option>
-        </select>
+        <FilterGroupSheet
+          groups={[
+            {
+              id: 'box',
+              label: 'Box',
+              value: boxFilter,
+              onChange: setBoxFilter,
+              options: boxFilterOptions,
+            },
+            {
+              id: 'status',
+              label: 'Status',
+              value: statusFilter,
+              onChange: (value) => setStatusFilter(value as 'all' | 'ACTIVE' | 'INACTIVE'),
+              options: statusFilterOptions,
+            },
+          ]}
+          onReset={() => {
+            setBoxFilter('all')
+            setStatusFilter('all')
+          }}
+          disabled={loading}
+        />
         <div className="relative flex-1 min-w-[200px]">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-surface-400" />
           <Input

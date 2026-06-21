@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { motion } from 'framer-motion'
 import { Card, CardContent } from '@/components/ui/card'
@@ -35,6 +35,7 @@ export function MarketplaceOrderDetailView({
   listHref = '/user/orders',
 }: MarketplaceOrderDetailViewProps) {
   const params = useParams()
+  const router = useRouter()
   const orderId = params.id as string
 
   const [order, setOrder] = useState<MarketplaceOrderDto | null>(null)
@@ -45,6 +46,8 @@ export function MarketplaceOrderDetailView({
   const [confirmError, setConfirmError] = useState<string | null>(null)
   const [showComplaintForm, setShowComplaintForm] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
+  const [cancelLoading, setCancelLoading] = useState(false)
+  const [cancelReason, setCancelReason] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -102,7 +105,11 @@ export function MarketplaceOrderDetailView({
 
   const statusSteps = ['pending', 'paid', 'processing', 'shipped', 'completed'] as const
   const progressStatus =
-    order.status === 'disputed' ? 'shipped' : order.status
+    order.status === 'disputed'
+      ? 'shipped'
+      : order.status === 'awaiting_payment'
+        ? 'pending'
+        : order.status
   const currentStepIdx = statusSteps.indexOf(progressStatus as (typeof statusSteps)[number])
   const isShipped =
     order.status === 'shipped' || order.status === 'disputed' || order.status === 'completed'
@@ -152,6 +159,119 @@ export function MarketplaceOrderDetailView({
     }
   }
 
+  const handleCancelInstant = async () => {
+    if (!order?.canCancelInstant) return
+    const reason = cancelReason.trim()
+    if (reason.length < 20) {
+      setConfirmError('Alasan pembatalan minimal 20 karakter')
+      return
+    }
+    if (!window.confirm('Batalkan pesanan? Dana dikembalikan ke Saldo Bantoo.')) return
+
+    setCancelLoading(true)
+    setConfirmError(null)
+    try {
+      const res = await fetch(`/api/user/marketplace/orders/${orderId}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.success) {
+        setConfirmError(json.error ?? 'Gagal membatalkan pesanan')
+        return
+      }
+      router.push(`${listHref}?cancelled=1`)
+    } catch {
+      setConfirmError('Gagal membatalkan pesanan')
+    } finally {
+      setCancelLoading(false)
+    }
+  }
+
+  const handleRequestCancellation = async () => {
+    if (!order?.canRequestCancellation) return
+    const reason = cancelReason.trim()
+    if (reason.length < 20) {
+      setConfirmError('Alasan minimal 20 karakter')
+      return
+    }
+
+    setCancelLoading(true)
+    setConfirmError(null)
+    try {
+      const res = await fetch(`/api/user/marketplace/orders/${orderId}/cancel-request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.success) {
+        setConfirmError(json.error ?? 'Gagal mengajukan pembatalan')
+        return
+      }
+      setOrder(json.data as MarketplaceOrderDto)
+      setCancelReason('')
+    } catch {
+      setConfirmError('Gagal mengajukan pembatalan')
+    } finally {
+      setCancelLoading(false)
+    }
+  }
+
+  const handleWithdrawCancelRequest = async () => {
+    if (!order?.canWithdrawCancelRequest) return
+    if (!window.confirm('Tarik pengajuan pembatalan?')) return
+
+    setCancelLoading(true)
+    setConfirmError(null)
+    try {
+      const res = await fetch(`/api/user/marketplace/orders/${orderId}/cancel-request`, {
+        method: 'DELETE',
+      })
+      const json = await res.json()
+      if (!res.ok || !json.success) {
+        setConfirmError(json.error ?? 'Gagal menarik pengajuan')
+        return
+      }
+      setOrder(json.data as MarketplaceOrderDto)
+    } catch {
+      setConfirmError('Gagal menarik pengajuan')
+    } finally {
+      setCancelLoading(false)
+    }
+  }
+
+  const handleCancelAwaitingPayment = async () => {
+    if (!order?.canCancelAwaitingPayment) return
+    if (
+      !window.confirm(
+        'Batalkan pesanan ini? Stok produk akan dikembalikan dan pembayaran tidak dapat dilanjutkan.',
+      )
+    ) {
+      return
+    }
+
+    setCancelLoading(true)
+    setConfirmError(null)
+    try {
+      const res = await fetch(`/api/user/marketplace/orders/${orderId}/cancel`, {
+        method: 'POST',
+      })
+      const json = await res.json()
+      if (!res.ok || !json.success) {
+        setConfirmError(json.error ?? 'Gagal membatalkan pesanan')
+        return
+      }
+      router.push(`${listHref}?cancelled=1`)
+    } catch {
+      setConfirmError('Gagal membatalkan pesanan')
+    } finally {
+      setCancelLoading(false)
+    }
+  }
+
+  const itemCount = order.items.reduce((sum, item) => sum + item.quantity, 0)
   const deadlineLabel = formatBuyerActionDeadline(order.buyerActionDeadline)
   const returnDeadlineLabel = formatBuyerActionDeadline(order.complaint?.returnDeadline ?? null)
   const sellerConfirmLabel = formatBuyerActionDeadline(
@@ -363,10 +483,59 @@ export function MarketplaceOrderDetailView({
               </div>
             ))}
           </div>
+          <div className="space-y-2 border-t border-surface-100 pt-2 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-surface-500">Subtotal</span>
+              <span className="font-medium text-ink tabular-nums">
+                Rp {order.subtotal.toLocaleString('id-ID')}
+              </span>
+            </div>
+            {order.discount > 0 && (
+              <div className="flex items-center justify-between text-primary-700">
+                <span>Diskon promo</span>
+                <span className="font-medium tabular-nums">
+                  - Rp {order.discount.toLocaleString('id-ID')}
+                </span>
+              </div>
+            )}
+            {order.buyerFeePercentPart > 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-surface-500">Biaya Platform</span>
+                <span className="font-medium text-ink tabular-nums">
+                  Rp {order.buyerFeePercentPart.toLocaleString('id-ID')}
+                </span>
+              </div>
+            )}
+            {order.buyerFlatFeePart > 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-surface-500">
+                  Biaya layanan (
+                  {order.buyerFlatFeePerItem.toLocaleString('id-ID')} × {itemCount} item)
+                </span>
+                <span className="font-medium text-ink tabular-nums">
+                  Rp {order.buyerFlatFeePart.toLocaleString('id-ID')}
+                </span>
+              </div>
+            )}
+            {order.buyerFeePercentPart === 0 && order.buyerFlatFeePart === 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-surface-500">Biaya Platform</span>
+                <span className="font-medium text-ink tabular-nums">Gratis</span>
+              </div>
+            )}
+            {order.shippingCost > 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-surface-500">Estimasi ongkir</span>
+                <span className="font-medium text-ink tabular-nums">
+                  Rp {order.shippingCost.toLocaleString('id-ID')}
+                </span>
+              </div>
+            )}
+          </div>
           <div className="border-t border-surface-100 pt-2 flex items-center justify-between">
-            <span className="text-sm font-semibold text-ink">Total</span>
+            <span className="text-sm font-semibold text-ink">Total dibayar</span>
             <span className="text-lg font-bold text-primary-700 tabular-nums">
-              Rp {order.total.toLocaleString('id-ID')}
+              Rp {order.buyerHoldAmount.toLocaleString('id-ID')}
             </span>
           </div>
           <p className="text-xs text-surface-500">Penjual: {order.sellerName}</p>
@@ -385,6 +554,95 @@ export function MarketplaceOrderDetailView({
         </CardContent>
       </Card>
 
+      {order.canCancelAwaitingPayment && (
+        <Card className="border-rose-200 bg-rose-50/40">
+          <CardContent className="space-y-3 p-4">
+            <p className="text-sm font-semibold text-ink">Pesanan menunggu pembayaran</p>
+            <p className="text-xs text-surface-600">
+              Anda dapat membatalkan pesanan selama pembayaran belum selesai. Stok produk akan
+              dikembalikan ke penjual.
+            </p>
+            {confirmError && <p className="text-xs text-rose-600">{confirmError}</p>}
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-rose-200 text-rose-700 hover:bg-rose-50"
+              disabled={cancelLoading}
+              onClick={() => void handleCancelAwaitingPayment()}
+            >
+              {cancelLoading ? 'Membatalkan…' : 'Batalkan pesanan'}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {order.cancellationRequest?.status === 'PENDING' && (
+        <Card className="border-amber-200 bg-amber-50/40">
+          <CardContent className="space-y-2 p-4">
+            <p className="text-sm font-semibold text-ink">Pengajuan pembatalan aktif</p>
+            <p className="text-xs text-surface-600">{order.cancellationRequest.statusLabel}</p>
+            {order.cancellationRequest.sellerDeadline && (
+              <p className="text-xs text-surface-500">
+                Batas respons penjual:{' '}
+                {formatBuyerActionDeadline(order.cancellationRequest.sellerDeadline)}
+              </p>
+            )}
+            {order.canWithdrawCancelRequest && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={cancelLoading}
+                onClick={() => void handleWithdrawCancelRequest()}
+              >
+                Tarik pengajuan
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {(order.canCancelInstant || order.canRequestCancellation) && (
+        <Card className="border-rose-200 bg-rose-50/40">
+          <CardContent className="space-y-3 p-4">
+            <p className="text-sm font-semibold text-ink">Batalkan pesanan</p>
+            <p className="text-xs text-surface-600">
+              {order.canCancelInstant
+                ? 'Batalkan instan dalam 1 jam setelah bayar — dana dikembalikan ke Saldo Bantoo.'
+                : 'Ajukan pembatalan ke penjual. Penjual punya 48 jam untuk merespons.'}
+            </p>
+            <textarea
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              placeholder="Alasan (min. 20 karakter)"
+              className="min-h-[80px] w-full rounded-xl border border-surface-200 px-3 py-2 text-sm"
+            />
+            {confirmError && <p className="text-xs text-rose-600">{confirmError}</p>}
+            {order.canCancelInstant && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-rose-200 text-rose-700 hover:bg-rose-50"
+                disabled={cancelLoading || cancelReason.trim().length < 20}
+                onClick={() => void handleCancelInstant()}
+              >
+                {cancelLoading ? 'Membatalkan…' : 'Batalkan (refund ke Saldo Bantoo)'}
+              </Button>
+            )}
+            {order.canRequestCancellation && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-amber-200 text-amber-800 hover:bg-amber-50"
+                disabled={cancelLoading || cancelReason.trim().length < 20}
+                onClick={() => void handleRequestCancellation()}
+              >
+                {cancelLoading ? 'Mengirim…' : 'Ajukan pembatalan'}
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       <Button variant="outline" size="sm" className="w-full" onClick={() => void load()}>
         <RefreshCw className="h-3.5 w-3.5" />
         Refresh Pelacakan
@@ -393,7 +651,7 @@ export function MarketplaceOrderDetailView({
   )
 }
 
-function StatusProgressBar({
+export function StatusProgressBar({
   steps,
   currentIdx,
 }: {
@@ -458,7 +716,7 @@ const ShippingMapDynamic = dynamic(
   },
 )
 
-function ShippingVisualization({
+export function ShippingVisualization({
   tracking,
   isDelivered,
   title = 'Pengiriman pesanan',
@@ -515,7 +773,7 @@ function ShippingVisualization({
   )
 }
 
-function TrackingTimeline({
+export function TrackingTimeline({
   tracking,
   title = 'Riwayat Perjalanan',
 }: {

@@ -1,14 +1,25 @@
 'use client'
 
+import { useMemo } from 'react'
+import { usePathname } from 'next/navigation'
 import { TeknisiSidebar } from '@/components/dashboard/teknisi-sidebar'
 import { DashboardHeader } from '@/components/dashboard'
 import { DashboardPeriodProvider } from '@/contexts/dashboard-period-context'
 import { useSidebar } from '@/contexts/sidebar-context'
+import { useFeatureFlags } from '@/contexts/feature-flags-context'
 import { cn } from '@/lib/utils'
 import { DashboardBottomNav, DashboardMobileSpacer } from '@/components/mobile/dashboard-bottom-nav'
+import {
+  getTeknisiLayananSectionTabs,
+  isTeknisiLayananZone,
+} from '@/lib/teknisi-layanan-nav'
 
 export function TeknisiWorkspaceShell({ children }: { children: React.ReactNode }) {
   const { isCollapsed } = useSidebar()
+  const pathname = usePathname()
+  const { flags } = useFeatureFlags()
+  const layananTabs = useMemo(() => getTeknisiLayananSectionTabs(flags), [flags])
+  const showLayananTabs = isTeknisiLayananZone(pathname)
 
   return (
     <DashboardPeriodProvider>
@@ -20,8 +31,8 @@ export function TeknisiWorkspaceShell({ children }: { children: React.ReactNode 
             isCollapsed ? 'pl-0' : 'pl-0 lg:pl-64',
           )}
         >
-          <DashboardHeader />
-          <main className="p-4 sm:p-6">{children}</main>
+          <DashboardHeader mobileSectionTabs={showLayananTabs ? layananTabs : undefined} />
+          <main className="overflow-x-hidden p-3 sm:p-6">{children}</main>
         </div>
         <DashboardMobileSpacer />
         <DashboardBottomNav />

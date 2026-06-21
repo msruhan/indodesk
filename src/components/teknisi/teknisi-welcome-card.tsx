@@ -1,18 +1,23 @@
 'use client'
 
 import { motion } from 'framer-motion'
+import { cn } from '@/lib/utils'
 
 type TeknisiWelcomeCardProps = {
   name?: string
+  className?: string
 }
 
-export function TeknisiWelcomeCard({ name = 'Teknisi' }: TeknisiWelcomeCardProps) {
+export function TeknisiWelcomeCard({ name = 'Teknisi', className }: TeknisiWelcomeCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-      className="relative overflow-hidden rounded-2xl border border-primary-200/70 bg-gradient-to-br from-white via-primary-50/90 to-emerald-50 p-5 shadow-soft-sm sm:p-6"
+      className={cn(
+        'relative overflow-hidden rounded-2xl border border-primary-200/70 bg-gradient-to-br from-white via-primary-50/90 to-emerald-50 p-5 shadow-soft-sm sm:p-6',
+        className,
+      )}
     >
       <div
         aria-hidden

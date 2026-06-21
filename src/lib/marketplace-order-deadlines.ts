@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import { completeMarketplaceOrder } from '@/lib/marketplace-order-confirm'
+import { expireCancellationRequests } from '@/lib/marketplace-order-cancellation'
 import { isTerminalTrackingStatus } from '@/lib/shipping-courier'
 import { ACTIVE_COMPLAINT_STATUSES } from '@/lib/marketplace-return-deadlines'
 
@@ -116,5 +117,6 @@ export async function processMarketplaceOrderDeadlines() {
   const backfilled = await backfillDeliveredFromTracking()
   const autoCompleted = await processAutoCompletions()
   const escalated = await processComplaintEscalations()
-  return { backfilled, autoCompleted, escalated }
+  const expiredCancelRequests = await expireCancellationRequests()
+  return { backfilled, autoCompleted, escalated, expiredCancelRequests }
 }

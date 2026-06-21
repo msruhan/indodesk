@@ -247,7 +247,21 @@ async function resolveCheckoutContext(
     }
     const total = subtotal.sub(discount)
     const itemCount = group.reduce((sum, line) => sum + line.quantity, 0)
-    const fees = computeMarketplaceFees(Number(total), platformSettings, itemCount)
+    const feeLines = group.map((line) => {
+      const lineSubtotal = Number(line.unitPrice.mul(line.quantity))
+      const lineDiscount = calcLineCouponDiscount(
+        lineSubtotal,
+        line.coupon,
+        enteredCoupon,
+      )
+      const lineNet = Math.max(0, lineSubtotal - lineDiscount)
+      const quantity = line.quantity
+      return {
+        unitPrice: quantity > 0 ? lineNet / quantity : 0,
+        quantity,
+      }
+    })
+    const fees = computeMarketplaceFees(Number(total), platformSettings, itemCount, feeLines)
     const shippingCost = shippingBySeller.get(sellerId)?.cost ?? 0
     grandHoldTotal = grandHoldTotal.add(fees.buyerHoldAmount).add(shippingCost)
   }
@@ -308,7 +322,21 @@ async function createAwaitingPaymentOrders(
       }
       const total = subtotal.sub(discount)
       const itemCount = groupLines.reduce((sum, line) => sum + line.quantity, 0)
-      const fees = computeMarketplaceFees(Number(total), ctx.platformSettings, itemCount)
+      const feeLines = groupLines.map((line) => {
+        const lineSubtotal = Number(line.unitPrice.mul(line.quantity))
+        const lineDiscount = calcLineCouponDiscount(
+          lineSubtotal,
+          line.coupon,
+          ctx.enteredCoupon,
+        )
+        const lineNet = Math.max(0, lineSubtotal - lineDiscount)
+        const quantity = line.quantity
+        return {
+          unitPrice: quantity > 0 ? lineNet / quantity : 0,
+          quantity,
+        }
+      })
+      const fees = computeMarketplaceFees(Number(total), ctx.platformSettings, itemCount, feeLines)
       const shipping = ctx.shippingBySeller.get(sellerId)
       const shippingCost = new Prisma.Decimal(shipping?.cost ?? 0)
       const buyerHoldAmount = fees.buyerHoldAmount.add(shippingCost)

@@ -1,6 +1,6 @@
 'use client'
 
-import { signOut } from 'next-auth/react'
+import { completeClientLogout } from '@/lib/auth/client-logout'
 import { SESSION_STALE_CODE } from '@/lib/api-constants'
 
 type ApiJson = {
@@ -15,7 +15,8 @@ export async function handleStaleSessionResponse(
   data: ApiJson,
 ): Promise<boolean> {
   if (res.status === 401 && data.code === SESSION_STALE_CODE) {
-    await signOut({ callbackUrl: '/login' })
+    await completeClientLogout({ callbackUrl: '/login' })
+    window.location.assign('/login')
     return true
   }
   return false

@@ -19,7 +19,8 @@ import {
   Lock,
   Shield,
 } from '@/lib/icons'
-import { DashboardMonthFilter, FilterSelect, MetricCard } from '@/components/dashboard'
+import { DashboardMonthFilter, MetricCard } from '@/components/dashboard'
+import { FilterGroupSheet } from '@/components/ui/filter-group-sheet'
 import { KonsultasiDetailModal } from '@/components/teknisi/konsultasi-detail-modal'
 import { useConfirm } from '@/components/ui/confirm-dialog'
 import { useChat } from '@/contexts/chat-context'
@@ -70,6 +71,163 @@ async function copyText(label: string, value: string) {
   } catch {
     toast.error(`Gagal menyalin ${label.toLowerCase()}`)
   }
+}
+
+type KonsultasiActionsProps = {
+  k: TeknisiKonsultasiDto
+  actingId: string | null
+  compact?: boolean
+  showDetail?: boolean
+  confirmDialog: (opts: {
+    title: string
+    description: string
+    confirmLabel: string
+  }) => Promise<boolean>
+  patchAction: (id: string, action: 'start' | 'mark-done' | 'cancel') => Promise<void>
+  openUserChat: (userId: string, chatHref: string) => void
+  onDetail: () => void
+}
+
+function TeknisiKonsultasiActions({
+  k,
+  actingId,
+  compact = false,
+  showDetail = false,
+  confirmDialog,
+  patchAction,
+  openUserChat,
+  onDetail,
+}: KonsultasiActionsProps) {
+  const btnClass = compact ? 'h-6 px-1.5 text-[9px]' : 'h-8 px-2 text-[10px]'
+
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {showDetail && (
+        <Button type="button" size="sm" variant="outline" className={btnClass} onClick={onDetail}>
+          Detail
+        </Button>
+      )}
+      <Button
+        type="button"
+        size="icon-sm"
+        variant="outline"
+        className={cn(compact ? 'h-6 w-6' : 'h-8 w-8', 'shrink-0')}
+        aria-label={`Chat dengan ${k.userName}`}
+        onClick={() => openUserChat(k.userId, k.chatHref)}
+      >
+        <MessageCircle className={compact ? 'h-3 w-3' : 'h-3.5 w-3.5'} />
+      </Button>
+      {k.status === 'awaiting_payment' && (
+        <span className={cn('text-amber-700', compact ? 'text-[9px]' : 'text-[11px]')}>
+          Menunggu pembayaran user
+        </span>
+      )}
+      {k.status === 'pending' && (
+        <>
+          <Button
+            size="sm"
+            variant="primary"
+            className={btnClass}
+            disabled={actingId === k.id || !k.canStart}
+            onClick={() => void patchAction(k.id, 'start')}
+          >
+            Mulai
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className={btnClass}
+            disabled={actingId === k.id}
+            onClick={() => void patchAction(k.id, 'cancel')}
+          >
+            Batalkan
+          </Button>
+        </>
+      )}
+      {k.status === 'active' && (
+        <Button
+          size="sm"
+          variant="primary"
+          className={btnClass}
+          disabled={actingId === k.id || !k.canMarkDone}
+          onClick={async () => {
+            const ok = await confirmDialog({
+              title: 'Selesai melayani?',
+              description:
+                'User akan diminta konfirmasi. Dana cair setelah user setuju atau otomatis dalam 48 jam.',
+              confirmLabel: 'Selesai melayani',
+            })
+            if (ok) void patchAction(k.id, 'mark-done')
+          }}
+        >
+          Selesai
+        </Button>
+      )}
+      {k.status === 'awaiting_confirmation' && k.confirmDeadlineAt && (
+        <span className={cn('text-amber-700', compact ? 'text-[9px]' : 'text-[11px]')}>
+          Menunggu konfirmasi ·{' '}
+          {new Intl.DateTimeFormat('id-ID', {
+            day: 'numeric',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+          }).format(new Date(k.confirmDeadlineAt))}
+        </span>
+      )}
+    </div>
+  )
+}
+
+function TeknisiKonsultasiRemotePanel({ k, compact = false }: { k: TeknisiKonsultasiDto; compact?: boolean }) {
+  if (!k.requiresRemote || (k.status !== 'pending' && k.status !== 'active')) return null
+
+  return (
+    <div
+      className={cn(
+        'rounded-lg border border-surface-200/70 bg-surface-50/80',
+        compact ? 'space-y-1 p-1.5 text-[10px]' : 'flex flex-col gap-2 p-2 text-[12px] sm:flex-row sm:flex-wrap sm:items-center sm:gap-4',
+      )}
+    >
+      {(k.device || k.clientOs) && (
+        <span className="flex items-center gap-1 text-surface-600">
+          <Laptop className="h-3 w-3 shrink-0 text-surface-400" />
+          {[k.device, k.clientOs].filter(Boolean).join(' · ')}
+        </span>
+      )}
+      {k.remoteId && (
+        <span className="flex flex-wrap items-center gap-1 font-mono text-surface-600">
+          <Shield className="h-3 w-3 shrink-0 text-primary-600" />
+          {k.remoteId}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-6 px-1.5 text-[9px]"
+            onClick={() => void copyText('ID', k.remoteId!)}
+          >
+            <Copy className="h-3 w-3" />
+            Salin
+          </Button>
+        </span>
+      )}
+      {k.remoteOtp && (
+        <span className="flex flex-wrap items-center gap-1 font-mono text-primary-700">
+          <Lock className="h-3 w-3 shrink-0" />
+          OTP: {k.remoteOtp}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-6 px-1.5 text-[9px]"
+            onClick={() => void copyText('OTP', k.remoteOtp!)}
+          >
+            <Copy className="h-3 w-3" />
+            Salin
+          </Button>
+        </span>
+      )}
+    </div>
+  )
 }
 
 export default function TeknisiKonsultasiPage() {
@@ -241,7 +399,7 @@ export default function TeknisiKonsultasiPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold tracking-tightest text-ink sm:text-2xl">Konsultasi</h1>
@@ -277,7 +435,7 @@ export default function TeknisiKonsultasiPage() {
           icon={MessageCircle}
           footnote={periodLabel}
           tone="primary"
-          compact
+          dense
         />
         <MetricCard
           title="Menunggu"
@@ -285,7 +443,7 @@ export default function TeknisiKonsultasiPage() {
           icon={Clock}
           footnote="Perlu dimulai"
           tone={displayStats.pending > 0 ? 'warning' : 'neutral'}
-          compact
+          dense
         />
         <MetricCard
           title="Berjalan"
@@ -293,7 +451,7 @@ export default function TeknisiKonsultasiPage() {
           icon={Radio}
           footnote="Sedang berjalan"
           tone="primary"
-          compact
+          dense
         />
         <MetricCard
           title="Selesai"
@@ -301,7 +459,7 @@ export default function TeknisiKonsultasiPage() {
           icon={CheckCircle}
           footnote="Konsultasi tuntas"
           tone="primary"
-          compact
+          dense
         />
       </div>
 
@@ -325,35 +483,39 @@ export default function TeknisiKonsultasiPage() {
             ))}
           </div>
         </div>
-        <SearchInput
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Cari order, user, layanan..."
-          className="min-w-0 w-full flex-1 sm:min-w-[16rem]"
-          inputClassName="h-9 text-xs"
-          disabled={loading}
-        />
-      </div>
-
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <FilterSelect
-          options={remoteFilterOptions}
-          value={remoteFilter}
-          onChange={setRemoteFilter}
-          ariaLabel="Filter tipe konsultasi"
-          label="Tipe"
-          className="w-full sm:w-[11.5rem]"
-          disabled={loading}
-        />
-        <FilterSelect
-          options={ratingFilterOptions}
-          value={ratingFilter}
-          onChange={setRatingFilter}
-          ariaLabel="Filter rating konsultasi"
-          label="Rating"
-          className="w-full sm:w-[11.5rem]"
-          disabled={loading}
-        />
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <SearchInput
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Cari order, user, layanan..."
+            className="min-w-0 flex-1"
+            inputClassName="h-9 text-xs"
+            disabled={loading}
+          />
+          <FilterGroupSheet
+            groups={[
+              {
+                id: 'tipe',
+                label: 'Tipe',
+                value: remoteFilter,
+                onChange: (value) => setRemoteFilter(value as RemoteFilter),
+                options: remoteFilterOptions,
+              },
+              {
+                id: 'rating',
+                label: 'Rating',
+                value: ratingFilter,
+                onChange: (value) => setRatingFilter(value as RatingFilter),
+                options: ratingFilterOptions,
+              },
+            ]}
+            onReset={() => {
+              setRemoteFilter('all')
+              setRatingFilter('all')
+            }}
+            disabled={loading}
+          />
+        </div>
       </div>
 
       <p className="text-[12px] text-surface-500">
@@ -386,7 +548,59 @@ export default function TeknisiKonsultasiPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="-mx-2 overflow-x-auto px-2">
+        <>
+          <div className="space-y-2 md:hidden">
+            {filteredItems.map((k) => (
+              <Card key={k.id} className="shadow-soft-xs">
+                <CardContent className="space-y-2 p-2.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate font-mono text-[10px] font-semibold text-ink">{k.orderId}</p>
+                      <p className="mt-0.5 truncate text-[11px] font-medium text-surface-700">{k.userName}</p>
+                    </div>
+                    <Badge variant={statusBadgeVariant(k.status)} className="shrink-0 text-[9px]">
+                      {k.statusLabel}
+                    </Badge>
+                  </div>
+                  <div className="flex items-start justify-between gap-2 text-[10px]">
+                    <div className="min-w-0">
+                      <p className="line-clamp-2 leading-snug text-surface-600">{k.service}</p>
+                      {k.requiresRemote && (
+                        <Badge variant="outline" className="mt-1 px-1 py-0 text-[8px]">
+                          Remote
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="font-semibold tabular-nums text-primary-700">{formatPrice(k.amount)}</p>
+                      {k.rating ? (
+                        <p className="mt-0.5 text-surface-600">
+                          {k.rating}
+                          <span className="text-yellow-400">★</span>
+                        </p>
+                      ) : (
+                        <p className="mt-0.5 text-surface-400">—</p>
+                      )}
+                      <p className="mt-0.5 text-[9px] text-surface-500">{k.date}</p>
+                    </div>
+                  </div>
+                  <TeknisiKonsultasiRemotePanel k={k} compact />
+                  <TeknisiKonsultasiActions
+                    k={k}
+                    actingId={actingId}
+                    compact
+                    showDetail
+                    confirmDialog={confirmDialog}
+                    patchAction={patchAction}
+                    openUserChat={openUserChat}
+                    onDetail={() => setDetailKonsultasi(k)}
+                  />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <div className="hidden md:block">
           <Table>
                 <TableHeader>
                   <TableRow>
@@ -402,11 +616,7 @@ export default function TeknisiKonsultasiPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredItems.map((k) => {
-                    const showRemotePanel =
-                      k.requiresRemote && (k.status === 'pending' || k.status === 'active')
-
-                    return (
+                  {filteredItems.map((k) => (
                       <Fragment key={k.id}>
                         <TableRow>
                           <TableCell className="font-medium whitespace-nowrap">{k.orderId}</TableCell>
@@ -448,126 +658,29 @@ export default function TeknisiKonsultasiPage() {
                             </Button>
                           </TableCell>
                           <TableCell>
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <Button
-                                type="button"
-                                size="icon-sm"
-                                variant="outline"
-                                className="h-8 w-8 shrink-0"
-                                aria-label={`Chat dengan ${k.userName}`}
-                                onClick={() => openUserChat(k.userId, k.chatHref)}
-                              >
-                                <MessageCircle className="h-3.5 w-3.5" />
-                              </Button>
-                              {k.status === 'awaiting_payment' && (
-                                <span className="text-[11px] text-amber-700">
-                                  Menunggu pembayaran user
-                                </span>
-                              )}
-                              {k.status === 'pending' && (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    variant="primary"
-                                    disabled={actingId === k.id || !k.canStart}
-                                    onClick={() => void patchAction(k.id, 'start')}
-                                  >
-                                    Mulai
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    disabled={actingId === k.id}
-                                    onClick={() => void patchAction(k.id, 'cancel')}
-                                  >
-                                    Batalkan
-                                  </Button>
-                                </>
-                              )}
-                              {k.status === 'active' && (
-                                <Button
-                                  size="sm"
-                                  variant="primary"
-                                  disabled={actingId === k.id || !k.canMarkDone}
-                                  onClick={async () => {
-                                    const ok = await confirmDialog({
-                                      title: 'Selesai melayani?',
-                                      description:
-                                        'User akan diminta konfirmasi. Dana cair setelah user setuju atau otomatis dalam 48 jam.',
-                                      confirmLabel: 'Selesai melayani',
-                                    })
-                                    if (ok) void patchAction(k.id, 'mark-done')
-                                  }}
-                                >
-                                  Selesai melayani
-                                </Button>
-                              )}
-                              {k.status === 'awaiting_confirmation' && k.confirmDeadlineAt && (
-                                <span className="text-[11px] text-amber-700">
-                                  Menunggu konfirmasi user · batas{' '}
-                                  {new Intl.DateTimeFormat('id-ID', {
-                                    day: 'numeric',
-                                    month: 'short',
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                  }).format(new Date(k.confirmDeadlineAt))}
-                                </span>
-                              )}
-                            </div>
+                            <TeknisiKonsultasiActions
+                              k={k}
+                              actingId={actingId}
+                              confirmDialog={confirmDialog}
+                              patchAction={patchAction}
+                              openUserChat={openUserChat}
+                              onDetail={() => setDetailKonsultasi(k)}
+                            />
                           </TableCell>
                         </TableRow>
-                        {showRemotePanel && (
+                        {k.requiresRemote && (k.status === 'pending' || k.status === 'active') && (
                           <TableRow className="bg-surface-50/80 hover:bg-surface-50/80">
                             <TableCell colSpan={9} className="py-3">
-                              <div className="flex flex-col gap-2 text-[12px] text-surface-600 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
-                                {(k.device || k.clientOs) && (
-                                  <span className="flex items-center gap-1.5">
-                                    <Laptop className="h-3.5 w-3.5 text-surface-400" />
-                                    {[k.device, k.clientOs].filter(Boolean).join(' · ')}
-                                  </span>
-                                )}
-                                {k.remoteId && (
-                                  <span className="flex items-center gap-1.5 font-mono">
-                                    <Shield className="h-3.5 w-3.5 text-primary-600" />
-                                    IndoDesk ID: {k.remoteId}
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-7 px-2"
-                                      onClick={() => void copyText('ID', k.remoteId!)}
-                                    >
-                                      <Copy className="h-3 w-3" />
-                                      Salin
-                                    </Button>
-                                  </span>
-                                )}
-                                {k.remoteOtp && (
-                                  <span className="flex items-center gap-1.5 font-mono text-primary-700">
-                                    <Lock className="h-3.5 w-3.5" />
-                                    OTP: {k.remoteOtp}
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-7 px-2"
-                                      onClick={() => void copyText('OTP', k.remoteOtp!)}
-                                    >
-                                      <Copy className="h-3 w-3" />
-                                      Salin
-                                    </Button>
-                                  </span>
-                                )}
-                              </div>
+                              <TeknisiKonsultasiRemotePanel k={k} />
                             </TableCell>
                           </TableRow>
                         )}
                       </Fragment>
-                    )
-                  })}
+                    ))}
                 </TableBody>
               </Table>
-        </div>
+          </div>
+        </>
       )}
 
       <KonsultasiDetailModal

@@ -17,6 +17,7 @@ export const PLATFORM_SETTING_KEYS = [
   'buyer_fee_percent',
   'buyer_flat_fee_per_item',
   'seller_fee_percent',
+  'seller_fee_tiers',
   'konsultasi_fee_percent',
   'inspeksi_fee_percent',
   'fee_percent',
@@ -27,6 +28,7 @@ export const PLATFORM_SETTING_KEYS = [
   'cari_teknisi_enabled',
   'konsultasi_service_enabled',
   'rekber_service_enabled',
+  'topup_service_enabled',
   'coming_soon_enabled',
   'coming_soon_launch_at',
   'coming_soon_headline',
@@ -34,6 +36,23 @@ export const PLATFORM_SETTING_KEYS = [
 ] as const
 
 export type PlatformSettingKey = (typeof PLATFORM_SETTING_KEYS)[number]
+
+/** Satu tier fee penjual berdasarkan harga per item (inklusif). */
+export type SellerFeeTier = {
+  /** Batas bawah harga item (inklusif). Tier pertama harus 0. */
+  minAmount: number
+  /** Batas atas harga item (inklusif). Kosong/null = tak terbatas. */
+  maxAmount: number | null
+  feePercent: number
+}
+
+/** @deprecated Legacy field — dimigrasi otomatis ke minAmount/maxAmount. */
+export type LegacySellerFeeTier = {
+  minOrderAmount?: number
+  minAmount?: number
+  maxAmount?: number | null
+  feePercent: number
+}
 
 export type PlatformSettingsDto = {
   platformName: string
@@ -44,6 +63,8 @@ export type PlatformSettingsDto = {
   /** Biaya layanan flat per kuantitas item (pembeli). Isi 0 untuk menonaktifkan. */
   buyerFlatFeePerItem: number
   sellerFeePercent: number
+  /** Tier fee penjual. Jika diisi, menggantikan sellerFeePercent flat. */
+  sellerFeeTiers: SellerFeeTier[]
   /** Potongan platform dari harga konsultasi (sisanya ke teknisi). */
   konsultasiFeePercent: number
   /** Potongan platform dari harga inspeksi (sisanya ke teknisi). */
@@ -80,6 +101,8 @@ export type PlatformSettingsDto = {
    * dan halaman layanan transaksi aman ditampilkan. ADMIN tetap memiliki akses panel admin.
    */
   rekberServiceEnabled: boolean
+  /** Menu & layanan top up game (navigasi publik, dashboard user/teknisi). */
+  topupServiceEnabled: boolean
   /** Soft launch: arahkan seluruh halaman publik ke /coming-soon. Admin tetap bypass. */
   comingSoonEnabled: boolean
   /** ISO datetime target peluncuran untuk countdown (opsional). */
@@ -96,6 +119,7 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettingsDto = {
   buyerFeePercent: 2,
   buyerFlatFeePerItem: 0,
   sellerFeePercent: 2.5,
+  sellerFeeTiers: [],
   konsultasiFeePercent: 10,
   inspeksiFeePercent: 20,
   maintenanceMode: false,
@@ -105,6 +129,7 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettingsDto = {
   cariTeknisiEnabled: true,
   konsultasiServiceEnabled: true,
   rekberServiceEnabled: true,
+  topupServiceEnabled: true,
   comingSoonEnabled: false,
   comingSoonLaunchAt: null,
   comingSoonHeadline: DEFAULT_COMING_SOON_HEADLINE,
@@ -122,6 +147,7 @@ export type PublicFeatureFlags = {
   cariTeknisiEnabled: boolean
   konsultasiServiceEnabled: boolean
   rekberServiceEnabled: boolean
+  topupServiceEnabled: boolean
   /** Login / daftar via Google OAuth (dari env AUTH_GOOGLE_*). */
   googleAuthEnabled: boolean
 }
@@ -133,6 +159,7 @@ export const DEFAULT_PUBLIC_FEATURE_FLAGS: PublicFeatureFlags = {
   cariTeknisiEnabled: DEFAULT_PLATFORM_SETTINGS.cariTeknisiEnabled,
   konsultasiServiceEnabled: DEFAULT_PLATFORM_SETTINGS.konsultasiServiceEnabled,
   rekberServiceEnabled: DEFAULT_PLATFORM_SETTINGS.rekberServiceEnabled,
+  topupServiceEnabled: DEFAULT_PLATFORM_SETTINGS.topupServiceEnabled,
   googleAuthEnabled: false,
 }
 
@@ -205,4 +232,15 @@ export function canAccessKonsultasiService(role: Role, flags: PublicFeatureFlags
 export function canAccessRekberService(role: Role, flags: PublicFeatureFlags): boolean {
   if (role === 'ADMIN') return true
   return flags.rekberServiceEnabled
+}
+
+/**
+ * Role yang diizinkan melihat menu Top Up dan halaman /topup.
+ *
+ * - ADMIN selalu boleh (preview katalog & operasional).
+ * - USER, TEKNISI, dan pengunjung mengikuti `topupServiceEnabled`.
+ */
+export function canAccessTopupService(role: Role, flags: PublicFeatureFlags): boolean {
+  if (role === 'ADMIN') return true
+  return flags.topupServiceEnabled
 }

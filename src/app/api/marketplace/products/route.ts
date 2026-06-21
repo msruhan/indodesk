@@ -2,7 +2,8 @@ import { ProductCategory } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess } from '@/lib/api-auth'
 import { MARKETPLACE_CATEGORY_SLUGS } from '@/lib/product-category-config'
-import { serializeMarketplaceProduct, serializeMarketplaceProducts } from '@/lib/marketplace-product-serializer'
+import { serializeMarketplaceProducts } from '@/lib/marketplace-product-serializer'
+import { PUBLIC_MARKETPLACE_PRODUCT_WHERE } from '@/lib/public-marketplace-product'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,9 +19,7 @@ export async function GET(req: Request) {
 
     const products = await prisma.product.findMany({
       where: {
-        isActive: true,
-        isPublished: true,
-        listingStatus: 'APPROVED',
+        ...PUBLIC_MARKETPLACE_PRODUCT_WHERE,
         ...(categoryFilters?.length ? { category: { in: categoryFilters } } : {}),
         ...(q
           ? {

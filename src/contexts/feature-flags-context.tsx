@@ -34,6 +34,7 @@ export function FeatureFlagsProvider({ children }: { children: ReactNode }) {
           cariTeknisiEnabled: Boolean(json.data.cariTeknisiEnabled),
           konsultasiServiceEnabled: Boolean(json.data.konsultasiServiceEnabled),
           rekberServiceEnabled: Boolean(json.data.rekberServiceEnabled),
+          topupServiceEnabled: Boolean(json.data.topupServiceEnabled),
           googleAuthEnabled: Boolean(json.data.googleAuthEnabled),
         })
       }

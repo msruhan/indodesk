@@ -554,9 +554,23 @@ enum OrderStatus {
 }
 
 enum OrderCancelledBy {
+  BUYER
   SELLER
   ADMIN
   SYSTEM
+}
+
+enum OrderCancellationRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WITHDRAWN
+  EXPIRED
+}
+
+enum OrderCancellationKind {
+  INSTANT
+  APPROVAL_REQUIRED
 }
 
 enum OrderComplaintStatus {
@@ -648,6 +662,8 @@ model Order {
   pgExternalRef     String?
   checkoutBatchId   String?
   paymentExpiresAt  DateTime?
+  paidAt            DateTime?
+  processingAt      DateTime?
   status    OrderStatus @default(PENDING)
   note      String?
   shippingAddress       String?   @db.Text
@@ -685,6 +701,7 @@ model Order {
   reviews        ProductReview[]
   complaint      OrderComplaint?
   packagingProof OrderPackagingProof?
+  cancellationRequest OrderCancellationRequest?
 
   @@index([trackingActive, trackingNextSyncAt])
   @@index([status, trackingActive])
@@ -692,6 +709,26 @@ model Order {
   @@index([checkoutBatchId, status])
   @@index([pgExternalRef])
   @@index([status, paymentExpiresAt])
+}
+
+model OrderCancellationRequest {
+  id             String                         @id @default(cuid())
+  orderId        String                         @unique
+  buyerId        String
+  sellerId       String
+  reason         String                         @db.Text
+  kind           OrderCancellationKind
+  status         OrderCancellationRequestStatus @default(PENDING)
+  sellerDeadline DateTime?
+  sellerResponse String?                        @db.Text
+  resolvedAt     DateTime?
+  createdAt      DateTime                       @default(now())
+  updatedAt      DateTime                       @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([sellerId, status])
+  @@index([status, sellerDeadline])
 }
 
 model ShippingLocation {

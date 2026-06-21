@@ -70,6 +70,9 @@ export const authConfig = {
       return token
     },
     async session({ session, token }) {
+      if (!token?.id) {
+        return { expires: session.expires } as typeof session
+      }
       if (session.user) {
         session.user.id = token.id as string
         session.user.role = token.role as UserRole

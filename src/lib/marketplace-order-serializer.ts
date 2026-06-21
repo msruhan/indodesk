@@ -1,5 +1,6 @@
 import type {
   Order,
+  OrderCancellationRequest,
   OrderComplaint,
   OrderComplaintMedia,
   OrderItem,
@@ -19,6 +20,15 @@ import {
 import { orderRequiresPhysicalPackaging } from '@/lib/marketplace-physical-order'
 import { canDownloadShippingLabelForSeller } from '@/lib/shipping-label'
 import { isTerminalTrackingStatus, SHIPPING_COURIER_OPTIONS, fromBinderbyteCourier, courierLabelFromBinderbyteCode } from '@/lib/shipping-courier'
+import {
+  canBuyerInstantCancel,
+  canBuyerRequestCancellation,
+  canSellerRejectNewOrder,
+  canSellerCancelProcessing,
+  canSellerRespondToCancelRequest,
+  serializeCancellationRequest,
+  type OrderCancellationRequestDto,
+} from '@/lib/marketplace-order-cancellation'
 
 export type MarketplaceOrderUiStatus =
   | 'awaiting_payment'
@@ -53,6 +63,10 @@ export type MarketplaceOrderDto = {
   subtotal: number
   discount: number
   fee: number
+  buyerHoldAmount: number
+  buyerFeePercentPart: number
+  buyerFlatFeePart: number
+  buyerFlatFeePerItem: number
   total: number
   status: MarketplaceOrderUiStatus
   statusLabel: string
@@ -62,6 +76,14 @@ export type MarketplaceOrderDto = {
   role: 'buyer' | 'seller' | 'admin'
   canAdvanceStatus: boolean
   canCancelOrder: boolean
+  canCancelAwaitingPayment: boolean
+  canCancelInstant: boolean
+  canRequestCancellation: boolean
+  canWithdrawCancelRequest: boolean
+  canRejectNewOrder: boolean
+  canRespondToCancelRequest: boolean
+  paidAt: string | null
+  cancellationRequest: OrderCancellationRequestDto | null
   nextStatus: 'PROCESSING' | null
   requiresShipmentInput: boolean
   awaitingBuyerConfirmation: boolean
@@ -106,6 +128,7 @@ type OrderRow = Order & {
   items: (OrderItem & { product: Pick<Product, 'id' | 'name'> & { category?: ProductCategory } })[]
   complaint?: (OrderComplaint & { media: OrderComplaintMedia[] }) | null
   packagingProof?: (OrderPackagingProof & { media: OrderPackagingMedia[] }) | null
+  cancellationRequest?: OrderCancellationRequest | null
 }
 
 export function mapMarketplaceOrderUiStatus(db: Order['status']): MarketplaceOrderUiStatus {
@@ -175,6 +198,7 @@ export function serializeMarketplaceOrder(
     viewerRole?: 'USER' | 'TEKNISI' | 'ADMIN'
     reviewedProductIds?: string[]
     sellerReturnAddress?: SellerReturnAddressDto | null
+    buyerFlatFeePerItem?: number
   },
 ): MarketplaceOrderDto {
   const status = mapMarketplaceOrderUiStatus(row.status)
@@ -228,11 +252,30 @@ export function serializeMarketplaceOrder(
     nextStatus != null &&
     row.status === 'PAID' &&
     (!isPhysical || packagingApproved)
+  const isBuyer = role === 'buyer'
+  const hasPendingCancelRequest = row.cancellationRequest?.status === 'PENDING'
   const canCancelOrder =
-    role === 'seller' && (row.status === 'PAID' || row.status === 'PROCESSING')
+    role === 'seller' && canSellerCancelProcessing(row)
+  const canRejectNewOrder = role === 'seller' && canSellerRejectNewOrder(row)
+  const canCancelAwaitingPayment = isBuyer && row.status === 'AWAITING_PAYMENT'
+  const canCancelInstant = isBuyer && canBuyerInstantCancel(row, hasPendingCancelRequest)
+  const canRequestCancellation =
+    isBuyer && canBuyerRequestCancellation(row, hasPendingCancelRequest)
+  const canWithdrawCancelRequest = isBuyer && hasPendingCancelRequest
+  const canRespondToCancelRequest =
+    role === 'seller' && canSellerRespondToCancelRequest(row.cancellationRequest)
+  const cancellationRequestDto = row.cancellationRequest
+    ? serializeCancellationRequest(row.cancellationRequest)
+    : null
+
+  const itemCount = row.items.reduce((sum, item) => sum + item.quantity, 0)
+  const buyerFeeAmount = Number(row.buyerFeeAmount)
+  const flatFeePerItem = opts.buyerFlatFeePerItem ?? 0
+  const buyerFlatFeePart =
+    flatFeePerItem > 0 && itemCount > 0 ? flatFeePerItem * itemCount : 0
+  const buyerFeePercentPart = Math.max(0, buyerFeeAmount - buyerFlatFeePart)
 
   const trackingDelivered = isTerminalTrackingStatus(row.trackingSummaryStatus)
-  const isBuyer = role === 'buyer'
   const beforeDeadline = isBeforeBuyerDeadline(row.buyerActionDeadline)
   const hasComplaint = Boolean(row.complaint)
 
@@ -305,6 +348,10 @@ export function serializeMarketplaceOrder(
     subtotal: Number(row.subtotal),
     discount: Number(row.discount),
     fee: Number(row.fee),
+    buyerHoldAmount: Number(row.buyerHoldAmount),
+    buyerFeePercentPart,
+    buyerFlatFeePart,
+    buyerFlatFeePerItem: flatFeePerItem,
     total: Number(row.total),
     status,
     statusLabel: marketplaceOrderStatusLabel(status),
@@ -314,6 +361,14 @@ export function serializeMarketplaceOrder(
     role,
     canAdvanceStatus: canAdvance,
     canCancelOrder,
+    canCancelAwaitingPayment,
+    canCancelInstant,
+    canRequestCancellation,
+    canWithdrawCancelRequest,
+    canRejectNewOrder,
+    canRespondToCancelRequest,
+    paidAt: row.paidAt?.toISOString() ?? null,
+    cancellationRequest: cancellationRequestDto,
     nextStatus,
     requiresShipmentInput,
     awaitingBuyerConfirmation,

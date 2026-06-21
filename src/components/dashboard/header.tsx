@@ -24,9 +24,15 @@ import {
   headerIconClass,
   mobileHeaderBarRowClass,
   mobileHeaderBarRowDesktopClass,
+  mobileHeaderLogoWordmarkClass,
 } from '@/components/mobile/header-action-styles'
 import { HeaderCartLink } from '@/components/mobile/header-cart-link'
 import { useHeaderPopover } from '@/components/mobile/use-header-popover'
+import {
+  isTabActive,
+  SectionTabDropdown,
+  type SectionTab,
+} from '@/components/mobile/section-tabs'
 
 function getChatHref(role: UserRole): string {
   if (role === 'ADMIN') return '/admin/chat'
@@ -54,7 +60,12 @@ function ProfileAvatar({ user }: { user: User }) {
   return <span className="text-xs font-bold text-white">{getInitials(user.name)}</span>
 }
 
-export function DashboardHeader() {
+export function DashboardHeader({
+  mobileSectionTabs,
+}: {
+  /** Mobile-only section switcher (e.g. Layanan tabs) shown beside logo. */
+  mobileSectionTabs?: SectionTab[]
+}) {
   const pathname = usePathname()
   const { user, logout } = useAuth()
   const notificationsPopover = useHeaderPopover<HTMLButtonElement>({
@@ -110,25 +121,48 @@ export function DashboardHeader() {
     }
   }
 
+  const showMobileSectionNav =
+    mobileSectionTabs != null && mobileSectionTabs.length >= 2
+
   return (
     <header className="sticky top-0 z-30 border-b border-surface-200/60 bg-white/75 backdrop-blur-xl">
-      <div className={cn(mobileHeaderBarRowClass, mobileHeaderBarRowDesktopClass)}>
-        <div className="flex min-w-0 flex-1 items-center gap-2.5">
-          {user ? (
+      <div
+        className={cn(
+          mobileHeaderBarRowClass,
+          mobileHeaderBarRowDesktopClass,
+          'grid gap-2 lg:flex lg:items-center lg:gap-4',
+          'grid-cols-[auto_minmax(0,1fr)]',
+        )}
+      >
+        {user ? (
+          <div className="col-start-1 row-start-1 flex min-w-0 items-center gap-1.5 lg:hidden">
             <Link
               href={homePathForRole(user.role)}
-              className="inline-flex shrink-0 items-center lg:hidden"
+              className="inline-flex shrink-0 items-center"
               aria-label="Beranda dashboard"
             >
-              <BrandLogo variant="icon" iconClassName="h-[4.25rem] w-[4.25rem] scale-[1.45] sm:h-20 sm:w-20 sm:scale-[1.5]" />
+              <BrandLogo variant="wordmark" wordmarkClassName={mobileHeaderLogoWordmarkClass} />
             </Link>
-          ) : null}
-          <div className="min-w-0 flex-1">
-            <DashboardSmartSearch role={user?.role ?? 'USER'} />
+            {showMobileSectionNav && (
+              <SectionTabDropdown
+                tabs={mobileSectionTabs}
+                isMerged={false}
+                isActive={(tab) => isTabActive(tab, pathname)}
+              />
+            )}
           </div>
+        ) : null}
+
+        <div className="col-span-2 row-start-2 min-w-0 lg:col-span-1 lg:row-start-1 lg:flex-1">
+          <DashboardSmartSearch role={user?.role ?? 'USER'} />
         </div>
 
-        <div className={cn(headerActionsGroupClass, 'overflow-visible')}>
+        <div
+          className={cn(
+            headerActionsGroupClass,
+            'col-start-2 row-start-1 justify-self-end overflow-visible lg:col-start-auto lg:row-start-1',
+          )}
+        >
           <WalletBalanceButton />
 
           <Link

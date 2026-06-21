@@ -83,6 +83,14 @@ export default function AdminVisibilityPage() {
           <li className="flex items-start gap-2">
             <span className="mt-1 inline-flex h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary-500" />
             <span>
+              <strong>Top Up Game</strong> mengontrol submenu Top Up di grup Belanja, tab mobile,
+              footer, dan halaman <code className="text-xs">/topup</code> untuk user &amp; teknisi.
+              Checkout top up diblokir bila dimatikan. Admin tetap dapat preview katalog.
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="mt-1 inline-flex h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary-500" />
+            <span>
               <strong>Coming Soon</strong> mengarahkan seluruh halaman publik (landing, marketplace,
               login, register, dll.) ke halaman soft launch. Hanya <strong>Admin</strong> yang dapat
               bypass; teknisi dan user juga akan diarahkan sampai mode dimatikan.

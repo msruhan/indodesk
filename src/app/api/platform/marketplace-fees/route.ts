@@ -17,6 +17,7 @@ export async function GET() {
         buyerFeePercent: DEFAULT_PLATFORM_SETTINGS.buyerFeePercent,
         buyerFlatFeePerItem: DEFAULT_PLATFORM_SETTINGS.buyerFlatFeePerItem,
         sellerFeePercent: DEFAULT_PLATFORM_SETTINGS.sellerFeePercent,
+        sellerFeeTiers: DEFAULT_PLATFORM_SETTINGS.sellerFeeTiers,
       },
     })
   }

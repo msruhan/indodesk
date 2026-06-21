@@ -42,6 +42,8 @@ import {
   fetchUserMarketplaceRiwayat,
   marketplaceOrderToRiwayatTransaction,
 } from '@/lib/user-riwayat-marketplace'
+import type { MarketplaceOrderDto } from '@/lib/marketplace-order-serializer'
+import { MarketplaceOrderDetailModal } from '@/components/marketplace/marketplace-order-detail-modal'
 import {
   fetchUserTopupRiwayat,
   topupOrderToRiwayatTransaction,
@@ -116,6 +118,8 @@ export default function UserRiwayatPage() {
   const [activeTab, setActiveTab] = useState<RiwayatTransactionType>('semua')
   const [ordersLoading, setOrdersLoading] = useState(true)
   const [serviceOrders, setServiceOrders] = useState<RiwayatTransaction[]>([])
+  const [marketplaceOrders, setMarketplaceOrders] = useState<MarketplaceOrderDto[]>([])
+  const [selectedShopOrder, setSelectedShopOrder] = useState<MarketplaceOrderDto | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -133,6 +137,7 @@ export default function UserRiwayatPage() {
           fetchUserTopupRiwayat(),
         ])
         if (cancelled) return
+        setMarketplaceOrders(belanja)
         const mapped = [
           ...imei.map(imeiOrderToRiwayatTransaction),
           ...server.map(serverOrderToRiwayatTransaction),
@@ -275,6 +280,22 @@ export default function UserRiwayatPage() {
         .reduce((s, t) => s + t.amount, 0),
     },
   ]
+
+  const openMarketplaceOrder = (orderId: string) => {
+    const order = marketplaceOrders.find((o) => o.id === orderId)
+    if (order) setSelectedShopOrder(order)
+  }
+
+  const handleMarketplaceOrderUpdated = (updated: MarketplaceOrderDto) => {
+    setMarketplaceOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)))
+    setServiceOrders((prev) =>
+      prev.map((t) => {
+        if (t.type !== 'belanja' || t.id !== `belanja-${updated.id}`) return t
+        return marketplaceOrderToRiwayatTransaction(updated)
+      }),
+    )
+    setSelectedShopOrder(updated)
+  }
 
   return (
     <div className="space-y-5">
@@ -431,7 +452,15 @@ export default function UserRiwayatPage() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.3, delay: Math.min(idx * 0.04, 0.2) }}
               >
-                {tx.href ? (
+                {tx.type === 'belanja' ? (
+                  <button
+                    type="button"
+                    className="block w-full text-left"
+                    onClick={() => openMarketplaceOrder(tx.id.replace(/^belanja-/, ''))}
+                  >
+                    {row}
+                  </button>
+                ) : tx.href ? (
                   <Link href={tx.href} className="block">
                     {row}
                   </Link>
@@ -475,6 +504,14 @@ export default function UserRiwayatPage() {
           )}
         </div>
       )}
+      <MarketplaceOrderDetailModal
+        order={selectedShopOrder}
+        onClose={() => setSelectedShopOrder(null)}
+        fullDetailHref={
+          selectedShopOrder ? `/user/orders/${selectedShopOrder.id}` : null
+        }
+        onOrderUpdated={handleMarketplaceOrderUpdated}
+      />
     </div>
   )
 }

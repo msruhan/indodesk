@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Smartphone, Laptop, CheckSquare, Users, MessageCircle, Search, Shield } from '@/lib/icons'
+import { Smartphone, Laptop, CheckSquare, Users, MessageCircle, Search, Shield, Zap } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import type { PlatformSettingsDto } from '@/lib/platform-settings-shared'
 import {
@@ -17,6 +17,7 @@ type FlagKey =
   | 'inspectionServiceEnabled'
   | 'konsultasiServiceEnabled'
   | 'rekberServiceEnabled'
+  | 'topupServiceEnabled'
 
 type FeatureFlag = {
   key: FlagKey
@@ -79,6 +80,15 @@ const FLAGS: FeatureFlag[] = [
     description:
       'Tampilkan menu "Transaksi Aman" di navigasi publik, sidebar dashboard user/teknisi, dan halaman layanan /rekber. Bila dimatikan, pembuatan transaksi aman baru diblokir dan link disembunyikan. Admin selalu memiliki akses panel admin transaksi aman.',
     icon: Shield,
+    audienceNote: 'Navigasi publik · Dashboard user/teknisi · Admin',
+  },
+  {
+    section: 'Belanja',
+    key: 'topupServiceEnabled',
+    title: 'Top Up Game',
+    description:
+      'Tampilkan submenu "Top Up" di grup Belanja, tab mobile Shop/Top Up, footer, dan halaman /topup. Bila dimatikan, checkout top up diblokir dan link disembunyikan untuk user & teknisi. Admin selalu dapat preview katalog.',
+    icon: Zap,
     audienceNote: 'Navigasi publik · Dashboard user/teknisi · Admin',
   },
 ]

@@ -3,6 +3,7 @@ import { apiError, apiSuccess, requireApiAuth } from '@/lib/api-auth'
 import { serializeMarketplaceOrder } from '@/lib/marketplace-order-serializer'
 import { MARKETPLACE_ORDER_INCLUDE } from '@/lib/marketplace-order-includes'
 import { loadSellerReturnAddressMap } from '@/lib/marketplace-complaint-return'
+import { getPlatformSettings } from '@/lib/platform-settings'
 
 export const dynamic = 'force-dynamic'
 
@@ -44,6 +45,7 @@ export async function GET() {
       .filter((r) => r.complaint?.status === 'AWAITING_RETURN')
       .map((r) => r.sellerId)
     const returnAddressMap = await loadSellerReturnAddressMap(returnSellerIds)
+    const platformSettings = await getPlatformSettings()
 
     const items = rows.map((r) =>
       serializeMarketplaceOrder(r, {
@@ -54,6 +56,7 @@ export async function GET() {
           r.complaint?.status === 'AWAITING_RETURN'
             ? (returnAddressMap.get(r.sellerId) ?? null)
             : null,
+        buyerFlatFeePerItem: platformSettings.buyerFlatFeePerItem,
       }),
     )
 

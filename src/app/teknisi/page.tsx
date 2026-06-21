@@ -35,9 +35,9 @@ import {
   CheckCircle,
   Award,
   Users,
-  Shield,
 } from '@/lib/icons'
 import { InspectionBadge } from '@/components/teknisi/inspection-badge'
+import { FilterGroupSheet } from '@/components/ui/filter-group-sheet'
 
 const badgeConfig: Record<
   TeknisiBadgeTier,
@@ -50,18 +50,24 @@ const badgeConfig: Record<
 
 type SortKey = 'relevance' | 'rating' | 'price-low' | 'price-high'
 type OnlineFilter = 'online' | 'offline' | 'all'
+type InspectionFilter = 'all' | 'inspection'
 
-const onlineFilterOptions: { value: OnlineFilter; label: string }[] = [
-  { value: 'online', label: 'Online' },
-  { value: 'offline', label: 'Offline' },
-  { value: 'all', label: 'Semua' },
+const onlineFilterOptions = [
+  { id: 'online' as const, label: 'Online' },
+  { id: 'offline' as const, label: 'Offline' },
+  { id: 'all' as const, label: 'Semua' },
 ]
 
-const sortOptions: { value: SortKey; label: string }[] = [
-  { value: 'relevance', label: 'Relevansi' },
-  { value: 'rating', label: 'Rating' },
-  { value: 'price-low', label: 'Harga ↑' },
-  { value: 'price-high', label: 'Harga ↓' },
+const inspectionFilterOptions = [
+  { id: 'all' as const, label: 'Semua teknisi' },
+  { id: 'inspection' as const, label: 'Bisa inspeksi' },
+]
+
+const sortFilterOptions = [
+  { id: 'relevance' as const, label: 'Relevansi' },
+  { id: 'rating' as const, label: 'Rating' },
+  { id: 'price-low' as const, label: 'Harga terendah' },
+  { id: 'price-high' as const, label: 'Harga tertinggi' },
 ]
 
 const formatPrice = (n: number) =>
@@ -88,7 +94,7 @@ export default function TeknisiListPage() {
   const [loadingList, setLoadingList] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [onlineFilter, setOnlineFilter] = useState<OnlineFilter>('online')
-  const [filterInspection, setFilterInspection] = useState(false)
+  const [inspectionFilter, setInspectionFilter] = useState<InspectionFilter>('all')
   const [sortBy, setSortBy] = useState<SortKey>('relevance')
 
   useEffect(() => {
@@ -125,7 +131,8 @@ export default function TeknisiListPage() {
       const matchesOnline =
         onlineFilter === 'all' ||
         (onlineFilter === 'online' ? t.isOnline : !t.isOnline)
-      const matchesInspection = !filterInspection || t.providesInspection
+      const matchesInspection =
+        inspectionFilter === 'all' || (inspectionFilter === 'inspection' && t.providesInspection)
       return matchesSearch && matchesOnline && matchesInspection
     })
     .sort((a, b) => {
@@ -213,7 +220,7 @@ export default function TeknisiListPage() {
         <div className="space-y-3">
           {/* Search + filter row */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="relative flex-1">
+            <div className="relative min-w-0 flex-1">
               <Search className={cn(searchInputIconClass, 'left-4')} strokeWidth={2} aria-hidden />
               <Input
                 type="text"
@@ -223,100 +230,40 @@ export default function TeknisiListPage() {
                 className="h-11 pl-11"
               />
             </div>
-            <div className="relative inline-flex h-11 items-center gap-1 rounded-full border border-surface-200/70 bg-white/80 p-1 shadow-soft-xs backdrop-blur-md">
-              {onlineFilterOptions.map((opt) => {
-                const active = onlineFilter === opt.value
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setOnlineFilter(opt.value)}
-                    className={cn(
-                      'relative z-10 inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors duration-300',
-                      active
-                        ? opt.value === 'online'
-                          ? 'text-white'
-                          : 'text-ink'
-                        : 'text-surface-500 hover:text-ink',
-                    )}
-                  >
-                    {active && (
-                      <motion.span
-                        layoutId="teknisi-online-filter-pill"
-                        className={cn(
-                          'absolute inset-0 -z-10 rounded-full shadow-soft-xs ring-1 ring-inset',
-                          opt.value === 'online'
-                            ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white ring-primary-400/30'
-                            : 'bg-white ring-surface-200/80',
-                        )}
-                        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                      />
-                    )}
-                    {opt.value === 'online' && (
-                      <span className="relative flex h-2 w-2">
-                        <span
-                          className={cn(
-                            'absolute inline-flex h-full w-full rounded-full opacity-70',
-                            active ? 'animate-ping bg-white' : 'bg-primary-400',
-                          )}
-                        />
-                        <span
-                          className={cn(
-                            'relative inline-flex h-2 w-2 rounded-full',
-                            active ? 'bg-white' : 'bg-primary-500',
-                          )}
-                        />
-                      </span>
-                    )}
-                    <span>{opt.label}</span>
-                  </button>
-                )
-              })}
-            </div>
-            <button
-              onClick={() => setFilterInspection(!filterInspection)}
-              className={cn(
-                'inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-full px-4 text-sm font-medium transition-all duration-300 ease-out-expo',
-                filterInspection
-                  ? 'border border-transparent bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-[0_8px_22px_-10px_rgba(13,148,136,0.6)] hover:shadow-[0_10px_28px_-10px_rgba(13,148,136,0.7)]'
-                  : 'border border-surface-200/80 bg-white/80 text-surface-700 backdrop-blur-md hover:border-teal-200 hover:text-teal-700',
-              )}
-            >
-              <Shield className="h-4 w-4" />
-              Bisa Inspeksi
-            </button>
+            <FilterGroupSheet
+              groups={[
+                {
+                  id: 'online',
+                  label: 'Status',
+                  value: onlineFilter,
+                  onChange: (value) => setOnlineFilter(value as OnlineFilter),
+                  options: onlineFilterOptions,
+                },
+                {
+                  id: 'inspection',
+                  label: 'Inspeksi',
+                  value: inspectionFilter,
+                  onChange: (value) => setInspectionFilter(value as InspectionFilter),
+                  options: inspectionFilterOptions,
+                },
+                {
+                  id: 'sort',
+                  label: 'Urutkan',
+                  value: sortBy,
+                  onChange: (value) => setSortBy(value as SortKey),
+                  options: sortFilterOptions,
+                },
+              ]}
+              onReset={() => {
+                setOnlineFilter('online')
+                setInspectionFilter('all')
+                setSortBy('relevance')
+              }}
+            />
           </div>
 
-          {/* Status + sort */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-sm font-medium text-surface-700">
-              Menampilkan <span className="text-primary-600 font-bold">{filteredTeknisi.length}</span> teknisi
-            </div>
-
-            <div className="relative inline-flex h-9 items-center gap-1 rounded-full border border-surface-200/70 bg-white/80 p-1 shadow-soft-xs backdrop-blur-md">
-              {sortOptions.map((opt) => {
-                const active = sortBy === opt.value
-                return (
-                  <button
-                    key={opt.value}
-                    onClick={() => setSortBy(opt.value)}
-                    className={cn(
-                      'relative z-10 rounded-full px-3 py-1 text-xs font-medium transition-colors duration-300',
-                      active ? 'text-ink' : 'text-surface-500 hover:text-ink',
-                    )}
-                  >
-                    {active && (
-                      <motion.span
-                        layoutId="teknisi-sort-pill"
-                        className="absolute inset-0 -z-10 rounded-full bg-white shadow-soft-xs ring-1 ring-inset ring-surface-200/80"
-                        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                      />
-                    )}
-                    {opt.label}
-                  </button>
-                )
-              })}
-            </div>
+          <div className="text-sm font-medium text-surface-700">
+            Menampilkan <span className="font-bold text-primary-600">{filteredTeknisi.length}</span> teknisi
           </div>
         </div>
       </PageHero>

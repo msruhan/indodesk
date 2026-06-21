@@ -22,23 +22,23 @@ export function ChartSlider({ children, className }: ChartSliderProps) {
   const next = () => setCurrent((c) => (c + 1) % total)
 
   return (
-    <div className={cn('relative', className)}>
+    <div className={cn('relative overflow-hidden px-7 sm:px-8', className)}>
       {/* Navigation arrows */}
       {total > 1 && (
         <>
           <button
             onClick={prev}
-            className="absolute -left-2 top-1/2 z-10 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-full border border-surface-200/70 bg-white/90 text-surface-600 shadow-soft-sm backdrop-blur-md transition-all hover:border-surface-300 hover:text-ink hover:shadow-soft-md sm:-left-3 sm:h-9 sm:w-9"
+            className="absolute left-0 top-1/2 z-10 -translate-y-1/2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-surface-200/70 bg-white/90 text-surface-600 shadow-soft-sm backdrop-blur-md transition-all hover:border-surface-300 hover:text-ink hover:shadow-soft-md sm:h-9 sm:w-9"
             aria-label="Chart sebelumnya"
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </button>
           <button
             onClick={next}
-            className="absolute -right-2 top-1/2 z-10 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-full border border-surface-200/70 bg-white/90 text-surface-600 shadow-soft-sm backdrop-blur-md transition-all hover:border-surface-300 hover:text-ink hover:shadow-soft-md sm:-right-3 sm:h-9 sm:w-9"
+            className="absolute right-0 top-1/2 z-10 -translate-y-1/2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-surface-200/70 bg-white/90 text-surface-600 shadow-soft-sm backdrop-blur-md transition-all hover:border-surface-300 hover:text-ink hover:shadow-soft-md sm:h-9 sm:w-9"
             aria-label="Chart berikutnya"
           >
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </button>
         </>
       )}

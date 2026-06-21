@@ -31,6 +31,7 @@ export { isGoogleAuthEnabled }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
+  trustHost: process.env.AUTH_TRUST_HOST === 'true' || process.env.NODE_ENV === 'production',
   adapter: PrismaAdapter(prisma) as never,
   callbacks: {
     ...authConfig.callbacks,
@@ -180,8 +181,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async signOut(message) {
       const token = (message as { token?: { id?: string; name?: string; email?: string; role?: 'ADMIN' | 'TEKNISI' | 'USER' } }).token
-      if (!token) return
-      if (token.role === 'TEKNISI' && token.id) {
+      if (!token?.id) return
+      // Invalidate JWT immediately so lingering cookies cannot survive refresh.
+      await bumpSessionVersion(token.id)
+      if (token.role === 'TEKNISI') {
         await setTeknisiPresence(token.id, false)
       }
       void logAuthEvent({

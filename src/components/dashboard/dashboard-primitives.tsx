@@ -28,32 +28,63 @@ export function DashboardPageHeader({
   description,
   actions,
   meta,
+  compact = false,
 }: {
   eyebrow?: ReactNode
   title: string
   description?: ReactNode
   actions?: ReactNode
   meta?: ReactNode
+  /** Tighter typography for mobile dashboard pages */
+  compact?: boolean
 }) {
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div
+      className={cn(
+        'flex flex-col sm:flex-row sm:items-start sm:justify-between',
+        compact ? 'gap-2 sm:gap-4' : 'gap-4',
+      )}
+    >
       <div className="min-w-0">
         {eyebrow && (
-          <div className="mb-2 inline-flex items-center rounded-full border border-primary-200/70 bg-primary-50/70 px-3 py-1 text-[11px] font-semibold text-primary-700">
+          <div
+            className={cn(
+              'inline-flex items-center rounded-full border border-primary-200/70 bg-primary-50/70 font-semibold text-primary-700',
+              compact
+                ? 'mb-1 px-2 py-0.5 text-[10px] sm:mb-2 sm:px-3 sm:py-1 sm:text-[11px]'
+                : 'mb-2 px-3 py-1 text-[11px]',
+            )}
+          >
             {eyebrow}
           </div>
         )}
-        <h1 className="text-balance text-2xl font-semibold tracking-tightest text-ink lg:text-3xl">
+        <h1
+          className={cn(
+            'text-balance font-semibold tracking-tightest text-ink',
+            compact ? 'text-lg sm:text-2xl lg:text-3xl' : 'text-2xl lg:text-3xl',
+          )}
+        >
           {title}
         </h1>
         {description && (
-          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-surface-500">
+          <p
+            className={cn(
+              'max-w-2xl leading-relaxed text-surface-500',
+              compact
+                ? 'mt-0.5 hidden text-xs sm:mt-1 sm:block sm:text-sm'
+                : 'mt-1 text-sm',
+            )}
+          >
             {description}
           </p>
         )}
-        {meta && <div className="mt-3">{meta}</div>}
+        {meta && <div className={cn(compact ? 'mt-2 sm:mt-3' : 'mt-3')}>{meta}</div>}
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      {actions && (
+        <div className={cn('flex flex-wrap items-center gap-2', compact && 'max-sm:[&_button]:h-8 max-sm:[&_button]:px-3 max-sm:[&_button]:text-xs')}>
+          {actions}
+        </div>
+      )}
     </div>
   )
 }
@@ -135,18 +166,22 @@ export function MetricCard({
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
     >
       <Card className="group h-full overflow-hidden hover:-translate-y-0.5 transition-[transform,box-shadow]">
-        <CardContent className={cn(dense ? 'p-2 sm:p-3.5' : compact ? 'p-3 sm:p-3.5' : 'p-5')}>
+        <CardContent className={cn(dense ? 'p-2 sm:p-3.5' : compact ? 'p-2.5 sm:p-3.5' : 'p-5')}>
           <div
             className={cn(
               'flex items-start justify-between',
-              dense ? 'mb-1 gap-1.5' : compact ? 'mb-1.5 gap-3' : 'mb-4 gap-3',
+              dense ? 'mb-1 gap-1.5' : compact ? 'mb-1 gap-1.5 sm:mb-1.5 sm:gap-3' : 'mb-4 gap-3',
             )}
           >
             <div className="min-w-0">
               <p
                 className={cn(
                   'font-medium text-surface-600',
-                  dense ? 'text-[10px] leading-tight' : compact ? 'text-[11px]' : 'text-sm',
+                  dense
+                    ? 'text-[10px] leading-tight'
+                    : compact
+                      ? 'text-[10px] leading-tight sm:text-[11px]'
+                      : 'text-sm',
                 )}
               >
                 {title}
@@ -154,7 +189,11 @@ export function MetricCard({
               <div
                 className={cn(
                   'font-semibold leading-none tracking-tightest text-ink',
-                  dense ? 'mt-0.5 text-base sm:text-xl' : compact ? 'mt-1 text-xl' : 'mt-2 text-[28px]',
+                  dense
+                    ? 'mt-0.5 truncate text-base tabular-nums sm:text-xl'
+                    : compact
+                      ? 'mt-0.5 truncate text-base tabular-nums sm:mt-1 sm:text-xl'
+                      : 'mt-2 text-[28px]',
                 )}
               >
                 {value}
@@ -318,14 +357,16 @@ export function DashboardPanel({
 }) {
   return (
     <Card id={id} className={className}>
-      <CardHeader className="flex flex-row items-start justify-between gap-3 border-b border-surface-200/70 pb-4">
-        <div>
-          <CardTitle>{title}</CardTitle>
-          {description && <CardDescription className="mt-1">{description}</CardDescription>}
+      <CardHeader className="flex flex-row items-start justify-between gap-2 border-b border-surface-200/70 px-4 pb-3 pt-4 sm:gap-3 sm:px-6 sm:pb-4 sm:pt-6">
+        <div className="min-w-0">
+          <CardTitle className="text-base sm:text-lg">{title}</CardTitle>
+          {description && (
+            <CardDescription className="mt-0.5 text-xs sm:mt-1 sm:text-sm">{description}</CardDescription>
+          )}
         </div>
         {action}
       </CardHeader>
-      <CardContent className="p-5">{children}</CardContent>
+      <CardContent className="p-3 sm:p-5">{children}</CardContent>
     </Card>
   )
 }

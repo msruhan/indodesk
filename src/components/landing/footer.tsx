@@ -9,6 +9,7 @@ import {
   canAccessCariTeknisi,
   canAccessInspectionService,
   canAccessRekberService,
+  canAccessTopupService,
 } from '@/lib/platform-settings-shared'
 import { LEGAL_FOOTER_LINKS } from '@/lib/legal-content'
 import type { UserRole } from '@prisma/client'
@@ -19,11 +20,12 @@ type FooterLink = {
   requireCariTeknisi?: boolean
   requireInspection?: boolean
   requireRekber?: boolean
+  requireTopup?: boolean
 }
 
 const EXPLORE_LINKS: FooterLink[] = [
   { label: 'Marketplace', href: '/marketplace' },
-  { label: 'Top Up', href: '/topup' },
+  { label: 'Top Up', href: '/topup', requireTopup: true },
   { label: 'Cari Teknisi', href: '/teknisi', requireCariTeknisi: true },
   { label: 'Inspeksi HP', href: '/inspeksi', requireInspection: true },
   { label: 'Transaksi Aman', href: '/rekber', requireRekber: true },
@@ -37,9 +39,15 @@ const MITRA_LINKS: FooterLink[] = [
 
 function filterLinks(
   links: FooterLink[],
-  gates: { canSeeCariTeknisi: boolean; canSeeInspection: boolean; canSeeRekber: boolean },
+  gates: {
+    canSeeCariTeknisi: boolean
+    canSeeInspection: boolean
+    canSeeRekber: boolean
+    canSeeTopup: boolean
+  },
 ) {
   return links.filter((link) => {
+    if (link.requireTopup && !gates.canSeeTopup) return false
     if (link.requireCariTeknisi && !gates.canSeeCariTeknisi) return false
     if (link.requireInspection && !gates.canSeeInspection) return false
     if (link.requireRekber && !gates.canSeeRekber) return false
@@ -57,6 +65,7 @@ export function Footer() {
       canSeeCariTeknisi: canAccessCariTeknisi(role, flags),
       canSeeInspection: canAccessInspectionService(role, flags),
       canSeeRekber: canAccessRekberService(role, flags),
+      canSeeTopup: canAccessTopupService(role, flags),
     }),
     [role, flags],
   )

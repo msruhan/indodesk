@@ -71,18 +71,18 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 px-3 pt-2 lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 px-2.5 pt-1.5 lg:hidden"
       style={{
-        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)',
+        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)',
       }}
       aria-label="Mobile navigation"
     >
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white via-white/70 to-transparent"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-white via-white/70 to-transparent"
       />
 
-      <div className="relative mx-auto flex h-[68px] max-w-lg items-center justify-around rounded-3xl glass-strong border border-surface-200/70 px-1 shadow-soft-lg">
+      <div className="relative mx-auto flex h-[52px] max-w-lg items-center justify-around rounded-2xl glass-strong border border-surface-200/70 px-0.5 shadow-soft-md">
         {navItems.map((item) => {
           const isActive = isUser
             ? isUserBottomNavItemActive(item as UserBottomNavItem, pathname)
@@ -94,7 +94,7 @@ export function BottomNav() {
               href={item.href}
               onClick={() => isUser && onUserNavClick(item.href)}
               className={cn(
-                'relative flex h-14 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-2xl px-0.5 transition-colors',
+                'relative flex h-10 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-xl px-0.5 transition-colors',
                 isActive ? 'text-primary-700' : 'text-surface-500 hover:text-ink',
               )}
               aria-current={isActive ? 'page' : undefined}
@@ -102,20 +102,20 @@ export function BottomNav() {
               {isActive && (
                 <motion.span
                   layoutId="mobile-bottom-active-user"
-                  className="absolute inset-x-1 top-1 h-12 rounded-2xl bg-gradient-to-br from-primary-50 to-white ring-1 ring-inset ring-primary-200/60 shadow-soft-xs"
+                  className="absolute inset-x-0.5 top-0.5 h-9 rounded-xl bg-gradient-to-br from-primary-50 to-white ring-1 ring-inset ring-primary-200/60 shadow-soft-xs"
                   transition={{ type: 'spring', stiffness: 420, damping: 32 }}
                 />
               )}
               <motion.span
                 className="relative z-10"
-                animate={isActive ? { y: -1, scale: 1.06 } : { y: 0, scale: 1 }}
+                animate={isActive ? { y: -0.5, scale: 1.04 } : { y: 0, scale: 1 }}
                 transition={{ type: 'spring', stiffness: 480, damping: 26 }}
               >
-                <item.icon className="h-[20px] w-[20px]" />
+                <item.icon className="h-[17px] w-[17px]" />
               </motion.span>
               <span
                 className={cn(
-                  'relative z-10 text-[10px] leading-none',
+                  'relative z-10 text-[9px] leading-none',
                   isActive ? 'font-semibold' : 'font-medium',
                 )}
               >
@@ -138,7 +138,7 @@ export function MobileSafeAreaSpacer() {
       aria-hidden
       className="lg:hidden"
       style={{
-        height: 'calc(68px + 12px + 12px + env(safe-area-inset-bottom, 0px))',
+        height: 'calc(52px + 6px + 8px + env(safe-area-inset-bottom, 0px))',
       }}
     />
   )

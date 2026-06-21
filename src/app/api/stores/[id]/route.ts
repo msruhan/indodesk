@@ -4,6 +4,7 @@ import {
   serializePublicStoreDetail,
   type PublicStoreProductDto,
 } from '@/lib/teknisi-store-serializer'
+import { PUBLIC_MARKETPLACE_PRODUCT_WHERE } from '@/lib/public-marketplace-product'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,9 +56,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const products = await prisma.product.findMany({
       where: {
         sellerId: store.userId,
-        isActive: true,
-        isPublished: true,
-        listingStatus: 'APPROVED',
+        ...PUBLIC_MARKETPLACE_PRODUCT_WHERE,
       },
       orderBy: { createdAt: 'desc' },
       take: 24,

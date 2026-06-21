@@ -324,9 +324,12 @@ export default function ProductDetailPage() {
                 </button>
 
                 <div className="pointer-events-none absolute left-2.5 top-2.5 z-10 flex gap-2">
-                  <Badge variant="glass" className="bg-white/86 text-surface-800 shadow-soft-xs">
+                  <Badge
+                    variant={product.stock > 0 ? 'glass' : 'warning'}
+                    className="bg-white/86 text-surface-800 shadow-soft-xs"
+                  >
                     <Package className="h-3.5 w-3.5 text-primary-700" />
-                    Ready stock
+                    {display.stock}
                   </Badge>
                   <Badge variant="warning" className="hidden bg-white/86 shadow-soft-xs sm:inline-flex">
                     <Star className="h-3.5 w-3.5" />

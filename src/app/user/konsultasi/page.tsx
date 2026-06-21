@@ -22,9 +22,9 @@ import {
 import {
   DashboardMonthFilter,
   DashboardPageHeader,
-  FilterSelect,
   MetricCard,
 } from '@/components/dashboard'
+import { FilterGroupSheet } from '@/components/ui/filter-group-sheet'
 import { useDashboardPeriod } from '@/contexts/dashboard-period-context'
 import { isDateInPeriod } from '@/lib/dashboard-period'
 import { cn } from '@/lib/utils'
@@ -73,6 +73,201 @@ const statusConfig: Record<
   },
   completed: { label: 'Selesai', variant: 'success', icon: CheckCircle },
   cancelled: { label: 'Dibatalkan', variant: 'danger', icon: XCircle },
+}
+
+type KonsultasiItemActionsProps = {
+  k: UserKonsultasiDto
+  actingId: string | null
+  ratingId: string | null
+  ratingValue: number
+  reviewText: string
+  confirmDialog: (opts: {
+    title: string
+    description: string
+    confirmLabel: string
+  }) => Promise<boolean>
+  patchAction: (
+    id: string,
+    body:
+      | { action: 'cancel' }
+      | { action: 'confirm-complete' }
+      | { action: 'rate'; rating: number; review?: string }
+      | { action: 'confirm-payment'; pgExternalRef?: string },
+  ) => Promise<void>
+  setRatingId: (id: string | null) => void
+  setRatingValue: (value: number) => void
+  setReviewText: (text: string) => void
+  setChannelPaySession: (k: UserKonsultasiDto | null) => void
+  compact?: boolean
+}
+
+function KonsultasiItemActions({
+  k,
+  actingId,
+  ratingId,
+  ratingValue,
+  reviewText,
+  confirmDialog,
+  patchAction,
+  setRatingId,
+  setRatingValue,
+  setReviewText,
+  setChannelPaySession,
+  compact = false,
+}: KonsultasiItemActionsProps) {
+  const btnClass = compact ? 'h-6 px-1.5 text-[9px]' : 'h-7 px-2 text-[10px]'
+
+  return (
+    <>
+      <div className="flex flex-wrap gap-1">
+        <Link href={k.chatHref}>
+          <Button type="button" variant="outline" size="sm" className={btnClass}>
+            Chat
+          </Button>
+        </Link>
+        {k.canConfirmComplete && (
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            className={btnClass}
+            disabled={actingId === k.id}
+            onClick={async () => {
+              const ok = await confirmDialog({
+                title: 'Konfirmasi selesai?',
+                description: 'Dana akan dicairkan ke teknisi. Pastikan layanan sudah sesuai.',
+                confirmLabel: 'Konfirmasi selesai',
+              })
+              if (ok) void patchAction(k.id, { action: 'confirm-complete' })
+            }}
+          >
+            Konfirmasi selesai
+          </Button>
+        )}
+        {k.canConfirmComplete && k.confirmDeadlineAt && (
+          <span className={cn('w-full text-surface-700', compact ? 'text-[9px]' : 'text-[10px] text-amber-700')}>
+            Otomatis selesai{' '}
+            {new Intl.DateTimeFormat('id-ID', {
+              day: 'numeric',
+              month: 'short',
+              hour: '2-digit',
+              minute: '2-digit',
+            }).format(new Date(k.confirmDeadlineAt))}
+          </span>
+        )}
+        {k.canConfirmPayment && (
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            className={btnClass}
+            disabled={actingId === k.id}
+            onClick={() => void patchAction(k.id, { action: 'confirm-payment' })}
+          >
+            Konfirmasi bayar
+          </Button>
+        )}
+        {k.payHref && (
+          <Link href={k.payHref}>
+            <Button type="button" variant="primary" size="sm" className={btnClass}>
+              Lanjutkan bayar
+            </Button>
+          </Link>
+        )}
+        {k.needsChannelPayment && (
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            className={btnClass}
+            onClick={() => setChannelPaySession(k)}
+          >
+            Bayar sekarang
+          </Button>
+        )}
+        {k.canCancel && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={cn(btnClass, 'text-rose-600')}
+            disabled={actingId === k.id}
+            onClick={() => void patchAction(k.id, { action: 'cancel' })}
+          >
+            Batal
+          </Button>
+        )}
+        {k.canRate && ratingId !== k.id && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={btnClass}
+            onClick={() => {
+              setRatingId(k.id)
+              setRatingValue(5)
+              setReviewText('')
+            }}
+          >
+            Rating
+          </Button>
+        )}
+      </div>
+      {ratingId === k.id && (
+        <div
+          className={cn(
+            'space-y-1.5 rounded-lg border border-surface-200',
+            compact ? 'mt-1.5 p-1.5' : 'mt-2 p-2',
+          )}
+        >
+          <div className="flex gap-0.5">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button key={n} type="button" onClick={() => setRatingValue(n)} className="p-0.5">
+                <Star
+                  className={cn(
+                    compact ? 'h-3.5 w-3.5' : 'h-4 w-4',
+                    n <= ratingValue ? 'fill-yellow-400 text-yellow-400' : 'text-surface-300',
+                  )}
+                />
+              </button>
+            ))}
+          </div>
+          <Input
+            value={reviewText}
+            onChange={(e) => setReviewText(e.target.value)}
+            placeholder="Ulasan (opsional)"
+            className={cn(compact ? 'h-7 text-[10px]' : 'h-8 text-xs')}
+          />
+          <div className="flex gap-1">
+            <Button
+              type="button"
+              size="sm"
+              className={btnClass}
+              disabled={actingId === k.id}
+              onClick={() =>
+                void patchAction(k.id, {
+                  action: 'rate',
+                  rating: ratingValue,
+                  review: reviewText.trim() || undefined,
+                })
+              }
+            >
+              Kirim
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={btnClass}
+              onClick={() => setRatingId(null)}
+            >
+              Batal
+            </Button>
+          </div>
+        </div>
+      )}
+    </>
+  )
 }
 
 export default function UserKonsultasiPage() {
@@ -249,8 +444,9 @@ export default function UserKonsultasiPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <DashboardPageHeader
+        compact
         title="Konsultasi"
         description="Riwayat konsultasi dengan teknisi."
         actions={
@@ -273,20 +469,20 @@ export default function UserKonsultasiPage() {
       )}
 
       {stats.pendingRating > 0 && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 sm:px-4 sm:py-3 sm:text-sm">
           <strong>Beri rating teknisi</strong> — Anda punya {stats.pendingRating} konsultasi selesai yang
           belum dinilai. Scroll ke daftar di bawah dan klik &quot;Beri rating&quot;.
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4 md:grid-cols-3">
         <MetricCard
           title="Total"
           value={stats.total.toString()}
           icon={MessageCircle}
           footnote="Semua konsultasi"
           tone="primary"
-          compact
+          dense
         />
         <MetricCard
           title="Aktif"
@@ -294,7 +490,7 @@ export default function UserKonsultasiPage() {
           icon={Clock}
           footnote="Sedang berjalan"
           tone={stats.active > 0 ? 'warning' : 'neutral'}
-          compact
+          dense
         />
         <MetricCard
           title="Selesai"
@@ -302,7 +498,7 @@ export default function UserKonsultasiPage() {
           icon={CheckCircle}
           footnote="Konsultasi tuntas"
           tone="primary"
-          compact
+          dense
         />
       </div>
 
@@ -317,21 +513,28 @@ export default function UserKonsultasiPage() {
               className="h-10 rounded-full bg-white pl-10 text-[12.5px]"
             />
           </div>
-          <FilterSelect
-            options={statusFilterOptions}
-            value={statusFilter}
-            onChange={setStatusFilter}
-            ariaLabel="Filter status konsultasi"
-            label="Status"
-            className="w-full sm:w-[11.5rem]"
-          />
-          <FilterSelect
-            options={ratingFilterOptions}
-            value={ratingFilter}
-            onChange={setRatingFilter}
-            ariaLabel="Filter rating konsultasi"
-            label="Rating"
-            className="w-full sm:w-[11.5rem]"
+          <FilterGroupSheet
+            groups={[
+              {
+                id: 'status',
+                label: 'Status',
+                value: statusFilter,
+                onChange: (value) => setStatusFilter(value as StatusFilter),
+                options: statusFilterOptions,
+              },
+              {
+                id: 'rating',
+                label: 'Rating',
+                value: ratingFilter,
+                onChange: (value) => setRatingFilter(value as RatingFilter),
+                options: ratingFilterOptions,
+              },
+            ]}
+            onReset={() => {
+              setStatusFilter('all')
+              setRatingFilter('all')
+            }}
+            disabled={loading}
           />
         </div>
 
@@ -371,7 +574,55 @@ export default function UserKonsultasiPage() {
             </CardContent>
           </Card>
         ) : (
-          <Card>
+          <>
+            <div className="space-y-2 md:hidden">
+              {filteredItems.map((k) => (
+                <Card key={k.id} className="shadow-soft-xs">
+                  <CardContent className="space-y-2 p-2.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-semibold text-ink">{k.teknisiName}</p>
+                        <p className="mt-0.5 line-clamp-2 text-[10px] leading-snug text-surface-600">
+                          {k.service}
+                        </p>
+                      </div>
+                      <Badge variant={statusBadgeVariant(k.status)} className="shrink-0 text-[9px]">
+                        {k.statusLabel}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 text-[10px]">
+                      <span className="font-semibold tabular-nums text-primary-700">
+                        {formatPrice(k.amount)}
+                      </span>
+                      {k.rating != null ? (
+                        <span className="flex items-center gap-0.5 text-surface-700">
+                          <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                          {k.rating}
+                        </span>
+                      ) : (
+                        <span className="text-surface-400">Belum rating</span>
+                      )}
+                    </div>
+                    <KonsultasiItemActions
+                      k={k}
+                      actingId={actingId}
+                      ratingId={ratingId}
+                      ratingValue={ratingValue}
+                      reviewText={reviewText}
+                      confirmDialog={confirmDialog}
+                      patchAction={patchAction}
+                      setRatingId={setRatingId}
+                      setRatingValue={setRatingValue}
+                      setReviewText={setReviewText}
+                      setChannelPaySession={setChannelPaySession}
+                      compact
+                    />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <Card className="hidden md:block">
             <CardContent className="p-0 sm:p-0">
               <Table>
               <TableHeader>
@@ -404,157 +655,19 @@ export default function UserKonsultasiPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        <Link href={k.chatHref}>
-                          <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-[10px]">
-                            Chat
-                          </Button>
-                        </Link>
-                        {k.canConfirmComplete && (
-                          <Button
-                            type="button"
-                            variant="primary"
-                            size="sm"
-                            className="h-7 px-2 text-[10px]"
-                            disabled={actingId === k.id}
-                            onClick={async () => {
-                              const ok = await confirmDialog({
-                                title: 'Konfirmasi selesai?',
-                                description:
-                                  'Dana akan dicairkan ke teknisi. Pastikan layanan sudah sesuai.',
-                                confirmLabel: 'Konfirmasi selesai',
-                              })
-                              if (ok) void patchAction(k.id, { action: 'confirm-complete' })
-                            }}
-                          >
-                            Konfirmasi selesai
-                          </Button>
-                        )}
-                        {k.canConfirmComplete && k.confirmDeadlineAt && (
-                          <span className="w-full text-[10px] text-amber-700">
-                            Otomatis selesai{' '}
-                            {new Intl.DateTimeFormat('id-ID', {
-                              day: 'numeric',
-                              month: 'short',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            }).format(new Date(k.confirmDeadlineAt))}
-                          </span>
-                        )}
-                        {k.canConfirmPayment && (
-                          <Button
-                            type="button"
-                            variant="primary"
-                            size="sm"
-                            className="h-7 px-2 text-[10px]"
-                            disabled={actingId === k.id}
-                            onClick={() =>
-                              void patchAction(k.id, { action: 'confirm-payment' })
-                            }
-                          >
-                            Konfirmasi bayar
-                          </Button>
-                        )}
-                        {k.payHref && (
-                          <Link href={k.payHref}>
-                            <Button type="button" variant="primary" size="sm" className="h-7 px-2 text-[10px]">
-                              Lanjutkan bayar
-                            </Button>
-                          </Link>
-                        )}
-                        {k.needsChannelPayment && (
-                          <Button
-                            type="button"
-                            variant="primary"
-                            size="sm"
-                            className="h-7 px-2 text-[10px]"
-                            onClick={() => setChannelPaySession(k)}
-                          >
-                            Bayar sekarang
-                          </Button>
-                        )}
-                        {k.canCancel && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-7 px-2 text-[10px] text-rose-600"
-                            disabled={actingId === k.id}
-                            onClick={() => void patchAction(k.id, { action: 'cancel' })}
-                          >
-                            Batal
-                          </Button>
-                        )}
-                        {k.canRate && ratingId !== k.id && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-7 px-2 text-[10px]"
-                            onClick={() => {
-                              setRatingId(k.id)
-                              setRatingValue(5)
-                              setReviewText('')
-                            }}
-                          >
-                            Rating
-                          </Button>
-                        )}
-                      </div>
-                      {ratingId === k.id && (
-                        <div className="mt-2 space-y-2 rounded-lg border border-surface-200 p-2">
-                          <div className="flex gap-1">
-                            {[1, 2, 3, 4, 5].map((n) => (
-                              <button
-                                key={n}
-                                type="button"
-                                onClick={() => setRatingValue(n)}
-                                className="p-0.5"
-                              >
-                                <Star
-                                  className={`h-4 w-4 ${
-                                    n <= ratingValue
-                                      ? 'fill-yellow-400 text-yellow-400'
-                                      : 'text-surface-300'
-                                  }`}
-                                />
-                              </button>
-                            ))}
-                          </div>
-                          <Input
-                            value={reviewText}
-                            onChange={(e) => setReviewText(e.target.value)}
-                            placeholder="Ulasan (opsional)"
-                            className="h-8 text-xs"
-                          />
-                          <div className="flex gap-1">
-                            <Button
-                              type="button"
-                              size="sm"
-                              className="h-7 text-[10px]"
-                              disabled={actingId === k.id}
-                              onClick={() =>
-                                void patchAction(k.id, {
-                                  action: 'rate',
-                                  rating: ratingValue,
-                                  review: reviewText.trim() || undefined,
-                                })
-                              }
-                            >
-                              Kirim
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 text-[10px]"
-                              onClick={() => setRatingId(null)}
-                            >
-                              Batal
-                            </Button>
-                          </div>
-                        </div>
-                      )}
+                      <KonsultasiItemActions
+                        k={k}
+                        actingId={actingId}
+                        ratingId={ratingId}
+                        ratingValue={ratingValue}
+                        reviewText={reviewText}
+                        confirmDialog={confirmDialog}
+                        patchAction={patchAction}
+                        setRatingId={setRatingId}
+                        setRatingValue={setRatingValue}
+                        setReviewText={setReviewText}
+                        setChannelPaySession={setChannelPaySession}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -562,6 +675,7 @@ export default function UserKonsultasiPage() {
             </Table>
             </CardContent>
           </Card>
+          </>
         )}
       </div>
 

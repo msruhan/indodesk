@@ -92,10 +92,16 @@ export function PaymentWaitingView({ merchantRef }: PaymentWaitingViewProps) {
   const subtotalLabel = isKonsultasi
     ? 'Biaya konsultasi'
     : isMarketplace
-      ? 'Total pesanan'
+      ? 'Subtotal produk'
       : isCatalogTopup
         ? 'Total top up'
         : 'Nominal topup'
+
+  const customerPaymentFee =
+    intent && Number(intent.amount) > Number(intent.subtotal)
+      ? Number(intent.amount) - Number(intent.subtotal)
+      : 0
+  const marketplaceBreakdown = intent?.marketplaceBreakdown ?? null
 
   const fetchStatus = useCallback(async () => {
     const res = await fetch(`/api/payments/tripay/${merchantRef}`)
@@ -203,14 +209,72 @@ export function PaymentWaitingView({ merchantRef }: PaymentWaitingViewProps) {
         </p>
 
         <div className="mt-4 space-y-2 rounded-xl bg-surface-50 p-4 text-sm">
-          <div className="flex justify-between">
-            <span className="text-surface-600">{subtotalLabel}</span>
-            <span className="font-medium">{formatIdr(intent.subtotal)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-surface-600">Biaya channel</span>
-            <span className="font-medium">{formatIdr(intent.feeAmount)}</span>
-          </div>
+          {isMarketplace && marketplaceBreakdown ? (
+            <>
+              <div className="flex justify-between">
+                <span className="text-surface-600">Subtotal ({marketplaceBreakdown.orderCount} pesanan)</span>
+                <span className="font-medium">{formatIdr(marketplaceBreakdown.subtotal)}</span>
+              </div>
+              {marketplaceBreakdown.discount > 0 && (
+                <div className="flex justify-between text-primary-700">
+                  <span>Diskon promo</span>
+                  <span className="font-medium">- {formatIdr(marketplaceBreakdown.discount)}</span>
+                </div>
+              )}
+              {marketplaceBreakdown.buyerFeePercentPart > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-surface-600">Biaya Platform</span>
+                  <span className="font-medium">{formatIdr(marketplaceBreakdown.buyerFeePercentPart)}</span>
+                </div>
+              )}
+              {marketplaceBreakdown.buyerFlatFeePart > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-surface-600">
+                    Biaya layanan (
+                    {formatIdr(marketplaceBreakdown.buyerFlatFeePerItem)} ×{' '}
+                    {marketplaceBreakdown.itemCount} item)
+                  </span>
+                  <span className="font-medium">{formatIdr(marketplaceBreakdown.buyerFlatFeePart)}</span>
+                </div>
+              )}
+              {marketplaceBreakdown.buyerFeePercentPart === 0 &&
+                marketplaceBreakdown.buyerFlatFeePart === 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-surface-600">Biaya Platform</span>
+                    <span className="font-medium">Gratis</span>
+                  </div>
+                )}
+              {marketplaceBreakdown.shippingCost > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-surface-600">Estimasi ongkir</span>
+                  <span className="font-medium">{formatIdr(marketplaceBreakdown.shippingCost)}</span>
+                </div>
+              )}
+              <div className="flex justify-between border-t border-surface-200 pt-2">
+                <span className="text-surface-600">Total pesanan</span>
+                <span className="font-medium">{formatIdr(marketplaceBreakdown.orderPayable)}</span>
+              </div>
+              {customerPaymentFee > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-surface-600">Biaya pembayaran</span>
+                  <span className="font-medium">{formatIdr(customerPaymentFee)}</span>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="flex justify-between">
+                <span className="text-surface-600">{subtotalLabel}</span>
+                <span className="font-medium">{formatIdr(intent.subtotal)}</span>
+              </div>
+              {!isMarketplace && Number(intent.feeAmount) > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-surface-600">Biaya channel</span>
+                  <span className="font-medium">{formatIdr(intent.feeAmount)}</span>
+                </div>
+              )}
+            </>
+          )}
           <div className="flex justify-between border-t border-surface-200 pt-2 font-semibold">
             <span>Total bayar</span>
             <span className="text-primary-700">{formatIdr(intent.amount)}</span>

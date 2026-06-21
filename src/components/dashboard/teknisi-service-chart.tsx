@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 import type { ApexOptions } from 'apexcharts'
 import { motion } from 'framer-motion'
@@ -16,6 +16,16 @@ type Props = {
 }
 
 export function TeknisiServiceChart({ data }: Props) {
+  const [chartHeight, setChartHeight] = useState(260)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)')
+    const update = () => setChartHeight(mq.matches ? 210 : 260)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
+
   const mix = data?.length ? data : teknisiServiceMix
 
   const options: ApexOptions = useMemo(
@@ -66,18 +76,20 @@ export function TeknisiServiceChart({ data }: Props) {
       transition={{ duration: 0.5, delay: 0.06 }}
     >
       <Card>
-        <CardHeader className="border-b border-surface-100 pb-3">
-          <div>
-            <CardTitle>Breakdown Layanan</CardTitle>
-            <p className="mt-0.5 text-[11px] text-surface-500">Distribusi pendapatan per jenis layanan</p>
+        <CardHeader className="border-b border-surface-100 px-4 pb-2 pt-4 sm:px-6 sm:pb-3 sm:pt-6">
+          <div className="min-w-0">
+            <CardTitle className="text-base sm:text-lg">Breakdown Layanan</CardTitle>
+            <p className="mt-0.5 text-[10px] text-surface-500 sm:text-[11px]">
+              Distribusi pendapatan per layanan
+            </p>
           </div>
         </CardHeader>
-        <CardContent className="pt-4">
+        <CardContent className="px-2 pb-3 pt-2 sm:px-6 sm:pb-6 sm:pt-4">
           <Chart
             options={options}
             series={mix.map((d) => d.value)}
             type="donut"
-            height={260}
+            height={chartHeight}
           />
         </CardContent>
       </Card>

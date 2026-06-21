@@ -2,6 +2,8 @@ import { z } from 'zod'
 import { apiError, apiSuccess, requireApiAuth } from '@/lib/api-auth'
 import { processTopupCheckout } from '@/lib/topup-checkout'
 import { requireEmailVerifiedUser } from '@/lib/require-email-verified'
+import { getPublicFeatureFlags } from '@/lib/platform-settings'
+import { canAccessTopupService } from '@/lib/platform-settings-shared'
 import { RATE_LIMITS, withRateLimit, rateLimitResponse } from '@/lib/rate-limit-store'
 
 export const dynamic = 'force-dynamic'
@@ -44,6 +46,11 @@ export async function POST(req: Request) {
 
   const emailGate = await requireEmailVerifiedUser(session.user.id)
   if (!emailGate.ok) return emailGate.error
+
+  const flags = await getPublicFeatureFlags()
+  if (!canAccessTopupService(session.user.role, flags)) {
+    return apiError('Layanan top up sedang dinonaktifkan', 403)
+  }
 
   const rl = await withRateLimit(req, ['checkout', 'topup', session.user.id], RATE_LIMITS.checkout)
   if (!rl.allowed) return rateLimitResponse(rl)

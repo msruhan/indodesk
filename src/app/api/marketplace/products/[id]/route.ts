@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db'
 import { apiError, apiSuccess } from '@/lib/api-auth'
 import { getTeknisiResponseTimeLabel } from '@/lib/teknisi-platform-stats'
 import { serializeMarketplaceProduct } from '@/lib/marketplace-product-serializer'
+import { PUBLIC_MARKETPLACE_PRODUCT_WHERE } from '@/lib/public-marketplace-product'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,9 +13,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const product = await prisma.product.findFirst({
       where: {
         id,
-        isActive: true,
-        isPublished: true,
-        listingStatus: 'APPROVED',
+        ...PUBLIC_MARKETPLACE_PRODUCT_WHERE,
       },
       include: {
         seller: {

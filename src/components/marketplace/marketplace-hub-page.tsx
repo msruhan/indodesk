@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { searchInputIconClass } from '@/components/ui/search-input'
@@ -24,7 +24,6 @@ import {
   Laptop,
   Headphones,
   Code,
-  ChevronDown,
   ShoppingBag,
   Package,
   MapPin,
@@ -32,6 +31,7 @@ import {
 import Link from 'next/link'
 import type { MarketplaceProductDto } from '@/lib/marketplace-product-serializer'
 import { CompareButton } from '@/components/marketplace/compare-button'
+import { FilterGroupSheet } from '@/components/ui/filter-group-sheet'
 
 type ProductCategory =
   | 'all'
@@ -96,64 +96,6 @@ const RATING_FILTER_OPTIONS: { value: RatingFilterKey; label: string; min?: numb
   { value: '4.8', label: '4.8+ bintang', min: 4.8 },
 ]
 
-function FilterDropdown<T extends string>({
-  label,
-  value,
-  options,
-  onChange,
-  active,
-  open,
-  onToggle,
-}: {
-  label: string
-  value: T
-  options: { value: T; label: string }[]
-  onChange: (value: T) => void
-  active: boolean
-  open: boolean
-  onToggle: () => void
-}) {
-  const selected = options.find((o) => o.value === value)
-
-  return (
-    <div className="relative flex-shrink-0">
-      <button
-        type="button"
-        onClick={onToggle}
-        className={filterChipClass(active)}
-      >
-        <span className="max-w-[7rem] truncate sm:max-w-none">{selected?.label ?? label}</span>
-        <ChevronDown
-          className={cn(filterChipIconClass, 'transition-transform', open && 'rotate-180')}
-        />
-      </button>
-
-      {open && (
-        <div className="absolute top-full left-0 z-50 mt-2 w-56 rounded-xl border border-surface-200 bg-white py-2 shadow-lg">
-          <div className="border-b border-surface-100 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-surface-500">
-            {label}
-          </div>
-          {options.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => onChange(option.value)}
-              className={cn(
-                'w-full px-4 py-2 text-left text-sm transition-colors',
-                value === option.value
-                  ? 'bg-primary-50 font-medium text-primary-600'
-                  : 'text-surface-700 hover:bg-surface-50',
-              )}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
 type MarketplaceHubPageProps = {
   placement: BannerPlacement
 }
@@ -173,8 +115,6 @@ export function MarketplaceHubPage({ placement }: MarketplaceHubPageProps) {
   const [selectedLocation, setSelectedLocation] = useState<string>('all')
   const [priceRange, setPriceRange] = useState<PriceRangeKey>('all')
   const [ratingFilter, setRatingFilter] = useState<RatingFilterKey>('all')
-  const [openFilter, setOpenFilter] = useState<'sort' | 'location' | 'price' | 'rating' | null>(null)
-  const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -200,21 +140,6 @@ export function MarketplaceHubPage({ placement }: MarketplaceHubPageProps) {
     }
   }, [selectedCategory, searchQuery])
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const isInside = dropdownRef.current && dropdownRef.current.contains(event.target as Node)
-      if (!isInside) setOpenFilter(null)
-    }
-
-    if (openFilter) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [openFilter])
-
   const locationOptions = useMemo(() => {
     const cities = new Set<string>()
     for (const product of products) {
@@ -228,6 +153,23 @@ export function MarketplaceHubPage({ placement }: MarketplaceHubPageProps) {
       })),
     ]
   }, [products])
+
+  const sortFilterOptions = useMemo(
+    () => SORT_OPTIONS.map((option) => ({ id: option.value, label: option.label })),
+    [],
+  )
+  const priceFilterOptions = useMemo(
+    () => PRICE_RANGE_OPTIONS.map((option) => ({ id: option.value, label: option.label })),
+    [],
+  )
+  const ratingFilterOptions = useMemo(
+    () => RATING_FILTER_OPTIONS.map((option) => ({ id: option.value, label: option.label })),
+    [],
+  )
+  const locationFilterOptions = useMemo(
+    () => locationOptions.map((option) => ({ id: option.value, label: option.label })),
+    [locationOptions],
+  )
 
   const filteredProducts = useMemo(() => {
     const pricePreset = PRICE_RANGE_OPTIONS.find((option) => option.value === priceRange)
@@ -256,12 +198,6 @@ export function MarketplaceHubPage({ placement }: MarketplaceHubPageProps) {
       }
     })
   }, [products, selectedLocation, priceRange, ratingFilter, sortBy])
-
-  const hasActiveFilters =
-    sortBy !== 'relevance' ||
-    selectedLocation !== 'all' ||
-    priceRange !== 'all' ||
-    ratingFilter !== 'all'
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -368,73 +304,45 @@ export function MarketplaceHubPage({ placement }: MarketplaceHubPageProps) {
             <p className="text-sm text-surface-500">
               {loading ? 'Memuat produk…' : `Menampilkan ${filteredProducts.length} produk`}
             </p>
-            <div className="overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
-              <div className="flex min-w-max gap-1.5 sm:gap-2" ref={dropdownRef}>
-                <FilterDropdown
-                  label="Urutkan"
-                  value={sortBy}
-                  options={SORT_OPTIONS}
-                  active={sortBy !== 'relevance'}
-                  open={openFilter === 'sort'}
-                  onToggle={() => setOpenFilter((prev) => (prev === 'sort' ? null : 'sort'))}
-                  onChange={(value) => {
-                    setSortBy(value)
-                    setOpenFilter(null)
-                  }}
-                />
-                <FilterDropdown
-                  label="Lokasi"
-                  value={selectedLocation}
-                  options={locationOptions}
-                  active={selectedLocation !== 'all'}
-                  open={openFilter === 'location'}
-                  onToggle={() => setOpenFilter((prev) => (prev === 'location' ? null : 'location'))}
-                  onChange={(value) => {
-                    setSelectedLocation(value)
-                    setOpenFilter(null)
-                  }}
-                />
-                <FilterDropdown
-                  label="Rentang harga"
-                  value={priceRange}
-                  options={PRICE_RANGE_OPTIONS}
-                  active={priceRange !== 'all'}
-                  open={openFilter === 'price'}
-                  onToggle={() => setOpenFilter((prev) => (prev === 'price' ? null : 'price'))}
-                  onChange={(value) => {
-                    setPriceRange(value)
-                    setOpenFilter(null)
-                  }}
-                />
-                <FilterDropdown
-                  label="Rating"
-                  value={ratingFilter}
-                  options={RATING_FILTER_OPTIONS}
-                  active={ratingFilter !== 'all'}
-                  open={openFilter === 'rating'}
-                  onToggle={() => setOpenFilter((prev) => (prev === 'rating' ? null : 'rating'))}
-                  onChange={(value) => {
-                    setRatingFilter(value)
-                    setOpenFilter(null)
-                  }}
-                />
-                {hasActiveFilters && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSortBy('relevance')
-                      setSelectedLocation('all')
-                      setPriceRange('all')
-                      setRatingFilter('all')
-                      setOpenFilter(null)
-                    }}
-                    className={filterChipClass(false)}
-                  >
-                    Reset filter
-                  </button>
-                )}
-              </div>
-            </div>
+            <FilterGroupSheet
+              groups={[
+                {
+                  id: 'sort',
+                  label: 'Urutkan',
+                  value: sortBy,
+                  onChange: (value) => setSortBy(value as SortOption),
+                  options: sortFilterOptions,
+                },
+                {
+                  id: 'location',
+                  label: 'Lokasi',
+                  value: selectedLocation,
+                  onChange: setSelectedLocation,
+                  options: locationFilterOptions,
+                },
+                {
+                  id: 'price',
+                  label: 'Rentang harga',
+                  value: priceRange,
+                  onChange: (value) => setPriceRange(value as PriceRangeKey),
+                  options: priceFilterOptions,
+                },
+                {
+                  id: 'rating',
+                  label: 'Rating',
+                  value: ratingFilter,
+                  onChange: (value) => setRatingFilter(value as RatingFilterKey),
+                  options: ratingFilterOptions,
+                },
+              ]}
+              onReset={() => {
+                setSortBy('relevance')
+                setSelectedLocation('all')
+                setPriceRange('all')
+                setRatingFilter('all')
+              }}
+              disabled={loading}
+            />
           </div>
         </div>
 

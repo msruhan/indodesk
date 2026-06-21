@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { SearchInput } from '@/components/ui/search-input'
+import { FilterGroupSheet } from '@/components/ui/filter-group-sheet'
 import { CheckCircle, XCircle, Clock, ChevronRight } from '@/lib/icons'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AdminApprovalRekberPanel } from '@/components/admin/admin-approval-rekber-panel'
@@ -60,9 +61,6 @@ const TYPE_FILTERS: { id: ApprovalTypeFilter; label: string }[] = [
   { id: 'Toko', label: 'Toko' },
   { id: 'Teknisi', label: 'Teknisi' },
 ]
-
-const filterSelectClass =
-  'h-9 w-[9.25rem] shrink-0 rounded-xl border border-surface-200 bg-white px-2.5 text-xs text-ink shadow-soft-xs focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-200/50'
 
 export default function AdminApprovalPage() {
   const [section, setSection] = useState('queue')
@@ -255,30 +253,32 @@ export default function AdminApprovalPage() {
                 className="min-w-0 flex-1"
                 inputClassName="h-9 text-xs"
               />
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value as ApprovalTypeFilter)}
-                className={filterSelectClass}
-                aria-label="Filter jenis"
-              >
-                {TYPE_FILTERS.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.id === 'all' ? f.label : `${f.label} (${typeCounts[f.id]})`}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as ApprovalStatusFilter)}
-                className={filterSelectClass}
-                aria-label="Filter status"
-              >
-                {STATUS_FILTERS.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.label}
-                  </option>
-                ))}
-              </select>
+              <FilterGroupSheet
+                groups={[
+                  {
+                    id: 'type',
+                    label: 'Jenis',
+                    value: typeFilter,
+                    onChange: (value) => setTypeFilter(value as ApprovalTypeFilter),
+                    options: TYPE_FILTERS.map((f) => ({
+                      id: f.id,
+                      label: f.id === 'all' ? f.label : `${f.label} (${typeCounts[f.id]})`,
+                    })),
+                  },
+                  {
+                    id: 'status',
+                    label: 'Status',
+                    value: statusFilter,
+                    onChange: (value) => setStatusFilter(value as ApprovalStatusFilter),
+                    options: STATUS_FILTERS.map((f) => ({ id: f.id, label: f.label })),
+                  },
+                ]}
+                onReset={() => {
+                  setTypeFilter('all')
+                  setStatusFilter('all')
+                }}
+                disabled={loading}
+              />
             </div>
             {hasActiveFilters && (
               <div className="mt-2 flex items-center justify-between gap-2 border-t border-surface-100 pt-2">

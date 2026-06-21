@@ -2,16 +2,24 @@ import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { logAdminGovernance } from '@/lib/admin-audit'
+import { validateSellerFeeTiers, normalizeSellerFeeTiers } from '@/lib/marketplace-fees'
 import { getPlatformSettings, savePlatformSettings } from '@/lib/platform-settings'
 import { verifyAdminStepUp, StepUpAuthError } from '@/lib/wallet/admin-step-up'
 import { adminStepUpFields } from '@/lib/wallet/admin-step-up-schema'
 
 export const dynamic = 'force-dynamic'
 
+const sellerFeeTierSchema = z.object({
+  minAmount: z.number().int().min(0).max(1_000_000_000),
+  maxAmount: z.number().int().min(0).max(1_000_000_000).nullable(),
+  feePercent: z.number().min(0).max(100),
+})
+
 const feeSchema = z.object({
   buyerFeePercent: z.number().min(0).max(100),
   buyerFlatFeePerItem: z.number().int().min(0).max(1_000_000),
   sellerFeePercent: z.number().min(0).max(100),
+  sellerFeeTiers: z.array(sellerFeeTierSchema).max(20).optional().default([]),
   konsultasiFeePercent: z.number().min(0).max(100),
   inspeksiFeePercent: z.number().min(0).max(100),
   ...adminStepUpFields,
@@ -119,6 +127,7 @@ export async function GET() {
         buyerFeePercent: settings.buyerFeePercent,
         buyerFlatFeePerItem: settings.buyerFlatFeePerItem,
         sellerFeePercent: settings.sellerFeePercent,
+        sellerFeeTiers: settings.sellerFeeTiers,
         konsultasiFeePercent: settings.konsultasiFeePercent,
         inspeksiFeePercent: settings.inspeksiFeePercent,
       },
@@ -184,11 +193,16 @@ export async function PATCH(req: Request) {
     }
 
     const current = await getPlatformSettings()
+    const sellerFeeTiers = normalizeSellerFeeTiers(parsed.data.sellerFeeTiers ?? [])
+    const tierError = validateSellerFeeTiers(sellerFeeTiers)
+    if (tierError) return apiError(tierError, 400)
+
     const settings = await savePlatformSettings({
       ...current,
       buyerFeePercent: parsed.data.buyerFeePercent,
       buyerFlatFeePerItem: parsed.data.buyerFlatFeePerItem,
       sellerFeePercent: parsed.data.sellerFeePercent,
+      sellerFeeTiers,
       konsultasiFeePercent: parsed.data.konsultasiFeePercent,
       inspeksiFeePercent: parsed.data.inspeksiFeePercent,
     })
@@ -203,6 +217,7 @@ export async function PATCH(req: Request) {
         buyerFeePercent: settings.buyerFeePercent,
         buyerFlatFeePerItem: settings.buyerFlatFeePerItem,
         sellerFeePercent: settings.sellerFeePercent,
+        sellerFeeTiers: settings.sellerFeeTiers,
         konsultasiFeePercent: settings.konsultasiFeePercent,
         inspeksiFeePercent: settings.inspeksiFeePercent,
       },
@@ -212,6 +227,7 @@ export async function PATCH(req: Request) {
       buyerFeePercent: settings.buyerFeePercent,
       buyerFlatFeePerItem: settings.buyerFlatFeePerItem,
       sellerFeePercent: settings.sellerFeePercent,
+      sellerFeeTiers: settings.sellerFeeTiers,
       konsultasiFeePercent: settings.konsultasiFeePercent,
       inspeksiFeePercent: settings.inspeksiFeePercent,
     })

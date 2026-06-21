@@ -72,9 +72,9 @@ export function RekberTransactionList({
   showEmptyCta = Boolean(emptyCtaHref && emptyCtaLabel),
 }: Props) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 sm:space-y-6">
       {showStats && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
           <StatCard label="Total" value={stats.total} icon={Shield} />
           <StatCard label="Ditahan" value={stats.held} icon={Clock} />
           <StatCard label="Selesai" value={stats.released} icon={CheckCircle} />
@@ -113,24 +113,24 @@ export function RekberTransactionList({
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-2 sm:space-y-4">
           {items.map((r) => {
             const cfg = statusConfig[r.status]
             const Icon = cfg.icon
             const busy = actingId === r.id
             return (
               <Card key={r.id} className="transition-shadow hover:shadow-soft-md">
-                <CardContent className="p-5">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <CardContent className="p-2.5 sm:p-5">
+                  <div className="flex flex-col gap-2 sm:gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0 flex-1">
-                      <div className="mb-2 flex flex-wrap items-center gap-2">
-                        <h3 className="font-semibold text-ink">{r.orderCode}</h3>
-                        <Badge className={cfg.className}>
-                          <Icon className="mr-1 h-3 w-3" />
+                      <div className="mb-1 flex flex-wrap items-center gap-1.5 sm:mb-2 sm:gap-2">
+                        <h3 className="text-xs font-semibold text-ink sm:text-base">{r.orderCode}</h3>
+                        <Badge className={cn(cfg.className, 'text-[9px] sm:text-xs')}>
+                          <Icon className="mr-0.5 h-2.5 w-2.5 sm:mr-1 sm:h-3 sm:w-3" />
                           {r.statusLabel}
                         </Badge>
                       </div>
-                      <div className="grid gap-2 text-sm sm:grid-cols-2">
+                      <div className="grid gap-1 text-[10px] sm:grid-cols-2 sm:gap-2 sm:text-sm">
                         <div>
                           <span className="text-surface-500">Pembeli: </span>
                           <span className="font-medium">{r.buyerName}</span>
@@ -140,7 +140,7 @@ export function RekberTransactionList({
                           <span className="font-medium">{r.sellerName}</span>
                           <Badge
                             className={cn(
-                              'ml-1.5 align-middle text-[10px] font-semibold',
+                              'ml-1 align-middle text-[8px] font-semibold sm:ml-1.5 sm:text-[10px]',
                               r.sellerType === 'teknisi'
                                 ? 'bg-amber-50 text-amber-800'
                                 : 'bg-surface-100 text-surface-700',
@@ -151,9 +151,11 @@ export function RekberTransactionList({
                         </div>
                       </div>
                       {r.description && (
-                        <p className="mt-2 text-sm text-surface-600">{r.description}</p>
+                        <p className="mt-1 line-clamp-2 text-[10px] text-surface-600 sm:mt-2 sm:text-sm">
+                          {r.description}
+                        </p>
                       )}
-                      <div className="mt-3 flex flex-wrap gap-4 text-sm">
+                      <div className="mt-1.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] sm:mt-3 sm:gap-4 sm:text-sm">
                         <span>
                           <span className="text-surface-500">Nominal: </span>
                           <span className="font-semibold tabular-nums">{formatPrice(r.amount)}</span>
@@ -169,20 +171,22 @@ export function RekberTransactionList({
                           </span>
                         </span>
                       </div>
-                      <p className="mt-1 text-xs text-surface-400">{r.dateLabel}</p>
+                      <p className="mt-0.5 text-[9px] text-surface-400 sm:mt-1 sm:text-xs">{r.dateLabel}</p>
                       {r.complaint && (
-                        <div className="mt-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">
+                        <div className="mt-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2 py-1.5 text-[10px] text-rose-800 sm:mt-2 sm:px-3 sm:py-2 sm:text-xs">
                           <p className="font-semibold">Komplain: {r.complaint.statusLabel}</p>
-                          <p className="mt-1 line-clamp-2">{r.complaint.reason}</p>
+                          <p className="mt-0.5 line-clamp-2">{r.complaint.reason}</p>
                         </div>
                       )}
                       {r.tracking && r.role === 'buyer' && (
-                        <div className="mt-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-900">
+                        <div className="mt-1.5 rounded-lg border border-violet-200 bg-violet-50 px-2 py-1.5 text-[10px] text-violet-900 sm:mt-2 sm:px-3 sm:py-2 sm:text-xs">
                           <p className="font-semibold">
                             {r.tracking.courierLabel} ·{' '}
                             <span className="font-mono">{r.tracking.trackingNumber}</span>
                           </p>
-                          {r.tracking.summaryDesc && <p className="mt-0.5">{r.tracking.summaryDesc}</p>}
+                          {r.tracking.summaryDesc && (
+                            <p className="mt-0.5 line-clamp-2">{r.tracking.summaryDesc}</p>
+                          )}
                         </div>
                       )}
                       {onAdvance && onSetShipment && onRefresh && (
@@ -196,7 +200,7 @@ export function RekberTransactionList({
                       )}
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1 sm:gap-2 [&_button]:h-7 [&_button]:px-2 [&_button]:text-[10px] sm:[&_button]:h-8 sm:[&_button]:px-3 sm:[&_button]:text-xs">
                       {r.canFund && onUserAction && (
                         <Button
                           size="sm"
@@ -318,12 +322,12 @@ function StatCard({
 }) {
   return (
     <Card>
-      <CardContent className="p-4">
+      <CardContent className="p-2.5 sm:p-4">
         <div className="flex items-center justify-between">
-          <p className="text-xs font-medium text-surface-500">{label}</p>
-          <Icon className="h-4 w-4 text-primary-600" />
+          <p className="text-[10px] font-medium text-surface-500 sm:text-xs">{label}</p>
+          <Icon className="h-3 w-3 text-primary-600 sm:h-4 sm:w-4" />
         </div>
-        <p className="mt-1 text-2xl font-bold tabular-nums text-ink">{value}</p>
+        <p className="mt-0.5 text-lg font-bold tabular-nums text-ink sm:mt-1 sm:text-2xl">{value}</p>
       </CardContent>
     </Card>
   )

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { apiError, apiSuccess } from '@/lib/api-auth'
 import { MARKETPLACE_CATEGORY_SLUGS } from '@/lib/product-category-config'
 import type { PublicStoreProductDto } from '@/lib/teknisi-store-serializer'
+import { PUBLIC_MARKETPLACE_PRODUCT_WHERE } from '@/lib/public-marketplace-product'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,9 +27,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const products = await prisma.product.findMany({
       where: {
         sellerId: store.userId,
-        isActive: true,
-        isPublished: true,
-        listingStatus: 'APPROVED',
+        ...PUBLIC_MARKETPLACE_PRODUCT_WHERE,
         ...(q
           ? {
               OR: [

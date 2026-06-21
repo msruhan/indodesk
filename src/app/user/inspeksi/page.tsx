@@ -10,9 +10,9 @@ import { searchInputIconClass } from '@/components/ui/search-input'
 import {
   DashboardMonthFilter,
   DashboardPageHeader,
-  FilterSelect,
   MetricCard,
 } from '@/components/dashboard'
+import { FilterGroupSheet } from '@/components/ui/filter-group-sheet'
 import { useDashboardPeriod } from '@/contexts/dashboard-period-context'
 import { isDateInPeriod } from '@/lib/dashboard-period'
 import { cn } from '@/lib/utils'
@@ -328,31 +328,35 @@ export default function UserInspeksiPage() {
               disabled={loading}
             />
           </div>
-          <FilterSelect
-            options={statusFilterOptions}
-            value={statusFilter}
-            onChange={setStatusFilter}
-            ariaLabel="Filter status inspeksi"
-            label="Status"
-            className="w-full sm:w-[11.5rem]"
-            disabled={loading}
-          />
-          <FilterSelect
-            options={modeFilterOptions}
-            value={modeFilter}
-            onChange={setModeFilter}
-            ariaLabel="Filter mode inspeksi"
-            label="Mode"
-            className="w-full sm:w-[10.5rem]"
-            disabled={loading}
-          />
-          <FilterSelect
-            options={ratingFilterOptions}
-            value={ratingFilter}
-            onChange={setRatingFilter}
-            ariaLabel="Filter rating inspeksi"
-            label="Rating"
-            className="w-full sm:w-[11rem]"
+          <FilterGroupSheet
+            groups={[
+              {
+                id: 'status',
+                label: 'Status',
+                value: statusFilter,
+                onChange: (value) => setStatusFilter(value as StatusFilter),
+                options: statusFilterOptions,
+              },
+              {
+                id: 'mode',
+                label: 'Mode',
+                value: modeFilter,
+                onChange: (value) => setModeFilter(value as ModeFilter),
+                options: modeFilterOptions,
+              },
+              {
+                id: 'rating',
+                label: 'Rating',
+                value: ratingFilter,
+                onChange: (value) => setRatingFilter(value as RatingFilter),
+                options: ratingFilterOptions,
+              },
+            ]}
+            onReset={() => {
+              setStatusFilter('all')
+              setModeFilter('all')
+              setRatingFilter('all')
+            }}
             disabled={loading}
           />
         </div>

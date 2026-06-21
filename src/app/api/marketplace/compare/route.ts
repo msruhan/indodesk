@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db'
 import { apiError, apiSuccess } from '@/lib/api-auth'
 import { runBenchmark } from '@/lib/product-benchmark'
 import { isBenchmarkable, toBenchmarkInput } from '@/lib/benchmark-serializer'
+import { PUBLIC_MARKETPLACE_PRODUCT_WHERE } from '@/lib/public-marketplace-product'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,11 +25,11 @@ export async function GET(req: Request) {
   try {
     const [productA, productB] = await Promise.all([
       prisma.product.findFirst({
-        where: { id: idA, isActive: true, isPublished: true, listingStatus: 'APPROVED' },
+        where: { id: idA, ...PUBLIC_MARKETPLACE_PRODUCT_WHERE },
         include: { seller: { include: { teknisiProfile: true, teknisiStore: true } } },
       }),
       prisma.product.findFirst({
-        where: { id: idB, isActive: true, isPublished: true, listingStatus: 'APPROVED' },
+        where: { id: idB, ...PUBLIC_MARKETPLACE_PRODUCT_WHERE },
         include: { seller: { include: { teknisiProfile: true, teknisiStore: true } } },
       }),
     ])

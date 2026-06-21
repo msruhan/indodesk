@@ -367,7 +367,7 @@ export default function CartPage() {
     marketplaceItems.length > 0
       ? computeMarketplaceFees(
           total,
-          { ...buyerFeeSettings, sellerFeePercent: 0 },
+          { ...buyerFeeSettings, sellerFeePercent: 0, sellerFeeTiers: [] },
           itemCount,
         )
       : null

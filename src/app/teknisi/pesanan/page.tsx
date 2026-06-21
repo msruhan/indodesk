@@ -87,7 +87,9 @@ export default function TeknisiPesananPage() {
   const [returnRejectPhotos, setReturnRejectPhotos] = useState<Record<string, File[]>>({})
   const [toast, setToast] = useState<string | null>(null)
   const [cancelTarget, setCancelTarget] = useState<MarketplaceOrderDto | null>(null)
+  const [cancelAction, setCancelAction] = useState<'cancel' | 'reject_order'>('cancel')
   const [cancelReason, setCancelReason] = useState('')
+  const [cancelRejectResponses, setCancelRejectResponses] = useState<Record<string, string>>({})
 
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
@@ -192,20 +194,61 @@ export default function TeknisiPesananPage() {
       const res = await fetch(`/api/teknisi/marketplace/orders/${cancelTarget.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'cancel', reason }),
+        body: JSON.stringify({ action: cancelAction, reason }),
       })
       const json = await res.json()
       if (!res.ok || !json.success) {
         setError(json.error ?? 'Gagal membatalkan pesanan')
         return
       }
-      setToast('Pesanan dibatalkan. Dana pembeli telah dikembalikan.')
+      setToast(
+        cancelAction === 'reject_order'
+          ? 'Pesanan ditolak. Dana pembeli telah dikembalikan ke Saldo Bantoo.'
+          : 'Pesanan dibatalkan. Dana pembeli telah dikembalikan.',
+      )
       setCancelTarget(null)
       setCancelReason('')
       setExpandedId(null)
       await load()
     } catch {
       setError('Gagal membatalkan pesanan')
+    } finally {
+      setActingId(null)
+    }
+  }
+
+  const respondCancelRequest = async (
+    orderId: string,
+    action: 'approve_cancel_request' | 'reject_cancel_request',
+  ) => {
+    setActingId(orderId)
+    setError(null)
+    try {
+      const body =
+        action === 'reject_cancel_request'
+          ? {
+              action,
+              response: (cancelRejectResponses[orderId] ?? '').trim() || undefined,
+            }
+          : { action }
+      const res = await fetch(`/api/teknisi/marketplace/orders/${orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.success) {
+        setError(json.error ?? 'Gagal merespons pengajuan')
+        return
+      }
+      setToast(
+        action === 'approve_cancel_request'
+          ? 'Pembatalan disetujui — dana dikembalikan ke Saldo Bantoo.'
+          : 'Pengajuan pembatalan ditolak.',
+      )
+      await load()
+    } catch {
+      setError('Gagal merespons pengajuan')
     } finally {
       setActingId(null)
     }
@@ -313,7 +356,7 @@ export default function TeknisiPesananPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -331,10 +374,10 @@ export default function TeknisiPesananPage() {
 
       {/* Metrics */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
-        <MetricCard title="Total Pesanan" value={stats.total.toLocaleString('id-ID')} icon={ShoppingBag} footnote={periodLabel} tone="primary" compact />
-        <MetricCard title="Perlu Aksi" value={stats.active.toLocaleString('id-ID')} icon={Clock} footnote="Dibayar & diproses" tone={stats.active > 0 ? 'warning' : 'neutral'} compact />
-        <MetricCard title="Dikirim" value={stats.shipped.toLocaleString('id-ID')} icon={TruckIcon} footnote="Dalam pengiriman" tone="primary" compact />
-        <MetricCard title="Revenue" value={formatPrice(stats.revenue)} icon={TrendingUp} footnote={`${stats.completed} pesanan selesai`} tone="primary" compact />
+        <MetricCard title="Total Pesanan" value={stats.total.toLocaleString('id-ID')} icon={ShoppingBag} footnote={periodLabel} tone="primary" dense />
+        <MetricCard title="Perlu Aksi" value={stats.active.toLocaleString('id-ID')} icon={Clock} footnote="Dibayar & diproses" tone={stats.active > 0 ? 'warning' : 'neutral'} dense />
+        <MetricCard title="Dikirim" value={stats.shipped.toLocaleString('id-ID')} icon={TruckIcon} footnote="Dalam pengiriman" tone="primary" dense />
+        <MetricCard title="Revenue" value={formatPrice(stats.revenue)} icon={TrendingUp} footnote={`${stats.completed} pesanan selesai`} tone="primary" dense />
       </div>
 
       {/* Toast */}
@@ -364,7 +407,7 @@ export default function TeknisiPesananPage() {
                 type="button"
                 onClick={() => setStatusFilter(t.id)}
                 className={cn(
-                  'rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors',
+                  'rounded-full px-2 py-1 text-[10px] font-semibold transition-colors sm:px-3 sm:py-1.5 sm:text-[11px]',
                   statusFilter === t.id
                     ? 'bg-primary-600 text-white shadow-soft-sm'
                     : 'text-surface-600 hover:text-primary-700',
@@ -410,7 +453,7 @@ export default function TeknisiPesananPage() {
 
       {/* Order List */}
       {!loading && filtered.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-2 sm:space-y-3">
           {filtered.map((order, idx) => {
             const cfg = statusConfig[order.status]
             const StatusIcon = cfg.icon
@@ -432,16 +475,16 @@ export default function TeknisiPesananPage() {
                   needsAction && 'border-amber-200/70 bg-amber-50/20',
                   order.status === 'shipped' && 'border-blue-200/50',
                 )}>
-                  <CardContent className="p-4 sm:p-5">
+                  <CardContent className="p-2.5 sm:p-5">
                     {/* Top row — klik untuk detail */}
                     <button
                       type="button"
-                      className="flex w-full cursor-pointer items-start justify-between gap-3 rounded-xl text-left transition-colors hover:bg-surface-50/80 -m-1 p-1"
+                      className="-m-0.5 flex w-full cursor-pointer items-start justify-between gap-2 rounded-xl p-0.5 text-left transition-colors hover:bg-surface-50/80 sm:-m-1 sm:gap-3 sm:p-1"
                       onClick={() => setDetailOrder(order)}
                     >
-                      <div className="flex items-start gap-3">
+                      <div className="flex min-w-0 items-start gap-2 sm:gap-3">
                         <span className={cn(
-                          'inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ring-1 ring-inset',
+                          'inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ring-1 ring-inset sm:h-10 sm:w-10 sm:rounded-xl',
                           order.status === 'paid' && 'bg-amber-50 text-amber-700 ring-amber-200/70',
                           order.status === 'processing' && 'bg-blue-50 text-blue-700 ring-blue-200/70',
                           order.status === 'shipped' && 'bg-accent-50 text-accent-700 ring-accent-200/70',
@@ -449,44 +492,45 @@ export default function TeknisiPesananPage() {
                           (order.status === 'cancelled' || order.status === 'refunded') && 'bg-red-50 text-red-700 ring-red-200/70',
                           order.status === 'pending' && 'bg-surface-100 text-surface-600 ring-surface-200/70',
                         )}>
-                          <StatusIcon className="h-[18px] w-[18px]" />
+                          <StatusIcon className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
                         </span>
                         <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-mono text-[13px] font-semibold text-ink">{order.orderCode}</span>
-                            <Badge variant={cfg.variant} className="px-2 py-0.5 text-[10px]">
+                          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                            <span className="font-mono text-[11px] font-semibold text-ink sm:text-[13px]">{order.orderCode}</span>
+                            <Badge variant={cfg.variant} className="px-1.5 py-0 text-[9px] sm:px-2 sm:py-0.5 sm:text-[10px]">
                               {cfg.label}
                             </Badge>
                           </div>
-                          <p className="mt-1 text-[12px] text-surface-600">
+                          <p className="mt-0.5 line-clamp-2 text-[10px] text-surface-600 sm:mt-1 sm:text-[12px]">
                             {order.items.map((i) => `${i.name} ×${i.quantity}`).join(' · ')}
                           </p>
-                          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-surface-500">
-                            <span className="inline-flex items-center gap-1 font-medium text-surface-600">
-                              <User className="h-3 w-3" />
+                          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[9px] text-surface-500 sm:mt-1.5 sm:gap-x-3 sm:text-[11px]">
+                            <span className="inline-flex items-center gap-0.5 font-medium text-surface-600 sm:gap-1">
+                              <User className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                               {order.buyerName}
                             </span>
                             <span>{formatDate(order.createdAt)}</span>
                             {order.tracking && (
-                              <span className="inline-flex items-center gap-1">
-                                <MapPin className="h-3 w-3" />
-                                {order.tracking.courierLabel} · <span className="font-mono">{order.tracking.trackingNumber}</span>
+                              <span className="inline-flex items-center gap-0.5 sm:gap-1">
+                                <MapPin className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                                <span className="truncate">{order.tracking.courierLabel}</span>
+                                <span className="font-mono">{order.tracking.trackingNumber}</span>
                               </span>
                             )}
                           </div>
                         </div>
                       </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-base font-bold text-primary-700 tabular-nums">{formatPrice(order.total)}</p>
+                      <div className="flex-shrink-0 text-right">
+                        <p className="text-sm font-bold tabular-nums text-primary-700 sm:text-base">{formatPrice(order.total)}</p>
                         {order.tracking?.summaryStatus && (
-                          <p className="mt-0.5 text-[10px] font-medium text-primary-600">{order.tracking.summaryStatus}</p>
+                          <p className="mt-0.5 text-[9px] font-medium text-primary-600 sm:text-[10px]">{order.tracking.summaryStatus}</p>
                         )}
                       </div>
                     </button>
 
                     {/* Actions */}
                     <div
-                      className="mt-3 flex flex-wrap items-center gap-2 border-t border-surface-100 pt-3"
+                      className="mt-2 flex flex-wrap items-center gap-1 border-t border-surface-100 pt-2 sm:mt-3 sm:gap-2 sm:pt-3 [&_button]:h-7 [&_button]:px-2 [&_button]:text-[10px] sm:[&_button]:h-8 sm:[&_button]:text-xs"
                       onClick={(e) => e.stopPropagation()}
                     >
                       {order.canAdvanceStatus && order.nextStatus && !order.requiresShipmentInput && (
@@ -518,6 +562,22 @@ export default function TeknisiPesananPage() {
                           orderCode={order.orderCode}
                         />
                       )}
+                      {order.canRejectNewOrder && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 border-rose-200 text-rose-700 hover:bg-rose-50"
+                          disabled={actingId === order.id}
+                          onClick={() => {
+                            setCancelAction('reject_order')
+                            setCancelTarget(order)
+                            setCancelReason('')
+                          }}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                          Tolak Pesanan
+                        </Button>
+                      )}
                       {order.canCancelOrder && (
                         <Button
                           variant="outline"
@@ -525,6 +585,7 @@ export default function TeknisiPesananPage() {
                           className="h-8 border-rose-200 text-rose-700 hover:bg-rose-50"
                           disabled={actingId === order.id}
                           onClick={() => {
+                            setCancelAction('cancel')
                             setCancelTarget(order)
                             setCancelReason('')
                           }}
@@ -611,12 +672,57 @@ export default function TeknisiPesananPage() {
                               {actingId === order.id ? 'Memvalidasi resi…' : 'Simpan Resi & Tandai Dikirim'}
                             </Button>
                             <p className="text-[10px] text-surface-500">
-                              Resi akan divalidasi ke kurir. Pembaruan lokasi otomatis setiap beberapa jam.
+                              Resi divalidasi ke kurir: harus baru dikirim (maks. 48 jam) dan belum sampai.
+                              Resi lama atau yang sudah terkirim ditolak.
                             </p>
                           </div>
                         </motion.div>
                       )}
                     </AnimatePresence>
+
+                    {order.canRespondToCancelRequest && order.cancellationRequest && (
+                      <div className="mt-3 space-y-2 rounded-2xl border border-amber-200/70 bg-amber-50/40 p-4">
+                        <p className="text-[12px] font-semibold text-ink">Pengajuan pembatalan pembeli</p>
+                        <p className="text-[11px] text-surface-700">{order.cancellationRequest.reason}</p>
+                        {order.cancellationRequest.sellerDeadline && (
+                          <p className="text-[10px] text-surface-500">
+                            Batas respons: {formatDate(order.cancellationRequest.sellerDeadline)}
+                          </p>
+                        )}
+                        <textarea
+                          value={cancelRejectResponses[order.id] ?? ''}
+                          onChange={(e) =>
+                            setCancelRejectResponses((prev) => ({
+                              ...prev,
+                              [order.id]: e.target.value,
+                            }))
+                          }
+                          rows={2}
+                          placeholder="Alasan penolakan (opsional, min. 20 karakter jika diisi)"
+                          className="w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
+                        />
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            className="h-8"
+                            disabled={actingId === order.id}
+                            onClick={() => void respondCancelRequest(order.id, 'approve_cancel_request')}
+                          >
+                            Setujui Pembatalan
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 border-rose-200 text-rose-700"
+                            disabled={actingId === order.id}
+                            onClick={() => void respondCancelRequest(order.id, 'reject_cancel_request')}
+                          >
+                            Tolak Pengajuan
+                          </Button>
+                        </div>
+                      </div>
+                    )}
 
                     {order.awaitingBuyerConfirmation && (
                       <p className="mt-3 rounded-xl border border-amber-200/70 bg-amber-50/60 px-3 py-2 text-[11px] text-amber-800">
@@ -734,7 +840,15 @@ export default function TeknisiPesananPage() {
         </div>
       )}
 
-      <MarketplaceOrderDetailModal order={detailOrder} onClose={() => setDetailOrder(null)} />
+      <MarketplaceOrderDetailModal
+        order={detailOrder}
+        onClose={() => setDetailOrder(null)}
+        fullDetailHref={detailOrder ? `/teknisi/pesanan/${detailOrder.id}` : null}
+        onOrderUpdated={(updated) => {
+          setDetailOrder(updated)
+          setItems((prev) => prev.map((o) => (o.id === updated.id ? updated : o)))
+        }}
+      />
 
       <AnimatePresence>
         {cancelTarget && (
@@ -752,9 +866,11 @@ export default function TeknisiPesananPage() {
               className="w-full max-w-md rounded-2xl border border-surface-200 bg-white p-5 shadow-soft-lg"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-sm font-semibold text-ink">Batalkan pesanan</h3>
+              <h3 className="text-sm font-semibold text-ink">
+                {cancelAction === 'reject_order' ? 'Tolak pesanan' : 'Batalkan pesanan'}
+              </h3>
               <p className="mt-1 text-xs text-surface-600">
-                {cancelTarget.orderCode} — dana pembeli akan dikembalikan sepenuhnya.
+                {cancelTarget.orderCode} — dana pembeli akan dikembalikan ke Saldo Bantoo.
               </p>
               <textarea
                 value={cancelReason}
@@ -773,7 +889,11 @@ export default function TeknisiPesananPage() {
                   disabled={actingId === cancelTarget.id || cancelReason.trim().length < 20}
                   onClick={() => void cancelOrder()}
                 >
-                  Batalkan pesanan
+                  {actingId === cancelTarget.id
+                    ? 'Memproses…'
+                    : cancelAction === 'reject_order'
+                      ? 'Tolak pesanan'
+                      : 'Batalkan pesanan'}
                 </Button>
               </div>
             </motion.div>

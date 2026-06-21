@@ -11,4 +11,5 @@ export const MARKETPLACE_ORDER_INCLUDE = {
   items: { include: { product: { select: { id: true, name: true, category: true } } } },
   complaint: { include: { media: true } },
   packagingProof: { include: { media: true } },
+  cancellationRequest: true,
 } as const

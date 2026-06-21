@@ -14,6 +14,7 @@ import {
   canAccessInspectionService,
   canAccessCariTeknisi,
   canAccessRekberService,
+  canAccessTopupService,
 } from '@/lib/platform-settings-shared'
 import { BrandLogo } from '@/components/brand/brand-logo'
 import {
@@ -55,7 +56,7 @@ const ALL_NAV_GROUPS = [
     label: 'Belanja',
     items: [
       { href: '/marketplace', label: 'Marketplace' },
-      { href: '/topup', label: 'Top Up' },
+      { href: '/topup', label: 'Top Up', requireTopup: true },
       { href: '/imei', label: 'Layanan Digital', requireImei: true },
     ],
   },
@@ -93,13 +94,14 @@ const ALL_MOBILE_NAV_SECTIONS: {
     requireInspection?: boolean
     requireCariTeknisi?: boolean
     requireRekber?: boolean
+    requireTopup?: boolean
   }[]
 }[] = [
   {
     title: 'Belanja',
     items: [
       { href: '/marketplace', label: 'Marketplace', icon: ShoppingBag },
-      { href: '/topup', label: 'Top Up', icon: Zap },
+      { href: '/topup', label: 'Top Up', icon: Zap, requireTopup: true },
       { href: '/imei', label: 'Layanan Digital', icon: Smartphone, requireImei: true },
     ],
   },
@@ -149,12 +151,14 @@ export function Navbar() {
   const canSeeInspection = canAccessInspectionService(role, flags)
   const canSeeCariTeknisi = canAccessCariTeknisi(role, flags)
   const canSeeRekber = canAccessRekberService(role, flags)
+  const canSeeTopup = canAccessTopupService(role, flags)
 
   const navGroups = useMemo(
     () =>
       ALL_NAV_GROUPS.map((g) => ({
         ...g,
         items: g.items.filter((i) => {
+          if ('requireTopup' in i && i.requireTopup && !canSeeTopup) return false
           if ('requireCariTeknisi' in i && i.requireCariTeknisi && !canSeeCariTeknisi) return false
           if ('requireImei' in i && i.requireImei && !canSeeImei) return false
           if ('requireRemote' in i && i.requireRemote && !canSeeRemote) return false
@@ -164,7 +168,7 @@ export function Navbar() {
           return true
         }),
       })).filter((g) => g.items.length > 0),
-    [canSeeImei, canSeeRemote, canSeeInspection, canSeeCariTeknisi],
+    [canSeeImei, canSeeRemote, canSeeInspection, canSeeCariTeknisi, canSeeTopup],
   )
 
   const showStandaloneRekber = canSeeRekber
@@ -174,6 +178,7 @@ export function Navbar() {
       ALL_MOBILE_NAV_SECTIONS.map((s) => ({
         ...s,
         items: s.items.filter((i) => {
+          if (i.requireTopup && !canSeeTopup) return false
           if (i.requireCariTeknisi && !canSeeCariTeknisi) return false
           if (i.requireImei && !canSeeImei) return false
           if (i.requireRemote && !canSeeRemote) return false
@@ -182,7 +187,7 @@ export function Navbar() {
           return true
         }),
       })).filter((s) => s.items.length > 0),
-    [canSeeImei, canSeeRemote, canSeeInspection, canSeeCariTeknisi, canSeeRekber],
+    [canSeeImei, canSeeRemote, canSeeInspection, canSeeCariTeknisi, canSeeRekber, canSeeTopup],
   )
 
   useEffect(() => {
@@ -227,8 +232,8 @@ export function Navbar() {
             )}
           >
             <BrandLogo
-              variant="icon"
-              iconClassName="h-[4.25rem] w-[4.25rem] scale-[1.45] transition-transform duration-450 group-hover/logo:scale-[1.5] sm:h-20 sm:w-20 md:hidden"
+              variant="wordmark"
+              wordmarkClassName="h-9 w-auto max-w-[6rem] origin-left scale-100 object-contain object-left sm:h-10 sm:max-w-[6.75rem] md:hidden"
             />
             <BrandLogo
               variant="wordmark"

@@ -10,6 +10,7 @@ import {
   AdminImeiServiceEditModal,
   type ImeiServiceEditTarget,
 } from '@/components/admin/admin-imei-service-edit-modal'
+import { FilterGroupSheet } from '@/components/ui/filter-group-sheet'
 
 interface ServiceGroup {
   id: string
@@ -84,6 +85,23 @@ export function AdminImeiServicesPanel() {
     [q, groupFilter, statusFilter, services],
   )
 
+  const groupFilterOptions = useMemo(
+    () => [
+      { id: 'all', label: 'Semua group' },
+      ...groups.map((g) => ({ id: g.id, label: g.title })),
+    ],
+    [groups],
+  )
+
+  const statusFilterOptions = useMemo(
+    () => [
+      { id: 'all' as const, label: 'Semua status' },
+      { id: 'ACTIVE' as const, label: 'Aktif' },
+      { id: 'INACTIVE' as const, label: 'Nonaktif' },
+    ],
+    [],
+  )
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-wrap">
@@ -95,27 +113,29 @@ export function AdminImeiServicesPanel() {
           <RefreshCw className="h-3.5 w-3.5" />
           Sync dari API
         </Button>
-        <select
-          value={groupFilter}
-          onChange={(e) => setGroupFilter(e.target.value)}
-          className="h-9 rounded-xl border border-surface-200/80 bg-white px-3 text-xs text-surface-700"
-        >
-          <option value="all">Semua Group</option>
-          {groups.map((g) => (
-            <option key={g.id} value={g.id}>
-              {g.title}
-            </option>
-          ))}
-        </select>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as 'all' | 'ACTIVE' | 'INACTIVE')}
-          className="h-9 rounded-xl border border-surface-200/80 bg-white px-3 text-xs text-surface-700"
-        >
-          <option value="all">Semua Status</option>
-          <option value="ACTIVE">Aktif</option>
-          <option value="INACTIVE">Nonaktif</option>
-        </select>
+        <FilterGroupSheet
+          groups={[
+            {
+              id: 'group',
+              label: 'Group',
+              value: groupFilter,
+              onChange: setGroupFilter,
+              options: groupFilterOptions,
+            },
+            {
+              id: 'status',
+              label: 'Status',
+              value: statusFilter,
+              onChange: (value) => setStatusFilter(value as 'all' | 'ACTIVE' | 'INACTIVE'),
+              options: statusFilterOptions,
+            },
+          ]}
+          onReset={() => {
+            setGroupFilter('all')
+            setStatusFilter('all')
+          }}
+          disabled={loading}
+        />
         <div className="relative min-w-[200px] flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-surface-400" />
           <Input

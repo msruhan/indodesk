@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { SearchInput } from '@/components/ui/search-input'
-import { CategoryFilterDropdown } from '@/components/ui/category-filter-dropdown'
+import { FilterGroupSheet } from '@/components/ui/filter-group-sheet'
 import { DashboardMonthFilter, MetricCard } from '@/components/dashboard'
 import { useDashboardPeriod } from '@/contexts/dashboard-period-context'
 import { useSyncPeriodToDateInputs } from '@/hooks/use-sync-period-to-date-inputs'
@@ -173,11 +173,11 @@ export function AdminLogsView() {
   }, [categoryFilter, severityFilter, debouncedQ, from, to, pageSize])
 
   const categoryOptions = useMemo(
-    () => CATEGORY_FILTERS.map((f) => ({ value: f.id, label: f.label })),
+    () => CATEGORY_FILTERS.map((f) => ({ id: f.id, label: f.label })),
     [],
   )
   const severityOptions = useMemo(
-    () => SEVERITY_FILTERS.map((f) => ({ value: f.id, label: f.label })),
+    () => SEVERITY_FILTERS.map((f) => ({ id: f.id, label: f.label })),
     [],
   )
 
@@ -269,17 +269,28 @@ export function AdminLogsView() {
             className="flex-1 lg:min-w-[200px] lg:max-w-md"
             inputClassName="h-9 text-xs"
           />
-          <CategoryFilterDropdown
-            value={categoryFilter}
-            onChange={(v) => setCategoryFilter(v as typeof categoryFilter)}
-            options={categoryOptions}
-            className="w-full sm:w-auto"
-          />
-          <CategoryFilterDropdown
-            value={severityFilter}
-            onChange={(v) => setSeverityFilter(v as typeof severityFilter)}
-            options={severityOptions}
-            className="w-full sm:w-auto"
+          <FilterGroupSheet
+            groups={[
+              {
+                id: 'category',
+                label: 'Kategori',
+                value: categoryFilter,
+                onChange: (value) => setCategoryFilter(value as typeof categoryFilter),
+                options: categoryOptions,
+              },
+              {
+                id: 'severity',
+                label: 'Severity',
+                value: severityFilter,
+                onChange: (value) => setSeverityFilter(value as typeof severityFilter),
+                options: severityOptions,
+              },
+            ]}
+            onReset={() => {
+              setCategoryFilter('all')
+              setSeverityFilter('all')
+            }}
+            disabled={loading}
           />
         </div>
       </div>

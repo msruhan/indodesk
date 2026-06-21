@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiAuth } from '@/lib/api-auth'
 import { serializePaymentIntent } from '@/lib/payments/payment-intent'
+import { loadMarketplacePaymentBreakdown } from '@/lib/marketplace-payment-breakdown'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,5 +30,14 @@ export async function GET(_req: Request, context: RouteContext) {
     orderCode = topup?.orderCode ?? null
   }
 
-  return apiSuccess({ ...serializePaymentIntent(intent), orderCode })
+  const marketplaceBreakdown =
+    intent.purpose === 'MARKETPLACE' && intent.targetId
+      ? await loadMarketplacePaymentBreakdown(intent.targetId)
+      : null
+
+  return apiSuccess({
+    ...serializePaymentIntent(intent),
+    orderCode,
+    marketplaceBreakdown,
+  })
 }

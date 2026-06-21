@@ -90,8 +90,9 @@ export default function UserRekberPage() {
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <DashboardPageHeader
+        compact
         title="Transaksi Aman Saya"
         description="Transaksi aman dengan dana ditahan platform."
         actions={
@@ -123,14 +124,14 @@ export default function UserRekberPage() {
         />
       )}
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4 md:grid-cols-3">
         <MetricCard
           title="Total"
           value={displayStats.total.toString()}
           icon={Shield}
           footnote="Semua transaksi"
           tone="primary"
-          compact
+          dense
         />
         <MetricCard
           title="Aktif"
@@ -138,7 +139,7 @@ export default function UserRekberPage() {
           icon={Clock}
           footnote="Sedang berjalan"
           tone={displayStats.active > 0 ? 'warning' : 'neutral'}
-          compact
+          dense
         />
         <MetricCard
           title="Selesai"
@@ -146,7 +147,7 @@ export default function UserRekberPage() {
           icon={CheckCircle}
           footnote="Transaksi tuntas"
           tone="primary"
-          compact
+          dense
         />
       </div>
 

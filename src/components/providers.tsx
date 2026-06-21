@@ -28,7 +28,7 @@ export function Providers({
 }) {
   return (
     <CspNonceProvider nonce={cspNonce}>
-    <SessionProvider refetchOnWindowFocus={false} refetchInterval={0}>
+    <SessionProvider refetchOnWindowFocus refetchInterval={5 * 60}>
       <AuthProvider>
         <SessionIdleGuard />
         <FeatureFlagsProvider>

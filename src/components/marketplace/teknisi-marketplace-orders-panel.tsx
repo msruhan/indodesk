@@ -299,8 +299,8 @@ export function TeknisiMarketplaceOrdersPanel({ variant = 'embedded' }: Props) {
                       {actingId === order.id ? 'Memvalidasi…' : 'Simpan & tandai dikirim'}
                     </Button>
                     <p className="text-[10px] text-surface-500">
-                      Resi akan divalidasi ke kurir (1×). Pembaruan lokasi otomatis setiap beberapa
-                      jam.
+                      Resi divalidasi ke kurir: harus baru dikirim (maks. 48 jam) dan belum sampai.
+                      Resi lama atau yang sudah terkirim ditolak.
                     </p>
                   </div>
                 )}

@@ -5,6 +5,7 @@ import {
   canAccessKonsultasiService,
   canAccessRemoteService,
   canAccessRekberService,
+  canAccessTopupService,
 } from '@/lib/platform-settings-shared'
 import {
   MARKETPLACE_PATH,
@@ -71,6 +72,9 @@ export function quickActionsForRole(
     }
     if (item.href.includes('rekber')) {
       return canAccessRekberService(role, flags)
+    }
+    if (item.href.startsWith('/topup')) {
+      return canAccessTopupService(role, flags)
     }
     if (item.href.includes('filter=remote')) {
       return canAccessRemoteService(role, flags) && canAccessKonsultasiService(role, flags)

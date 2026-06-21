@@ -31,7 +31,7 @@ export async function fetchMarketplaceBuyerNotifications(
   const now = new Date()
   const items: PlatformNotification[] = []
 
-  const [awaitingConfirm, complaints] = await Promise.all([
+  const [awaitingConfirm, complaints, cancelRequests] = await Promise.all([
     prisma.order.findMany({
       where: {
         buyerId,
@@ -50,6 +50,15 @@ export async function fetchMarketplaceBuyerNotifications(
       where: {
         buyerId,
         status: { in: ['OPEN', 'SELLER_RESPONDED', 'ESCALATED', 'RESOLVED'] },
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: LIMIT,
+      include: { order: { select: { orderCode: true } } },
+    }),
+    prisma.orderCancellationRequest.findMany({
+      where: {
+        buyerId,
+        status: { in: ['PENDING', 'REJECTED', 'APPROVED', 'EXPIRED'] },
       },
       orderBy: { updatedAt: 'desc' },
       take: LIMIT,
@@ -144,6 +153,77 @@ export async function fetchMarketplaceBuyerNotifications(
     }
   }
 
+  for (const req of cancelRequests) {
+    if (req.status === 'PENDING' && req.sellerDeadline && req.sellerDeadline > now) {
+      items.push(
+        mktNotification(
+          {
+            id: `mkt-buyer-cancel-pending-${req.id}`,
+            title: 'Pengajuan pembatalan menunggu penjual',
+            body: `${req.order.orderCode} — penjual punya waktu merespons pengajuan Anda.`,
+            tone: 'warning' as NotificationTone,
+            icon: 'bell' as NotificationIconKey,
+            createdAt: req.createdAt.toISOString(),
+            href: '/user/orders',
+          },
+          ['USER'],
+        ),
+      )
+      continue
+    }
+
+    if (req.resolvedAt && now.getTime() - req.resolvedAt.getTime() > RECENT_RESOLVED_MS) {
+      continue
+    }
+
+    if (req.status === 'APPROVED') {
+      items.push(
+        mktNotification(
+          {
+            id: `mkt-buyer-cancel-approved-${req.id}`,
+            title: 'Pembatalan disetujui',
+            body: `${req.order.orderCode} — dana dikembalikan ke Saldo Bantoo.`,
+            tone: 'success' as NotificationTone,
+            icon: 'check' as NotificationIconKey,
+            createdAt: (req.resolvedAt ?? req.updatedAt).toISOString(),
+            href: '/user/orders',
+          },
+          ['USER'],
+        ),
+      )
+    } else if (req.status === 'REJECTED') {
+      items.push(
+        mktNotification(
+          {
+            id: `mkt-buyer-cancel-rejected-${req.id}`,
+            title: 'Pengajuan pembatalan ditolak',
+            body: `${req.order.orderCode} — pesanan tetap diproses penjual.`,
+            tone: 'neutral' as NotificationTone,
+            icon: 'message' as NotificationIconKey,
+            createdAt: (req.resolvedAt ?? req.updatedAt).toISOString(),
+            href: '/user/orders',
+          },
+          ['USER'],
+        ),
+      )
+    } else if (req.status === 'EXPIRED') {
+      items.push(
+        mktNotification(
+          {
+            id: `mkt-buyer-cancel-expired-${req.id}`,
+            title: 'Pengajuan pembatalan kedaluwarsa',
+            body: `${req.order.orderCode} — penjual tidak merespons; pesanan tetap berjalan.`,
+            tone: 'neutral' as NotificationTone,
+            icon: 'bell' as NotificationIconKey,
+            createdAt: (req.resolvedAt ?? req.updatedAt).toISOString(),
+            href: '/user/orders',
+          },
+          ['USER'],
+        ),
+      )
+    }
+  }
+
   return items
 }
 
@@ -154,7 +234,7 @@ export async function fetchMarketplaceSellerNotifications(
   const now = new Date()
   const items: PlatformNotification[] = []
 
-  const [packagingNeeded, packagingProofs, complaints] = await Promise.all([
+  const [packagingNeeded, packagingProofs, complaints, cancelRequests] = await Promise.all([
     prisma.order.findMany({
       where: {
         sellerId,
@@ -190,7 +270,34 @@ export async function fetchMarketplaceSellerNotifications(
       take: LIMIT,
       include: { order: { select: { orderCode: true } } },
     }),
+    prisma.orderCancellationRequest.findMany({
+      where: {
+        sellerId,
+        status: 'PENDING',
+        sellerDeadline: { gt: now },
+      },
+      orderBy: { sellerDeadline: 'asc' },
+      take: LIMIT,
+      include: { order: { select: { orderCode: true } } },
+    }),
   ])
+
+  for (const req of cancelRequests) {
+    items.push(
+      mktNotification(
+        {
+          id: `mkt-seller-cancel-request-${req.id}`,
+          title: 'Pengajuan pembatalan dari pembeli',
+          body: `${req.order.orderCode} — respons dalam 48 jam sebelum pengajuan kedaluwarsa.`,
+          tone: 'warning' as NotificationTone,
+          icon: 'message' as NotificationIconKey,
+          createdAt: req.createdAt.toISOString(),
+          href: '/teknisi/pesanan',
+        },
+        ['TEKNISI'],
+      ),
+    )
+  }
 
   for (const order of packagingNeeded) {
     const productName = order.items[0]?.product.name ?? 'Produk'

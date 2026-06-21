@@ -17,6 +17,7 @@ import {
   canAccessInspectionService,
   canAccessCariTeknisi,
   canAccessRekberService,
+  canAccessTopupService,
 } from '@/lib/platform-settings-shared'
 
 const IMEI_TAB: SectionTab = {
@@ -40,10 +41,17 @@ const INSPEKSI_TAB: SectionTab = {
   matchPrefixes: ['/inspeksi'],
 }
 
+const TOPUP_TAB: SectionTab = {
+  href: '/topup',
+  label: 'Top Up',
+  icon: Zap,
+  matchPrefixes: ['/topup'],
+}
+
 /** Marketplace group: Shop ↔ Top Up ↔ (IMEI bila role & flag mengizinkan) */
 export const marketplaceTabs: SectionTab[] = [
   { href: '/shop', label: 'Shop', icon: ShoppingBag, matchPrefixes: ['/shop', '/marketplace'] },
-  { href: '/topup', label: 'Top Up', icon: Zap, matchPrefixes: ['/topup'] },
+  TOPUP_TAB,
   IMEI_TAB,
 ]
 
@@ -63,8 +71,8 @@ export function buildMarketplaceTabs(
       icon: ShoppingBag,
       matchPrefixes: ['/shop', '/marketplace'],
     },
-    { href: '/topup', label: 'Top Up', icon: Zap, matchPrefixes: ['/topup'] },
   ]
+  if (canAccessTopupService(role, flags)) base.push(TOPUP_TAB)
   if (canAccessImeiService(role, flags)) base.push(IMEI_TAB)
   return base
 }

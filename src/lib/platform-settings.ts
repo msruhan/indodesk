@@ -9,9 +9,11 @@ import {
   canAccessCariTeknisi,
   canAccessKonsultasiService,
   canAccessRekberService,
+  canAccessTopupService,
   type PlatformSettingKey,
   type PlatformSettingsDto,
   type PublicFeatureFlags,
+  type SellerFeeTier,
 } from '@/lib/platform-settings-shared'
 import { isGoogleAuthEnabled } from '@/lib/google-auth-enabled'
 import {
@@ -29,6 +31,7 @@ export {
   canAccessCariTeknisi,
   canAccessKonsultasiService,
   canAccessRekberService,
+  canAccessTopupService,
 }
 export type { PlatformSettingKey, PlatformSettingsDto, PublicFeatureFlags }
 
@@ -40,6 +43,7 @@ const KEY_MAP: Record<PlatformSettingKey, keyof PlatformSettingsDto | null> = {
   buyer_fee_percent: 'buyerFeePercent',
   buyer_flat_fee_per_item: 'buyerFlatFeePerItem',
   seller_fee_percent: 'sellerFeePercent',
+  seller_fee_tiers: 'sellerFeeTiers',
   konsultasi_fee_percent: 'konsultasiFeePercent',
   inspeksi_fee_percent: 'inspeksiFeePercent',
   fee_percent: null,
@@ -50,6 +54,7 @@ const KEY_MAP: Record<PlatformSettingKey, keyof PlatformSettingsDto | null> = {
   cari_teknisi_enabled: 'cariTeknisiEnabled',
   konsultasi_service_enabled: 'konsultasiServiceEnabled',
   rekber_service_enabled: 'rekberServiceEnabled',
+  topup_service_enabled: 'topupServiceEnabled',
   coming_soon_enabled: 'comingSoonEnabled',
   coming_soon_launch_at: 'comingSoonLaunchAt',
   coming_soon_headline: 'comingSoonHeadline',
@@ -62,6 +67,53 @@ const REVERSE_KEY_MAP = Object.fromEntries(
     .map(([k, v]) => [v, k]),
 ) as Record<keyof PlatformSettingsDto, PlatformSettingKey>
 
+function parseSellerFeeTiers(raw: string | undefined): SellerFeeTier[] {
+  if (!raw?.trim()) return []
+  try {
+    const parsed = JSON.parse(raw) as unknown
+    if (!Array.isArray(parsed)) return []
+
+    const rows = parsed
+      .map((item) => {
+        const row = item as {
+          minOrderAmount?: number
+          minAmount?: number
+          maxAmount?: number | null
+          feePercent?: number
+        }
+        const feePercent = Number(row.feePercent)
+        const minAmount = Number(row.minAmount ?? row.minOrderAmount)
+        const maxAmountRaw = row.maxAmount
+        const maxAmount =
+          maxAmountRaw == null || maxAmountRaw === ('' as unknown as number)
+            ? null
+            : Number(maxAmountRaw)
+        return { minAmount, maxAmount, feePercent }
+      })
+      .filter(
+        (tier) =>
+          Number.isFinite(tier.minAmount) &&
+          Number.isFinite(tier.feePercent) &&
+          tier.minAmount >= 0 &&
+          (tier.maxAmount == null || Number.isFinite(tier.maxAmount)),
+      )
+      .sort((a, b) => a.minAmount - b.minAmount)
+
+    // Migrasi tier lama (hanya minOrderAmount): max = min tier berikutnya - 1
+    return rows.map((tier, index) => {
+      if (tier.maxAmount != null) return tier as SellerFeeTier
+      const nextMin = rows[index + 1]?.minAmount
+      return {
+        minAmount: tier.minAmount,
+        maxAmount: nextMin != null ? Math.max(tier.minAmount, nextMin - 1) : null,
+        feePercent: tier.feePercent,
+      }
+    })
+  } catch {
+    return []
+  }
+}
+
 function dtoToRows(dto: PlatformSettingsDto): Array<{ key: string; value: string }> {
   return [
     { key: 'platform_name', value: dto.platformName },
@@ -71,6 +123,7 @@ function dtoToRows(dto: PlatformSettingsDto): Array<{ key: string; value: string
     { key: 'buyer_fee_percent', value: String(dto.buyerFeePercent) },
     { key: 'buyer_flat_fee_per_item', value: String(dto.buyerFlatFeePerItem) },
     { key: 'seller_fee_percent', value: String(dto.sellerFeePercent) },
+    { key: 'seller_fee_tiers', value: JSON.stringify(dto.sellerFeeTiers ?? []) },
     { key: 'konsultasi_fee_percent', value: String(dto.konsultasiFeePercent) },
     { key: 'inspeksi_fee_percent', value: String(dto.inspeksiFeePercent) },
     { key: 'maintenance_mode', value: dto.maintenanceMode ? 'true' : 'false' },
@@ -94,6 +147,10 @@ function dtoToRows(dto: PlatformSettingsDto): Array<{ key: string; value: string
     {
       key: 'rekber_service_enabled',
       value: dto.rekberServiceEnabled ? 'true' : 'false',
+    },
+    {
+      key: 'topup_service_enabled',
+      value: dto.topupServiceEnabled ? 'true' : 'false',
     },
     {
       key: 'coming_soon_enabled',
@@ -132,6 +189,7 @@ function rowToDto(rows: Array<{ key: string; value: string }>): PlatformSettings
         map.get('fee_percent') ??
         DEFAULT_PLATFORM_SETTINGS.sellerFeePercent,
     ),
+    sellerFeeTiers: parseSellerFeeTiers(map.get('seller_fee_tiers')),
     konsultasiFeePercent: Number(
       map.get('konsultasi_fee_percent') ?? DEFAULT_PLATFORM_SETTINGS.konsultasiFeePercent,
     ),
@@ -148,6 +206,7 @@ function rowToDto(rows: Array<{ key: string; value: string }>): PlatformSettings
       (map.get('cari_teknisi_enabled') ?? map.get('teknisi_room_enabled') ?? 'true') === 'true',
     konsultasiServiceEnabled: (map.get('konsultasi_service_enabled') ?? 'true') === 'true',
     rekberServiceEnabled: (map.get('rekber_service_enabled') ?? 'true') === 'true',
+    topupServiceEnabled: (map.get('topup_service_enabled') ?? 'true') === 'true',
     comingSoonEnabled: map.get('coming_soon_enabled') === 'true',
     comingSoonLaunchAt: (() => {
       const raw = map.get('coming_soon_launch_at')?.trim()
@@ -225,6 +284,7 @@ export async function getPublicMarketplaceFeeRates() {
     buyerFeePercent: s.buyerFeePercent,
     buyerFlatFeePerItem: s.buyerFlatFeePerItem,
     sellerFeePercent: s.sellerFeePercent,
+    sellerFeeTiers: s.sellerFeeTiers,
   }
 }
 
@@ -237,6 +297,7 @@ export async function getPublicFeatureFlags(): Promise<PublicFeatureFlags> {
     cariTeknisiEnabled: s.cariTeknisiEnabled,
     konsultasiServiceEnabled: s.konsultasiServiceEnabled,
     rekberServiceEnabled: s.rekberServiceEnabled,
+    topupServiceEnabled: s.topupServiceEnabled,
     googleAuthEnabled: isGoogleAuthEnabled,
   }
 }

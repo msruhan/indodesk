@@ -22,6 +22,18 @@ export function decimalToNumber(value: Prisma.Decimal | number): number {
   return typeof value === 'number' ? value : Number(value.toString())
 }
 
+export type MarketplacePaymentBreakdownDto = {
+  subtotal: number
+  discount: number
+  buyerFeePercentPart: number
+  buyerFlatFeePart: number
+  buyerFlatFeePerItem: number
+  shippingCost: number
+  orderPayable: number
+  orderCount: number
+  itemCount: number
+}
+
 export type PaymentIntentDto = {
   id: string
   merchantRef: string
@@ -42,6 +54,7 @@ export type PaymentIntentDto = {
   paidAt: string | null
   createdAt: string
   orderCode?: string | null
+  marketplaceBreakdown?: MarketplacePaymentBreakdownDto | null
 }
 
 export function serializePaymentIntent(intent: PaymentIntent): PaymentIntentDto {

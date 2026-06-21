@@ -1,11 +1,18 @@
 import { z } from 'zod'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { logAdminGovernance } from '@/lib/admin-audit'
+import { validateSellerFeeTiers, normalizeSellerFeeTiers } from '@/lib/marketplace-fees'
 import { getPlatformSettings, savePlatformSettings, warmComingSoonCache } from '@/lib/platform-settings'
 import { verifyAdminStepUp, StepUpAuthError } from '@/lib/wallet/admin-step-up'
 import { adminStepUpFields } from '@/lib/wallet/admin-step-up-schema'
 
 export const dynamic = 'force-dynamic'
+
+const sellerFeeTierSchema = z.object({
+  minAmount: z.number().int().min(0).max(1_000_000_000),
+  maxAmount: z.number().int().min(0).max(1_000_000_000).nullable(),
+  feePercent: z.number().min(0).max(100),
+})
 
 const settingsSchema = z.object({
   platformName: z.string().min(2).max(120),
@@ -15,6 +22,7 @@ const settingsSchema = z.object({
   buyerFeePercent: z.number().min(0).max(100),
   buyerFlatFeePerItem: z.number().int().min(0).max(1_000_000),
   sellerFeePercent: z.number().min(0).max(100),
+  sellerFeeTiers: z.array(sellerFeeTierSchema).max(20).optional().default([]),
   konsultasiFeePercent: z.number().min(0).max(100),
   inspeksiFeePercent: z.number().min(0).max(100),
   maintenanceMode: z.boolean(),
@@ -28,6 +36,7 @@ const settingsSchema = z.object({
   cariTeknisiEnabled: z.boolean(),
   konsultasiServiceEnabled: z.boolean(),
   rekberServiceEnabled: z.boolean(),
+  topupServiceEnabled: z.boolean(),
   ...adminStepUpFields,
 })
 
@@ -69,7 +78,16 @@ export async function PATCH(req: Request) {
     }
 
     const { confirmPassword: _cp, totp: _totp, ...settingsData } = parsed.data
-    const settings = await savePlatformSettings(settingsData)
+    const sellerFeeTiers = normalizeSellerFeeTiers(settingsData.sellerFeeTiers ?? [])
+    const tierError = validateSellerFeeTiers(sellerFeeTiers)
+    if (tierError) return apiError(tierError, 400)
+
+    const current = await getPlatformSettings()
+    const settings = await savePlatformSettings({
+      ...current,
+      ...settingsData,
+      sellerFeeTiers,
+    })
 
     logAdminGovernance({
       req,

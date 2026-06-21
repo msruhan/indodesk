@@ -49,16 +49,20 @@ export function TeknisiDigitalIdCard({ teknisi }: { teknisi: TeknisiDigitalIdSou
   )
 
   return (
-    <div className="rounded-3xl border border-surface-200/70 bg-white p-5 shadow-soft-sm sm:p-6">
-      <div className="mb-5 flex items-end justify-between gap-4">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary-700">Digital ID</p>
-          <h2 className="mt-1 text-xl font-black tracking-tight text-ink sm:text-2xl">Teknisi Card</h2>
+    <div className="rounded-2xl border border-surface-200/70 bg-white p-3 shadow-soft-sm sm:rounded-3xl sm:p-5 md:p-6">
+      <div className="mb-3 flex items-center justify-between gap-3 sm:mb-5 sm:items-end">
+        <div className="min-w-0">
+          <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-primary-700 sm:text-[10px] sm:tracking-[0.16em]">
+            Digital ID
+          </p>
+          <h2 className="mt-0.5 text-lg font-black tracking-tight text-ink sm:mt-1 sm:text-xl md:text-2xl">
+            Teknisi Card
+          </h2>
         </div>
         <button
           type="button"
           onClick={() => setFlipped((v) => !v)}
-          className="inline-flex items-center gap-1 rounded-full border border-surface-200/70 bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-surface-600 transition-colors hover:border-primary-200 hover:text-primary-700"
+          className="inline-flex shrink-0 items-center gap-1 rounded-full border border-surface-200/70 bg-white px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-surface-600 transition-colors hover:border-primary-200 hover:text-primary-700 sm:px-2.5 sm:py-1 sm:text-[10px]"
         >
           <RefreshCw className="h-3 w-3" />
           Flip
@@ -121,7 +125,7 @@ export function TeknisiDigitalIdCard({ teknisi }: { teknisi: TeknisiDigitalIdSou
         <div className="pointer-events-none mx-6 mt-2 h-6 rounded-[50%] bg-gradient-to-b from-primary-500/20 to-transparent blur-md" />
       </div>
 
-      <div className="mt-4 flex items-center justify-center gap-1.5 text-[10px] font-medium text-surface-500">
+      <div className="mt-3 hidden items-center justify-center gap-1.5 text-[10px] font-medium text-surface-500 sm:mt-4 sm:flex">
         <Sparkles className="h-3 w-3 text-primary-600" weight="fill" />
         <span>Dipersembahkan oleh Bantoo · Hover untuk efek 3D</span>
       </div>
