@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
-import { notificationIconMap, notificationToneClass, formatNotificationTimeLabel } from '@/lib/notification-display'
+import { notificationIconMap, notificationToneClass, formatNotificationTimeLabel, resolveNotificationIcon, resolveNotificationTone } from '@/lib/notification-display'
 import type { PlatformNotification } from '@/data/mock-platform-notifications'
 
 export function NotificationFeedItem({
@@ -16,13 +16,14 @@ export function NotificationFeedItem({
   unread?: boolean
   onNavigate?: () => void
 }) {
-  const Icon = notificationIconMap[item.icon]
+  const Icon = notificationIconMap[resolveNotificationIcon(item.icon)]
+  const toneClass = notificationToneClass[resolveNotificationTone(item.tone)]
   const content = (
     <>
       <span
         className={cn(
           'mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl',
-          notificationToneClass[item.tone],
+          toneClass,
         )}
       >
         <Icon className="h-4 w-4" />

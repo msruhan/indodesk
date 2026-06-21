@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react'
 import {
+  AlertTriangle,
   Bell,
   CheckCircle,
   MessageCircle,
@@ -16,6 +17,7 @@ export const notificationIconMap: Record<NotificationIconKey, IconComponent> = {
   check: CheckCircle,
   bell: Bell,
   package: Package,
+  warning: AlertTriangle,
 }
 
 export const notificationToneClass: Record<NotificationTone, string> = {
@@ -23,6 +25,20 @@ export const notificationToneClass: Record<NotificationTone, string> = {
   warning: 'bg-amber-50 text-amber-700',
   success: 'bg-green-50 text-green-700',
   neutral: 'bg-surface-100 text-surface-700',
+  danger: 'bg-red-50 text-red-700',
+}
+
+const KNOWN_ICONS = new Set<string>(Object.keys(notificationIconMap))
+const KNOWN_TONES = new Set<string>(Object.keys(notificationToneClass))
+
+export function resolveNotificationIcon(icon: string | undefined | null): NotificationIconKey {
+  if (icon && KNOWN_ICONS.has(icon)) return icon as NotificationIconKey
+  return 'bell'
+}
+
+export function resolveNotificationTone(tone: string | undefined | null): NotificationTone {
+  if (tone && KNOWN_TONES.has(tone)) return tone as NotificationTone
+  return 'primary'
 }
 
 /** Label waktu relatif (Bahasa Indonesia) dari timestamp ISO. */

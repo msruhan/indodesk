@@ -1,8 +1,8 @@
 import { z } from 'zod'
 
 const audienceSchema = z.enum(['USER', 'TEKNISI', 'ADMIN'])
-const toneSchema = z.enum(['primary', 'warning', 'success', 'neutral'])
-const iconSchema = z.enum(['shield', 'message', 'check', 'bell', 'package'])
+const toneSchema = z.enum(['primary', 'warning', 'success', 'neutral', 'danger'])
+const iconSchema = z.enum(['shield', 'message', 'check', 'bell', 'package', 'warning'])
 
 export const createPlatformNotificationSchema = z.object({
   title: z.string().trim().min(1, 'Judul wajib diisi'),

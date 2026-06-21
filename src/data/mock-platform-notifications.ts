@@ -1,8 +1,8 @@
 export type NotificationAudience = 'USER' | 'TEKNISI' | 'ADMIN'
 
-export type NotificationIconKey = 'shield' | 'message' | 'check' | 'bell' | 'package'
+export type NotificationIconKey = 'shield' | 'message' | 'check' | 'bell' | 'package' | 'warning'
 
-export type NotificationTone = 'primary' | 'warning' | 'success' | 'neutral'
+export type NotificationTone = 'primary' | 'warning' | 'success' | 'neutral' | 'danger'
 
 export type PlatformNotification = {
   id: string

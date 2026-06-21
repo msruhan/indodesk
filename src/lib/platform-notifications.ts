@@ -2,10 +2,9 @@ import type { UserRole } from '@prisma/client'
 import type { PlatformNotification as PrismaPlatformNotification } from '@prisma/client'
 import type {
   NotificationAudience,
-  NotificationIconKey,
-  NotificationTone,
   PlatformNotification,
 } from '@/data/mock-platform-notifications'
+import { resolveNotificationIcon, resolveNotificationTone } from '@/lib/notification-display'
 
 const AUDIENCES = ['USER', 'TEKNISI', 'ADMIN'] as const
 
@@ -26,8 +25,8 @@ export function mapDbNotification(row: PrismaPlatformNotification): PlatformNoti
     title: row.title,
     body: row.body,
     audiences: parseNotificationAudiences(row.audiences),
-    tone: (row.tone as NotificationTone) || 'primary',
-    icon: (row.icon as NotificationIconKey) || 'bell',
+    tone: resolveNotificationTone(row.tone),
+    icon: resolveNotificationIcon(row.icon),
     active: row.active,
     createdAt: row.createdAt.toISOString(),
     kind: 'broadcast',
