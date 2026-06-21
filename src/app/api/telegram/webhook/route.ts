@@ -21,6 +21,11 @@ export async function POST(req: NextRequest) {
       const rawText = message.text
       const telegramUser = message.from
 
+      // Hanya tangani DM pribadi — notifikasi grup/topic dikirim langsung dari web.
+      if (message.chat.type !== 'private') {
+        return NextResponse.json({ success: true })
+      }
+
       if (!rawText?.trim()) return NextResponse.json({ success: true })
 
       const text = rawText.trim()
@@ -135,8 +140,6 @@ Anda akan menerima notifikasi untuk event penting di platform.
         }
         return NextResponse.json({ success: true })
       }
-
-      await sendTelegramMessage(chatId, 'Gunakan /help untuk melihat perintah yang tersedia.')
     }
 
     return NextResponse.json({ success: true })
