@@ -74,6 +74,8 @@ const baseOrder: MarketplaceOrderDto = {
   requiresPackagingProof: false,
   canSubmitPackagingProof: false,
   canDownloadShippingLabel: false,
+  cancelReason: null,
+  cancelledBy: null,
 }
 
 describe('buildMarketplaceOrderInvoice', () => {

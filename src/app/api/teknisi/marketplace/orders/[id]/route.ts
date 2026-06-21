@@ -11,6 +11,7 @@ import { MARKETPLACE_ORDER_INCLUDE } from '@/lib/marketplace-order-includes'
 import {
   canSellerRejectNewOrder,
   canSellerRespondToCancelRequest,
+  CANCEL_REASON_MIN_LENGTH,
   cancelMarketplaceOrderInTx,
   hasBuyerRefundForOrder,
   validateCancelReason,
@@ -20,7 +21,11 @@ export const dynamic = 'force-dynamic'
 
 const courierEnum = z.nativeEnum(ShippingCourier)
 
-const reasonField = z.string().trim().min(20, 'Alasan minimal 20 karakter').max(500)
+const reasonField = z
+  .string()
+  .trim()
+  .min(CANCEL_REASON_MIN_LENGTH, `Alasan minimal ${CANCEL_REASON_MIN_LENGTH} karakter`)
+  .max(500)
 
 const patchSchema = z.discriminatedUnion('action', [
   z.object({

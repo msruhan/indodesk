@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useClientPagination } from '@/hooks/use-client-pagination'
 import { cn } from '@/lib/utils'
 import { formatIdr, formatDateTime } from '@/lib/format'
+import { marketplaceOrderCancelActorLabel } from '@/lib/marketplace-order-serializer'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import {
   Check,
@@ -50,6 +51,8 @@ type TransactionItem = {
   createdAt: string
   updatedAt: string
   meta: Record<string, string | null>
+  cancelReason: string | null
+  cancelledBy: string | null
 }
 
 type TransactionStats = {
@@ -458,6 +461,13 @@ function DrawerBody({ item }: { item: TransactionItem }) {
   const status = statusConfig[item.normalizedStatus]
   const TypeIcon = type.icon
   const StatusIcon = status.icon
+  const cancelActor = marketplaceOrderCancelActorLabel(
+    item.cancelledBy as 'BUYER' | 'SELLER' | 'ADMIN' | 'SYSTEM' | null,
+  )
+  const cancelReasonTitle = cancelActor ? `Alasan pembatalan (${cancelActor})` : 'Alasan pembatalan'
+  const showCancelReason =
+    Boolean(item.cancelReason) &&
+    (item.normalizedStatus === 'cancelled' || item.normalizedStatus === 'failed')
 
   return (
     <>
@@ -497,6 +507,15 @@ function DrawerBody({ item }: { item: TransactionItem }) {
           )}
         </div>
       )}
+
+      {showCancelReason && (
+          <div className="rounded-2xl border border-rose-200/80 bg-rose-50/60 p-3 shadow-soft-xs">
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-rose-800">
+              {cancelReasonTitle}
+            </p>
+            <p className="text-[13px] leading-relaxed text-rose-900">{item.cancelReason}</p>
+          </div>
+        )}
 
       {/* Title */}
       <div className="rounded-2xl border border-surface-200/70 bg-white p-3 shadow-soft-xs">

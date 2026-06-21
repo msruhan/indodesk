@@ -13,7 +13,7 @@ type FilterChipBarProps<T extends string> = {
   onChange: (id: T) => void
   /** First option id treated as "all" — shows reset bar when another is selected */
   allValue?: T
-  getCount?: (id: T) => number
+  getCount?: (id: T) => number | undefined
   className?: string
 }
 

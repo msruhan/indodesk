@@ -11,6 +11,7 @@ import {
   labelForServerStatus,
   labelForShopStatus,
   labelForTopupStatus,
+  labelForWithdrawStatus,
   type TransactionFilter,
   type UnifiedTransaction,
   balancesFromLedgerAmounts,
@@ -208,6 +209,22 @@ export async function GET(req: Request) {
       ledgersByRef.set(row.referenceId, list)
     }
 
+    const withdrawRefIds = [
+      ...new Set(
+        ledgerRows
+          .map((r) => r.referenceId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ]
+    const withdrawRows =
+      withdrawRefIds.length > 0
+        ? await prisma.walletWithdrawRequest.findMany({
+            where: { id: { in: withdrawRefIds }, userId },
+            select: { id: true, status: true, amount: true, rejectionNote: true },
+          })
+        : []
+    const withdrawById = new Map(withdrawRows.map((w) => [w.id, w]))
+
     const items: UnifiedTransaction[] = []
 
     for (const o of imeiOrders) {
@@ -373,17 +390,45 @@ export async function GET(req: Request) {
       if (row.type === 'PAYMENT' && row.referenceId && orderRefIds.has(row.referenceId)) {
         continue
       }
-      const amount = decimalToNumber(row.amount)
+      const withdraw = row.referenceId ? withdrawById.get(row.referenceId) : undefined
+      let amount = decimalToNumber(row.amount)
+      let title = row.description || labelForLedgerType(row.type)
+      let subtitle: string | null = labelForLedgerType(row.type)
+      let status: string = row.type
+      let statusLabel = labelForLedgerType(row.type)
+      let rejectionNote: string | null = null
+
+      if (withdraw) {
+        status = withdraw.status
+        statusLabel = labelForWithdrawStatus(withdraw.status)
+        rejectionNote = withdraw.rejectionNote?.trim() || null
+        if (row.type === 'WITHDRAWAL') {
+          title = 'Penarikan disetujui'
+          amount = -decimalToNumber(withdraw.amount)
+        } else if (row.type === 'REFUND') {
+          title = 'Pengembalian penarikan ditolak'
+          subtitle = labelForLedgerType(row.type)
+        } else if (row.type === 'ESCROW_HOLD') {
+          subtitle =
+            withdraw.status === 'REJECT_PENDING_RELEASE'
+              ? 'Menunggu pengembalian saldo'
+              : withdraw.status === 'PENDING'
+                ? 'Menunggu persetujuan admin'
+                : labelForLedgerType(row.type)
+        }
+      }
+
       items.push({
         id: `ledger-${row.id}`,
         category: 'wallet',
         orderCode: row.referenceId?.slice(0, 12) ?? row.id.slice(0, 8),
-        title: row.description || labelForLedgerType(row.type),
-        subtitle: labelForLedgerType(row.type),
+        title,
+        subtitle,
         amount,
         ...ledgerBalances(row),
-        status: row.type,
-        statusLabel: labelForLedgerType(row.type),
+        status,
+        statusLabel,
+        rejectionNote,
         createdAt: row.createdAt.toISOString(),
         href: null,
       })

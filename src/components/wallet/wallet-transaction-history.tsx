@@ -33,7 +33,11 @@ function statusVariant(
     return 'success'
   }
   if (['REJECTED', 'FAILED', 'CANCELLED', 'REFUNDED'].includes(s)) return 'danger'
-  if (['PENDING', 'PENDING_PAYMENT', 'IN_PROCESS', 'PROCESSING', 'FULFILLING'].includes(s)) {
+  if (
+    ['PENDING', 'PENDING_PAYMENT', 'IN_PROCESS', 'PROCESSING', 'FULFILLING', 'REJECT_PENDING_RELEASE'].includes(
+      s,
+    )
+  ) {
     return 'warning'
   }
   return 'info'
@@ -199,7 +203,11 @@ export function WalletTransactionHistory({ onTransactionsLoaded }: WalletTransac
                           {tx.statusLabel}
                         </Badge>
                       </div>
-                      {tx.subtitle ? (
+                      {tx.rejectionNote ? (
+                        <p className="mt-0.5 line-clamp-2 text-[9px] text-rose-600">
+                          Alasan: {tx.rejectionNote}
+                        </p>
+                      ) : tx.subtitle ? (
                         <p className="mt-0.5 line-clamp-1 text-[9px] text-surface-500">{tx.subtitle}</p>
                       ) : null}
                       {tx.orderCode ? (
@@ -246,7 +254,9 @@ export function WalletTransactionHistory({ onTransactionsLoaded }: WalletTransac
                               {tx.statusLabel}
                             </Badge>
                           </div>
-                          {tx.subtitle ? (
+                          {tx.rejectionNote ? (
+                            <p className="text-[10px] text-rose-600">Alasan: {tx.rejectionNote}</p>
+                          ) : tx.subtitle ? (
                             <p className="text-[10px] text-surface-500">{tx.subtitle}</p>
                           ) : null}
                         </div>

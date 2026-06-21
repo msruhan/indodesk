@@ -8,6 +8,7 @@ import { MARKETPLACE_ORDER_INCLUDE } from '@/lib/marketplace-order-includes'
 import { getPlatformSettings } from '@/lib/platform-settings'
 import {
   canBuyerInstantCancel,
+  CANCEL_REASON_MIN_LENGTH,
   cancelMarketplaceOrderInTx,
   hasBuyerRefundForOrder,
   validateCancelReason,
@@ -19,7 +20,11 @@ export const dynamic = 'force-dynamic'
 type RouteContext = { params: Promise<{ id: string }> }
 
 const instantCancelSchema = z.object({
-  reason: z.string().trim().min(20, 'Alasan pembatalan minimal 20 karakter').max(500),
+  reason: z
+    .string()
+    .trim()
+    .min(CANCEL_REASON_MIN_LENGTH, `Alasan pembatalan minimal ${CANCEL_REASON_MIN_LENGTH} karakter`)
+    .max(500),
 })
 
 /** POST /api/user/marketplace/orders/[id]/cancel — batalkan sebelum bayar atau instan setelah bayar */
@@ -125,7 +130,7 @@ export async function POST(req: Request, context: RouteContext) {
     try {
       body = await req.json()
     } catch {
-      return apiError('Alasan pembatalan wajib diisi (min. 20 karakter)')
+      return apiError(`Alasan pembatalan wajib diisi (min. ${CANCEL_REASON_MIN_LENGTH} karakter)`)
     }
 
     const parsed = instantCancelSchema.safeParse(body)

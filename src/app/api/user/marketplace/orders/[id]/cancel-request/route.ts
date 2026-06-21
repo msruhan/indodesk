@@ -8,6 +8,7 @@ import { getPlatformSettings } from '@/lib/platform-settings'
 import {
   addHours,
   canBuyerRequestCancellation,
+  CANCEL_REASON_MIN_LENGTH,
   SELLER_CANCEL_RESPONSE_HOURS,
   validateCancelReason,
 } from '@/lib/marketplace-order-cancellation'
@@ -17,7 +18,11 @@ export const dynamic = 'force-dynamic'
 type RouteContext = { params: Promise<{ id: string }> }
 
 const requestSchema = z.object({
-  reason: z.string().trim().min(20, 'Alasan minimal 20 karakter').max(500),
+  reason: z
+    .string()
+    .trim()
+    .min(CANCEL_REASON_MIN_LENGTH, `Alasan minimal ${CANCEL_REASON_MIN_LENGTH} karakter`)
+    .max(500),
 })
 
 /** POST /api/user/marketplace/orders/[id]/cancel-request — ajukan pembatalan ke penjual */

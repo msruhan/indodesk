@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 import { CheckCircle, ChevronLeft, Package, RefreshCw, User, X } from '@/lib/icons'
 import type { ShippingCourier } from '@prisma/client'
 import type { MarketplaceOrderDto } from '@/lib/marketplace-order-serializer'
+import { CANCEL_REASON_MIN_LENGTH } from '@/lib/marketplace-order-cancellation'
 import type { OrderTrackingDto } from '@/lib/order-tracking-sync'
 import { isTerminalTrackingStatus } from '@/lib/shipping-courier'
 import { formatBuyerActionDeadline } from '@/components/orders/marketplace-complaint-form'
@@ -163,8 +164,8 @@ export function TeknisiSellerOrderDetailView({
 
   const handleCancelSubmit = async () => {
     const reason = cancelReason.trim()
-    if (reason.length < 20) {
-      setError('Alasan minimal 20 karakter')
+    if (reason.length < CANCEL_REASON_MIN_LENGTH) {
+      setError(`Alasan minimal ${CANCEL_REASON_MIN_LENGTH} karakter`)
       return
     }
     const ok = await patchOrder({ action: cancelAction, reason })
@@ -293,15 +294,22 @@ export function TeknisiSellerOrderDetailView({
               <textarea
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
-                placeholder="Alasan (min. 20 karakter)"
+                placeholder={`Alasan (min. ${CANCEL_REASON_MIN_LENGTH} karakter)`}
                 className="min-h-[72px] w-full rounded-lg border border-surface-200 px-3 py-2 text-xs"
               />
+              {cancelReason.trim().length > 0 &&
+                cancelReason.trim().length < CANCEL_REASON_MIN_LENGTH && (
+                  <p className="text-xs text-amber-700">
+                    Alasan minimal {CANCEL_REASON_MIN_LENGTH} karakter (
+                    {cancelReason.trim().length}/{CANCEL_REASON_MIN_LENGTH})
+                  </p>
+                )}
               <div className="flex gap-2">
                 <Button
                   variant="primary"
                   size="sm"
                   className="bg-rose-600 hover:bg-rose-700"
-                  disabled={acting || cancelReason.trim().length < 20}
+                  disabled={acting || cancelReason.trim().length < CANCEL_REASON_MIN_LENGTH}
                   onClick={() => void handleCancelSubmit()}
                 >
                   Konfirmasi

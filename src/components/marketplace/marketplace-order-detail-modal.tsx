@@ -8,7 +8,9 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { Package, Store, User, X } from '@/lib/icons'
 import type { MarketplaceOrderDto } from '@/lib/marketplace-order-serializer'
+import { CANCEL_REASON_MIN_LENGTH } from '@/lib/marketplace-order-cancellation'
 import { MarketplaceOrderInvoiceModal } from '@/components/marketplace/marketplace-order-invoice-modal'
+import { MarketplaceOrderCancelReasonCard } from '@/components/marketplace/marketplace-order-cancel-reason'
 
 function formatPrice(n: number) {
   return new Intl.NumberFormat('id-ID', {
@@ -180,8 +182,8 @@ export function MarketplaceOrderDetailModal({
   const handleCancelInstant = async () => {
     if (!order?.canCancelInstant) return
     const reason = cancelReason.trim()
-    if (reason.length < 20) {
-      setCancelError('Alasan pembatalan minimal 20 karakter')
+    if (reason.length < CANCEL_REASON_MIN_LENGTH) {
+      setCancelError(`Alasan pembatalan minimal ${CANCEL_REASON_MIN_LENGTH} karakter`)
       return
     }
     if (
@@ -217,8 +219,8 @@ export function MarketplaceOrderDetailModal({
   const handleRequestCancellation = async () => {
     if (!order?.canRequestCancellation) return
     const reason = cancelReason.trim()
-    if (reason.length < 20) {
-      setCancelError('Alasan minimal 20 karakter')
+    if (reason.length < CANCEL_REASON_MIN_LENGTH) {
+      setCancelError(`Alasan minimal ${CANCEL_REASON_MIN_LENGTH} karakter`)
       return
     }
 
@@ -338,6 +340,7 @@ export function MarketplaceOrderDetailModal({
                 </div>
 
                 <div className="space-y-2.5 px-3 py-2.5 sm:space-y-4 sm:px-6 sm:py-5">
+                  <MarketplaceOrderCancelReasonCard order={order} compact />
                   {isBuyerView ? (
                     <section>
                       <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.14em] text-surface-500 sm:mb-2 sm:text-[10px] sm:tracking-[0.16em]">
@@ -494,15 +497,22 @@ export function MarketplaceOrderDetailModal({
                       <textarea
                         value={cancelReason}
                         onChange={(e) => setCancelReason(e.target.value)}
-                        placeholder="Alasan pembatalan (min. 20 karakter)"
+                        placeholder={`Alasan pembatalan (min. ${CANCEL_REASON_MIN_LENGTH} karakter)`}
                         className="min-h-[52px] w-full rounded-lg border border-surface-200 px-2 py-1.5 text-xs sm:min-h-[80px] sm:rounded-xl sm:px-3 sm:py-2 sm:text-sm"
                       />
+                      {cancelReason.trim().length > 0 &&
+                        cancelReason.trim().length < CANCEL_REASON_MIN_LENGTH && (
+                          <p className="text-[11px] text-amber-700 sm:text-xs">
+                            Alasan minimal {CANCEL_REASON_MIN_LENGTH} karakter (
+                            {cancelReason.trim().length}/{CANCEL_REASON_MIN_LENGTH})
+                          </p>
+                        )}
                       {order.canCancelInstant && (
                         <Button
                           type="button"
                           variant="outline"
                           className="h-8 w-full rounded-full border-rose-200 text-[11px] text-rose-700 hover:bg-rose-50 sm:h-11 sm:text-sm"
-                          disabled={cancelLoading || cancelReason.trim().length < 20}
+                          disabled={cancelLoading || cancelReason.trim().length < CANCEL_REASON_MIN_LENGTH}
                           onClick={() => void handleCancelInstant()}
                         >
                           {cancelLoading ? 'Membatalkan…' : 'Batalkan (refund ke Saldo Bantoo)'}
@@ -513,7 +523,7 @@ export function MarketplaceOrderDetailModal({
                           type="button"
                           variant="outline"
                           className="h-8 w-full rounded-full border-amber-200 text-[11px] text-amber-800 hover:bg-amber-50 sm:h-11 sm:text-sm"
-                          disabled={cancelLoading || cancelReason.trim().length < 20}
+                          disabled={cancelLoading || cancelReason.trim().length < CANCEL_REASON_MIN_LENGTH}
                           onClick={() => void handleRequestCancellation()}
                         >
                           {cancelLoading ? 'Mengirim…' : 'Ajukan pembatalan ke penjual'}

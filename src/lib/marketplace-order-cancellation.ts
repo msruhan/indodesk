@@ -13,7 +13,7 @@ import {
 
 export const INSTANT_CANCEL_MS = 60 * 60 * 1000
 export const SELLER_CANCEL_RESPONSE_HOURS = 48
-export const CANCEL_REASON_MIN_LENGTH = 20
+export const CANCEL_REASON_MIN_LENGTH = 8
 
 const MS_PER_HOUR = 60 * 60 * 1000
 

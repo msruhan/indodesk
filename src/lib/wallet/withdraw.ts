@@ -6,7 +6,7 @@ import { walletTransaction } from '@/lib/wallet/transaction'
 import { assertDailyLimitInTx } from '@/lib/wallet/policy'
 import { assessWithdrawRisk, createSecurityAlert } from '@/lib/wallet/security-scan'
 
-const REJECT_CONFIRM_WINDOW_MS = 15 * 60 * 1000
+
 const SLA_HOURS = 24
 
 export class WithdrawError extends Error {
@@ -234,6 +234,49 @@ export async function completeWithdrawRequest(
   })
 }
 
+export async function rejectWithdraw(
+  requestId: string,
+  adminId: string,
+  rejectionNote: string,
+) {
+  const existing = await prisma.walletWithdrawRequest.findUnique({ where: { id: requestId } })
+  if (!existing) throw new WithdrawError('Permintaan tidak ditemukan', 'NOT_FOUND')
+
+  if (existing.status === 'REJECT_PENDING_RELEASE') {
+    return rejectWithdrawConfirmRelease(requestId, adminId)
+  }
+
+  if (existing.status !== 'PENDING') {
+    throw new WithdrawError('Status permintaan tidak valid', 'INVALID_STATUS')
+  }
+
+  const amountDec = existing.amount
+  const description = `Pembatalan penarikan #${requestId.slice(-8)}`
+
+  return walletTransaction(async (tx) => {
+    const releaseLedger = await refundWithdrawHold(
+      tx,
+      existing.userId,
+      amountDec,
+      requestId,
+      description,
+    )
+
+    return tx.walletWithdrawRequest.update({
+      where: { id: requestId },
+      data: {
+        status: 'REJECTED',
+        rejectedById: adminId,
+        rejectionNote: rejectionNote.trim(),
+        rejectInitiatedAt: new Date(),
+        releaseConfirmedById: adminId,
+        ledgerReleaseId: releaseLedger.id,
+      },
+      include: { user: { select: { id: true, name: true, email: true, role: true } } },
+    })
+  })
+}
+
 export async function rejectWithdrawInit(
   requestId: string,
   adminId: string,
@@ -265,9 +308,6 @@ export async function rejectWithdrawConfirmRelease(requestId: string, adminId: s
   }
   if (!existing.rejectInitiatedAt) {
     throw new WithdrawError('Penolakan belum diinisiasi', 'INVALID_STATE')
-  }
-  if (Date.now() - existing.rejectInitiatedAt.getTime() > REJECT_CONFIRM_WINDOW_MS) {
-    throw new WithdrawError('Konfirmasi penolakan kedaluwarsa, ulangi dari awal', 'EXPIRED')
   }
   if (existing.ledgerReleaseId) {
     return prisma.walletWithdrawRequest.findUniqueOrThrow({

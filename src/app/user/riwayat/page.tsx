@@ -7,10 +7,15 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { FilterChipBar } from '@/components/ui/filter-chip-bar'
+import { useWallet } from '@/contexts/wallet-context'
+import { WalletWithdrawModal } from '@/components/wallet/wallet-withdraw-modal'
+import { WalletTransactionHistory } from '@/components/wallet/wallet-transaction-history'
+import { formatIdr } from '@/lib/wallet-transactions'
 import { cn } from '@/lib/utils'
 import {
   CheckCircle,
   Clock,
+  Download,
   MessageCircle,
   Package,
   Shield,
@@ -19,6 +24,7 @@ import {
   ShoppingBag,
   Smartphone,
   TrendingUp,
+  Wallet,
   XCircle,
   Zap,
 } from '@/lib/icons'
@@ -58,7 +64,9 @@ import { useClientPagination } from '@/hooks/use-client-pagination'
 import { DashboardMonthFilter, dashboardHeroCardClass, DashboardHeroSheen } from '@/components/dashboard'
 import { isDateInPeriod } from '@/lib/dashboard-period'
 
-const tabs: { id: RiwayatTransactionType; label: string }[] = [
+type UserRiwayatTab = RiwayatTransactionType | 'saldo'
+
+const tabs: { id: UserRiwayatTab; label: string }[] = [
   { id: 'semua', label: 'Semua' },
   { id: 'belanja', label: 'Belanja' },
   { id: 'topup', label: 'Top Up' },
@@ -67,6 +75,7 @@ const tabs: { id: RiwayatTransactionType; label: string }[] = [
   { id: 'konsultasi', label: 'Konsultasi' },
   { id: 'inspeksi', label: 'Inspeksi' },
   { id: 'rekber', label: 'Transaksi Aman' },
+  { id: 'saldo', label: 'Saldo' },
 ]
 
 const statusConfig = {
@@ -115,7 +124,9 @@ export default function UserRiwayatPage() {
   const searchParams = useSearchParams()
   const urlQuery = searchParams.get('q')?.trim().toLowerCase() ?? ''
   const { period, label: periodLabel } = useDashboardPeriod()
-  const [activeTab, setActiveTab] = useState<RiwayatTransactionType>('semua')
+  const { wallet, isLoading: walletLoading } = useWallet()
+  const [showWithdraw, setShowWithdraw] = useState(false)
+  const [activeTab, setActiveTab] = useState<UserRiwayatTab>('semua')
   const [ordersLoading, setOrdersLoading] = useState(true)
   const [serviceOrders, setServiceOrders] = useState<RiwayatTransaction[]>([])
   const [marketplaceOrders, setMarketplaceOrders] = useState<MarketplaceOrderDto[]>([])
@@ -171,12 +182,15 @@ export default function UserRiwayatPage() {
     })
   }, [allTransactions, period])
 
-  const countForTab = (tab: RiwayatTransactionType) =>
-    tab === 'semua'
+  const countForTab = (tab: UserRiwayatTab) => {
+    if (tab === 'saldo') return undefined
+    return tab === 'semua'
       ? periodTransactions.length
       : periodTransactions.filter((t) => t.type === tab).length
+  }
 
   const filtered = useMemo(() => {
+    if (activeTab === 'saldo') return []
     let list =
       activeTab === 'semua'
         ? periodTransactions
@@ -297,6 +311,9 @@ export default function UserRiwayatPage() {
     setSelectedShopOrder(updated)
   }
 
+  const walletBalance = wallet ? parseFloat(wallet.balance) : 0
+  const formattedWalletBalance = walletLoading ? '…' : formatIdr(walletBalance)
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -304,7 +321,27 @@ export default function UserRiwayatPage() {
           <h1 className="text-xl font-semibold tracking-tightest text-ink sm:text-2xl">Riwayat Transaksi</h1>
           <p className="mt-0.5 text-[13px] text-surface-500">Semua pengeluaran dan aktivitas layanan Anda</p>
         </div>
-        <DashboardMonthFilter />
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+          <DashboardMonthFilter className="self-start sm:self-auto" />
+          <Button
+            onClick={() => setShowWithdraw(true)}
+            variant="primary"
+            size="sm"
+            className="w-full sm:w-auto"
+            disabled={walletLoading || walletBalance <= 0}
+          >
+            <Download className="h-4 w-4" />
+            Tarik Saldo
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-surface-200/80 bg-surface-50/80 px-4 py-3">
+        <span className="flex items-center gap-2 text-sm font-medium text-surface-700">
+          <Wallet className="h-4 w-4 text-surface-500" />
+          Saldo
+        </span>
+        <span className="text-sm font-semibold tabular-nums text-primary-700">{formattedWalletBalance}</span>
       </div>
 
       <motion.div
@@ -386,10 +423,14 @@ export default function UserRiwayatPage() {
         getCount={countForTab}
       />
 
-      {ordersLoading && (activeTab === 'semua' || activeTab === 'perangkat' || activeTab === 'server') && (
+      {ordersLoading && activeTab !== 'saldo' && (activeTab === 'semua' || activeTab === 'perangkat' || activeTab === 'server') && (
         <p className="text-center text-xs text-surface-500">Memuat order layanan…</p>
       )}
 
+      {activeTab === 'saldo' ? (
+        <WalletTransactionHistory />
+      ) : (
+        <>
       <AnimatePresence mode="wait">
         <motion.div
           key={activeTab}
@@ -504,6 +545,8 @@ export default function UserRiwayatPage() {
           )}
         </div>
       )}
+        </>
+      )}
       <MarketplaceOrderDetailModal
         order={selectedShopOrder}
         onClose={() => setSelectedShopOrder(null)}
@@ -512,6 +555,15 @@ export default function UserRiwayatPage() {
         }
         onOrderUpdated={handleMarketplaceOrderUpdated}
       />
+
+      <AnimatePresence>
+        {showWithdraw && (
+          <WalletWithdrawModal
+            onClose={() => setShowWithdraw(false)}
+            onSuccess={() => setShowWithdraw(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

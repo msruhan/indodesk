@@ -181,10 +181,11 @@ export default function UserDashboardPage() {
         </div>
       </motion.div>
 
-      <UserWalletBalanceCard />
+      <UserWalletBalanceCard walletBalance={data.walletBalance} />
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 sm:gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6 sm:gap-3">
         {[
+          { label: 'Saldo', value: formatPrice(data.walletBalance), icon: Wallet, color: 'teal' },
           { label: 'Total Belanja', value: formatPrice(stats.totalSpent), icon: ShoppingBag, color: 'primary' },
           { label: 'Order', value: String(stats.totalOrders), icon: CheckCircle, color: 'accent' },
           { label: 'Konsultasi Aktif', value: String(stats.activeKonsultasi), icon: MessageCircle, color: 'violet' },
@@ -205,6 +206,7 @@ export default function UserDashboardPage() {
               item.color === 'violet' && 'border-violet-200/60 bg-gradient-to-br from-violet-50/60 to-white',
               item.color === 'amber' && 'border-amber-200/60 bg-gradient-to-br from-amber-50/60 to-white',
               item.color === 'emerald' && 'border-emerald-200/60 bg-gradient-to-br from-emerald-50/60 to-white',
+              item.color === 'teal' && 'border-teal-200/60 bg-gradient-to-br from-teal-50/60 to-white',
             )}
           >
             <item.icon
@@ -214,6 +216,8 @@ export default function UserDashboardPage() {
                 item.color === 'accent' && 'text-accent-600',
                 item.color === 'violet' && 'text-violet-600',
                 item.color === 'amber' && 'text-amber-600',
+                item.color === 'teal' && 'text-teal-600',
+                item.color === 'emerald' && 'text-emerald-600',
               )}
             />
             <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-surface-500">{item.label}</p>

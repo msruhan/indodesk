@@ -120,6 +120,8 @@ export type MarketplaceOrderDto = {
   requiresPackagingProof: boolean
   canSubmitPackagingProof: boolean
   canDownloadShippingLabel: boolean
+  cancelReason: string | null
+  cancelledBy: 'BUYER' | 'SELLER' | 'ADMIN' | 'SYSTEM' | null
 }
 
 type OrderRow = Order & {
@@ -174,6 +176,23 @@ export function marketplaceOrderStatusLabel(status: MarketplaceOrderUiStatus): s
       return 'Dibatalkan'
     case 'refunded':
       return 'Refund'
+  }
+}
+
+export function marketplaceOrderCancelActorLabel(
+  cancelledBy: MarketplaceOrderDto['cancelledBy'],
+): string | null {
+  switch (cancelledBy) {
+    case 'SELLER':
+      return 'penjual'
+    case 'BUYER':
+      return 'pembeli'
+    case 'ADMIN':
+      return 'admin'
+    case 'SYSTEM':
+      return 'sistem'
+    default:
+      return null
   }
 }
 
@@ -398,5 +417,7 @@ export function serializeMarketplaceOrder(
     requiresPackagingProof,
     canSubmitPackagingProof,
     canDownloadShippingLabel,
+    cancelReason: row.cancelReason?.trim() || null,
+    cancelledBy: row.cancelledBy ?? null,
   }
 }

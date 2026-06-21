@@ -45,6 +45,8 @@ export type UnifiedTransactionDto = {
   updatedAt: string
   /** Metadata tambahan per tipe */
   meta: Record<string, string | null>
+  cancelReason: string | null
+  cancelledBy: string | null
 }
 
 export type TransactionStats = {
@@ -174,6 +176,8 @@ export async function GET(req: Request) {
                 buyerFee: o.buyerFeeAmount.toString(),
                 sellerFee: o.sellerFeeAmount.toString(),
               },
+              cancelReason: o.cancelReason?.trim() || null,
+              cancelledBy: o.cancelledBy ?? null,
             }
           })
         },
@@ -220,6 +224,8 @@ export async function GET(req: Request) {
           createdAt: o.createdAt.toISOString(),
           updatedAt: o.updatedAt.toISOString(),
           meta: { imei: o.imei, code: o.code },
+          cancelReason: null,
+          cancelledBy: null,
         })
       }
     }
@@ -261,6 +267,8 @@ export async function GET(req: Request) {
           createdAt: o.createdAt.toISOString(),
           updatedAt: o.updatedAt.toISOString(),
           meta: { email: o.email, code: o.code },
+          cancelReason: null,
+          cancelledBy: null,
         })
       }
     }
@@ -303,6 +311,8 @@ export async function GET(req: Request) {
           createdAt: o.createdAt.toISOString(),
           updatedAt: o.updatedAt.toISOString(),
           meta: { accountId: o.accountId, paymentMethod: o.paymentMethod, fee: o.fee.toString() },
+          cancelReason: null,
+          cancelledBy: null,
         })
       }
     }
@@ -346,6 +356,8 @@ export async function GET(req: Request) {
             createdAt: o.createdAt.toISOString(),
             updatedAt: o.updatedAt.toISOString(),
             meta: { fee: o.fee.toString(), note: o.note },
+            cancelReason: null,
+            cancelledBy: null,
           }))
         },
         [] as UnifiedTransactionDto[],

@@ -37,6 +37,8 @@ export interface UnifiedTransaction {
   statusLabel: string
   createdAt: string
   href: string | null
+  /** Alasan penolakan admin (penarikan saldo ditolak) */
+  rejectionNote?: string | null
 }
 
 const imeiStatusLabels: Record<string, string> = {
@@ -97,6 +99,35 @@ export function labelForShopStatus(status: string) {
 
 export function labelForLedgerType(type: string) {
   return ledgerTypeLabels[type] ?? type
+}
+
+const withdrawStatusLabels: Record<string, string> = {
+  PENDING: 'Menunggu proses',
+  COMPLETED: 'Selesai',
+  REJECTED: 'Ditolak',
+  REJECT_PENDING_RELEASE: 'Ditolak — menunggu pengembalian',
+  CANCELLED: 'Dibatalkan',
+}
+
+export function labelForWithdrawStatus(status: string) {
+  return withdrawStatusLabels[status] ?? status
+}
+
+export function adminWithdrawStatusLabel(status: string) {
+  switch (status) {
+    case 'PENDING':
+      return 'Menunggu'
+    case 'REJECT_PENDING_RELEASE':
+      return 'Ditolak — kembalikan saldo'
+    case 'COMPLETED':
+      return 'Selesai'
+    case 'REJECTED':
+      return 'Ditolak'
+    case 'CANCELLED':
+      return 'Dibatalkan'
+    default:
+      return status
+  }
 }
 
 export function labelForKonsultasiStatus(status: string) {

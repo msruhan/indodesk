@@ -4,6 +4,7 @@ import { logAdminGovernance } from '@/lib/admin-audit'
 import { verifyAdminStepUp, StepUpAuthError } from '@/lib/wallet/admin-step-up'
 import {
   completeWithdrawRequest,
+  rejectWithdraw,
   rejectWithdrawCancel,
   rejectWithdrawConfirmRelease,
   rejectWithdrawInit,
@@ -16,6 +17,7 @@ export const dynamic = 'force-dynamic'
 const patchSchema = z.object({
   action: z.enum([
     'complete',
+    'reject',
     'reject_init',
     'reject_confirm_release',
     'reject_cancel',
@@ -88,6 +90,22 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         action: 'admin.wallet.withdraw.reject_init',
         summary: `Withdraw ${id} ditolak (inisiasi)`,
         severity: 'WARNING',
+        target: { type: 'wallet_withdraw', id: row.id },
+      })
+      return apiSuccess({ request: serializeWithdrawRequest(row) })
+    }
+
+    if (action === 'reject') {
+      if (!rejectionNote?.trim()) {
+        return apiError('Alasan penolakan wajib diisi')
+      }
+      const row = await rejectWithdraw(id, session.user.id, rejectionNote)
+      logAdminGovernance({
+        req,
+        actor: session.user,
+        action: 'admin.wallet.withdraw.reject',
+        summary: `Withdraw ${id} ditolak (dana dikembalikan)`,
+        severity: 'CRITICAL',
         target: { type: 'wallet_withdraw', id: row.id },
       })
       return apiSuccess({ request: serializeWithdrawRequest(row) })

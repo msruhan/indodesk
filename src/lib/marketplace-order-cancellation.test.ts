@@ -12,7 +12,7 @@ import {
 
 describe('validateCancelReason', () => {
   it('rejects short reasons', () => {
-    expect(validateCancelReason('too short')).toMatch(/minimal/)
+    expect(validateCancelReason('pendek')).toMatch(/minimal/)
   })
 
   it('accepts valid reasons', () => {

@@ -45,7 +45,11 @@ function statusVariant(
     return 'success'
   }
   if (['REJECTED', 'FAILED', 'CANCELLED', 'REFUNDED'].includes(s)) return 'danger'
-  if (['PENDING', 'PENDING_PAYMENT', 'IN_PROCESS', 'PROCESSING', 'FULFILLING'].includes(s)) {
+  if (
+    ['PENDING', 'PENDING_PAYMENT', 'IN_PROCESS', 'PROCESSING', 'FULFILLING', 'REJECT_PENDING_RELEASE'].includes(
+      s,
+    )
+  ) {
     return 'warning'
   }
   return 'info'
@@ -180,6 +184,14 @@ export function WalletTransactionDetailModal({
                     />
                     {transaction.subtitle && (
                       <DetailRow label="Keterangan" value={transaction.subtitle} />
+                    )}
+                    {transaction.rejectionNote && (
+                      <DetailRow
+                        label="Alasan penolakan"
+                        value={
+                          <span className="text-rose-700">{transaction.rejectionNote}</span>
+                        }
+                      />
                     )}
                     <DetailRow label="Status" value={transaction.statusLabel} />
                     <DetailRow label="Tanggal" value={formatTransactionDate(transaction.createdAt)} />

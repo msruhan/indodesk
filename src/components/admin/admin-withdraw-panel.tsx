@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { formatIdrAbs } from '@/lib/admin-saldo'
+import { adminWithdrawStatusLabel } from '@/lib/wallet-transactions'
 import { RefreshCw } from '@/lib/icons'
 
 type WithdrawRow = {
@@ -31,13 +32,19 @@ function riskTone(score: number) {
   return 'success' as const
 }
 
+function statusVariant(status: string): 'warning' | 'danger' | 'success' | 'default' {
+  if (status === 'PENDING') return 'warning'
+  if (status === 'REJECT_PENDING_RELEASE') return 'danger'
+  return 'default'
+}
+
 export function AdminWithdrawPanel() {
   const [items, setItems] = useState<WithdrawRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actingId, setActingId] = useState<string | null>(null)
   const [password, setPassword] = useState('')
-  const [rejectNote, setRejectNote] = useState('')
+  const [rejectNotes, setRejectNotes] = useState<Record<string, string>>({})
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -76,7 +83,11 @@ export function AdminWithdrawPanel() {
         return
       }
       setPassword('')
-      setRejectNote('')
+      setRejectNotes((prev) => {
+        const next = { ...prev }
+        delete next[id]
+        return next
+      })
       await load()
     } catch {
       setError('Gagal memperbarui permintaan')
@@ -120,111 +131,116 @@ export function AdminWithdrawPanel() {
         <p className="text-sm text-surface-500">Tidak ada permintaan penarikan aktif.</p>
       ) : (
         <div className="space-y-3">
-          {items.map((row) => (
-            <div
-              key={row.id}
-              className="rounded-xl border border-surface-200/80 bg-surface-50/40 p-4"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="font-semibold text-ink">
-                    {row.userName}{' '}
-                    <span className="text-xs font-normal text-surface-500">({row.userRole})</span>
-                  </p>
-                  <p className="text-xs text-surface-500">{row.userEmail}</p>
-                  <p className="mt-1 text-lg font-bold text-ink">{formatIdrAbs(row.amount)}</p>
-                  <p className="mt-1 text-xs text-surface-600">
-                    {row.bankName} · {row.accountNumber} · {row.accountHolder}
-                  </p>
-                </div>
-                <div className="flex flex-col items-end gap-1">
-                  <Badge variant={row.status === 'PENDING' ? 'warning' : 'default'}>
-                    {row.status}
-                  </Badge>
-                  <Badge variant={riskTone(row.riskScore)}>Risk {row.riskScore}</Badge>
-                </div>
-              </div>
-
-              {row.riskFlags.length > 0 && (
-                <p className="mt-2 text-[11px] text-amber-800">
-                  Flags: {row.riskFlags.join(', ')}
-                </p>
-              )}
-
-              {row.status === 'PENDING' && (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    disabled={!password || actingId === row.id}
-                    onClick={() =>
-                      void patch(row.id, { action: 'complete', confirmPassword: password })
-                    }
-                  >
-                    Tandai selesai
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={!password || !rejectNote.trim() || actingId === row.id}
-                    onClick={() =>
-                      void patch(row.id, {
-                        action: 'reject_init',
-                        rejectionNote: rejectNote,
-                        confirmPassword: password,
-                      })
-                    }
-                  >
-                    Tolak (tahap 1)
-                  </Button>
-                </div>
-              )}
-
-              {row.status === 'REJECT_PENDING_RELEASE' && (
-                <div className="mt-3 space-y-2">
-                  {row.rejectionNote && (
-                    <p className="text-xs text-rose-700">Alasan: {row.rejectionNote}</p>
-                  )}
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      disabled={!password || actingId === row.id}
-                      onClick={() =>
-                        void patch(row.id, {
-                          action: 'reject_confirm_release',
-                          confirmPassword: password,
-                        })
-                      }
-                    >
-                      Konfirmasi lepas saldo (tahap 2)
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={actingId === row.id}
-                      onClick={() => void patch(row.id, { action: 'reject_cancel' })}
-                    >
-                      Batalkan penolakan
-                    </Button>
+          {items.map((row) => {
+            const rejectNote = rejectNotes[row.id] ?? row.rejectionNote ?? ''
+            return (
+              <div
+                key={row.id}
+                className="rounded-xl border border-surface-200/80 bg-surface-50/40 p-4"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-ink">
+                      {row.userName}{' '}
+                      <span className="text-xs font-normal text-surface-500">({row.userRole})</span>
+                    </p>
+                    <p className="text-xs text-surface-500">{row.userEmail}</p>
+                    <p className="mt-1 text-lg font-bold text-ink">{formatIdrAbs(row.amount)}</p>
+                    <p className="mt-1 text-xs text-surface-600">
+                      {row.bankName} · {row.accountNumber} · {row.accountHolder}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <Badge variant={statusVariant(row.status)}>
+                      {adminWithdrawStatusLabel(row.status)}
+                    </Badge>
+                    <Badge variant={riskTone(row.riskScore)}>Risk {row.riskScore}</Badge>
                   </div>
                 </div>
-              )}
-            </div>
-          ))}
+
+                {row.riskFlags.length > 0 && (
+                  <p className="mt-2 text-[11px] text-amber-800">
+                    Flags: {row.riskFlags.join(', ')}
+                  </p>
+                )}
+
+                {row.status === 'PENDING' && (
+                  <div className="mt-3 space-y-2">
+                    <Input
+                      value={rejectNote}
+                      onChange={(e) =>
+                        setRejectNotes((prev) => ({ ...prev, [row.id]: e.target.value }))
+                      }
+                      placeholder="Alasan penolakan (wajib jika ditolak)"
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        disabled={!password || actingId === row.id}
+                        onClick={() =>
+                          void patch(row.id, { action: 'complete', confirmPassword: password })
+                        }
+                      >
+                        Tandai selesai
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={!password || !rejectNote.trim() || actingId === row.id}
+                        onClick={() =>
+                          void patch(row.id, {
+                            action: 'reject',
+                            rejectionNote: rejectNote,
+                            confirmPassword: password,
+                          })
+                        }
+                      >
+                        Tolak & kembalikan saldo
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {row.status === 'REJECT_PENDING_RELEASE' && (
+                  <div className="mt-3 space-y-2">
+                    <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                      Penolakan tahap 1 sudah dicatat, tetapi saldo belum dikembalikan. Klik
+                      tombol di bawah untuk mengembalikan saldo ke pengguna.
+                    </p>
+                    {row.rejectionNote && (
+                      <p className="text-xs text-rose-700">Alasan: {row.rejectionNote}</p>
+                    )}
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        disabled={!password || actingId === row.id}
+                        onClick={() =>
+                          void patch(row.id, {
+                            action: 'reject_confirm_release',
+                            confirmPassword: password,
+                          })
+                        }
+                      >
+                        Kembalikan saldo sekarang
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={actingId === row.id}
+                        onClick={() => void patch(row.id, { action: 'reject_cancel' })}
+                      >
+                        Batalkan penolakan
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
-
-      <div className="rounded-xl border border-surface-200 bg-white p-3">
-        <label className="mb-1 block text-xs font-medium text-surface-600">
-          Alasan penolakan (tahap 1)
-        </label>
-        <Input
-          value={rejectNote}
-          onChange={(e) => setRejectNote(e.target.value)}
-          placeholder="Contoh: Rekening tidak valid"
-        />
-      </div>
     </div>
   )
 }

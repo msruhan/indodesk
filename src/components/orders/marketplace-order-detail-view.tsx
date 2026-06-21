@@ -18,6 +18,7 @@ import {
 } from '@/lib/icons'
 import { isTerminalTrackingStatus } from '@/lib/shipping-courier'
 import { MarketplaceOrderReviewForm } from '@/components/orders/marketplace-order-review-form'
+import { MarketplaceOrderCancelReasonCard } from '@/components/marketplace/marketplace-order-cancel-reason'
 import {
   MarketplaceComplaintForm,
   formatBuyerActionDeadline,
@@ -26,6 +27,7 @@ import { MarketplaceComplaintReturnForm } from '@/components/orders/marketplace-
 import type { OrderTrackingDto } from '@/lib/order-tracking-sync'
 import type { ReturnTrackingDto } from '@/lib/return-tracking-sync'
 import type { MarketplaceOrderDto } from '@/lib/marketplace-order-serializer'
+import { CANCEL_REASON_MIN_LENGTH } from '@/lib/marketplace-order-cancellation'
 
 type MarketplaceOrderDetailViewProps = {
   listHref?: string
@@ -162,8 +164,8 @@ export function MarketplaceOrderDetailView({
   const handleCancelInstant = async () => {
     if (!order?.canCancelInstant) return
     const reason = cancelReason.trim()
-    if (reason.length < 20) {
-      setConfirmError('Alasan pembatalan minimal 20 karakter')
+    if (reason.length < CANCEL_REASON_MIN_LENGTH) {
+      setConfirmError(`Alasan pembatalan minimal ${CANCEL_REASON_MIN_LENGTH} karakter`)
       return
     }
     if (!window.confirm('Batalkan pesanan? Dana dikembalikan ke Saldo Bantoo.')) return
@@ -192,8 +194,8 @@ export function MarketplaceOrderDetailView({
   const handleRequestCancellation = async () => {
     if (!order?.canRequestCancellation) return
     const reason = cancelReason.trim()
-    if (reason.length < 20) {
-      setConfirmError('Alasan minimal 20 karakter')
+    if (reason.length < CANCEL_REASON_MIN_LENGTH) {
+      setConfirmError(`Alasan minimal ${CANCEL_REASON_MIN_LENGTH} karakter`)
       return
     }
 
@@ -330,6 +332,8 @@ export function MarketplaceOrderDetailView({
       )}
 
       <StatusProgressBar steps={statusSteps} currentIdx={currentStepIdx} />
+
+      <MarketplaceOrderCancelReasonCard order={order} />
 
       {isShipped && tracking && (
         <ShippingVisualization
@@ -613,16 +617,23 @@ export function MarketplaceOrderDetailView({
             <textarea
               value={cancelReason}
               onChange={(e) => setCancelReason(e.target.value)}
-              placeholder="Alasan (min. 20 karakter)"
+              placeholder={`Alasan (min. ${CANCEL_REASON_MIN_LENGTH} karakter)`}
               className="min-h-[80px] w-full rounded-xl border border-surface-200 px-3 py-2 text-sm"
             />
+            {cancelReason.trim().length > 0 &&
+              cancelReason.trim().length < CANCEL_REASON_MIN_LENGTH && (
+                <p className="text-xs text-amber-700">
+                  Alasan minimal {CANCEL_REASON_MIN_LENGTH} karakter (
+                  {cancelReason.trim().length}/{CANCEL_REASON_MIN_LENGTH})
+                </p>
+              )}
             {confirmError && <p className="text-xs text-rose-600">{confirmError}</p>}
             {order.canCancelInstant && (
               <Button
                 variant="outline"
                 size="sm"
                 className="border-rose-200 text-rose-700 hover:bg-rose-50"
-                disabled={cancelLoading || cancelReason.trim().length < 20}
+                disabled={cancelLoading || cancelReason.trim().length < CANCEL_REASON_MIN_LENGTH}
                 onClick={() => void handleCancelInstant()}
               >
                 {cancelLoading ? 'Membatalkan…' : 'Batalkan (refund ke Saldo Bantoo)'}
@@ -633,7 +644,7 @@ export function MarketplaceOrderDetailView({
                 variant="outline"
                 size="sm"
                 className="border-amber-200 text-amber-800 hover:bg-amber-50"
-                disabled={cancelLoading || cancelReason.trim().length < 20}
+                disabled={cancelLoading || cancelReason.trim().length < CANCEL_REASON_MIN_LENGTH}
                 onClick={() => void handleRequestCancellation()}
               >
                 {cancelLoading ? 'Mengirim…' : 'Ajukan pembatalan'}

@@ -21,6 +21,7 @@ import type { ShippingCourier } from '@prisma/client'
 import { cn } from '@/lib/utils'
 import { useConfirm } from '@/components/ui/confirm-dialog'
 import type { MarketplaceOrderDto } from '@/lib/marketplace-order-serializer'
+import { CANCEL_REASON_MIN_LENGTH } from '@/lib/marketplace-order-cancellation'
 import {
   Check,
   CheckCircle,
@@ -184,8 +185,8 @@ export default function TeknisiPesananPage() {
   const cancelOrder = async () => {
     if (!cancelTarget) return
     const reason = cancelReason.trim()
-    if (reason.length < 20) {
-      setError('Alasan pembatalan minimal 20 karakter')
+    if (reason.length < CANCEL_REASON_MIN_LENGTH) {
+      setError(`Alasan pembatalan minimal ${CANCEL_REASON_MIN_LENGTH} karakter`)
       return
     }
     setActingId(cancelTarget.id)
@@ -875,9 +876,16 @@ export default function TeknisiPesananPage() {
               <textarea
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
-                placeholder="Tulis alasan pembatalan (min. 20 karakter)"
+                placeholder={`Tulis alasan pembatalan (min. ${CANCEL_REASON_MIN_LENGTH} karakter)`}
                 className="mt-3 min-h-[100px] w-full rounded-xl border border-surface-200 px-3 py-2 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-primary-100"
               />
+              {cancelReason.trim().length > 0 &&
+                cancelReason.trim().length < CANCEL_REASON_MIN_LENGTH && (
+                  <p className="mt-1.5 text-xs text-amber-700">
+                    Alasan minimal {CANCEL_REASON_MIN_LENGTH} karakter (
+                    {cancelReason.trim().length}/{CANCEL_REASON_MIN_LENGTH})
+                  </p>
+                )}
               <div className="mt-4 flex justify-end gap-2">
                 <Button variant="outline" size="sm" onClick={() => setCancelTarget(null)}>
                   Batal
@@ -886,7 +894,10 @@ export default function TeknisiPesananPage() {
                   variant="primary"
                   size="sm"
                   className="bg-rose-600 hover:bg-rose-700"
-                  disabled={actingId === cancelTarget.id || cancelReason.trim().length < 20}
+                  disabled={
+                    actingId === cancelTarget.id ||
+                    cancelReason.trim().length < CANCEL_REASON_MIN_LENGTH
+                  }
                   onClick={() => void cancelOrder()}
                 >
                   {actingId === cancelTarget.id
