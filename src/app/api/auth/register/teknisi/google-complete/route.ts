@@ -70,8 +70,6 @@ export async function POST(req: Request) {
     }
 
     const applicationData = buildApplicationData(data)
-    const specialty = data.specialty.map((s) => s.trim()).filter(Boolean)
-
     await prisma.user.update({
       where: { id: user.id },
       data: {
@@ -79,7 +77,7 @@ export async function POST(req: Request) {
         isActive: false,
         teknisiProfile: {
           create: {
-            specialty,
+            specialty: [],
             experience: data.experience.trim(),
             location: data.location.trim(),
             description: data.motivation.trim(),

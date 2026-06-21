@@ -87,14 +87,24 @@ jobs:
           target: "/opt/indoteknizi"
           overwrite: true
 
-      - name: Sync deploy script
+      - name: Sync deploy scripts
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          source: "deploy/vps-deploy.sh"
+          source: "deploy/vps-deploy.sh,deploy/backup.sh,deploy/backup-cron.sh,deploy/restore.sh,deploy/backup-update-index.py,deploy/backup.env.template"
           target: "/opt/indoteknizi/deploy"
+          overwrite: true
+
+      - name: Sync deploy backup lib
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "deploy/lib/backup-common.sh"
+          target: "/opt/indoteknizi/deploy/lib"
           overwrite: true
 
       - name: Deploy to VPS via SSH

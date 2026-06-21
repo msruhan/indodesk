@@ -3,6 +3,7 @@ import { apiError, apiSuccess } from '@/lib/api-auth'
 import { getPublicFeatureFlags } from '@/lib/platform-settings'
 import { serializePublicTeknisiDetail } from '@/lib/teknisi-public-detail'
 import { getTeknisiPlatformStats } from '@/lib/teknisi-platform-stats'
+import { isTeknisiProfilePubliclyVisible } from '@/lib/teknisi-profile-visibility'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,7 +41,7 @@ export async function GET(
       },
     })
 
-    if (!profile) {
+    if (!profile || !isTeknisiProfilePubliclyVisible(profile)) {
       return apiError('Teknisi tidak ditemukan', 404)
     }
 

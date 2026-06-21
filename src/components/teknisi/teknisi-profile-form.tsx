@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 import type { TeknisiAccountProfileDto } from '@/lib/teknisi-profile-serializer'
 import { isR2PublicUrl } from '@/lib/image-url-utils'
 import { InspectionServiceToggle } from './inspection-service-toggle'
-import { Plus, Trash2, ChevronUp, ChevronDown, X } from '@/lib/icons'
+import { Plus, Trash2, ChevronUp, ChevronDown, X, Eye, Lock } from '@/lib/icons'
 
 function getInitials(name: string): string {
   return name
@@ -65,6 +65,7 @@ function profileToForm(p: TeknisiAccountProfileDto) {
     providesInspection: p.providesInspection ?? false,
     inspectionPriceOnline: p.inspectionPriceOnline,
     inspectionPriceOffline: p.inspectionPriceOffline,
+    isProfileHidden: p.isProfileHidden ?? false,
   }
 }
 
@@ -306,6 +307,7 @@ export function TeknisiProfileForm({
           providesInspection: form.providesInspection,
           inspectionPriceOnline: form.providesInspection ? form.inspectionPriceOnline : null,
           inspectionPriceOffline: form.providesInspection ? form.inspectionPriceOffline : null,
+          isProfileHidden: form.isProfileHidden,
         }),
       })
       const data = await res.json()
@@ -400,6 +402,48 @@ export function TeknisiProfileForm({
         <p className="text-[11px] text-surface-500">
           Informasi yang tampil di halaman profil publik teknisi.
         </p>
+
+        <div
+          className={cn(
+            'rounded-xl border p-4 transition-colors',
+            form.isProfileHidden
+              ? 'border-amber-200/80 bg-amber-50/50'
+              : 'border-surface-200/80 bg-surface-50/40',
+          )}
+        >
+          <label className="flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              checked={form.isProfileHidden}
+              onChange={(e) => patchForm('isProfileHidden', e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+            />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                {form.isProfileHidden ? (
+                  <Lock className="h-4 w-4 shrink-0 text-amber-700" />
+                ) : (
+                  <Eye className="h-4 w-4 shrink-0 text-primary-600" />
+                )}
+                <p className="text-sm font-medium text-ink">Sembunyikan profil publik</p>
+              </div>
+              <p className="mt-1 text-xs leading-relaxed text-surface-600">
+                Profil tidak tampil di halaman Cari Teknisi dan URL profil tidak dapat diakses
+                orang lain. Layanan aktif (pesanan, konsultasi) tetap berjalan.
+              </p>
+              {!form.isProfileHidden && (
+                <Link
+                  href={`/teknisi/${profile.userId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-flex text-xs font-medium text-primary-700 hover:underline"
+                >
+                  Lihat profil publik →
+                </Link>
+              )}
+            </div>
+          </label>
+        </div>
 
         <div className="mb-2 flex flex-wrap items-start gap-6">
           <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-primary-500 to-accent-500">

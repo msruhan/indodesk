@@ -16,9 +16,7 @@ import { authFieldIconClass } from '@/components/ui/auth-field-icon'
 import { Mail, User, Phone, MapPin, Wrench } from '@/lib/icons'
 import { AuroraBackground } from '@/components/motion'
 import { motion } from 'framer-motion'
-import { cn } from '@/lib/utils'
 import {
-  TEKNISI_SPECIALTY_OPTIONS,
   TEKNISI_WORKSHOP_TYPES,
   type TeknisiWorkshopType,
 } from '@/lib/teknisi-registration'
@@ -36,20 +34,12 @@ export function TeknisiLengkapiForm({ name, email }: TeknisiLengkapiFormProps) {
 
   const [phone, setPhone] = useState('')
   const [location, setLocation] = useState('')
-  const [specialty, setSpecialty] = useState<string[]>([])
   const [experience, setExperience] = useState('')
   const [workshopType, setWorkshopType] = useState<TeknisiWorkshopType | ''>('')
   const [brandsHandled, setBrandsHandled] = useState('')
-  const [toolsUsed, setToolsUsed] = useState('')
   const [portfolioUrl, setPortfolioUrl] = useState('')
   const [motivation, setMotivation] = useState('')
   const [confirmTechnician, setConfirmTechnician] = useState(false)
-
-  const toggleSpecialty = (value: string) => {
-    setSpecialty((prev) =>
-      prev.includes(value) ? prev.filter((s) => s !== value) : [...prev, value],
-    )
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -63,11 +53,9 @@ export function TeknisiLengkapiForm({ name, email }: TeknisiLengkapiFormProps) {
         body: JSON.stringify({
           phone,
           location,
-          specialty,
           experience,
           workshopType,
           brandsHandled,
-          toolsUsed,
           portfolioUrl,
           motivation,
           confirmTechnician,
@@ -217,32 +205,6 @@ export function TeknisiLengkapiForm({ name, email }: TeknisiLengkapiFormProps) {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-surface-700">
-                    Spesialisasi <span className="text-rose-500">*</span>
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {TEKNISI_SPECIALTY_OPTIONS.map((opt) => {
-                      const selected = specialty.includes(opt)
-                      return (
-                        <button
-                          key={opt}
-                          type="button"
-                          onClick={() => toggleSpecialty(opt)}
-                          className={cn(
-                            'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
-                            selected
-                              ? 'border-primary-500 bg-primary-50 text-primary-800'
-                              : 'border-surface-200 bg-white text-surface-600 hover:border-primary-200',
-                          )}
-                        >
-                          {opt}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <label htmlFor="experience" className="text-sm font-medium text-surface-700">
@@ -287,18 +249,6 @@ export function TeknisiLengkapiForm({ name, email }: TeknisiLengkapiFormProps) {
                     onChange={(e) => setBrandsHandled(e.target.value)}
                     placeholder="Contoh: iPhone, Samsung, Xiaomi, Oppo"
                     required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label htmlFor="toolsUsed" className="text-sm font-medium text-surface-700">
-                    Alat / software utama
-                  </label>
-                  <Input
-                    id="toolsUsed"
-                    value={toolsUsed}
-                    onChange={(e) => setToolsUsed(e.target.value)}
-                    placeholder="Contoh: UFI Box, UnlockTool, hot air station"
                   />
                 </div>
 

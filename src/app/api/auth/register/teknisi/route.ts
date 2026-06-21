@@ -56,8 +56,6 @@ export async function POST(req: Request) {
 
     const hashedPassword = await hash(data.password, 12)
     const applicationData = buildApplicationData(data)
-    const specialty = data.specialty.map((s) => s.trim()).filter(Boolean)
-
     const user = await prisma.user.create({
       data: {
         name: data.name.trim(),
@@ -69,7 +67,7 @@ export async function POST(req: Request) {
         wallet: { create: { balance: 0 } },
         teknisiProfile: {
           create: {
-            specialty,
+            specialty: [],
             experience: data.experience.trim(),
             location: data.location.trim(),
             description: data.motivation.trim(),

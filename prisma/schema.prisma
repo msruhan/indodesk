@@ -281,6 +281,8 @@ model TeknisiProfile {
   completionRate  Int      @default(0) // percentage
   isOnline            Boolean                   @default(false)
   isVerified          Boolean                   @default(false)
+  /** Jika true, profil tidak tampil di Cari Teknisi dan URL publik tidak dapat diakses. */
+  isProfileHidden     Boolean                   @default(false)
   providesInspection  Boolean                   @default(false) // Teknisi menyediakan layanan inspeksi HP/Laptop
   inspectionPriceOnline  Decimal? @db.Decimal(12, 0) // tarif inspeksi online (video call) IDR
   inspectionPriceOffline Decimal? @db.Decimal(12, 0) // tarif inspeksi offline (on-site) IDR

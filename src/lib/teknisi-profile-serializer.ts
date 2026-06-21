@@ -38,6 +38,7 @@ export type TeknisiAccountProfileDto = {
   totalView: number
   isOnline: boolean
   isVerified: boolean
+  isProfileHidden: boolean
   providesInspection: boolean
   inspectionPriceOnline: number | null
   inspectionPriceOffline: number | null
@@ -77,6 +78,7 @@ export function serializeTeknisiAccountProfile(
     totalView: profile.totalView,
     isOnline: profile.isOnline,
     isVerified: profile.isVerified,
+    isProfileHidden: profile.isProfileHidden ?? false,
     providesInspection: profile.providesInspection ?? false,
     inspectionPriceOnline:
       profile.inspectionPriceOnline != null ? Number(profile.inspectionPriceOnline) : null,

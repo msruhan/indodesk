@@ -20,6 +20,7 @@ import {
   History,
   CreditCard,
   FileText,
+  FolderKanban,
   Package,
   Scales,
   AlertCircle,
@@ -52,6 +53,7 @@ const baseAdminNavItems: readonly SidebarNavItem[] = [
   { icon: Send, label: 'Notifikasi Telegram', href: '/admin/telegram-notifications', section: 'Konten & Komunikasi' },
   { icon: Briefcase, label: 'Lowongan Kerja', href: '/admin/lowongan', section: 'Konten & Komunikasi' },
   { icon: Eye, label: 'Visibilitas Menu', href: '/admin/visibility', section: 'Sistem' },
+  { icon: FolderKanban, label: 'Backup Database', href: '/admin/backup', section: 'Sistem' },
   { icon: Download, label: 'Download IndoDesk', href: '/admin/indodesk', section: 'Sistem' },
 ]
 

@@ -3,6 +3,7 @@ import { apiError, apiSuccess } from '@/lib/api-auth'
 import { getPublicFeatureFlags } from '@/lib/platform-settings'
 import { serializePublicTeknisi } from '@/lib/teknisi-public'
 import { syncTeknisiCompletedSessions } from '@/lib/teknisi-stats-server'
+import { PUBLIC_TEKNISI_PROFILE_WHERE } from '@/lib/teknisi-profile-visibility'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,6 +16,7 @@ export async function GET() {
     }
 
     const profiles = await prisma.teknisiProfile.findMany({
+      where: PUBLIC_TEKNISI_PROFILE_WHERE,
       include: {
         user: { select: { id: true, name: true, image: true } },
       },

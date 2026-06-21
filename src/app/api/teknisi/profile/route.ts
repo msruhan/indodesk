@@ -48,6 +48,7 @@ const patchSchema = z.object({
   providesInspection: z.boolean().optional(),
   inspectionPriceOnline: z.number().int().min(0).max(50_000_000).nullable().optional(),
   inspectionPriceOffline: z.number().int().min(0).max(50_000_000).nullable().optional(),
+  isProfileHidden: z.boolean().optional(),
 })
 
 export async function GET() {
@@ -112,6 +113,7 @@ export async function PATCH(req: Request) {
     providesInspection,
     inspectionPriceOnline,
     inspectionPriceOffline,
+    isProfileHidden,
   } = data
 
     if (consultationServices !== undefined) {
@@ -214,6 +216,7 @@ export async function PATCH(req: Request) {
           ...(providesInspection !== undefined ? { providesInspection } : {}),
           ...(inspectionPriceOnline !== undefined ? { inspectionPriceOnline } : {}),
           ...(inspectionPriceOffline !== undefined ? { inspectionPriceOffline } : {}),
+          ...(isProfileHidden !== undefined ? { isProfileHidden } : {}),
         },
       })
     })

@@ -4,6 +4,7 @@ import {
   fetchTeknisiUnifiedReviews,
   fetchTeknisiUnifiedReviewStats,
 } from '@/lib/teknisi-unified-reviews'
+import { isTeknisiProfilePubliclyVisible } from '@/lib/teknisi-profile-visibility'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,9 +18,11 @@ export async function GET(
   try {
     const profile = await prisma.teknisiProfile.findUnique({
       where: { userId: teknisiId },
-      select: { id: true },
+      select: { id: true, isProfileHidden: true },
     })
-    if (!profile) return apiError('Teknisi tidak ditemukan', 404)
+    if (!profile || !isTeknisiProfilePubliclyVisible(profile)) {
+      return apiError('Teknisi tidak ditemukan', 404)
+    }
 
     const [items, { stats }] = await Promise.all([
       fetchTeknisiUnifiedReviews(teknisiId),

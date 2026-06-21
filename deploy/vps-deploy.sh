@@ -57,6 +57,20 @@ for i in $(seq 1 30); do
   sleep 2
 done
 
+done
+
+if [[ "${SKIP_BACKUP:-}" != "1" ]] && [[ -f "$INSTALL_DIR/deploy/backup.sh" ]]; then
+  log "Pre-deploy backup ..."
+  if [[ -f "$INSTALL_DIR/.backup.env" ]]; then
+    bash "$INSTALL_DIR/deploy/backup.sh" --type manual --tag pre-deploy || {
+      echo "ERROR: pre-deploy backup failed (set SKIP_BACKUP=1 to override)"
+      exit 1
+    }
+  else
+    log "Skip backup — .backup.env not configured"
+  fi
+fi
+
 log "prisma migrate deploy + shipping location seed ..."
 PG_URL="postgresql://indoteknizi:${POSTGRES_PASSWORD}@postgres:5432/indoteknizi?schema=public"
 MIGRATE_ARGS=(run --rm -e "DATABASE_URL=${PG_URL}" -e "DIRECT_URL=${PG_URL}")

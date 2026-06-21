@@ -43,6 +43,7 @@ services:
       DIRECT_URL: postgresql://indoteknizi:${POSTGRES_PASSWORD}@postgres:5432/indoteknizi?schema=public
     volumes:
       - uploads:/app/public/uploads
+      - ./backups-queue:/app/backups-queue
     depends_on:
       postgres:
         condition: service_healthy

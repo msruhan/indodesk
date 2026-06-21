@@ -40,16 +40,11 @@ export const teknisiRegisterSchema = z.object({
     .max(20, 'Nomor WhatsApp terlalu panjang')
     .regex(/^[0-9+\-\s()]+$/, 'Format nomor tidak valid'),
   location: z.string().min(2, 'Lokasi wajib diisi').max(120),
-  specialty: z
-    .array(z.string().min(1).max(60))
-    .min(1, 'Pilih minimal satu spesialisasi')
-    .max(10),
   experience: z.string().min(1, 'Pengalaman wajib diisi').max(80),
   workshopType: z.enum(['COUNTER', 'WORKSHOP', 'FREELANCE', 'ONLINE'], {
     message: 'Jenis usaha wajib dipilih',
   }),
   brandsHandled: z.string().min(2, 'Merek yang ditangani wajib diisi').max(300),
-  toolsUsed: z.string().max(500).optional().default(''),
   portfolioUrl: z
     .string()
     .max(300)
@@ -80,13 +75,13 @@ export type TeknisiRegisterInput = z.infer<typeof teknisiRegisterSchema>
 export function buildApplicationData(
   input: Pick<
     TeknisiRegisterInput,
-    'workshopType' | 'brandsHandled' | 'toolsUsed' | 'portfolioUrl' | 'motivation'
+    'workshopType' | 'brandsHandled' | 'portfolioUrl' | 'motivation'
   >,
 ): TeknisiApplicationData {
   return {
     workshopType: input.workshopType,
     brandsHandled: input.brandsHandled.trim(),
-    toolsUsed: (input.toolsUsed ?? '').trim(),
+    toolsUsed: '',
     portfolioUrl: (input.portfolioUrl ?? '').trim(),
     motivation: input.motivation.trim(),
   }

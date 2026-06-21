@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db'
 import { apiError, apiSuccess } from '@/lib/api-auth'
 import { getInspectionBasePrice } from '@/lib/inspection-pricing'
 import type { InspectionTeknisiOption } from '@/lib/inspection-serializer'
+import { PUBLIC_TEKNISI_PROFILE_WHERE } from '@/lib/teknisi-profile-visibility'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,6 +11,7 @@ export async function GET() {
   try {
     const profiles = await prisma.teknisiProfile.findMany({
       where: {
+        ...PUBLIC_TEKNISI_PROFILE_WHERE,
         isVerified: true,
         verificationStatus: 'APPROVED',
       },
