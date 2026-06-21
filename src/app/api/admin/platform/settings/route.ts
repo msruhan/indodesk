@@ -37,6 +37,8 @@ const settingsSchema = z.object({
   konsultasiServiceEnabled: z.boolean(),
   rekberServiceEnabled: z.boolean(),
   topupServiceEnabled: z.boolean(),
+  userRegistrationEnabled: z.boolean(),
+  teknisiRegistrationEnabled: z.boolean(),
   ...adminStepUpFields,
 })
 

@@ -23,6 +23,11 @@ vi.mock('@/lib/coming-soon-server', () => ({
   isComingSoonEnabled: vi.fn().mockResolvedValue(false),
 }))
 
+vi.mock('@/lib/registration-control-server', () => ({
+  isUserRegistrationOpen: vi.fn().mockResolvedValue(true),
+  isTeknisiRegistrationOpen: vi.fn().mockResolvedValue(true),
+}))
+
 import { prisma } from '@/lib/db'
 import { readGoogleLinkIntentUserId } from '@/lib/auth/google-link-cookie'
 import { readGoogleRegisterIntent } from '@/lib/auth/google-register-cookie'

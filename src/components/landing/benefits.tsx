@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { motion } from 'framer-motion'
@@ -18,6 +19,10 @@ import {
   ArrowRight,
   CheckCircle2,
 } from '@/lib/icons'
+import {
+  LANDING_TRUST_STAT_MIN,
+  type LandingPublicStats,
+} from '@/lib/landing-public-stats-shared'
 
 const benefits = [
   {
@@ -80,14 +85,50 @@ type TrustStat = {
   decimals?: number
 }
 
-const trustStats: TrustStat[] = [
-  { label: 'User aktif', value: 3000, suffix: '+' },
-  { label: 'Teknisi terverifikasi', value: 500, suffix: '+' },
-  { label: 'Konsultasi selesai', value: 10000, suffix: '+' },
-  { label: 'Rating user', value: 4.8, suffix: '/5', decimals: 1 },
-]
+const defaultLandingStats: LandingPublicStats = {
+  produkTerjual: 0,
+  teknisiTerverifikasi: 0,
+  iklanTayang: 0,
+  ratingUser: 0,
+  ratingReviewCount: 0,
+}
+
+function buildVisibleTrustStats(stats: LandingPublicStats): TrustStat[] {
+  const candidates: TrustStat[] = [
+    { label: 'Produk terjual', value: stats.produkTerjual, suffix: '+' },
+    { label: 'Teknisi terverifikasi', value: stats.teknisiTerverifikasi, suffix: '+' },
+    { label: 'Iklan tayang', value: stats.iklanTayang, suffix: '+' },
+    { label: 'Rating user', value: stats.ratingUser, suffix: '/5', decimals: 1 },
+  ]
+
+  return candidates.filter((item, index) => {
+    if (index === 3) {
+      return stats.ratingReviewCount >= LANDING_TRUST_STAT_MIN && stats.ratingUser > 0
+    }
+    return item.value >= LANDING_TRUST_STAT_MIN
+  })
+}
 
 export function Benefits() {
+  const [trustStats, setTrustStats] = useState<TrustStat[]>([])
+
+  useEffect(() => {
+    let active = true
+    void (async () => {
+      try {
+        const res = await fetch('/api/public/landing-stats', { cache: 'no-store' })
+        const json = await res.json()
+        if (!active || !res.ok || !json.success || !json.data) return
+        setTrustStats(buildVisibleTrustStats(json.data as LandingPublicStats))
+      } catch {
+        // Sembunyikan metrik jika gagal memuat
+      }
+    })()
+    return () => {
+      active = false
+    }
+  }, [])
+
   return (
     <section id="benefits" className="relative overflow-hidden py-24 lg:py-32">
       {/* Premium light backdrop */}
@@ -159,7 +200,9 @@ export function Benefits() {
           <div className="aurora-blob aurora-blob-cyan pointer-events-none absolute -right-16 -bottom-16 h-72 w-72 opacity-30" />
           <div className="dot-grid pointer-events-none absolute inset-0 opacity-30" />
 
-          <div className="relative grid items-center gap-10 lg:grid-cols-2">
+          <div
+            className={`relative grid items-center gap-10 ${trustStats.length > 0 ? 'lg:grid-cols-2' : ''}`}
+          >
             <div>
               <h3 className="text-balance text-[26px] font-semibold leading-[1.1] tracking-tightest text-ink lg:text-[34px]">
                 Siap mengembangkan bisnis teknisi Anda?
@@ -188,26 +231,27 @@ export function Benefits() {
               </div>
             </div>
 
-            {/* Trust stats grid */}
-            <div className="grid grid-cols-2 gap-3">
-              {trustStats.map((s) => (
-                <div
-                  key={s.label}
-                  className="rounded-2xl border border-surface-200/70 bg-white/95 p-5 text-center shadow-soft-xs"
-                >
-                  <AnimatedNumber
-                    value={s.value}
-                    suffix={s.suffix}
-                    prefix={s.prefix ?? ''}
-                    decimals={s.decimals ?? 0}
-                    className="block text-2xl font-semibold tracking-tightest text-ink tabular-nums lg:text-3xl"
-                  />
-                  <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-surface-500">
-                    {s.label}
-                  </p>
-                </div>
-              ))}
-            </div>
+            {trustStats.length > 0 ? (
+              <div className="grid grid-cols-2 gap-3">
+                {trustStats.map((s) => (
+                  <div
+                    key={s.label}
+                    className="rounded-2xl border border-surface-200/70 bg-white/95 p-5 text-center shadow-soft-xs"
+                  >
+                    <AnimatedNumber
+                      value={s.value}
+                      suffix={s.suffix}
+                      prefix={s.prefix ?? ''}
+                      decimals={s.decimals ?? 0}
+                      className="block text-2xl font-semibold tracking-tightest text-ink tabular-nums lg:text-3xl"
+                    />
+                    <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-surface-500">
+                      {s.label}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
         </Reveal>
       </div>

@@ -9,6 +9,10 @@ import {
   type GoogleRegisterRole,
 } from '@/lib/auth/google-register-cookie'
 import { isComingSoonEnabled } from '@/lib/coming-soon-server'
+import {
+  isTeknisiRegistrationOpen,
+  isUserRegistrationOpen,
+} from '@/lib/registration-control-server'
 
 type DbUserPick = Pick<User, 'id' | 'isActive' | 'role' | 'twoFactorEnabled' | 'email'>
 
@@ -101,6 +105,12 @@ export async function evaluateGoogleSignIn(input: GoogleSignInInput): Promise<Go
   if (registerRole && !linkIntentUserId) {
     if (dbUser) {
       return deny('email_already_registered')
+    }
+    if (registerRole === 'USER' && !(await isUserRegistrationOpen())) {
+      return deny('user_registration_closed')
+    }
+    if (registerRole === 'TEKNISI' && !(await isTeknisiRegistrationOpen())) {
+      return deny('teknisi_registration_closed')
     }
     return { ok: true, mode: 'register', role: registerRole }
   }

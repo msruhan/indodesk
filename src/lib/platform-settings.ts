@@ -63,6 +63,8 @@ const KEY_MAP: Record<PlatformSettingKey, keyof PlatformSettingsDto | null> = {
   coming_soon_launch_at: 'comingSoonLaunchAt',
   coming_soon_headline: 'comingSoonHeadline',
   coming_soon_message: 'comingSoonMessage',
+  user_registration_enabled: 'userRegistrationEnabled',
+  teknisi_registration_enabled: 'teknisiRegistrationEnabled',
 }
 
 const REVERSE_KEY_MAP = Object.fromEntries(
@@ -176,6 +178,14 @@ function dtoToRows(dto: PlatformSettingsDto): Array<{ key: string; value: string
       key: 'coming_soon_message',
       value: dto.comingSoonMessage,
     },
+    {
+      key: 'user_registration_enabled',
+      value: dto.userRegistrationEnabled ? 'true' : 'false',
+    },
+    {
+      key: 'teknisi_registration_enabled',
+      value: dto.teknisiRegistrationEnabled ? 'true' : 'false',
+    },
   ]
 }
 
@@ -232,6 +242,8 @@ function rowToDto(rows: Array<{ key: string; value: string }>): PlatformSettings
       map.get('coming_soon_headline')?.trim() || DEFAULT_PLATFORM_SETTINGS.comingSoonHeadline,
     comingSoonMessage:
       map.get('coming_soon_message')?.trim() || DEFAULT_PLATFORM_SETTINGS.comingSoonMessage,
+    userRegistrationEnabled: (map.get('user_registration_enabled') ?? 'true') === 'true',
+    teknisiRegistrationEnabled: (map.get('teknisi_registration_enabled') ?? 'true') === 'true',
   }
 }
 
@@ -367,6 +379,8 @@ export async function getPublicFeatureFlags(): Promise<PublicFeatureFlags> {
     rekberServiceEnabled: s.rekberServiceEnabled,
     topupServiceEnabled: s.topupServiceEnabled,
     googleAuthEnabled: isGoogleAuthEnabled,
+    userRegistrationEnabled: s.userRegistrationEnabled,
+    teknisiRegistrationEnabled: s.teknisiRegistrationEnabled,
   }
 }
 

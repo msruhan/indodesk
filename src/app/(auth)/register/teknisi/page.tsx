@@ -25,9 +25,14 @@ import { GoogleRegisterDivider } from '@/components/auth/google-register-divider
 import { RegisterOAuthErrorAlert } from '@/components/auth/register-oauth-error-alert'
 import { TeknisiSpecialtyField } from '@/components/auth/teknisi-specialty-field'
 import { WorkCitySelect, type WorkCityValue } from '@/components/shipping/work-city-select'
+import {
+  RegistrationClosedNotice,
+  useRegistrationFlags,
+} from '@/components/auth/registration-closed-notice'
 
 export default function RegisterTeknisiPage() {
   const { registerTeknisi } = useAuth()
+  const registrationFlags = useRegistrationFlags()
   const [submitted, setSubmitted] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -161,6 +166,11 @@ export default function RegisterTeknisiPage() {
 
           <CardContent>
             <RegisterOAuthErrorAlert />
+
+            {registrationFlags && !registrationFlags.teknisiRegistrationEnabled ? (
+              <RegistrationClosedNotice role="TEKNISI" />
+            ) : (
+              <>
             <GoogleRegisterDivider
               role="TEKNISI"
               callbackUrl="/register/teknisi/lengkapi"
@@ -394,6 +404,8 @@ export default function RegisterTeknisiPage() {
                 {isLoading ? 'Mengirim pendaftaran…' : 'Kirim pendaftaran teknisi'}
               </Button>
             </form>
+              </>
+            )}
           </CardContent>
 
           <CardFooter className="flex flex-col gap-3">

@@ -20,9 +20,14 @@ import { AuroraBackground } from '@/components/motion'
 import { motion } from 'framer-motion'
 import { GoogleRegisterDivider } from '@/components/auth/google-register-divider'
 import { RegisterOAuthErrorAlert } from '@/components/auth/register-oauth-error-alert'
+import {
+  RegistrationClosedNotice,
+  useRegistrationFlags,
+} from '@/components/auth/registration-closed-notice'
 
 export default function RegisterPage() {
   const { register } = useAuth()
+  const registrationFlags = useRegistrationFlags()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -116,6 +121,11 @@ export default function RegisterPage() {
 
           <CardContent>
             <RegisterOAuthErrorAlert />
+
+            {registrationFlags && !registrationFlags.userRegistrationEnabled ? (
+              <RegistrationClosedNotice role="USER" />
+            ) : (
+              <>
             <GoogleRegisterDivider role="USER" callbackUrl="/register/lengkapi" className="mb-6" />
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -220,15 +230,19 @@ export default function RegisterPage() {
                     Daftar melalui formulir khusus teknisi. Verifikasi email dulu, lalu tunggu
                     persetujuan admin.
                   </p>
-                  <Link
-                    href="/register/teknisi"
-                    className="mt-2 inline-block text-sm font-medium text-primary-700 hover:underline"
-                  >
-                    Daftar sebagai Teknisi →
-                  </Link>
+                  {registrationFlags?.teknisiRegistrationEnabled !== false ? (
+                    <Link
+                      href="/register/teknisi"
+                      className="mt-2 inline-block text-sm font-medium text-primary-700 hover:underline"
+                    >
+                      Daftar sebagai Teknisi →
+                    </Link>
+                  ) : null}
                 </div>
               </div>
             </div>
+              </>
+            )}
           </CardContent>
 
           <CardFooter className="flex flex-col gap-3">

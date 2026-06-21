@@ -11,11 +11,22 @@ import {
 } from '@/lib/teknisi-registration'
 import { sendEmailVerification } from '@/lib/email-verification'
 import { notifyAdminTeknisiRegistered } from '@/lib/telegram/notify'
+import {
+  isTeknisiRegistrationOpen,
+  teknisiRegistrationClosedMessage,
+} from '@/lib/registration-control-server'
 export async function POST(req: Request) {
   const ip = getClientIp(req)
   const rl = await withRateLimit(req, ['auth', 'register-teknisi', ip], RATE_LIMITS.auth)
   if (!rl.allowed) {
     return rateLimitResponse(rl)
+  }
+
+  if (!(await isTeknisiRegistrationOpen())) {
+    return NextResponse.json(
+      { success: false, error: teknisiRegistrationClosedMessage() },
+      { status: 403 },
+    )
   }
 
   try {

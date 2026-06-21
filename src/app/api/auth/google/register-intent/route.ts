@@ -6,6 +6,12 @@ import {
   type GoogleRegisterRole,
 } from '@/lib/auth/google-register-cookie'
 import { isGoogleAuthEnabled } from '@/lib/google-auth-enabled'
+import {
+  isTeknisiRegistrationOpen,
+  isUserRegistrationOpen,
+  teknisiRegistrationClosedMessage,
+  userRegistrationClosedMessage,
+} from '@/lib/registration-control-server'
 
 const bodySchema = z.object({
   role: z.enum(['USER', 'TEKNISI']),
@@ -23,7 +29,16 @@ export async function POST(req: Request) {
       return apiError('Role pendaftaran tidak valid', 400)
     }
 
-    await setGoogleRegisterIntentCookie(parsed.data.role as GoogleRegisterRole)
+    const role = parsed.data.role as GoogleRegisterRole
+
+    if (role === 'USER' && !(await isUserRegistrationOpen())) {
+      return apiError(userRegistrationClosedMessage(), 403)
+    }
+    if (role === 'TEKNISI' && !(await isTeknisiRegistrationOpen())) {
+      return apiError(teknisiRegistrationClosedMessage(), 403)
+    }
+
+    await setGoogleRegisterIntentCookie(role)
     return apiSuccess({ ok: true })
   } catch (error) {
     console.error('[GOOGLE_REGISTER_INTENT]', error)

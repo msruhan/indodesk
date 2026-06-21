@@ -3,6 +3,7 @@
 import { DashboardPageHeader, DashboardPanel } from '@/components/dashboard'
 import { AdminComingSoonForm } from '@/components/admin/admin-coming-soon-form'
 import { AdminFeatureFlagsForm } from '@/components/admin/admin-feature-flags-form'
+import { AdminRegistrationControlForm } from '@/components/admin/admin-registration-control-form'
 
 export default function AdminVisibilityPage() {
   return (
@@ -18,6 +19,13 @@ export default function AdminVisibilityPage() {
         description="Aktifkan untuk mengarahkan seluruh halaman publik ke halaman countdown. Admin tetap dapat mengakses dashboard."
       >
         <AdminComingSoonForm />
+      </DashboardPanel>
+
+      <DashboardPanel
+        title="Kontrol Pendaftaran"
+        description="Tutup atau buka kembali pendaftaran user dan teknisi secara sementara, terpisah dari mode Coming Soon."
+      >
+        <AdminRegistrationControlForm />
       </DashboardPanel>
 
       <DashboardPanel
@@ -86,6 +94,14 @@ export default function AdminVisibilityPage() {
               <strong>Top Up Game</strong> mengontrol submenu Top Up di grup Belanja, tab mobile,
               footer, dan halaman <code className="text-xs">/topup</code> untuk user &amp; teknisi.
               Checkout top up diblokir bila dimatikan. Admin tetap dapat preview katalog.
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="mt-1 inline-flex h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary-500" />
+            <span>
+              <strong>Kontrol Pendaftaran</strong> menutup pendaftaran user dan/atau teknisi
+              secara independen. Login akun yang sudah ada tidak terpengaruh. Admin tetap dapat
+              menambah user/teknisi dari panel admin.
             </span>
           </li>
           <li className="flex items-start gap-2">

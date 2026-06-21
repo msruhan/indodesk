@@ -36,6 +36,8 @@ export function FeatureFlagsProvider({ children }: { children: ReactNode }) {
           rekberServiceEnabled: Boolean(json.data.rekberServiceEnabled),
           topupServiceEnabled: Boolean(json.data.topupServiceEnabled),
           googleAuthEnabled: Boolean(json.data.googleAuthEnabled),
+          userRegistrationEnabled: json.data.userRegistrationEnabled !== false,
+          teknisiRegistrationEnabled: json.data.teknisiRegistrationEnabled !== false,
         })
       }
     } catch {

@@ -6,11 +6,22 @@ import { extractRequestContext, logAccountEvent } from '@/lib/activity-log'
 import { sendEmailVerification } from '@/lib/email-verification'
 import { notifyAdminUserRegistered } from '@/lib/telegram/notify'
 import { getClientIp, RATE_LIMITS, withRateLimit, rateLimitResponse } from '@/lib/rate-limit-store'
+import {
+  isUserRegistrationOpen,
+  userRegistrationClosedMessage,
+} from '@/lib/registration-control-server'
 export async function POST(req: Request) {
   // Rate limit: 10 registrations per 15 minutes per IP
   const ip = getClientIp(req)
   const rl = await withRateLimit(req, ['auth', 'register', ip], RATE_LIMITS.auth)
   if (!rl.allowed) return rateLimitResponse(rl)
+
+  if (!(await isUserRegistrationOpen())) {
+    return NextResponse.json(
+      { success: false, error: userRegistrationClosedMessage() },
+      { status: 403 },
+    )
+  }
 
   try {
     const body = await req.json()

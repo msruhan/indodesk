@@ -37,6 +37,8 @@ export const PLATFORM_SETTING_KEYS = [
   'coming_soon_launch_at',
   'coming_soon_headline',
   'coming_soon_message',
+  'user_registration_enabled',
+  'teknisi_registration_enabled',
 ] as const
 
 export type PlatformSettingKey = (typeof PLATFORM_SETTING_KEYS)[number]
@@ -119,6 +121,10 @@ export type PlatformSettingsDto = {
   comingSoonLaunchAt: string | null
   comingSoonHeadline: string
   comingSoonMessage: string
+  /** Izinkan pendaftaran akun user baru (formulir & Google). */
+  userRegistrationEnabled: boolean
+  /** Izinkan pendaftaran teknisi baru (formulir & Google). */
+  teknisiRegistrationEnabled: boolean
 }
 
 export const DEFAULT_PLATFORM_SETTINGS: PlatformSettingsDto = {
@@ -148,6 +154,8 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettingsDto = {
   comingSoonLaunchAt: null,
   comingSoonHeadline: DEFAULT_COMING_SOON_HEADLINE,
   comingSoonMessage: DEFAULT_COMING_SOON_MESSAGE,
+  userRegistrationEnabled: true,
+  teknisiRegistrationEnabled: true,
 }
 
 /**
@@ -164,6 +172,8 @@ export type PublicFeatureFlags = {
   topupServiceEnabled: boolean
   /** Login / daftar via Google OAuth (dari env AUTH_GOOGLE_*). */
   googleAuthEnabled: boolean
+  userRegistrationEnabled: boolean
+  teknisiRegistrationEnabled: boolean
 }
 
 export const DEFAULT_PUBLIC_FEATURE_FLAGS: PublicFeatureFlags = {
@@ -175,6 +185,8 @@ export const DEFAULT_PUBLIC_FEATURE_FLAGS: PublicFeatureFlags = {
   rekberServiceEnabled: DEFAULT_PLATFORM_SETTINGS.rekberServiceEnabled,
   topupServiceEnabled: DEFAULT_PLATFORM_SETTINGS.topupServiceEnabled,
   googleAuthEnabled: false,
+  userRegistrationEnabled: DEFAULT_PLATFORM_SETTINGS.userRegistrationEnabled,
+  teknisiRegistrationEnabled: DEFAULT_PLATFORM_SETTINGS.teknisiRegistrationEnabled,
 }
 
 type Role = 'ADMIN' | 'TEKNISI' | 'USER' | null | undefined

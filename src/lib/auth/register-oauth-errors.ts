@@ -30,6 +30,18 @@ const REGISTER_OAUTH_ERROR_DETAILS: Record<string, Omit<RegisterOAuthErrorDetail
       'Akun Google sudah terhubung, tetapi formulir profil teknisi belum lengkap. Lanjutkan pengisian untuk menyelesaikan pendaftaran.',
     showLengkapiLink: true,
   },
+  user_registration_closed: {
+    title: 'Pendaftaran user ditutup',
+    message:
+      'Pendaftaran akun user sementara ditutup. Silakan coba lagi nanti atau hubungi tim support Bantoo.',
+    showLoginLink: true,
+  },
+  teknisi_registration_closed: {
+    title: 'Pendaftaran teknisi ditutup',
+    message:
+      'Pendaftaran teknisi sementara ditutup. Silakan coba lagi nanti atau hubungi tim support Bantoo.',
+    showLoginLink: true,
+  },
 }
 
 export function registerOAuthErrorDetails(
