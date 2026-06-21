@@ -57,8 +57,6 @@ for i in $(seq 1 30); do
   sleep 2
 done
 
-done
-
 if [[ "${SKIP_BACKUP:-}" != "1" ]] && [[ -f "$INSTALL_DIR/deploy/backup.sh" ]]; then
   log "Pre-deploy backup ..."
   if [[ -f "$INSTALL_DIR/.backup.env" ]]; then
