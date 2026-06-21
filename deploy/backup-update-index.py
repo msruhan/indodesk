@@ -20,12 +20,20 @@ def aws_base() -> list[str]:
     ]
 
 
-def download_index(bucket: str, dest: Path) -> list[dict]:
+def aws_env() -> dict[str, str]:
     env = os.environ.copy()
     env.setdefault("AWS_DEFAULT_REGION", "auto")
+    if "AWS_ACCESS_KEY_ID" not in env and os.environ.get("BACKUP_R2_ACCESS_KEY_ID"):
+        env["AWS_ACCESS_KEY_ID"] = os.environ["BACKUP_R2_ACCESS_KEY_ID"]
+    if "AWS_SECRET_ACCESS_KEY" not in env and os.environ.get("BACKUP_R2_SECRET_ACCESS_KEY"):
+        env["AWS_SECRET_ACCESS_KEY"] = os.environ["BACKUP_R2_SECRET_ACCESS_KEY"]
+    return env
+
+
+def download_index(bucket: str, dest: Path) -> list[dict]:
     result = subprocess.run(
         [*aws_base(), "cp", f"s3://{bucket}/backups/index.json", str(dest)],
-        env=env,
+        env=aws_env(),
         capture_output=True,
     )
     if result.returncode != 0:
@@ -40,15 +48,13 @@ def download_index(bucket: str, dest: Path) -> list[dict]:
 
 
 def upload_index(bucket: str, items: list[dict]) -> None:
-    env = os.environ.copy()
-    env.setdefault("AWS_DEFAULT_REGION", "auto")
     with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as tmp:
         json.dump(items, tmp, indent=2)
         tmp_path = tmp.name
     try:
         subprocess.check_call(
             [*aws_base(), "cp", tmp_path, f"s3://{bucket}/backups/index.json"],
-            env=env,
+            env=aws_env(),
         )
     finally:
         Path(tmp_path).unlink(missing_ok=True)
