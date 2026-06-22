@@ -3,20 +3,37 @@
 Repo: [github.com/msruhan/bantoo](https://github.com/msruhan/bantoo)  
 Image: `ghcr.io/msruhan/bantoo:<tag>`
 
+## Setup Git (sekali per mesin)
+
+```bash
+npm run setup:git-remotes   # origin → msruhan/bantoo, indodesk → legacy mirror
+npm run setup:git-hooks     # blokir tag v* ke remote indodesk
+```
+
+| Remote | Repo | Dipakai untuk |
+|--------|------|----------------|
+| `origin` | `msruhan/bantoo` | **Production** — push `main` + tag release |
+| `indodesk` | `msruhan/indodesk` | Legacy mirror (jangan push tag `v*` ke sini) |
+
 ## Alur release
 
 ```text
-git tag v0.1.0 && git push bantoo v0.1.0
+npm run release -- v0.1.53
         │
         ▼
 .github/workflows/release-deploy.yml  (repo msruhan/bantoo)
   1. build Docker image
-  2. push ghcr.io/msruhan/bantoo:0.1.0 + :latest
+  2. push ghcr.io/msruhan/bantoo:0.1.53 + :latest
   3. SSH ke VPS → deploy/vps-deploy.sh
 ```
 
-> **Penting:** Push tag ke remote **`bantoo`** (`github.com/msruhan/bantoo`), bukan `origin`/`indodesk`.
-> `GITHUB_TOKEN` hanya bisa publish `ghcr.io/msruhan/bantoo` dari workflow repo **bantoo**.
+Atau manual:
+
+```bash
+git tag v0.1.53 && git push origin v0.1.53
+```
+
+> `origin` = **bantoo**. Jangan push tag release ke `indodesk` — CI akan gagal `write_package`.
 
 Manual tanpa tag:
 

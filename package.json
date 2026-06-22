@@ -47,7 +47,10 @@
     "secrets:encrypt": "tsx scripts/encrypt-existing-secrets.ts",
     "secrets:rotate": "tsx scripts/rotate-secrets.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "setup:git-remotes": "bash scripts/setup-git-remotes.sh",
+    "setup:git-hooks": "bash scripts/setup-git-hooks.sh",
+    "release": "bash scripts/release-tag.sh"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"

@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Block release tags (v*) from being pushed to the legacy indodesk remote.
+# Production CI/CD only works from msruhan/bantoo (origin).
+set -euo pipefail
+
+remote="${1:-}"
+url="${2:-}"
+
+[[ "$remote" == "indodesk" ]] || exit 0
+
+blocked=()
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [[ -z "${remote_ref:-}" ]] && continue
+  case "$remote_ref" in
+    refs/tags/v*)
+      blocked+=("${remote_ref#refs/tags/}")
+      ;;
+  esac
+done
+
+if ((${#blocked[@]} > 0)); then
+  echo "ERROR: Tag release tidak boleh di-push ke remote 'indodesk':" >&2
+  for tag in "${blocked[@]}"; do
+    echo "  - $tag" >&2
+  done
+  echo "" >&2
+  echo "Gunakan origin (msruhan/bantoo):" >&2
+  echo "  git push origin ${blocked[*]}" >&2
+  echo "Atau: npm run release -- ${blocked[0]}" >&2
+  exit 1
+fi
+
+exit 0
