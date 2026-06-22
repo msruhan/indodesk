@@ -2,6 +2,8 @@ import { cn } from '@/lib/utils'
 
 export const BRAND_ICON_SRC = '/icon/iconbantoo.png'
 export const BRAND_WORDMARK_SRC = '/icon/iconbantootext.png'
+export const BRAND_ICON_WEBP_SRC = '/icon/iconbantoo.webp'
+export const BRAND_WORDMARK_WEBP_SRC = '/icon/iconbantootext.webp'
 
 type BrandLogoProps = {
   /** `icon` = ikon saja; `wordmark` = logo + teks lengkap */
@@ -43,25 +45,33 @@ export function BrandLogo({
   if (variant === 'wordmark') {
     return (
       <span className={cn('inline-flex flex-col items-start', className)}>
-        <img
-          src={BRAND_WORDMARK_SRC}
-          alt="Bantoo"
-          width={1672}
-          height={941}
-          className={cn(WORDMARK_SIZE_CLASS[size], wordmarkClassName)}
-        />
+        <picture>
+          <source srcSet={BRAND_WORDMARK_WEBP_SRC} type="image/webp" />
+          <img
+            src={BRAND_WORDMARK_SRC}
+            alt="Bantoo"
+            width={1672}
+            height={941}
+            className={cn(WORDMARK_SIZE_CLASS[size], wordmarkClassName)}
+            decoding="async"
+          />
+        </picture>
         {scope ? <span className={SCOPE_SIZE_CLASS[size]}>{scope}</span> : null}
       </span>
     )
   }
 
   return (
-    <img
-      src={BRAND_ICON_SRC}
-      alt="Bantoo"
-      width={1254}
-      height={1254}
-      className={cn(ICON_SIZE_CLASS[size], iconClassName, className)}
-    />
+    <picture>
+      <source srcSet={BRAND_ICON_WEBP_SRC} type="image/webp" />
+      <img
+        src={BRAND_ICON_SRC}
+        alt="Bantoo"
+        width={1254}
+        height={1254}
+        className={cn(ICON_SIZE_CLASS[size], iconClassName, className)}
+        decoding="async"
+      />
+    </picture>
   )
 }

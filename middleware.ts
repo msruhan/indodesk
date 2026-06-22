@@ -12,6 +12,7 @@ import {
 } from '@/lib/security/headers'
 import { getCachedComingSoon } from '@/lib/coming-soon-cache'
 import { shouldBypassComingSoon, isComingSoonForceDisabled } from '@/lib/coming-soon-shared'
+import { isPublicShellPath, PUBLIC_SHELL_HEADER } from '@/lib/public-shell-paths'
 
 const { auth } = NextAuth(authConfig)
 
@@ -62,9 +63,15 @@ function finalize(
   req: NextRequest,
   pathname: string,
   buildRes: (requestHeaders: Headers) => NextResponse,
+  options?: { comingSoonEnabled?: boolean },
 ): NextResponse {
   const nonce = generateCspNonce()
   const requestHeaders = withSecurityRequestHeaders(req, pathname, nonce)
+
+  if (isPublicShellPath(pathname, options?.comingSoonEnabled ?? false)) {
+    requestHeaders.set(PUBLIC_SHELL_HEADER, '1')
+  }
+
   const res = buildRes(requestHeaders)
 
   const cors = corsHeadersForRequest(req)
@@ -98,9 +105,12 @@ export const middleware = auth(async (req) => {
   const session = req.auth
   const userRole = session?.user?.role as string | undefined
 
-  if (!isComingSoonForceDisabled() && !shouldBypassComingSoon(pathname, userRole)) {
+  let comingSoonEnabled = false
+  if (!isComingSoonForceDisabled()) {
     const comingSoon = await getCachedComingSoon()
-    if (comingSoon?.enabled) {
+    comingSoonEnabled = Boolean(comingSoon?.enabled)
+
+    if (comingSoonEnabled && !shouldBypassComingSoon(pathname, userRole)) {
       if (pathname.startsWith('/api/')) {
         return finalize(req, pathname, () =>
           NextResponse.json(
@@ -111,11 +121,29 @@ export const middleware = auth(async (req) => {
             },
             { status: 503 },
           ),
+          { comingSoonEnabled },
         )
       }
+
       if (pathname !== '/coming-soon') {
-        return finalize(req, pathname, () =>
-          NextResponse.redirect(new URL('/coming-soon', req.nextUrl.origin)),
+        if (pathname === '/') {
+          return finalize(
+            req,
+            pathname,
+            (requestHeaders) => {
+              const url = req.nextUrl.clone()
+              url.pathname = '/coming-soon'
+              return NextResponse.rewrite(url, { request: { headers: requestHeaders } })
+            },
+            { comingSoonEnabled },
+          )
+        }
+
+        return finalize(
+          req,
+          pathname,
+          () => NextResponse.redirect(new URL('/coming-soon', req.nextUrl.origin)),
+          { comingSoonEnabled },
         )
       }
     }
@@ -125,18 +153,20 @@ export const middleware = auth(async (req) => {
   if (
     !isComingSoonForceDisabled() &&
     session?.user?.role &&
-    session.user.role !== 'ADMIN'
+    session.user.role !== 'ADMIN' &&
+    comingSoonEnabled
   ) {
-    const comingSoon = await getCachedComingSoon()
     if (
-      comingSoon?.enabled &&
       pathname !== '/coming-soon' &&
       pathname !== '/login' &&
       !pathname.startsWith('/api/')
     ) {
       if (!pathname.startsWith('/register/') && pathname !== '/register') {
-        return finalize(req, pathname, () =>
-          NextResponse.redirect(new URL('/coming-soon', req.nextUrl.origin)),
+        return finalize(
+          req,
+          pathname,
+          () => NextResponse.redirect(new URL('/coming-soon', req.nextUrl.origin)),
+          { comingSoonEnabled },
         )
       }
     }
@@ -147,13 +177,21 @@ export const middleware = auth(async (req) => {
     if (!session?.user) {
       const loginUrl = new URL('/login', req.nextUrl.origin)
       loginUrl.searchParams.set('callbackUrl', pathname)
-      return finalize(req, pathname, () => NextResponse.redirect(loginUrl))
+      return finalize(
+        req,
+        pathname,
+        () => NextResponse.redirect(loginUrl),
+        { comingSoonEnabled },
+      )
     }
 
     const userRole = session.user.role as string
     if (!matchedRoute.roles.includes(userRole)) {
-      return finalize(req, pathname, () =>
-        NextResponse.redirect(new URL(homePathForRole(userRole), req.nextUrl.origin)),
+      return finalize(
+        req,
+        pathname,
+        () => NextResponse.redirect(new URL(homePathForRole(userRole), req.nextUrl.origin)),
+        { comingSoonEnabled },
       )
     }
 
@@ -164,13 +202,21 @@ export const middleware = auth(async (req) => {
       if (!onAccountSettings) {
         const dest = new URL(accountPath, req.nextUrl.origin)
         dest.searchParams.set('changePassword', 'required')
-        return finalize(req, pathname, () => NextResponse.redirect(dest))
+        return finalize(
+          req,
+          pathname,
+          () => NextResponse.redirect(dest),
+          { comingSoonEnabled },
+        )
       }
     }
   }
 
-  return finalize(req, pathname, (requestHeaders) =>
-    NextResponse.next({ request: { headers: requestHeaders } }),
+  return finalize(
+    req,
+    pathname,
+    (requestHeaders) => NextResponse.next({ request: { headers: requestHeaders } }),
+    { comingSoonEnabled },
   )
 })
 

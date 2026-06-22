@@ -64,7 +64,6 @@ export function ComingSoonView({
   initialConfig = DEFAULT_COMING_SOON_CONFIG,
   supportEmail = SUPPORT_EMAIL,
 }: ComingSoonViewProps) {
-  const [config, setConfig] = useState(initialConfig)
   const [now, setNow] = useState(() => Date.now())
 
   useEffect(() => {
@@ -72,22 +71,13 @@ export function ComingSoonView({
     return () => window.clearInterval(timer)
   }, [])
 
-  useEffect(() => {
-    void fetch('/api/public/coming-soon')
-      .then((r) => r.json())
-      .then((json) => {
-        if (json.success && json.data) setConfig(json.data)
-      })
-      .catch(() => {})
-  }, [])
-
   const countdown = useMemo(
-    () => getCountdownParts(config.launchAt, now),
-    [config.launchAt, now],
+    () => getCountdownParts(initialConfig.launchAt, now),
+    [initialConfig.launchAt, now],
   )
 
-  const launchLabel = config.launchAt
-    ? new Date(config.launchAt).toLocaleString('id-ID', {
+  const launchLabel = initialConfig.launchAt
+    ? new Date(initialConfig.launchAt).toLocaleString('id-ID', {
         weekday: 'long',
         day: 'numeric',
         month: 'long',
@@ -118,7 +108,7 @@ export function ComingSoonView({
       <main className="relative z-10 mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-center px-6 py-10 text-center sm:py-14">
         <motion.div
           className="flex flex-col items-center"
-          initial="initial"
+          initial={false}
           animate="animate"
           variants={{
             animate: { transition: { staggerChildren: 0.12, delayChildren: 0.08 } },
@@ -136,7 +126,7 @@ export function ComingSoonView({
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="mt-6 max-w-3xl text-4xl font-semibold leading-[1.08] tracking-tight text-ink sm:text-5xl lg:text-6xl"
           >
-            {config.headline}
+            {initialConfig.headline}
           </motion.h1>
 
           <motion.p
@@ -144,7 +134,7 @@ export function ComingSoonView({
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="mt-5 max-w-2xl text-base leading-relaxed text-surface-600 sm:text-lg"
           >
-            {config.message}
+            {initialConfig.message}
           </motion.p>
 
           <motion.div

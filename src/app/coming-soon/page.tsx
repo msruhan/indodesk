@@ -9,7 +9,8 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-export const dynamic = 'force-dynamic'
+/** Revalidate coming soon copy & countdown target (~1 min). */
+export const revalidate = 60
 
 export default async function ComingSoonPage() {
   const config = await getPublicComingSoonConfig()
