@@ -6,14 +6,17 @@ Image: `ghcr.io/msruhan/bantoo:<tag>`
 ## Alur release
 
 ```text
-git tag v0.1.0 && git push origin v0.1.0
+git tag v0.1.0 && git push bantoo v0.1.0
         │
         ▼
-.github/workflows/release-deploy.yml
+.github/workflows/release-deploy.yml  (repo msruhan/bantoo)
   1. build Docker image
   2. push ghcr.io/msruhan/bantoo:0.1.0 + :latest
   3. SSH ke VPS → deploy/vps-deploy.sh
 ```
+
+> **Penting:** Push tag ke remote **`bantoo`** (`github.com/msruhan/bantoo`), bukan `origin`/`indodesk`.
+> `GITHUB_TOKEN` hanya bisa publish `ghcr.io/msruhan/bantoo` dari workflow repo **bantoo**.
 
 Manual tanpa tag:
 
@@ -98,7 +101,8 @@ Gunakan [Semantic Versioning](https://semver.org/) untuk release production.
 | Masalah | Solusi |
 |---------|--------|
 | Deploy job gagal SSH | Cek `VPS_SSH_KEY`, firewall port 22 |
-| `pull` denied | Set `GHCR_READ_TOKEN` atau buat package public |
+| `pull` denied | Set `GHCR_READ_TOKEN` (PAT `read:packages`) atau buat package public |
+| `write_package` denied | Tag harus di-push ke repo **bantoo**, bukan indodesk; image tetap `ghcr.io/msruhan/bantoo` |
 | `vps-deploy.sh: not found` | Salin folder `deploy/` ke `/opt/indoteknizi` |
 | Health check gagal | Cek Caddy routing + `merge-caddy-indoteknizi.sh` |
 | Migrate gagal | Lihat log: `docker compose logs app` |
