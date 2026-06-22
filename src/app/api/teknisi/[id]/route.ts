@@ -52,7 +52,10 @@ export async function GET(
 
     const platformStats = await getTeknisiPlatformStats(id)
     const featureFlags = await getPublicFeatureFlags()
-    return apiSuccess(serializePublicTeknisiDetail(profile, platformStats, featureFlags))
+    const postCount = await prisma.teknisiPost.count({
+      where: { teknisiId: id, deletedAt: null },
+    })
+    return apiSuccess(serializePublicTeknisiDetail(profile, platformStats, featureFlags, postCount))
   } catch (e) {
     console.error('[TEKNISI_DETAIL_GET]', e)
     return apiError('Gagal memuat profil teknisi', 500)

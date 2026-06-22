@@ -6,6 +6,7 @@ import 'dotenv/config'
 import { seedTopupCatalog } from './seed-topup-catalog'
 import { seedPlatformContent } from './seed-platform-content'
 import { seedShippingLocations } from './seed-shipping-locations'
+import { seedTeknisiPostsForEmail } from './seed-teknisi-posts'
 import { ensureMarketplaceOrderSettlement } from '../src/lib/marketplace-wallet'
 import {
   DEFAULT_BRAND_FOCUS,
@@ -54,6 +55,11 @@ async function main() {
   await prisma.product.deleteMany()
   await prisma.teknisiReview.deleteMany()
   await prisma.teknisiPortfolioCase.deleteMany()
+  await prisma.teknisiPostCommentLike.deleteMany()
+  await prisma.teknisiPostComment.deleteMany()
+  await prisma.teknisiPostLike.deleteMany()
+  await prisma.teknisiPostAttachment.deleteMany()
+  await prisma.teknisiPost.deleteMany()
   await prisma.teknisiCertification.deleteMany()
   await prisma.teknisiProfile.deleteMany()
   await prisma.session.deleteMany()
@@ -343,6 +349,9 @@ async function main() {
       },
     ],
   })
+
+  const ahmadPostCount = await seedTeknisiPostsForEmail(prisma, 'ahmad@indoteknizi.com')
+  console.log(`   📣 ${ahmadPostCount} contoh posting untuk ahmad@indoteknizi.com`)
 
   await prisma.teknisiCertification.createMany({
     data: [

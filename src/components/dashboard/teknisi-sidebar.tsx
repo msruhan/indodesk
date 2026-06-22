@@ -44,7 +44,7 @@ const INSPEKSI_HREFS = new Set(['/teknisi/inspeksi'])
 const REKBER_HREFS = new Set(['/teknisi/rekber'])
 
 const bottomNavItems: readonly SidebarNavItem[] = [
-  { icon: UserCircle, label: 'Profil', href: '/teknisi/settings' },
+  { icon: UserCircle, label: 'Profil', href: '/teknisi/profil' },
   { icon: HelpCircle, label: 'Pusat Bantuan', href: '/teknisi/bantuan' },
 ]
 

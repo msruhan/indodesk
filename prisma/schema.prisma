@@ -142,6 +142,10 @@ model User {
   teknisiReviewsReceived    TeknisiReview[] @relation("TeknisiReviewsReceived")
   teknisiReviewsAuthored    TeknisiReview[] @relation("TeknisiReviewsAuthored")
   teknisiPortfolioCases     TeknisiPortfolioCase[] @relation("TeknisiPortfolioCases")
+  teknisiPosts              TeknisiPost[]          @relation("TeknisiPosts")
+  teknisiPostLikes          TeknisiPostLike[]      @relation("TeknisiPostLikes")
+  teknisiPostComments       TeknisiPostComment[]   @relation("TeknisiPostComments")
+  teknisiPostCommentLikes   TeknisiPostCommentLike[] @relation("TeknisiPostCommentLikes")
   teknisiCertifications     TeknisiCertification[] @relation("TeknisiCertifications")
   inspectionOrdersAsUser  InspectionOrder[]      @relation("InspectionUser")
   inspectionOrdersAsTech  InspectionOrder[]      @relation("InspectionTeknisi")
@@ -341,6 +345,87 @@ model TeknisiPortfolioCase {
   teknisi User @relation("TeknisiPortfolioCases", fields: [teknisiId], references: [id], onDelete: Cascade)
 
   @@index([teknisiId, sortOrder])
+}
+
+// ============================================================
+// TEKNISI POSTS (feed sosial di profil publik)
+// ============================================================
+
+model TeknisiPost {
+  id          String    @id @default(cuid())
+  teknisiId   String
+  content     String    @db.Text
+  videoUrl    String?
+  publishedAt DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  teknisi     User                    @relation("TeknisiPosts", fields: [teknisiId], references: [id], onDelete: Cascade)
+  attachments TeknisiPostAttachment[]
+  likes       TeknisiPostLike[]
+  comments    TeknisiPostComment[]
+
+  @@index([teknisiId, publishedAt(sort: Desc)])
+  @@index([teknisiId, deletedAt])
+}
+
+model TeknisiPostLike {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post TeknisiPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User        @relation("TeknisiPostLikes", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@index([userId])
+}
+
+model TeknisiPostComment {
+  id        String    @id @default(cuid())
+  postId    String
+  userId    String
+  content   String    @db.Text
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  post  TeknisiPost              @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user  User                     @relation("TeknisiPostComments", fields: [userId], references: [id], onDelete: Cascade)
+  likes TeknisiPostCommentLike[]
+
+  @@index([postId, createdAt])
+  @@index([userId])
+}
+
+model TeknisiPostCommentLike {
+  id        String   @id @default(cuid())
+  commentId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  comment TeknisiPostComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User               @relation("TeknisiPostCommentLikes", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+  @@index([commentId])
+}
+
+model TeknisiPostAttachment {
+  id        String      @id @default(cuid())
+  postId    String
+  type      String // image | pdf
+  url       String
+  fileName  String?
+  mimeType  String?
+  sizeBytes Int?
+  sortOrder Int         @default(0)
+
+  post TeknisiPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId, sortOrder])
 }
 
 // ============================================================

@@ -204,13 +204,16 @@ export async function getTeknisiDashboardData(teknisiId: string): Promise<Teknis
     memberSinceAt: (user?.createdAt ?? profile?.createdAt ?? new Date()).toISOString(),
   }
 
-  const profileCompletion = evaluateTeknisiProfileCompletion({
-    phone: user?.phone ?? null,
-    location: profile?.location ?? null,
-    description: profile?.description ?? null,
-    specialty: profile?.specialty ?? [],
-    portfolioCount,
-  })
+  const profileCompletion = evaluateTeknisiProfileCompletion(
+    {
+      phone: user?.phone ?? null,
+      location: profile?.location ?? null,
+      description: profile?.description ?? null,
+      specialty: profile?.specialty ?? [],
+      portfolioCount,
+    },
+    teknisiId,
+  )
 
   return {
     digitalId,

@@ -46,6 +46,7 @@ export type PublicTeknisiDetailDto = PublicTeknisiDto &
   portfolio: TeknisiPortfolioItemDto[]
   certifications: TeknisiCertificationItemDto[]
   platformStats: TeknisiPlatformStatsDto
+  postCount: number
 }
 
 type ProfileRow = TeknisiProfile & {
@@ -60,6 +61,7 @@ export function serializePublicTeknisiDetail(
   profile: ProfileRow,
   platformStats: TeknisiPlatformStatsDto,
   featureFlags?: Pick<PublicFeatureFlags, 'remoteServiceEnabled' | 'inspectionServiceEnabled'>,
+  postCount = 0,
 ): PublicTeknisiDetailDto {
   const base = {
     id: profile.userId,
@@ -120,5 +122,6 @@ export function serializePublicTeknisiDetail(
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .map(serializeTeknisiCertification),
     platformStats,
+    postCount,
   }
 }

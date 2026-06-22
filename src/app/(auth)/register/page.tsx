@@ -108,9 +108,11 @@ export default function RegisterPage() {
       >
         <Card tone="glass" className="overflow-hidden">
           <CardHeader className="space-y-4 text-center">
-            <div className="mx-auto">
-              <BrandLogo variant="wordmark" wordmarkClassName="mx-auto h-[4.5rem] scale-[1.15]" className="items-center" />
-            </div>
+            <BrandLogo
+              variant="wordmark"
+              align="center"
+              wordmarkClassName="h-[4.5rem] sm:max-w-[20rem]"
+            />
             <div>
               <CardTitle className="text-2xl font-semibold tracking-tightest">
                 Daftar sebagai User

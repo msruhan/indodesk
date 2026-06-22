@@ -27,6 +27,7 @@ export function buildSecurityHeaders(pathname: string, nonce: string): Record<st
     "img-src 'self' data: https: blob:",
     "font-src 'self' data:",
     "connect-src 'self' https: wss:",
+    "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://www.tiktok.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

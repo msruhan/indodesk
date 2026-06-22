@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, Suspense, type ReactNode } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import type { UserRole } from '@prisma/client'
 import {
@@ -25,6 +25,17 @@ import { InspectionBookingDialog } from '@/components/inspection/inspection-book
 import type { InspectionMode } from '@prisma/client'
 import { TeknisiDigitalIdCard } from '@/components/teknisi/teknisi-digital-id-card'
 import { TeknisiReviewsSection } from '@/components/teknisi/teknisi-reviews-section'
+import { TeknisiProfileTabs, useTeknisiProfileTab } from '@/components/teknisi/teknisi-profile-tabs'
+import { TeknisiPostsFeed } from '@/components/teknisi/teknisi-posts-feed'
+import {
+  TeknisiProfileEditProvider,
+  ProfileSectionEditButton,
+} from '@/components/teknisi/teknisi-profile-edit-context'
+import { TeknisiProfileInlineEditHost } from '@/components/teknisi/teknisi-profile-inline-edit-host'
+import {
+  isTeknisiProfileEditSection,
+  type TeknisiProfileEditSection,
+} from '@/lib/teknisi-profile-edit-sections'
 import { InspectionBadge } from '@/components/teknisi/inspection-badge'
 import { useChat } from '@/contexts/chat-context'
 import { openTeknisiChat } from '@/lib/open-teknisi-chat'
@@ -82,7 +93,22 @@ const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.08, delay
 type Props = { teknisiId: string }
 
 export function TeknisiPublicProfileView({ teknisiId }: Props) {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[40vh] items-center justify-center">
+          <p className="text-sm text-surface-500">Memuat profil…</p>
+        </div>
+      }
+    >
+      <TeknisiPublicProfileViewInner teknisiId={teknisiId} />
+    </Suspense>
+  )
+}
+
+function TeknisiPublicProfileViewInner({ teknisiId }: Props) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { data: session, status } = useSession()
   const { openChatWithPeer } = useChat()
   const [teknisi, setTeknisi] = useState<PublicTeknisiDetailDto | null>(null)
@@ -95,6 +121,26 @@ export function TeknisiPublicProfileView({ teknisiId }: Props) {
   const [inspectionLockMode, setInspectionLockMode] = useState(false)
   const [inspectionSuccessId, setInspectionSuccessId] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+  const [postCount, setPostCount] = useState(0)
+  const [activeEdit, setActiveEdit] = useState<TeknisiProfileEditSection | null>(null)
+  const activeTab = useTeknisiProfileTab()
+
+  const isOwner =
+    status === 'authenticated' &&
+    session?.user?.role === 'TEKNISI' &&
+    session.user.id === teknisiId
+
+  const reloadPublicProfile = useCallback(async () => {
+    try {
+      const detailRes = await fetch(`/api/teknisi/${teknisiId}`)
+      const detailJson = await detailRes.json()
+      if (!detailRes.ok || !detailJson.success) return
+      setTeknisi(detailJson.data)
+      setPostCount(Number(detailJson.data.postCount ?? 0))
+    } catch {
+      // ignore refresh errors
+    }
+  }, [teknisiId])
 
   const { scrollY } = useScroll()
   const heroY = useTransform(scrollY, [0, 400], [0, -50])
@@ -115,6 +161,7 @@ export function TeknisiPublicProfileView({ teknisiId }: Props) {
           return
         }
         setTeknisi(detailJson.data)
+        setPostCount(Number(detailJson.data.postCount ?? 0))
       } catch {
         if (!cancelled) setError('Gagal memuat profil teknisi')
       } finally {
@@ -125,6 +172,19 @@ export function TeknisiPublicProfileView({ teknisiId }: Props) {
       cancelled = true
     }
   }, [teknisiId])
+
+  useEffect(() => {
+    if (status !== 'authenticated' || !isOwner) return
+    const edit = searchParams.get('edit')
+    if (!edit || !isTeknisiProfileEditSection(edit)) return
+    setActiveEdit(edit)
+    const tab = searchParams.get('tab') ?? 'profil'
+    router.replace(`/teknisi/${teknisiId}?tab=${tab}`, { scroll: false })
+  }, [searchParams, isOwner, status, teknisiId, router])
+
+  const openEdit = useCallback((section: TeknisiProfileEditSection) => {
+    setActiveEdit(section)
+  }, [])
 
   const openBooking = (svc?: TeknisiConsultationService) => {
     if (svc?.kind === 'inspection-online' || svc?.kind === 'inspection-offline') {
@@ -176,6 +236,7 @@ export function TeknisiPublicProfileView({ teknisiId }: Props) {
   )
 
   return (
+    <TeknisiProfileEditProvider isOwner={isOwner} openEdit={openEdit}>
     <div className="relative min-h-screen overflow-x-hidden bg-gradient-to-b from-surface-50 via-white to-primary-50/40">
       <AmbientOrbs />
 
@@ -212,6 +273,7 @@ export function TeknisiPublicProfileView({ teknisiId }: Props) {
                   <ProfileHero
                     teknisi={teknisi}
                     saved={saved}
+                    isOwner={isOwner}
                     onSave={() => setSaved((value) => !value)}
                     onShare={() => void handleShare()}
                     onChat={handleOpenChat}
@@ -219,6 +281,23 @@ export function TeknisiPublicProfileView({ teknisiId }: Props) {
                   />
                 </motion.div>
 
+                <motion.div variants={fadeUp}>
+                  <TeknisiProfileTabs teknisiId={teknisiId} postCount={postCount} />
+                </motion.div>
+
+                {activeTab === 'postingan' ? (
+                  <motion.div variants={fadeUp}>
+                    <TeknisiPostsFeed
+                      teknisiId={teknisiId}
+                      authorName={teknisi.name}
+                      authorAvatar={teknisi.image}
+                      isOwner={isOwner}
+                      initialCount={postCount}
+                      onCountChange={setPostCount}
+                    />
+                  </motion.div>
+                ) : (
+                  <>
                 <motion.div variants={fadeUp}>
                   <AboutSection teknisi={teknisi} />
                 </motion.div>
@@ -231,27 +310,43 @@ export function TeknisiPublicProfileView({ teknisiId }: Props) {
                   <PerformanceLedger teknisi={teknisi} />
                 </motion.div>
 
-                {teknisi.services.length > 0 && (
+                {teknisi.services.length > 0 || isOwner ? (
                   <motion.div variants={fadeUp}>
-                    <ServicesMenu services={teknisi.services} onSelect={openBooking} />
+                    <ServicesMenu
+                      services={teknisi.services}
+                      onSelect={openBooking}
+                      isOwner={isOwner}
+                    />
                   </motion.div>
-                )}
+                ) : null}
 
-                {teknisi.portfolio.length > 0 && (
+                {teknisi.portfolio.length > 0 || isOwner ? (
                   <motion.div variants={fadeUp}>
-                    <SectionCard eyebrow="Bukti Karya" title="Portofolio & Highlight Kasus">
-                      <div className="grid gap-3 md:grid-cols-3">
-                        {teknisi.portfolio.map((item, idx) => (
-                          <PortfolioCard key={`${item.title}-${idx}`} item={item} idx={idx} />
-                        ))}
-                      </div>
+                    <SectionCard
+                      eyebrow="Bukti Karya"
+                      title="Portofolio & Highlight Kasus"
+                      action={<ProfileSectionEditButton section="portfolio" />}
+                    >
+                      {teknisi.portfolio.length > 0 ? (
+                        <div className="grid gap-3 md:grid-cols-3">
+                          {teknisi.portfolio.map((item, idx) => (
+                            <PortfolioCard key={`${item.title}-${idx}`} item={item} idx={idx} />
+                          ))}
+                        </div>
+                      ) : (
+                        <OwnerSectionPlaceholder>
+                          Belum ada portofolio. Klik ikon pensil untuk menambahkan kasus highlight.
+                        </OwnerSectionPlaceholder>
+                      )}
                     </SectionCard>
                   </motion.div>
-                )}
+                ) : null}
 
                 <motion.div variants={fadeUp}>
                   <TeknisiReviewsSection teknisi={teknisi} />
                 </motion.div>
+                  </>
+                )}
               </div>
 
               {/* RIGHT SIDEBAR — sticky stack */}
@@ -268,11 +363,14 @@ export function TeknisiPublicProfileView({ teknisiId }: Props) {
                 <motion.div variants={fadeUp}>
                   <AvailabilityPanel teknisi={teknisi} />
                 </motion.div>
-                {teknisi.certifications.length > 0 && (
+                {teknisi.certifications.length > 0 || isOwner ? (
                   <motion.div variants={fadeUp}>
-                    <CertificationsPanel certifications={teknisi.certifications} />
+                    <CertificationsPanel
+                      certifications={teknisi.certifications}
+                      isOwner={isOwner}
+                    />
                   </motion.div>
-                )}
+                ) : null}
                 {teknisi.linkedStore && (
                   <motion.div variants={fadeUp}>
                     <LinkedStoreCard teknisi={teknisi} />
@@ -326,7 +424,16 @@ export function TeknisiPublicProfileView({ teknisiId }: Props) {
           </motion.div>
         </div>
       )}
+
+      {isOwner ? (
+        <TeknisiProfileInlineEditHost
+          activeSection={activeEdit}
+          onSectionChange={setActiveEdit}
+          onPublicRefresh={reloadPublicProfile}
+        />
+      ) : null}
     </div>
+    </TeknisiProfileEditProvider>
   )
 }
 
@@ -395,6 +502,14 @@ function FloatingSparkles() {
   )
 }
 
+function OwnerSectionPlaceholder({ children }: { children: ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-surface-200 bg-surface-50/60 px-4 py-8 text-center text-sm text-surface-500">
+      {children}
+    </div>
+  )
+}
+
 /* ============================================================================
    ABOUT SECTION
    ========================================================================== */
@@ -413,7 +528,11 @@ function AboutSection({ teknisi }: { teknisi: PublicTeknisiDetailDto }) {
   ]
 
   return (
-    <SectionCard eyebrow="Profil Profesional" title="Tentang Teknisi">
+    <SectionCard
+      eyebrow="Profil Profesional"
+      title="Tentang Teknisi"
+      action={<ProfileSectionEditButton section="about" />}
+    >
       <div className="grid gap-5 lg:grid-cols-[1.25fr_0.75fr]">
         <div className="space-y-4">
           {teknisi.description ? (
@@ -483,6 +602,7 @@ function AboutSection({ teknisi }: { teknisi: PublicTeknisiDetailDto }) {
 function ProfileHero({
   teknisi,
   saved,
+  isOwner,
   onSave,
   onShare,
   onChat,
@@ -490,6 +610,7 @@ function ProfileHero({
 }: {
   teknisi: PublicTeknisiDetailDto
   saved: boolean
+  isOwner: boolean
   onSave: () => void
   onShare: () => void
   onChat: () => void
@@ -549,8 +670,13 @@ function ProfileHero({
         {/* Bottom fade */}
         <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/20 to-transparent" />
 
-        {/* Top row — status online/offline */}
-        <div className="relative flex flex-wrap items-start justify-end gap-3">
+        {/* Top row — status & owner edit */}
+        <div className="relative flex flex-wrap items-start justify-between gap-3">
+          {isOwner ? (
+            <ProfileSectionEditButton section="hero" className="border-white/30 bg-black/20 text-white hover:bg-black/35 hover:text-white" />
+          ) : (
+            <span />
+          )}
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -857,7 +983,17 @@ function BookingSummary({ teknisi }: { teknisi: PublicTeknisiDetailDto }) {
 /* ============================================================================
    SECTION CARD
    ========================================================================== */
-function SectionCard({ eyebrow, title, children }: { eyebrow: string; title: string; children: ReactNode }) {
+function SectionCard({
+  eyebrow,
+  title,
+  children,
+  action,
+}: {
+  eyebrow: string
+  title: string
+  children: ReactNode
+  action?: ReactNode
+}) {
   return (
     <div className="rounded-3xl border border-surface-200/70 bg-white p-5 shadow-soft-sm sm:p-6">
       <div className="mb-5 flex items-end justify-between gap-4">
@@ -865,6 +1001,7 @@ function SectionCard({ eyebrow, title, children }: { eyebrow: string; title: str
           <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary-700">{eyebrow}</p>
           <h2 className="mt-1 text-xl font-black tracking-tight text-ink sm:text-2xl">{title}</h2>
         </div>
+        {action}
       </div>
       {children}
     </div>
@@ -995,7 +1132,11 @@ function AvailabilityPanel({ teknisi }: { teknisi: PublicTeknisiDetailDto }) {
     return [parts[0] ?? line, parts.slice(1).join(' · ') || '—'] as [string, string]
   })
   return (
-    <SectionCard eyebrow="Jadwal" title="Ketersediaan">
+    <SectionCard
+      eyebrow="Jadwal"
+      title="Ketersediaan"
+      action={<ProfileSectionEditButton section="jadwal" />}
+    >
       <div className="relative overflow-hidden rounded-2xl border border-primary-200/70 bg-gradient-to-br from-primary-50 via-emerald-50/40 to-primary-50 p-4 shadow-soft-xs">
         <motion.div
           className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-primary-300 opacity-30 blur-2xl"
@@ -1042,14 +1183,21 @@ function AvailabilityPanel({ teknisi }: { teknisi: PublicTeknisiDetailDto }) {
    ========================================================================== */
 function CertificationsPanel({
   certifications,
+  isOwner,
 }: {
   certifications: TeknisiCertificationItemDto[]
+  isOwner: boolean
 }) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   return (
     <>
-      <SectionCard eyebrow="Kompetensi" title="Sertifikasi">
+      <SectionCard
+        eyebrow="Kompetensi"
+        title="Sertifikasi"
+        action={<ProfileSectionEditButton section="certifications" />}
+      >
+        {certifications.length > 0 ? (
         <div className="space-y-2.5">
           {certifications.map((item, idx) => (
             <motion.div
@@ -1106,6 +1254,11 @@ function CertificationsPanel({
             </motion.div>
           ))}
         </div>
+        ) : isOwner ? (
+          <OwnerSectionPlaceholder>
+            Belum ada sertifikasi. Klik ikon pensil untuk mengunggah sertifikat kompetensi.
+          </OwnerSectionPlaceholder>
+        ) : null}
       </SectionCard>
 
       {previewUrl && (
@@ -1332,9 +1485,12 @@ function SkillsConstellation({ skills }: { skills: string[] }) {
             terverifikasi.
           </p>
         </div>
-        <span className="hidden font-mono text-[10px] uppercase tracking-[0.18em] text-surface-400 sm:inline">
-          Mastery Map
-        </span>
+        <div className="flex items-center gap-2">
+          <ProfileSectionEditButton section="skills" />
+          <span className="hidden font-mono text-[10px] uppercase tracking-[0.18em] text-surface-400 sm:inline">
+            Mastery Map
+          </span>
+        </div>
       </div>
 
       {/* CORE skills — large feature row with index + bar */}
@@ -1667,11 +1823,33 @@ function PerformanceLedger({ teknisi }: { teknisi: PublicTeknisiDetailDto }) {
 function ServicesMenu({
   services,
   onSelect,
+  isOwner,
 }: {
   services: TeknisiConsultationService[]
   onSelect: (svc: TeknisiConsultationService) => void
+  isOwner?: boolean
 }) {
-  if (services.length === 0) return null
+  if (services.length === 0) {
+    if (!isOwner) return null
+    return (
+      <div className="relative overflow-hidden rounded-3xl border border-surface-200/70 bg-white shadow-soft-sm">
+        <div className="flex items-end justify-between gap-4 border-b border-surface-200/70 bg-gradient-to-br from-white to-surface-50/60 px-6 py-5 sm:px-8 sm:py-6">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary-700">
+              Layanan Konsultasi
+            </p>
+            <h2 className="mt-1 text-xl font-black tracking-tight text-ink sm:text-2xl">Bandingkan & Pilih</h2>
+          </div>
+          <ProfileSectionEditButton section="services" />
+        </div>
+        <div className="p-6">
+          <OwnerSectionPlaceholder>
+            Belum ada layanan konsultasi. Klik ikon pensil untuk mengatur paket layanan.
+          </OwnerSectionPlaceholder>
+        </div>
+      </div>
+    )
+  }
 
   const consultationServices = services.filter((s) => s.kind === 'consultation')
   const inspectionServices = services.filter((s) => s.kind !== 'consultation')
@@ -1693,11 +1871,14 @@ function ServicesMenu({
               : 'Setiap sesi mencakup diagnosis, rekomendasi solusi, dan estimasi risiko.'}
           </p>
         </div>
-        <div className="hidden text-right sm:block">
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-surface-400">Tarif mulai</p>
-          <p className="mt-0.5 text-[20px] font-black tabular-nums text-ink">
-            {services[0] ? formatPrice(startingFromPrice) : '—'}
-          </p>
+        <div className="flex items-end gap-2">
+          <div className="hidden text-right sm:block">
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-surface-400">Tarif mulai</p>
+            <p className="mt-0.5 text-[20px] font-black tabular-nums text-ink">
+              {services[0] ? formatPrice(startingFromPrice) : '—'}
+            </p>
+          </div>
+          <ProfileSectionEditButton section="services" />
         </div>
       </div>
 

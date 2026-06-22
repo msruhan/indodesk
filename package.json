@@ -21,6 +21,7 @@
     "db:migrate": "npx prisma migrate dev",
     "db:push": "npx prisma db push",
     "db:seed": "npx tsx prisma/seed.ts",
+    "db:seed:teknisi-posts": "npx tsx scripts/seed-teknisi-posts.ts",
     "db:studio": "npx prisma studio",
     "db:reset": "npx prisma migrate reset --force",
     "db:generate": "npx prisma generate",

@@ -97,11 +97,12 @@ export function ComingSoonView({
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(16,185,129,0.12),transparent_55%)]"
       />
 
-      <header className="relative z-10 flex items-center justify-center px-6 pt-10 sm:pt-14">
+      <header className="relative z-10 flex w-full items-center justify-center px-6 pt-10 sm:pt-14">
         <BrandLogo
           variant="wordmark"
           size="default"
-          wordmarkClassName="h-20 scale-[1.2] sm:h-24 sm:scale-[1.25] sm:max-w-[24rem]"
+          align="center"
+          wordmarkClassName="h-[4.5rem] sm:h-[5.75rem] sm:max-w-[24rem]"
         />
       </header>
 

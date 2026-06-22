@@ -232,14 +232,20 @@ const textareaClass = cn(
   'w-full resize-none rounded-lg border border-surface-200 px-3 py-2 text-sm focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-200/50',
 )
 
+export type TeknisiProfileFormSection = 'hero' | 'about' | 'skills' | 'full'
+
 export function TeknisiProfileForm({
   profile,
   onSaved,
   onSessionUpdate,
+  section = 'full',
+  onCancel,
 }: {
   profile: TeknisiAccountProfileDto
   onSaved: (p: TeknisiAccountProfileDto) => void
   onSessionUpdate?: (name: string, image?: string) => void
+  section?: TeknisiProfileFormSection
+  onCancel?: () => void
 }) {
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const coverInputRef = useRef<HTMLInputElement>(null)
@@ -281,6 +287,64 @@ export function TeknisiProfileForm({
     clearInput()
   }
 
+  const showHero = section === 'hero' || section === 'full'
+  const showAbout = section === 'about' || section === 'full'
+  const showSkills = section === 'skills' || section === 'full'
+  const showScope = section === 'about' || section === 'full'
+  const showInspection = section === 'about' || section === 'full'
+  const isPartial = section !== 'full'
+
+  const buildPatchBody = () => {
+    if (section === 'hero') {
+      return {
+        name: form.name.trim(),
+        phone: form.phone.trim() || null,
+        experience: form.experience.trim() || null,
+        tagline: form.tagline.trim() || null,
+        price: Number(form.price) || 0,
+        isProfileHidden: form.isProfileHidden,
+      }
+    }
+    if (section === 'about') {
+      return {
+        description: form.description.trim() || null,
+        issuesHandled: form.issuesHandled.trim() || null,
+        brandFocus: form.brandFocus.trim() || null,
+        workApproach: form.workApproach.trim() || null,
+        serviceScope: form.serviceScope.map((s) => s.trim()).filter(Boolean),
+        languages: form.languages.map((s) => s.trim()).filter(Boolean),
+        providesInspection: form.providesInspection,
+        inspectionPriceOnline: form.providesInspection ? form.inspectionPriceOnline : null,
+        inspectionPriceOffline: form.providesInspection ? form.inspectionPriceOffline : null,
+      }
+    }
+    if (section === 'skills') {
+      return {
+        specialty: form.specialty,
+        secondarySkills: [],
+      }
+    }
+    return {
+      name: form.name.trim(),
+      phone: form.phone.trim() || null,
+      experience: form.experience.trim() || null,
+      description: form.description.trim() || null,
+      tagline: form.tagline.trim() || null,
+      issuesHandled: form.issuesHandled.trim() || null,
+      brandFocus: form.brandFocus.trim() || null,
+      workApproach: form.workApproach.trim() || null,
+      price: Number(form.price) || 0,
+      specialty: form.specialty,
+      serviceScope: form.serviceScope.map((s) => s.trim()).filter(Boolean),
+      languages: form.languages.map((s) => s.trim()).filter(Boolean),
+      secondarySkills: [],
+      providesInspection: form.providesInspection,
+      inspectionPriceOnline: form.providesInspection ? form.inspectionPriceOnline : null,
+      inspectionPriceOffline: form.providesInspection ? form.inspectionPriceOffline : null,
+      isProfileHidden: form.isProfileHidden,
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -290,25 +354,7 @@ export function TeknisiProfileForm({
       const res = await fetch('/api/teknisi/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: form.name.trim(),
-          phone: form.phone.trim() || null,
-          experience: form.experience.trim() || null,
-          description: form.description.trim() || null,
-          tagline: form.tagline.trim() || null,
-          issuesHandled: form.issuesHandled.trim() || null,
-          brandFocus: form.brandFocus.trim() || null,
-          workApproach: form.workApproach.trim() || null,
-          price: Number(form.price) || 0,
-          specialty: form.specialty,
-          serviceScope: form.serviceScope.map((s) => s.trim()).filter(Boolean),
-          languages: form.languages.map((s) => s.trim()).filter(Boolean),
-          secondarySkills: [],
-          providesInspection: form.providesInspection,
-          inspectionPriceOnline: form.providesInspection ? form.inspectionPriceOnline : null,
-          inspectionPriceOffline: form.providesInspection ? form.inspectionPriceOffline : null,
-          isProfileHidden: form.isProfileHidden,
-        }),
+        body: JSON.stringify(buildPatchBody()),
       })
       const data = await res.json()
       if (!data.success) {
@@ -329,6 +375,7 @@ export function TeknisiProfileForm({
   const handleCancel = () => {
     applyProfile(profile)
     setFormMsg(null)
+    onCancel?.()
   }
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -397,10 +444,11 @@ export function TeknisiProfileForm({
         </p>
       )}
 
+      {showHero ? (
       <section className="space-y-4">
         <h3 className="text-sm font-semibold text-ink">Profil publik</h3>
         <p className="text-[11px] text-surface-500">
-          Informasi yang tampil di halaman profil publik teknisi.
+          Informasi yang tampil di bagian atas halaman profil publik teknisi.
         </p>
 
         <div
@@ -579,6 +627,7 @@ export function TeknisiProfileForm({
           />
         </div>
 
+        {section === 'full' ? (
         <div>
           <label className="mb-1 block text-sm font-medium text-surface-700">Deskripsi</label>
           <textarea
@@ -588,9 +637,23 @@ export function TeknisiProfileForm({
             onChange={(e) => patchForm('description', e.target.value)}
           />
         </div>
+        ) : null}
       </section>
+      ) : null}
 
-      <section className="space-y-4 border-t border-surface-100 pt-6">
+      {showAbout ? (
+      <section className={cn('space-y-4', showHero && 'border-t border-surface-100 pt-6')}>
+        {section === 'about' ? (
+          <div>
+            <label className="mb-1 block text-sm font-medium text-surface-700">Deskripsi</label>
+            <textarea
+              className={textareaClass}
+              rows={4}
+              value={form.description}
+              onChange={(e) => patchForm('description', e.target.value)}
+            />
+          </div>
+        ) : null}
         <h3 className="text-sm font-semibold text-ink">Ringkasan profesional</h3>
         <p className="text-[11px] text-surface-500">Kartu ringkasan di bagian About pada profil publik.</p>
         <div>
@@ -624,7 +687,9 @@ export function TeknisiProfileForm({
           />
         </div>
       </section>
+      ) : null}
 
+      {showInspection ? (
       <section className="space-y-4 border-t border-surface-100 pt-6">
         <InspectionServiceToggle
           enabled={form.providesInspection}
@@ -635,7 +700,9 @@ export function TeknisiProfileForm({
           onPriceOfflineChange={(value) => patchForm('inspectionPriceOffline', value)}
         />
       </section>
+      ) : null}
 
+      {showSkills ? (
       <section className="space-y-4 border-t border-surface-100 pt-6">
         <TagListEditor
           label="Spesialisasi & keahlian"
@@ -648,7 +715,9 @@ export function TeknisiProfileForm({
           placeholder="Tambah keahlian"
         />
       </section>
+      ) : null}
 
+      {showScope ? (
       <section className="space-y-4 border-t border-surface-100 pt-6">
         <StringListEditor
           label="Cakupan layanan"
@@ -668,12 +737,13 @@ export function TeknisiProfileForm({
           maxItems={8}
         />
       </section>
+      ) : null}
 
       <div className="flex gap-2 border-t border-surface-100 pt-4">
         <Button type="submit" variant="primary" disabled={saving || !dirty}>
-          {saving ? 'Menyimpan…' : 'Simpan Perubahan'}
+          {saving ? 'Menyimpan…' : isPartial ? 'Simpan' : 'Simpan Perubahan'}
         </Button>
-        <Button type="button" variant="outline" onClick={handleCancel} disabled={saving || !dirty}>
+        <Button type="button" variant="outline" onClick={handleCancel} disabled={saving}>
           Batal
         </Button>
       </div>

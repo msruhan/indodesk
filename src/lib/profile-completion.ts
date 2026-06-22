@@ -68,15 +68,18 @@ export type TeknisiProfileCompletionSource = {
 
 export function evaluateTeknisiProfileCompletion(
   source: TeknisiProfileCompletionSource,
+  userId?: string,
 ): ProfileCompletionStatus {
   const items: ProfileCompletionItem[] = []
+  const profileHref = (edit: string) =>
+    userId ? `/teknisi/${userId}?tab=profil&edit=${edit}` : '/teknisi/settings'
 
   if (!isFilled(source.phone)) {
     items.push({
       id: 'phone',
       label: 'Nomor handphone',
       hint: 'Membantu klien menghubungi Anda',
-      href: '/teknisi/settings',
+      href: profileHref('hero'),
     })
   }
 
@@ -85,7 +88,7 @@ export function evaluateTeknisiProfileCompletion(
       id: 'location',
       label: 'Lokasi / alamat',
       hint: 'Tampil di profil publik teknisi',
-      href: '/teknisi/settings',
+      href: profileHref('hero'),
     })
   }
 
@@ -94,7 +97,7 @@ export function evaluateTeknisiProfileCompletion(
       id: 'description',
       label: 'Deskripsi profil',
       hint: 'Ceritakan keahlian dan layanan Anda',
-      href: '/teknisi/settings',
+      href: profileHref('about'),
     })
   }
 
@@ -103,7 +106,7 @@ export function evaluateTeknisiProfileCompletion(
       id: 'specialty',
       label: 'Keahlian / spesialisasi',
       hint: 'Tambahkan minimal satu keahlian',
-      href: '/teknisi/settings',
+      href: profileHref('skills'),
     })
   }
 
@@ -112,7 +115,7 @@ export function evaluateTeknisiProfileCompletion(
       id: 'portfolio',
       label: 'Portfolio',
       hint: 'Tampilkan contoh pekerjaan Anda',
-      href: '/teknisi/settings?tab=portfolio',
+      href: profileHref('portfolio'),
     })
   }
 

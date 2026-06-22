@@ -118,7 +118,7 @@ export function profileMenuItemsForRole(
   if (role === 'TEKNISI') {
     return [
       { label: 'Marketplace', href: MARKETPLACE_PATH },
-      { label: 'Profil', href: '/teknisi/settings' },
+      { label: 'Profil', href: '/teknisi/profil' },
       { label: 'Analitik', href: '/teknisi/analitik' },
     ]
   }
@@ -207,7 +207,7 @@ export function publicProfileMenuItemsForRole(
       : { label: 'Market', href: MARKETPLACE_PATH }
     return [
       marketOrDashboard,
-      { label: 'Profil', href: '/teknisi/settings' },
+      { label: 'Profil', href: '/teknisi/profil' },
       { label: 'Analitik', href: '/teknisi/analitik' },
     ]
   }
