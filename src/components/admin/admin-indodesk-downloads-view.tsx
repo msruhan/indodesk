@@ -41,7 +41,7 @@ export function AdminIndodeskDownloadsView() {
         setItems(json.data)
         const next: Record<string, FormState> = {}
         for (const row of json.data) {
-          next[row.platform] = toForm(row)
+          next[`${row.platform}-${row.role}`] = toForm(row)
         }
         setForms(next)
       }
@@ -54,20 +54,21 @@ export function AdminIndodeskDownloadsView() {
     void load()
   }, [load])
 
-  const updateField = (platform: string, field: keyof FormState, value: string | boolean) => {
+  const updateField = (key: string, field: keyof FormState, value: string | boolean) => {
     setForms((prev) => ({
       ...prev,
-      [platform]: { ...prev[platform]!, [field]: value },
+      [key]: { ...prev[key]!, [field]: value },
     }))
   }
 
-  const save = async (platform: string) => {
-    const form = forms[platform]
+  const save = async (platform: string, role: string) => {
+    const key = `${platform}-${role}`
+    const form = forms[key]
     if (!form) return
-    setSaving(platform)
+    setSaving(key)
     setMessage(null)
     try {
-      const res = await fetch(`/api/admin/indodesk/downloads/${platform}`, {
+      const res = await fetch(`/api/admin/indodesk/downloads/${platform}?role=${role}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -82,7 +83,7 @@ export function AdminIndodeskDownloadsView() {
         setMessage(json.error ?? 'Gagal menyimpan')
         return
       }
-      setMessage(`Link ${platform === 'windows' ? 'Windows' : 'macOS'} berhasil disimpan.`)
+      setMessage(`Link ${platform} (${role}) berhasil disimpan.`)
       await load()
     } catch {
       setMessage('Gagal menyimpan perubahan')
@@ -103,14 +104,15 @@ export function AdminIndodeskDownloadsView() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         {items.map((row) => {
-          const form = forms[row.platform]
+          const key = `${row.platform}-${row.role}`
+          const form = forms[key]
           if (!form) return null
           return (
-            <Card key={row.platform}>
+            <Card key={key}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="flex items-center gap-2 text-base font-semibold">
                   <Laptop className="h-4 w-4 text-primary-600" />
-                  {row.platformLabel}
+                  {row.platformLabel} · {row.roleLabel}
                 </CardTitle>
                 <Badge variant={form.isActive ? 'success' : 'outline'}>
                   {form.isActive ? 'Aktif' : 'Nonaktif'}
@@ -123,7 +125,7 @@ export function AdminIndodeskDownloadsView() {
                   </label>
                   <Input
                     value={form.downloadUrl}
-                    onChange={(e) => updateField(row.platform, 'downloadUrl', e.target.value)}
+                    onChange={(e) => updateField(key, 'downloadUrl', e.target.value)}
                     placeholder="https://..."
                   />
                 </div>
@@ -132,7 +134,7 @@ export function AdminIndodeskDownloadsView() {
                     <label className="mb-1 block text-xs font-medium text-surface-600">Versi</label>
                     <Input
                       value={form.version}
-                      onChange={(e) => updateField(row.platform, 'version', e.target.value)}
+                      onChange={(e) => updateField(key, 'version', e.target.value)}
                       placeholder="1.3.7"
                     />
                   </div>
@@ -140,7 +142,7 @@ export function AdminIndodeskDownloadsView() {
                     <label className="mb-1 block text-xs font-medium text-surface-600">Ukuran</label>
                     <Input
                       value={form.fileSize}
-                      onChange={(e) => updateField(row.platform, 'fileSize', e.target.value)}
+                      onChange={(e) => updateField(key, 'fileSize', e.target.value)}
                       placeholder="~15 MB"
                     />
                   </div>
@@ -149,7 +151,7 @@ export function AdminIndodeskDownloadsView() {
                   <input
                     type="checkbox"
                     checked={form.isActive}
-                    onChange={(e) => updateField(row.platform, 'isActive', e.target.checked)}
+                    onChange={(e) => updateField(key, 'isActive', e.target.checked)}
                     className="rounded border-surface-300"
                   />
                   Tampilkan di halaman Remote
@@ -158,10 +160,10 @@ export function AdminIndodeskDownloadsView() {
                   <Button
                     variant="primary"
                     size="sm"
-                    disabled={saving === row.platform}
-                    onClick={() => void save(row.platform)}
+                    disabled={saving === key}
+                    onClick={() => void save(row.platform, row.role)}
                   >
-                    {saving === row.platform ? 'Menyimpan...' : 'Simpan'}
+                    {saving === key ? 'Menyimpan...' : 'Simpan'}
                   </Button>
                   {form.isActive && form.downloadUrl && (
                     <a

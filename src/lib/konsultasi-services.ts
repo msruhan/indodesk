@@ -129,3 +129,14 @@ export function filterServicesByFeatureFlags(
     return true
   })
 }
+
+/** Harga termurah dari paket konsultasi (bukan inspeksi). */
+export function lowestConsultationServicePrice(
+  services: TeknisiConsultationService[],
+): number | null {
+  const consultationPrices = services
+    .filter((service) => service.kind === 'consultation')
+    .map((service) => service.price)
+  if (consultationPrices.length === 0) return null
+  return Math.min(...consultationPrices)
+}

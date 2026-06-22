@@ -26,7 +26,6 @@ const createSchema = z.object({
   device: z.string().min(1, 'Perangkat wajib diisi').max(120),
   clientOs: z.enum(['WINDOWS', 'MACOS']),
   remoteId: z.string().min(6).max(32).optional(),
-  remoteOtp: z.string().min(4).max(32).optional(),
 })
 
 export async function GET() {
@@ -63,7 +62,7 @@ export async function POST(req: Request) {
     return apiError(parsed.error.issues[0]?.message ?? 'Data tidak valid')
   }
 
-  const { teknisiId, service, price, note, device, clientOs, remoteId, remoteOtp } = parsed.data
+  const { teknisiId, service, price, note, device, clientOs, remoteId } = parsed.data
 
   if (teknisiId === session.user.id) {
     return apiError('Tidak dapat memesan konsultasi ke diri sendiri')
@@ -99,9 +98,6 @@ export async function POST(req: Request) {
       if (!remoteId?.trim()) {
         return apiError('IndoDesk ID wajib untuk layanan remote')
       }
-      if (!remoteOtp?.trim()) {
-        return apiError('OTP IndoDesk wajib untuk layanan remote')
-      }
     }
 
     const openDuplicate = await prisma.konsultasiSession.findFirst({
@@ -133,7 +129,7 @@ export async function POST(req: Request) {
         clientOs,
         requiresRemote: matched.requiresRemote,
         remoteId: matched.requiresRemote ? remoteId!.trim() : null,
-        remoteOtp: matched.requiresRemote ? remoteOtp!.trim() : null,
+        remoteOtp: null,
         price: amount,
         platformFee: new Prisma.Decimal(fees.platformFee),
         teknisiEarning: new Prisma.Decimal(fees.teknisiEarning),

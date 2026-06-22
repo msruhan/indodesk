@@ -42,7 +42,10 @@ import { openTeknisiChat } from '@/lib/open-teknisi-chat'
 import type { PublicTeknisiDetailDto } from '@/lib/teknisi-public-detail'
 import { resolvePortfolioIcon, type TeknisiPortfolioItemDto } from '@/lib/teknisi-portfolio'
 import type { TeknisiCertificationItemDto } from '@/lib/teknisi-certification'
-import type { TeknisiConsultationService } from '@/lib/konsultasi-services'
+import {
+  lowestConsultationServicePrice,
+  type TeknisiConsultationService,
+} from '@/lib/konsultasi-services'
 import { allProfileSkills } from '@/lib/teknisi-profile-content'
 import { getProfileSummaryFields } from '@/lib/teknisi-profile-display'
 import { formatOperatingHoursLines } from '@/lib/store-operating-hours'
@@ -910,6 +913,9 @@ function AnimatedNumber({ value, decimal = false, suffix = '' }: { value: number
    BOOKING SUMMARY (sidebar)
    ========================================================================== */
 function BookingSummary({ teknisi }: { teknisi: PublicTeknisiDetailDto }) {
+  const startingPrice =
+    lowestConsultationServicePrice(teknisi.services) ?? teknisi.price
+
   return (
     <div className="overflow-hidden rounded-3xl border border-white/70 bg-white shadow-[0_24px_70px_-24px_rgba(16,185,129,0.4)]">
       {/* Animated header */}
@@ -940,7 +946,7 @@ function BookingSummary({ teknisi }: { teknisi: PublicTeknisiDetailDto }) {
 
         <div className="relative">
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary-100">Starting Price</p>
-          <p className="mt-3 text-4xl font-black tracking-tight tabular-nums">{formatPrice(teknisi.price)}</p>
+          <p className="mt-3 text-4xl font-black tracking-tight tabular-nums">{formatPrice(startingPrice)}</p>
           <p className="mt-1 text-[12px] text-primary-100">per sesi konsultasi profesional</p>
         </div>
       </div>
@@ -1231,7 +1237,21 @@ function CertificationsPanel({
                     <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700">
                       <Award className="h-4 w-4" />
                     </span>
-                    <p className="text-[13px] font-semibold leading-snug text-ink">{item.title}</p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-[13px] font-semibold leading-snug text-ink">{item.title}</p>
+                        {item.year != null ? (
+                          <span className="rounded-full bg-surface-100 px-2 py-0.5 text-[10px] font-semibold text-surface-600">
+                            {item.year}
+                          </span>
+                        ) : null}
+                      </div>
+                      {item.description ? (
+                        <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-surface-600">
+                          {item.description}
+                        </p>
+                      ) : null}
+                    </div>
                   </div>
                 </button>
               ) : (
@@ -1245,7 +1265,19 @@ function CertificationsPanel({
                     <FileText className="h-5 w-5" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-semibold text-ink">{item.title}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate text-[13px] font-semibold text-ink">{item.title}</p>
+                      {item.year != null ? (
+                        <span className="rounded-full bg-surface-100 px-2 py-0.5 text-[10px] font-semibold text-surface-600">
+                          {item.year}
+                        </span>
+                      ) : null}
+                    </div>
+                    {item.description ? (
+                      <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-surface-600">
+                        {item.description}
+                      </p>
+                    ) : null}
                     <p className="mt-0.5 text-[11px] text-primary-600">Buka PDF</p>
                   </div>
                   <ArrowRight className="h-4 w-4 shrink-0 text-surface-400 transition-transform group-hover:translate-x-0.5" />
@@ -1853,7 +1885,7 @@ function ServicesMenu({
 
   const consultationServices = services.filter((s) => s.kind === 'consultation')
   const inspectionServices = services.filter((s) => s.kind !== 'consultation')
-  const startingFromPrice = services[0]?.price ?? 0
+  const startingFromPrice = lowestConsultationServicePrice(services) ?? 0
   const hasInspection = inspectionServices.length > 0
 
   return (
@@ -1875,7 +1907,7 @@ function ServicesMenu({
           <div className="hidden text-right sm:block">
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-surface-400">Tarif mulai</p>
             <p className="mt-0.5 text-[20px] font-black tabular-nums text-ink">
-              {services[0] ? formatPrice(startingFromPrice) : '—'}
+              {consultationServices.length > 0 ? formatPrice(startingFromPrice) : '—'}
             </p>
           </div>
           <ProfileSectionEditButton section="services" />

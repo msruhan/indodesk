@@ -15,6 +15,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { PageHero } from '@/components/shared/page-hero'
 import { cn } from '@/lib/utils'
 import { SupportChatButton } from '@/components/chat/support-chat-button'
+import { IndodeskPairingPanel } from '@/components/indodesk/indodesk-pairing-panel'
 import type { PublicTeknisiDto } from '@/lib/teknisi-public'
 import {
   Download,
@@ -28,19 +29,25 @@ import {
 } from '@/lib/icons'
 
 const steps = [
-  { num: 1, title: 'Download IndoDesk', desc: 'Install aplikasi remote IndoDesk di perangkat Anda.' },
-  { num: 2, title: 'Buka IndoDesk', desc: 'Jalankan aplikasi, catat ID dan One-Time Password yang muncul.' },
+  { num: 1, title: 'Download IndoDesk', desc: 'Install versi Pelanggan (user) di perangkat Anda.' },
+  { num: 2, title: 'Hubungkan akun', desc: 'Pairing IndoDesk dengan akun Bantoo via kode 6 digit.' },
   {
     num: 3,
-    title: 'Hubungi teknisi',
-    desc: 'Pilih teknisi online di bawah, lalu pesan layanan konsultasi yang mendukung remote.',
+    title: 'Pesan konsultasi remote',
+    desc: 'Pilih teknisi dan pesan layanan yang mendukung IndoDesk. Masukkan IndoDesk ID Anda.',
   },
-  { num: 4, title: 'Tunggu teknisi connect', desc: 'Teknisi akan menerima request dan mulai sesi remote.' },
+  {
+    num: 4,
+    title: 'Mulai sesi',
+    desc: 'Setelah teknisi mulai, OTP muncul di dashboard — buka IndoDesk untuk connect.',
+  },
 ]
 
 type DownloadItem = {
   platform: 'windows' | 'macos'
+  role: 'user' | 'teknisi'
   platformLabel: string
+  roleLabel: string
   downloadUrl: string
   version: string
   fileSize: string | null
@@ -69,7 +76,7 @@ export default function RemotePage() {
   useEffect(() => {
     void (async () => {
       try {
-        const res = await fetch('/api/indodesk/downloads')
+        const res = await fetch('/api/indodesk/downloads?role=user')
         const json = (await res.json()) as {
           success?: boolean
           data?: { version?: string; downloads?: DownloadItem[] }
@@ -219,7 +226,7 @@ export default function RemotePage() {
                     ) : (
                       downloads.map((p) => (
                         <a
-                          key={p.platform}
+                          key={`${p.platform}-${p.role}`}
                           href={p.downloadUrl}
                           target="_blank"
                           rel="noopener noreferrer"
@@ -322,6 +329,12 @@ export default function RemotePage() {
           </div>
 
           <aside className="min-w-0 space-y-4 lg:sticky lg:top-24 lg:self-start">
+            {user && (
+              <motion.div {...fadeIn}>
+                <IndodeskPairingPanel defaultRole={role === 'TEKNISI' ? 'teknisi' : 'user'} />
+              </motion.div>
+            )}
+
             <motion.div {...fadeIn} transition={{ delay: 0.05 }}>
               <Card className="shadow-soft-xs">
                 <CardContent className="space-y-3 p-4">

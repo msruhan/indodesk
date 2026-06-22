@@ -22,6 +22,7 @@ export type UserKonsultasiDto = {
   clientOs: string | null
   requiresRemote: boolean
   remoteId: string | null
+  remoteOtp: string | null
   note: string | null
   rating: number | null
   review: string | null
@@ -57,6 +58,8 @@ export function serializeUserKonsultasi(
     clientOs: session.clientOs,
     requiresRemote: session.requiresRemote,
     remoteId: session.remoteId,
+    remoteOtp:
+      session.requiresRemote && status === 'active' ? session.remoteOtp : null,
     note: session.note,
     rating: session.rating,
     review: session.review,

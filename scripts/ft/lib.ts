@@ -917,7 +917,6 @@ export async function getConsultationBookBody(teknisiUserId: string): Promise<{
   }
   if (svc.requiresRemote) {
     body.remoteId = '987 654 321'
-    body.remoteOtp = '654321'
   }
   return body
 }

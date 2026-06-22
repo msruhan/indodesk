@@ -127,7 +127,7 @@ export function TeknisiProfileInlineEditHost({
           }}
         />
       ) : profile && activeSection === 'portfolio' ? (
-        <TeknisiPortfolioSection />
+        <TeknisiPortfolioSection onClose={handleClose} />
       ) : profile && activeSection === 'certifications' ? (
         <TeknisiCertificationSection />
       ) : profile && formSection ? (

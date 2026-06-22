@@ -6,6 +6,8 @@ export type TeknisiCertificationFileType = 'image' | 'pdf'
 export type TeknisiCertificationItemDto = {
   id: string
   title: string
+  description: string | null
+  year: number | null
   fileUrl: string
   fileType: TeknisiCertificationFileType
 }
@@ -17,6 +19,8 @@ export function serializeTeknisiCertification(
   return {
     id: row.id,
     title: row.title,
+    description: row.description?.trim() || null,
+    year: row.year ?? null,
     fileUrl: resolveDisplayImageUrl(row.fileUrl) ?? row.fileUrl,
     fileType,
   }

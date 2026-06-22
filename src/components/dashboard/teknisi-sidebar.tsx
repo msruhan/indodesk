@@ -6,7 +6,6 @@ import {
   ShoppingBag,
   ShoppingCart,
   Package,
-  UserCircle,
   Store,
   History,
   MessageCircle,
@@ -15,6 +14,7 @@ import {
   CheckSquare,
   MessageSquare,
   Shield,
+  Settings,
 } from '@/lib/icons'
 import { RoleSidebar, type SidebarNavItem } from './role-sidebar'
 import { useHydrated } from '@/hooks/use-hydrated'
@@ -44,7 +44,7 @@ const INSPEKSI_HREFS = new Set(['/teknisi/inspeksi'])
 const REKBER_HREFS = new Set(['/teknisi/rekber'])
 
 const bottomNavItems: readonly SidebarNavItem[] = [
-  { icon: UserCircle, label: 'Profil', href: '/teknisi/profil' },
+  { icon: Settings, label: 'Pengaturan Akun', href: '/teknisi/settings' },
   { icon: HelpCircle, label: 'Pusat Bantuan', href: '/teknisi/bantuan' },
 ]
 

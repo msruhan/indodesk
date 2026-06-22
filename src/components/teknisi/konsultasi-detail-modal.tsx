@@ -5,7 +5,8 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { Copy, Laptop, MessageCircle, Shield, User, X } from '@/lib/icons'
+import { Copy, Laptop, MessageCircle, User, X } from '@/lib/icons'
+import { IndodeskRemotePanel } from '@/components/konsultasi/indodesk-remote-panel'
 import type { TeknisiKonsultasiDto } from '@/lib/teknisi-layanan-serializer'
 import { toast } from 'sonner'
 
@@ -212,55 +213,14 @@ export function KonsultasiDetailModal({ konsultasi, onClose }: KonsultasiDetailM
                 </dl>
               </section>
 
-              {konsultasi.requiresRemote && (
-                <section className="space-y-3 rounded-xl border border-teal-200/70 bg-teal-50/30 p-4">
-                  <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-teal-800">
-                    <Shield className="h-3.5 w-3.5" />
-                    IndoDesk Remote
-                  </h3>
-                  <dl className="space-y-2.5">
-                    <DetailRow label="IndoDesk ID">
-                      {konsultasi.remoteId ? (
-                        <span className="inline-flex items-center gap-2 font-mono">
-                          {konsultasi.remoteId}
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2"
-                            onClick={() => void copyText('ID', konsultasi.remoteId!)}
-                          >
-                            <Copy className="h-3 w-3" />
-                            Salin
-                          </Button>
-                        </span>
-                      ) : (
-                        '—'
-                      )}
-                    </DetailRow>
-                    {(konsultasi.status === 'pending' || konsultasi.status === 'active') && (
-                      <DetailRow label="OTP">
-                        {konsultasi.remoteOtp ? (
-                          <span className="inline-flex items-center gap-2 font-mono text-primary-700">
-                            {konsultasi.remoteOtp}
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2"
-                              onClick={() => void copyText('OTP', konsultasi.remoteOtp!)}
-                            >
-                              <Copy className="h-3 w-3" />
-                              Salin
-                            </Button>
-                          </span>
-                        ) : (
-                          '—'
-                        )}
-                      </DetailRow>
-                    )}
-                  </dl>
-                </section>
+              {konsultasi.requiresRemote && konsultasi.remoteId && (
+                <IndodeskRemotePanel
+                  remoteId={konsultasi.remoteId}
+                  remoteOtp={konsultasi.remoteOtp}
+                  device={konsultasi.device}
+                  clientOs={konsultasi.clientOs}
+                  role="teknisi"
+                />
               )}
 
               {konsultasi.status === 'completed' && konsultasi.rating != null && (

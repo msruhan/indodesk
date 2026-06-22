@@ -1,18 +1,24 @@
 import { prisma } from '@/lib/db'
 import { apiError, apiSuccess } from '@/lib/api-auth'
 import { ensureIndodeskDownloads } from '@/lib/indodesk-download-seed'
-import { serializeIndodeskDownload } from '@/lib/indodesk-download'
+import { roleSlugToEnum, serializeIndodeskDownload } from '@/lib/indodesk-download'
 
 export const dynamic = 'force-dynamic'
 
-/** GET /api/indodesk/downloads — link download aktif (Windows & macOS) */
-export async function GET() {
+/** GET /api/indodesk/downloads?role=user|teknisi — link download aktif */
+export async function GET(req: Request) {
   try {
     await ensureIndodeskDownloads()
 
+    const roleParam = new URL(req.url).searchParams.get('role')
+    const roleFilter = roleParam ? roleSlugToEnum(roleParam) : null
+
     const rows = await prisma.indodeskDownload.findMany({
-      where: { isActive: true },
-      orderBy: { platform: 'asc' },
+      where: {
+        isActive: true,
+        ...(roleFilter ? { role: roleFilter } : {}),
+      },
+      orderBy: [{ role: 'asc' }, { platform: 'asc' }],
     })
 
     const downloads = rows.map(serializeIndodeskDownload)

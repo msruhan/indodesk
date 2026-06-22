@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { logCommunicationEvent } from '@/lib/activity-log'
 import { computeConfirmDeadline } from '@/lib/konsultasi-completion'
+import { generateIndodeskSessionOtp } from '@/lib/indodesk-otp'
 import { refundKonsultasiPayment } from '@/lib/konsultasi-wallet'
 import { serializeTeknisiKonsultasi, type UserParty } from '@/lib/teknisi-layanan-serializer'
 
@@ -56,7 +57,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         | 'CANCELLED'
       startedAt?: Date | null
       endedAt?: Date | null
-      remoteOtp?: null
+      remoteOtp?: string | null
       paymentStatus?: 'CAPTURED' | 'RELEASED'
       teknisiMarkedDoneAt?: Date | null
       confirmDeadlineAt?: Date | null
@@ -70,7 +71,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         if (existing.paymentStatus !== 'SECURED') {
           return apiError('Pembayaran belum dikonfirmasi')
         }
-        data = { status: 'ACTIVE', startedAt: now }
+        if (existing.requiresRemote && !existing.remoteId?.trim()) {
+          return apiError('IndoDesk ID belum tersedia untuk sesi remote ini')
+        }
+        data = {
+          status: 'ACTIVE',
+          startedAt: now,
+          ...(existing.requiresRemote
+            ? { remoteOtp: generateIndodeskSessionOtp() }
+            : {}),
+        }
         break
       case 'mark-done':
         if (existing.status !== 'ACTIVE') {

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
 import type {
   TeknisiCertificationFileType,
   TeknisiCertificationItemDto,
@@ -13,19 +14,37 @@ import { Award, FileText, Plus, Trash2, X } from '@/lib/icons'
 type CertificationFormItem = {
   id?: string
   title: string
+  description: string
+  year: string
   fileUrl: string
   fileType: TeknisiCertificationFileType
 }
 
+const CURRENT_YEAR = new Date().getFullYear()
+
 function emptyCertificationItem(): CertificationFormItem {
-  return { title: '', fileUrl: '', fileType: 'image' }
+  return { title: '', description: '', year: '', fileUrl: '', fileType: 'image' }
 }
 
 function certificationFromDto(item: TeknisiCertificationItemDto): CertificationFormItem {
   return {
     id: item.id,
     title: item.title,
+    description: item.description ?? '',
+    year: item.year != null ? String(item.year) : '',
     fileUrl: item.fileUrl,
+    fileType: item.fileType,
+  }
+}
+
+function certificationPayload(item: CertificationFormItem) {
+  const yearRaw = item.year.trim()
+  const year = yearRaw ? Number.parseInt(yearRaw, 10) : null
+  return {
+    title: item.title.trim(),
+    description: item.description.trim() || null,
+    year: Number.isFinite(year) ? year : null,
+    fileUrl: item.fileUrl.trim(),
     fileType: item.fileType,
   }
 }
@@ -193,11 +212,7 @@ function CertificationEditor({
     const fileUrl = item.fileUrl.trim()
     if (title.length < 2 || !fileUrl) return
 
-    const payload = {
-      title,
-      fileUrl,
-      fileType: item.fileType,
-    }
+    const payload = certificationPayload(item)
 
     setSavingIdx(idx)
     try {
@@ -270,14 +285,48 @@ function CertificationEditor({
           </div>
 
           <div className="space-y-3">
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="md:col-span-2">
+                <label className="mb-1 block text-[11px] font-medium text-surface-600">Judul</label>
+                <Input
+                  value={item.title}
+                  onChange={(e) => update(idx, { title: e.target.value })}
+                  onBlur={() => void saveItem(idx)}
+                  placeholder="Contoh: Apple Certified iOS Technician"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-medium text-surface-600">Tahun</label>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min={1950}
+                  max={CURRENT_YEAR + 1}
+                  value={item.year}
+                  onChange={(e) => update(idx, { year: e.target.value })}
+                  onBlur={() => void saveItem(idx)}
+                  placeholder={String(CURRENT_YEAR)}
+                />
+              </div>
+            </div>
+
             <div>
-              <label className="mb-1 block text-[11px] font-medium text-surface-600">Judul</label>
-              <Input
-                value={item.title}
-                onChange={(e) => update(idx, { title: e.target.value })}
+              <label className="mb-1 block text-[11px] font-medium text-surface-600">
+                Deskripsi
+              </label>
+              <textarea
+                value={item.description}
+                onChange={(e) => update(idx, { description: e.target.value })}
                 onBlur={() => void saveItem(idx)}
-                placeholder="Contoh: Apple Certified iOS Technician"
+                rows={2}
+                maxLength={280}
+                placeholder="Ringkasan isi sertifikasi, lembaga penerbit, atau kompetensi yang tercakup."
+                className={cn(
+                  'w-full resize-y rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm text-ink',
+                  'placeholder:text-surface-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20',
+                )}
               />
+              <p className="mt-1 text-[10px] text-surface-400">{item.description.length}/280</p>
             </div>
 
             <CertificationFileField

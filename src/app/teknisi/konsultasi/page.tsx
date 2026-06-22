@@ -15,13 +15,11 @@ import {
   Radio,
   RefreshCw,
   Laptop,
-  Copy,
-  Lock,
-  Shield,
 } from '@/lib/icons'
 import { DashboardMonthFilter, MetricCard } from '@/components/dashboard'
 import { FilterGroupSheet } from '@/components/ui/filter-group-sheet'
 import { KonsultasiDetailModal } from '@/components/teknisi/konsultasi-detail-modal'
+import { IndodeskRemotePanel } from '@/components/konsultasi/indodesk-remote-panel'
 import { useConfirm } from '@/components/ui/confirm-dialog'
 import { useChat } from '@/contexts/chat-context'
 import { useDashboardPeriod } from '@/contexts/dashboard-period-context'
@@ -64,14 +62,6 @@ const STATUS_TABS: Array<{ id: StatusTab; label: string }> = [
   { id: 'cancelled', label: 'Dibatalkan' },
 ]
 
-async function copyText(label: string, value: string) {
-  try {
-    await navigator.clipboard.writeText(value)
-    toast.success(`${label} disalin`)
-  } catch {
-    toast.error(`Gagal menyalin ${label.toLowerCase()}`)
-  }
-}
 
 type KonsultasiActionsProps = {
   k: TeknisiKonsultasiDto
@@ -179,54 +169,19 @@ function TeknisiKonsultasiActions({
 }
 
 function TeknisiKonsultasiRemotePanel({ k, compact = false }: { k: TeknisiKonsultasiDto; compact?: boolean }) {
-  if (!k.requiresRemote || (k.status !== 'pending' && k.status !== 'active')) return null
+  if (!k.requiresRemote || !k.remoteId || (k.status !== 'pending' && k.status !== 'active')) {
+    return null
+  }
 
   return (
-    <div
-      className={cn(
-        'rounded-lg border border-surface-200/70 bg-surface-50/80',
-        compact ? 'space-y-1 p-1.5 text-[10px]' : 'flex flex-col gap-2 p-2 text-[12px] sm:flex-row sm:flex-wrap sm:items-center sm:gap-4',
-      )}
-    >
-      {(k.device || k.clientOs) && (
-        <span className="flex items-center gap-1 text-surface-600">
-          <Laptop className="h-3 w-3 shrink-0 text-surface-400" />
-          {[k.device, k.clientOs].filter(Boolean).join(' · ')}
-        </span>
-      )}
-      {k.remoteId && (
-        <span className="flex flex-wrap items-center gap-1 font-mono text-surface-600">
-          <Shield className="h-3 w-3 shrink-0 text-primary-600" />
-          {k.remoteId}
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-6 px-1.5 text-[9px]"
-            onClick={() => void copyText('ID', k.remoteId!)}
-          >
-            <Copy className="h-3 w-3" />
-            Salin
-          </Button>
-        </span>
-      )}
-      {k.remoteOtp && (
-        <span className="flex flex-wrap items-center gap-1 font-mono text-primary-700">
-          <Lock className="h-3 w-3 shrink-0" />
-          OTP: {k.remoteOtp}
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-6 px-1.5 text-[9px]"
-            onClick={() => void copyText('OTP', k.remoteOtp!)}
-          >
-            <Copy className="h-3 w-3" />
-            Salin
-          </Button>
-        </span>
-      )}
-    </div>
+    <IndodeskRemotePanel
+      remoteId={k.remoteId}
+      remoteOtp={k.remoteOtp}
+      device={k.device}
+      clientOs={k.clientOs}
+      role="teknisi"
+      compact={compact}
+    />
   )
 }
 

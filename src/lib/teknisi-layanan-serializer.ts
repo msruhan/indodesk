@@ -163,9 +163,7 @@ export function serializeTeknisiKonsultasi(
     requiresRemote: session.requiresRemote,
     remoteId: session.remoteId,
     remoteOtp:
-      session.requiresRemote && (status === 'pending' || status === 'active')
-        ? session.remoteOtp
-        : null,
+      session.requiresRemote && status === 'active' ? session.remoteOtp : null,
     note: session.note,
     rating: session.rating,
     review: session.review,

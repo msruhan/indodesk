@@ -170,7 +170,12 @@ function teknisiQuickActions(): SmartSearchItem[] {
         'wallet',
         'transaksi',
       ]),
-      quick('profil', 'Profil', 'Profil publik teknisi', '/teknisi/profil', ['profil', 'akun', 'setting']),
+      quick('profil', 'Profil', 'Profil publik teknisi', '/teknisi/profil', ['profil', 'publik']),
+      quick('pengaturan akun', 'Pengaturan Akun', 'Keamanan dan preferensi akun', '/teknisi/settings', [
+        'setting',
+        'akun',
+        'keamanan',
+      ]),
       quick('bantuan', 'Pusat Bantuan', 'FAQ, tiket, dan kontak support', '/teknisi/bantuan', [
         'help',
         'support',

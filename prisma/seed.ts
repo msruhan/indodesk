@@ -358,6 +358,8 @@ async function main() {
       {
         teknisiId: teknisi1.id,
         title: 'Apple Certified iOS Technician',
+        description: 'Sertifikasi resmi perbaikan perangkat iOS dan diagnostik Apple.',
+        year: 2023,
         fileUrl:
           'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=800&h=600&fit=crop',
         fileType: 'image',
@@ -366,6 +368,8 @@ async function main() {
       {
         teknisiId: teknisi1.id,
         title: 'Sertifikat Board Repair Level 2',
+        description: 'Pelatihan micro-soldering dan perbaikan motherboard tingkat lanjut.',
+        year: 2022,
         fileUrl:
           'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&h=600&fit=crop',
         fileType: 'image',

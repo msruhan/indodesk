@@ -8,6 +8,14 @@ export const dynamic = 'force-dynamic'
 
 const patchSchema = z.object({
   title: z.string().min(2).max(120).optional(),
+  description: z.string().max(280).optional().nullable(),
+  year: z
+    .number()
+    .int()
+    .min(1950)
+    .max(new Date().getFullYear() + 1)
+    .optional()
+    .nullable(),
   fileUrl: z.string().min(1).max(2048).optional(),
   fileType: z.enum(['image', 'pdf']).optional(),
   sortOrder: z.number().int().min(0).max(99).optional(),
@@ -45,6 +53,10 @@ export async function PATCH(
       where: { id },
       data: {
         ...(parsed.data.title !== undefined ? { title: parsed.data.title.trim() } : {}),
+        ...(parsed.data.description !== undefined
+          ? { description: parsed.data.description?.trim() || null }
+          : {}),
+        ...(parsed.data.year !== undefined ? { year: parsed.data.year ?? null } : {}),
         ...(parsed.data.fileUrl !== undefined ? { fileUrl: parsed.data.fileUrl.trim() } : {}),
         ...(parsed.data.fileType !== undefined ? { fileType: parsed.data.fileType } : {}),
         ...(parsed.data.sortOrder !== undefined ? { sortOrder: parsed.data.sortOrder } : {}),

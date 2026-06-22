@@ -71,7 +71,7 @@ export function TeknisiAkunView() {
       </motion.div>
 
       <motion.div {...fadeIn} className="space-y-6">
-        <AccountSettingsView showKycSection={false} initialTab="keamanan" hideTabBar />
+        <AccountSettingsView initialTab="keamanan" hideTabBar />
 
         <DashboardPanel
           title="Preferensi Notifikasi"

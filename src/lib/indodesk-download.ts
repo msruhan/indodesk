@@ -1,9 +1,11 @@
-import type { IndodeskDownload, IndodeskPlatform } from '@prisma/client'
+import type { IndodeskClientRole, IndodeskDownload, IndodeskPlatform } from '@prisma/client'
 
 export type IndodeskDownloadDto = {
   id: string
   platform: 'windows' | 'macos'
+  role: 'user' | 'teknisi'
   platformLabel: string
+  roleLabel: string
   downloadUrl: string
   version: string
   fileSize: string | null
@@ -21,9 +23,24 @@ const slugToPlatform: Record<IndodeskDownloadDto['platform'], IndodeskPlatform> 
   macos: 'MACOS',
 }
 
+const roleToSlug: Record<IndodeskClientRole, IndodeskDownloadDto['role']> = {
+  USER: 'user',
+  TEKNISI: 'teknisi',
+}
+
+const slugToRole: Record<IndodeskDownloadDto['role'], IndodeskClientRole> = {
+  user: 'USER',
+  teknisi: 'TEKNISI',
+}
+
 const platformLabels: Record<IndodeskPlatform, string> = {
   WINDOWS: 'Windows',
   MACOS: 'macOS',
+}
+
+const roleLabels: Record<IndodeskClientRole, string> = {
+  USER: 'Pelanggan',
+  TEKNISI: 'Teknisi',
 }
 
 export function platformSlugToEnum(slug: string): IndodeskPlatform | null {
@@ -32,11 +49,19 @@ export function platformSlugToEnum(slug: string): IndodeskPlatform | null {
   return slugToPlatform[slug as IndodeskDownloadDto['platform']] ?? null
 }
 
+export function roleSlugToEnum(slug: string): IndodeskClientRole | null {
+  if (slug === 'user' || slug === 'USER') return 'USER'
+  if (slug === 'teknisi' || slug === 'TEKNISI') return 'TEKNISI'
+  return slugToRole[slug as IndodeskDownloadDto['role']] ?? null
+}
+
 export function serializeIndodeskDownload(row: IndodeskDownload): IndodeskDownloadDto {
   return {
     id: row.id,
     platform: platformToSlug[row.platform],
+    role: roleToSlug[row.role],
     platformLabel: platformLabels[row.platform],
+    roleLabel: roleLabels[row.role],
     downloadUrl: row.downloadUrl,
     version: row.version,
     fileSize: row.fileSize,
@@ -47,20 +72,37 @@ export function serializeIndodeskDownload(row: IndodeskDownload): IndodeskDownlo
 
 export const DEFAULT_INODESK_DOWNLOADS: Array<{
   platform: IndodeskPlatform
+  role: IndodeskClientRole
   downloadUrl: string
   version: string
   fileSize: string
 }> = [
   {
     platform: 'WINDOWS',
-    downloadUrl: 'https://github.com/rustdesk/rustdesk/releases/latest/download/rustdesk-x86_64.exe',
-    version: '1.3.7',
+    role: 'USER',
+    downloadUrl: 'https://github.com/msruhan/rustdesk/releases/latest/download/indodesk-user-windows.zip',
+    version: '1.4.6',
     fileSize: '~15 MB',
   },
   {
     platform: 'MACOS',
-    downloadUrl: 'https://github.com/rustdesk/rustdesk/releases/latest/download/rustdesk-x86_64.dmg',
-    version: '1.3.7',
+    role: 'USER',
+    downloadUrl: 'https://github.com/msruhan/rustdesk/releases/latest/download/indodesk-user-macos.dmg',
+    version: '1.4.6',
+    fileSize: '~20 MB',
+  },
+  {
+    platform: 'WINDOWS',
+    role: 'TEKNISI',
+    downloadUrl: 'https://github.com/msruhan/rustdesk/releases/latest/download/indodesk-teknisi-windows.zip',
+    version: '1.4.6',
+    fileSize: '~15 MB',
+  },
+  {
+    platform: 'MACOS',
+    role: 'TEKNISI',
+    downloadUrl: 'https://github.com/msruhan/rustdesk/releases/latest/download/indodesk-teknisi-macos.dmg',
+    version: '1.4.6',
     fileSize: '~20 MB',
   },
 ]

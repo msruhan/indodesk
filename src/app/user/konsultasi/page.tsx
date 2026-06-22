@@ -31,6 +31,7 @@ import { cn } from '@/lib/utils'
 import type { UserKonsultasiDto } from '@/lib/user-konsultasi-serializer'
 import type { TeknisiKonsultasiStatus } from '@/lib/teknisi-layanan-serializer'
 import { TripayChannelPicker } from '@/components/payments/tripay-channel-picker'
+import { IndodeskRemotePanel } from '@/components/konsultasi/indodesk-remote-panel'
 import { useConfirm } from '@/components/ui/confirm-dialog'
 
 const formatPrice = (price: number) =>
@@ -603,6 +604,16 @@ export default function UserKonsultasiPage() {
                         <span className="text-surface-400">Belum rating</span>
                       )}
                     </div>
+                    {k.requiresRemote && k.remoteId && k.status === 'active' && (
+                      <IndodeskRemotePanel
+                        remoteId={k.remoteId}
+                        remoteOtp={k.remoteOtp}
+                        device={k.device}
+                        clientOs={k.clientOs}
+                        role="user"
+                        compact
+                      />
+                    )}
                     <KonsultasiItemActions
                       k={k}
                       actingId={actingId}
@@ -655,19 +666,31 @@ export default function UserKonsultasiPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <KonsultasiItemActions
-                        k={k}
-                        actingId={actingId}
-                        ratingId={ratingId}
-                        ratingValue={ratingValue}
-                        reviewText={reviewText}
-                        confirmDialog={confirmDialog}
-                        patchAction={patchAction}
-                        setRatingId={setRatingId}
-                        setRatingValue={setRatingValue}
-                        setReviewText={setReviewText}
-                        setChannelPaySession={setChannelPaySession}
-                      />
+                      <div className="space-y-2">
+                        <KonsultasiItemActions
+                          k={k}
+                          actingId={actingId}
+                          ratingId={ratingId}
+                          ratingValue={ratingValue}
+                          reviewText={reviewText}
+                          confirmDialog={confirmDialog}
+                          patchAction={patchAction}
+                          setRatingId={setRatingId}
+                          setRatingValue={setRatingValue}
+                          setReviewText={setReviewText}
+                          setChannelPaySession={setChannelPaySession}
+                        />
+                        {k.requiresRemote && k.remoteId && k.status === 'active' && (
+                          <IndodeskRemotePanel
+                            remoteId={k.remoteId}
+                            remoteOtp={k.remoteOtp}
+                            device={k.device}
+                            clientOs={k.clientOs}
+                            role="user"
+                            compact
+                          />
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

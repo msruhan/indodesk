@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
@@ -43,15 +43,33 @@ export function KonsultasiBookingDialog({
   const [clientOs, setClientOs] = useState<'WINDOWS' | 'MACOS'>('WINDOWS')
   const [note, setNote] = useState('')
   const [remoteId, setRemoteId] = useState('')
-  const [remoteOtp, setRemoteOtp] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [paySession, setPaySession] = useState<{ sessionId: string; price: number } | null>(null)
 
-  if (!open) return null
-
   const requiresRemote = selected?.requiresRemote === true
   const price = selected?.price ?? 0
+
+  useEffect(() => {
+    if (!open || !requiresRemote || sessionStatus !== 'authenticated') return
+    void (async () => {
+      try {
+        const res = await fetch('/api/indodesk/devices')
+        const json = await res.json()
+        if (!json.success) return
+        const userDevice = (json.data.items as { role: string; rustdeskId: string }[]).find(
+          (d) => d.role === 'user',
+        )
+        if (userDevice?.rustdeskId) {
+          setRemoteId(userDevice.rustdeskId)
+        }
+      } catch {
+        /* ignore */
+      }
+    })()
+  }, [open, requiresRemote, sessionStatus])
+
+  if (!open) return null
 
   const handleSubmit = async () => {
     if (!selected) return
@@ -71,10 +89,6 @@ export function KonsultasiBookingDialog({
         setError('IndoDesk ID wajib untuk layanan remote')
         return
       }
-      if (!remoteOtp.trim()) {
-        setError('OTP IndoDesk wajib untuk layanan remote')
-        return
-      }
     }
 
     setSubmitting(true)
@@ -91,7 +105,6 @@ export function KonsultasiBookingDialog({
           device: device.trim(),
           clientOs,
           remoteId: requiresRemote ? remoteId.trim() : undefined,
-          remoteOtp: requiresRemote ? remoteOtp.trim() : undefined,
         }),
       })
       const json = await res.json()
@@ -227,7 +240,8 @@ export function KonsultasiBookingDialog({
         {requiresRemote && (
           <div className="mb-3 space-y-3 rounded-xl border border-primary-100 bg-primary-50/40 p-3">
             <p className="text-xs text-primary-800">
-              Layanan ini membutuhkan IndoDesk.{' '}
+              Layanan ini membutuhkan IndoDesk. Masukkan ID dari aplikasi IndoDesk Anda. OTP sesi
+              akan diberikan setelah teknisi memulai.{' '}
               <Link href="/remote" className="font-medium underline">
                 Download IndoDesk
               </Link>
@@ -240,17 +254,6 @@ export function KonsultasiBookingDialog({
                 value={remoteId}
                 onChange={(e) => setRemoteId(e.target.value)}
                 placeholder="123 456 789"
-                className="text-sm"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-surface-600">
-                OTP IndoDesk <span className="text-red-500">*</span>
-              </label>
-              <Input
-                value={remoteOtp}
-                onChange={(e) => setRemoteOtp(e.target.value)}
-                placeholder="OTP dari aplikasi IndoDesk"
                 className="text-sm"
               />
             </div>

@@ -85,14 +85,11 @@ function GoogleLinkedQuerySync({ onLinked }: { onLinked: () => void }) {
 }
 
 type AccountSettingsViewProps = {
-  /** Hide KYC mock block on teknisi profile tab */
-  showKycSection?: boolean
   initialTab?: 'profil' | 'keamanan'
   hideTabBar?: boolean
 }
 
 export function AccountSettingsView({
-  showKycSection = true,
   initialTab = 'profil',
   hideTabBar = false,
 }: AccountSettingsViewProps) {
@@ -504,20 +501,6 @@ export function AccountSettingsView({
               </div>
             </CardContent>
           </Card>
-
-          {showKycSection && (
-            <Card className="shadow-soft-xs opacity-60">
-              <CardContent className="p-5">
-                <div className="mb-2 flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-ink">Verifikasi Identitas (KYC)</h3>
-                  <Badge variant="outline" className="text-[10px]">
-                    Segera hadir
-                  </Badge>
-                </div>
-                <p className="text-xs text-surface-500">Fitur KYC akan tersedia pada update berikutnya.</p>
-              </CardContent>
-            </Card>
-          )}
         </motion.div>
       )}
 

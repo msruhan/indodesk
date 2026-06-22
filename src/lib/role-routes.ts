@@ -9,6 +9,7 @@ import {
 import { isUserDashboardZone } from '@/lib/user-nav-home'
 
 export const MARKETPLACE_PATH = '/marketplace'
+export const TEKNISI_PUBLIC_PROFILE_PATH = '/teknisi/profil'
 
 /** Dashboard home for each role — used when blocking cross-role access. */
 export function homePathForRole(role: UserRole): string {
@@ -118,7 +119,7 @@ export function profileMenuItemsForRole(
   if (role === 'TEKNISI') {
     return [
       { label: 'Marketplace', href: MARKETPLACE_PATH },
-      { label: 'Profil', href: '/teknisi/profil' },
+      { label: 'Profil', href: TEKNISI_PUBLIC_PROFILE_PATH },
       { label: 'Analitik', href: '/teknisi/analitik' },
     ]
   }
@@ -207,7 +208,7 @@ export function publicProfileMenuItemsForRole(
       : { label: 'Market', href: MARKETPLACE_PATH }
     return [
       marketOrDashboard,
-      { label: 'Profil', href: '/teknisi/profil' },
+      { label: 'Profil', href: TEKNISI_PUBLIC_PROFILE_PATH },
       { label: 'Analitik', href: '/teknisi/analitik' },
     ]
   }

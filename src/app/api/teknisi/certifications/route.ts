@@ -7,6 +7,14 @@ export const dynamic = 'force-dynamic'
 
 const certificationSchema = z.object({
   title: z.string().min(2).max(120),
+  description: z.string().max(280).optional().nullable(),
+  year: z
+    .number()
+    .int()
+    .min(1950)
+    .max(new Date().getFullYear() + 1)
+    .optional()
+    .nullable(),
   fileUrl: z.string().min(1).max(2048),
   fileType: z.enum(['image', 'pdf']),
 })
@@ -47,6 +55,8 @@ export async function POST(req: Request) {
       data: {
         teknisiId: session.user.id,
         title: parsed.data.title.trim(),
+        description: parsed.data.description?.trim() || null,
+        year: parsed.data.year ?? null,
         fileUrl: parsed.data.fileUrl.trim(),
         fileType: parsed.data.fileType,
         sortOrder: count,

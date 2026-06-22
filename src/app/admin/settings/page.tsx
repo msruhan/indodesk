@@ -41,7 +41,7 @@ export default function AdminSettingsPage() {
           description="Password akun admin dan Google Authenticator (2FA) untuk login."
         >
           <Suspense fallback={<SecuritySettingsFallback />}>
-            <AccountSettingsView showKycSection={false} initialTab="keamanan" hideTabBar />
+            <AccountSettingsView initialTab="keamanan" hideTabBar />
           </Suspense>
         </DashboardPanel>
       </div>
