@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db'
 import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { createIndodeskSessionGrant } from '@/lib/indodesk-auth'
 import { buildIndodeskConnectLink, buildIndodeskPasswordLink } from '@/lib/indodesk-deeplink'
+import { INODESK_UNLOCK_STATUSES } from '@/lib/indodesk-session-policy'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,7 +18,13 @@ export async function GET(req: Request) {
 
   try {
     const row = await prisma.konsultasiSession.findUnique({ where: { id: sessionId } })
-    if (!row || row.status !== 'ACTIVE' || !row.requiresRemote || !row.remoteId || !row.remoteOtp) {
+    if (
+      !row ||
+      !(INODESK_UNLOCK_STATUSES as readonly string[]).includes(row.status) ||
+      !row.requiresRemote ||
+      !row.remoteId ||
+      !row.remoteOtp
+    ) {
       return apiError('Sesi remote tidak aktif', 404)
     }
 

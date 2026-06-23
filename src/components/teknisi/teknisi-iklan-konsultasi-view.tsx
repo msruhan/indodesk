@@ -14,6 +14,7 @@ import {
   EmptyState,
   MetricCard,
 } from '@/components/dashboard'
+import { teknisiProfilePath } from '@/lib/teknisi-profile-slug'
 import { ConsultationServiceForm } from '@/components/teknisi/consultation-service-form'
 import { useTeknisiProfile } from '@/hooks/use-teknisi-profile'
 import {
@@ -231,7 +232,7 @@ export function TeknisiIklanKonsultasiView() {
         description="Kelola paket konsultasi yang tampil di profil publik dan menu pemesanan user."
         actions={
           <div className="flex flex-wrap gap-2 self-start">
-            <Link href={`/teknisi/${profile.userId}`} target="_blank">
+            <Link href={teknisiProfilePath(profile.profileSlug, profile.userId)} target="_blank">
               <Button variant="outline" size="sm" className="h-8 gap-1 px-3 text-[11px]">
                 <ExternalLink className="h-3.5 w-3.5" />
                 Lihat Profil

@@ -8,6 +8,7 @@ import {
   normalizeShipOriginCouriers,
   validateShipOriginCouriers,
 } from '@/lib/shipping-config'
+import { allocateTeknisiProfileSlug } from '@/lib/teknisi-profile-slug-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -178,9 +179,15 @@ export async function PATCH(req: Request) {
         })
       }
 
+      const profileSlug =
+        name !== undefined
+          ? await allocateTeknisiProfileSlug(name.trim(), session.user.id, tx)
+          : undefined
+
       await tx.teknisiProfile.update({
         where: { userId: session.user.id },
         data: {
+          ...(profileSlug !== undefined ? { profileSlug } : {}),
           ...(experience !== undefined ? { experience: experience?.trim() || null } : {}),
           ...(location !== undefined ? { location: location?.trim() || null } : {}),
           ...(shipOriginCityId !== undefined ? { shipOriginCityId } : {}),

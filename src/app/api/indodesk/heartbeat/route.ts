@@ -1,19 +1,14 @@
 import { prisma } from '@/lib/db'
-import { apiError, apiSuccess } from '@/lib/api-auth'
+import { apiSuccess } from '@/lib/api-auth'
+import { extractIndodeskDeviceToken } from '@/lib/indodesk-device-auth'
 import { resolveIndodeskDevice } from '@/lib/indodesk-auth'
 import { normalizeRustdeskIdForMatch } from '@/lib/indodesk-device'
+import {
+  buildIndodeskHeartbeatStatus,
+  findUnlockEligibleSessionForDevice,
+} from '@/lib/indodesk-session'
 
 export const dynamic = 'force-dynamic'
-
-function extractDeviceToken(req: Request, body: Record<string, unknown>): string | null {
-  const auth = req.headers.get('authorization')
-  if (auth?.startsWith('Bearer ')) {
-    return auth.slice(7).trim() || null
-  }
-  const fromBody = body.deviceToken ?? body.device_token ?? body.bantoo_token
-  if (typeof fromBody === 'string' && fromBody.trim()) return fromBody.trim()
-  return null
-}
 
 /** POST /api/indodesk/heartbeat — kompatibel subset RustDesk hbbs heartbeat */
 export async function POST(req: Request) {
@@ -24,7 +19,7 @@ export async function POST(req: Request) {
     return apiSuccess('')
   }
 
-  const token = extractDeviceToken(req, body)
+  const token = extractIndodeskDeviceToken(req, body)
   if (!token) {
     return apiSuccess('')
   }
@@ -46,7 +41,8 @@ export async function POST(req: Request) {
       },
     })
 
-    return apiSuccess('')
+    const session = await findUnlockEligibleSessionForDevice(device)
+    return apiSuccess(buildIndodeskHeartbeatStatus(session))
   } catch (e) {
     console.error('[INODESK_HEARTBEAT]', e)
     return apiSuccess('')

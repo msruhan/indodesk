@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import type { TeknisiAccountProfileDto } from '@/lib/teknisi-profile-serializer'
 import { isR2PublicUrl } from '@/lib/image-url-utils'
+import { teknisiProfilePath } from '@/lib/teknisi-profile-slug'
 import { InspectionServiceToggle } from './inspection-service-toggle'
 import { Plus, Trash2, ChevronUp, ChevronDown, X, Eye, Lock } from '@/lib/icons'
 
@@ -481,7 +482,7 @@ export function TeknisiProfileForm({
               </p>
               {!form.isProfileHidden && (
                 <Link
-                  href={`/teknisi/${profile.userId}`}
+                  href={teknisiProfilePath(profile.profileSlug, profile.userId)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-2 inline-flex text-xs font-medium text-primary-700 hover:underline"

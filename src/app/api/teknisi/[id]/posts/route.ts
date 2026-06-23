@@ -4,6 +4,7 @@ import { getPublicFeatureFlags } from '@/lib/platform-settings'
 import { serializeTeknisiPost } from '@/lib/teknisi-post'
 import { teknisiPostInclude } from '@/lib/teknisi-post-queries'
 import { isTeknisiProfilePubliclyVisible } from '@/lib/teknisi-profile-visibility'
+import { resolveTeknisiUserId } from '@/lib/teknisi-profile-slug-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,12 +16,17 @@ export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id: teknisiId } = await params
+  const { id: slugOrId } = await params
 
   try {
     const flags = await getPublicFeatureFlags()
     if (!flags.cariTeknisiEnabled) {
       return apiError('Cari Teknisi sedang dinonaktifkan', 403)
+    }
+
+    const teknisiId = await resolveTeknisiUserId(slugOrId)
+    if (!teknisiId) {
+      return apiError('Teknisi tidak ditemukan', 404)
     }
 
     const profile = await prisma.teknisiProfile.findFirst({

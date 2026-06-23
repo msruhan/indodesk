@@ -18,22 +18,22 @@ function parseTab(raw: string | null): TeknisiProfileTab {
 }
 
 type TeknisiProfileTabsProps = {
-  teknisiId: string
+  profilePath: string
   postCount: number
   className?: string
 }
 
-export function TeknisiProfileTabs({ teknisiId, postCount, className }: TeknisiProfileTabsProps) {
+export function TeknisiProfileTabs({ profilePath, postCount, className }: TeknisiProfileTabsProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const active = parseTab(searchParams.get('tab'))
 
   const setTab = useCallback(
     (tab: TeknisiProfileTab) => {
-      const next = tab === 'profil' ? `/teknisi/${teknisiId}` : `/teknisi/${teknisiId}?tab=postingan`
+      const next = tab === 'profil' ? profilePath : `${profilePath}?tab=postingan`
       router.replace(next, { scroll: false })
     },
-    [router, teknisiId],
+    [router, profilePath],
   )
 
   return (

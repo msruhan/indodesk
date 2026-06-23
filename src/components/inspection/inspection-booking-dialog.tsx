@@ -6,6 +6,7 @@ import { motion } from 'framer-motion'
 import { InspectionCreateForm } from '@/components/inspection/inspection-create-form'
 import type { PublicTeknisiDetailDto } from '@/lib/teknisi-public-detail'
 import type { InspectionMode } from '@prisma/client'
+import { teknisiProfilePath } from '@/lib/teknisi-profile-slug'
 import { X } from '@/lib/icons'
 
 type Props = {
@@ -36,7 +37,7 @@ export function InspectionBookingDialog({
   }
 
   if (sessionStatus !== 'authenticated') {
-    const callback = encodeURIComponent(`/teknisi/${teknisi.id}`)
+    const callback = encodeURIComponent(teknisiProfilePath(teknisi.profileSlug, teknisi.id))
     return (
       <motion.div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-4">
         <button

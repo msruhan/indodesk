@@ -8,6 +8,7 @@ import {
 export type PublicTeknisiDto = {
   id: string
   userId: string
+  profileSlug: string | null
   name: string
   image: string | null
   isOnline: boolean
@@ -31,6 +32,7 @@ export function serializePublicTeknisi(profile: ProfileRow): PublicTeknisiDto {
   return {
     id: profile.userId,
     userId: profile.userId,
+    profileSlug: profile.profileSlug,
     name: profile.user.name,
     image: resolveDisplayImageUrl(profile.user.image),
     isOnline: profile.isOnline,

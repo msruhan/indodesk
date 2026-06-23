@@ -256,6 +256,8 @@ model TelegramLinkToken {
 model TeknisiProfile {
   id              String   @id @default(cuid())
   userId          String   @unique
+  /** URL publik /teknisi/{profileSlug} — dari nama lengkap, suffix acak jika bentrok. */
+  profileSlug     String?  @unique
   specialty       String[] // e.g. ["Unlock", "Flashing", "Root"]
   experience      String? // e.g. "8 tahun"
   coverImage      String? // banner profil publik

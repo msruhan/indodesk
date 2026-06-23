@@ -11,6 +11,7 @@ import {
 } from '@/lib/teknisi-registration'
 import { sendEmailVerification } from '@/lib/email-verification'
 import { notifyAdminTeknisiRegistered } from '@/lib/telegram/notify'
+import { allocateTeknisiProfileSlug } from '@/lib/teknisi-profile-slug-server'
 import {
   isTeknisiRegistrationOpen,
   teknisiRegistrationClosedMessage,
@@ -60,6 +61,7 @@ export async function POST(req: Request) {
     const applicationData = buildApplicationData(data)
     const specialty = normalizeRegisterSpecialty(data.specialty)
     const workCity = teknisiWorkCityFields(data)
+    const profileSlug = await allocateTeknisiProfileSlug(data.name.trim())
     const user = await prisma.user.create({
       data: {
         name: data.name.trim(),
@@ -73,6 +75,7 @@ export async function POST(req: Request) {
         wallet: { create: { balance: 0 } },
         teknisiProfile: {
           create: {
+            profileSlug,
             specialty,
             experience: data.experience.trim(),
             location: workCity.location,

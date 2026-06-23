@@ -3,6 +3,7 @@ import type { IndodeskClientRole } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { normalizeRustdeskIdForMatch } from '@/lib/indodesk-device'
 import { hashIndodeskDeviceToken } from '@/lib/indodesk-device-token'
+import { INODESK_UNLOCK_STATUSES } from '@/lib/indodesk-session-policy'
 
 const PAIRING_TTL_MS = 5 * 60 * 1000
 const GRANT_TTL_SEC = 2 * 60 * 60
@@ -73,6 +74,41 @@ export async function resolveIndodeskDevice(deviceToken: string) {
 
 export type AuthorizeDirection = 'incoming' | 'outgoing'
 
+async function resolveAuthorizeSession(input: {
+  deviceUserId: string
+  direction: AuthorizeDirection
+  grant?: string
+}) {
+  let session = await prisma.konsultasiSession.findFirst({
+    where: {
+      status: { in: [...INODESK_UNLOCK_STATUSES] },
+      requiresRemote: true,
+      remoteId: { not: null },
+      remoteOtp: { not: null },
+      ...(input.direction === 'outgoing'
+        ? { teknisiId: input.deviceUserId }
+        : { userId: input.deviceUserId }),
+    },
+    orderBy: { startedAt: 'desc' },
+  })
+
+  if (!session && input.grant) {
+    const grant = verifyIndodeskSessionGrant(input.grant)
+    if (grant) {
+      session = await prisma.konsultasiSession.findFirst({
+        where: {
+          id: grant.sid,
+          status: { in: [...INODESK_UNLOCK_STATUSES] },
+          requiresRemote: true,
+          remoteOtp: { not: null },
+        },
+      })
+    }
+  }
+
+  return session
+}
+
 export async function authorizeIndodeskConnection(input: {
   deviceToken: string
   direction: AuthorizeDirection
@@ -91,30 +127,11 @@ export async function authorizeIndodeskConnection(input: {
     return { allowed: false, reason: 'Peran perangkat tidak sesuai' }
   }
 
-  let session = await prisma.konsultasiSession.findFirst({
-    where: {
-      status: 'ACTIVE',
-      requiresRemote: true,
-      remoteId: { not: null },
-      ...(input.direction === 'outgoing'
-        ? { teknisiId: device.userId }
-        : { userId: device.userId }),
-    },
-    orderBy: { startedAt: 'desc' },
+  const session = await resolveAuthorizeSession({
+    deviceUserId: device.userId,
+    direction: input.direction,
+    grant: input.grant,
   })
-
-  if (!session && input.grant) {
-    const grant = verifyIndodeskSessionGrant(input.grant)
-    if (grant) {
-      session = await prisma.konsultasiSession.findFirst({
-        where: {
-          id: grant.sid,
-          status: 'ACTIVE',
-          requiresRemote: true,
-        },
-      })
-    }
-  }
 
   if (!session?.remoteId) {
     return { allowed: false, reason: 'Tidak ada sesi konsultasi remote yang aktif' }
@@ -143,8 +160,20 @@ export async function authorizeIndodeskConnection(input: {
     }
   }
 
-  if (input.direction === 'incoming' && device.userId !== session.userId) {
-    return { allowed: false, reason: 'User tidak terdaftar pada sesi ini' }
+  if (input.direction === 'incoming') {
+    if (device.userId !== session.userId) {
+      return { allowed: false, reason: 'User tidak terdaftar pada sesi ini' }
+    }
+    const teknisiDevice = await prisma.indodeskDevice.findFirst({
+      where: {
+        userId: session.teknisiId,
+        role: 'TEKNISI',
+        rustdeskId: peerNorm,
+      },
+    })
+    if (!teknisiDevice) {
+      return { allowed: false, reason: 'Teknisi tidak terdaftar pada sesi ini' }
+    }
   }
 
   return { allowed: true }

@@ -13,6 +13,7 @@ import {
   readTeknisiRegisterCompleteUserId,
 } from '@/lib/auth/google-register-cookie'
 import { notifyAdminTeknisiRegistered } from '@/lib/telegram/notify'
+import { allocateTeknisiProfileSlug } from '@/lib/teknisi-profile-slug-server'
 export async function POST(req: Request) {
   const ip = getClientIp(req)
   const rl = await withRateLimit(req, ['auth', 'register-teknisi-google', ip], RATE_LIMITS.auth)
@@ -63,6 +64,7 @@ export async function POST(req: Request) {
     const applicationData = buildApplicationData(data)
     const specialty = normalizeRegisterSpecialty(data.specialty)
     const workCity = teknisiWorkCityFields(data)
+    const profileSlug = await allocateTeknisiProfileSlug(user.name.trim())
     await prisma.user.update({
       where: { id: user.id },
       data: {
@@ -72,6 +74,7 @@ export async function POST(req: Request) {
         isActive: false,
         teknisiProfile: {
           create: {
+            profileSlug,
             specialty,
             experience: data.experience.trim(),
             location: workCity.location,

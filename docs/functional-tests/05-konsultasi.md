@@ -6,7 +6,7 @@
 
 Konsultasi adalah sesi tanya-jawab real-time antara USER dan TEKNISI yang difasilitasi platform. USER booking sesi (memilih layanan + harga), bayar via wallet, TEKNISI menerima request lalu sesi berlangsung di chat / video / remote. Setelah sesi `COMPLETED`, dana otomatis settle ke wallet TEKNISI dan USER bisa memberikan review.
 
-State machine: `PENDING → ACTIVE → AWAITING_CONFIRMATION → COMPLETED` (payout saat user konfirmasi atau auto 48 jam; atau `CANCELLED` di jalur error).
+State machine: `PENDING → ACTIVE → AWAITING_CONFIRMATION → COMPLETED` (payout saat user konfirmasi atau auto 24 jam; atau `CANCELLED` di jalur error).
 
 ## Cakupan Test
 
@@ -88,7 +88,7 @@ State machine: `PENDING → ACTIVE → AWAITING_CONFIRMATION → COMPLETED` (pay
   3. Konfirmasi dialog
 - **Expected Result**:
   - Status `ACTIVE → AWAITING_CONFIRMATION`
-  - `teknisiMarkedDoneAt` dan `confirmDeadlineAt` (+48 jam) terisi
+  - `teknisiMarkedDoneAt` dan `confirmDeadlineAt` (+24 jam) terisi
   - **Tidak ada** payout / WalletLedger EARNING teknisi
   - User menerima notifikasi konfirmasi
 

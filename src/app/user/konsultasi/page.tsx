@@ -604,7 +604,9 @@ export default function UserKonsultasiPage() {
                         <span className="text-surface-400">Belum rating</span>
                       )}
                     </div>
-                    {k.requiresRemote && k.remoteId && k.status === 'active' && (
+                    {(k.status === 'active' || k.status === 'awaiting_confirmation') &&
+                      k.requiresRemote &&
+                      k.remoteId && (
                       <IndodeskRemotePanel
                         remoteId={k.remoteId}
                         remoteOtp={k.remoteOtp}
@@ -612,6 +614,8 @@ export default function UserKonsultasiPage() {
                         clientOs={k.clientOs}
                         role="user"
                         compact
+                        awaitingConfirmation={k.status === 'awaiting_confirmation'}
+                        confirmDeadlineAt={k.confirmDeadlineAt}
                       />
                     )}
                     <KonsultasiItemActions
@@ -680,7 +684,9 @@ export default function UserKonsultasiPage() {
                           setReviewText={setReviewText}
                           setChannelPaySession={setChannelPaySession}
                         />
-                        {k.requiresRemote && k.remoteId && k.status === 'active' && (
+                        {(k.status === 'active' || k.status === 'awaiting_confirmation') &&
+                          k.requiresRemote &&
+                          k.remoteId && (
                           <IndodeskRemotePanel
                             remoteId={k.remoteId}
                             remoteOtp={k.remoteOtp}
@@ -688,6 +694,8 @@ export default function UserKonsultasiPage() {
                             clientOs={k.clientOs}
                             role="user"
                             compact
+                            awaitingConfirmation={k.status === 'awaiting_confirmation'}
+                            confirmDeadlineAt={k.confirmDeadlineAt}
                           />
                         )}
                       </div>

@@ -213,6 +213,7 @@ export async function getTeknisiDashboardData(teknisiId: string): Promise<Teknis
       portfolioCount,
     },
     teknisiId,
+    profile?.profileSlug,
   )
 
   return {

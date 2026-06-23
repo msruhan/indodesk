@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { PublicTeknisiDetailDto } from '@/lib/teknisi-public-detail'
 import type { TeknisiConsultationService } from '@/lib/konsultasi-services'
+import { teknisiProfilePath } from '@/lib/teknisi-profile-slug'
 import { TripayChannelPicker } from '@/components/payments/tripay-channel-picker'
 import { X } from '@/lib/icons'
 
@@ -75,7 +76,7 @@ export function KonsultasiBookingDialog({
     if (!selected) return
 
     if (sessionStatus !== 'authenticated' || !session?.user) {
-      const callback = encodeURIComponent(`/teknisi/${teknisi.id}`)
+      const callback = encodeURIComponent(teknisiProfilePath(teknisi.profileSlug, teknisi.id))
       router.push(`/login?callbackUrl=${callback}`)
       return
     }

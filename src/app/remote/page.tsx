@@ -14,6 +14,7 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { PageHero } from '@/components/shared/page-hero'
 import { cn } from '@/lib/utils'
+import { teknisiProfilePath } from '@/lib/teknisi-profile-slug'
 import { SupportChatButton } from '@/components/chat/support-chat-button'
 import { IndodeskPairingPanel } from '@/components/indodesk/indodesk-pairing-panel'
 import type { PublicTeknisiDto } from '@/lib/teknisi-public'
@@ -279,7 +280,7 @@ export default function RemotePage() {
                       {onlineTeknisi.map((t) => (
                         <Link
                           key={t.userId}
-                          href={`/teknisi/${t.userId}`}
+                          href={teknisiProfilePath(t.profileSlug, t.userId)}
                           className={cn(
                             'relative flex items-center gap-3 rounded-xl border p-3 text-left transition-all duration-300 ease-out-expo',
                             'border-surface-200/70 bg-white hover:border-primary-300 hover:shadow-soft-xs',

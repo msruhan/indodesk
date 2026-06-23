@@ -3,6 +3,7 @@ import {
   profileToShippingAddress,
   type UserShippingProfileSource,
 } from '@/lib/user-shipping-profile'
+import { teknisiProfilePath } from '@/lib/teknisi-profile-slug'
 
 export type ProfileCompletionItem = {
   id: string
@@ -69,10 +70,13 @@ export type TeknisiProfileCompletionSource = {
 export function evaluateTeknisiProfileCompletion(
   source: TeknisiProfileCompletionSource,
   userId?: string,
+  profileSlug?: string | null,
 ): ProfileCompletionStatus {
   const items: ProfileCompletionItem[] = []
   const profileHref = (edit: string) =>
-    userId ? `/teknisi/${userId}?tab=profil&edit=${edit}` : '/teknisi/settings'
+    userId
+      ? `${teknisiProfilePath(profileSlug, userId)}?tab=profil&edit=${edit}`
+      : '/teknisi/settings'
 
   if (!isFilled(source.phone)) {
     items.push({

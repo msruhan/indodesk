@@ -23,6 +23,7 @@ import {
   viewportRevealNoBlur,
 } from '@/components/motion'
 import { cn } from '@/lib/utils'
+import { teknisiProfilePath } from '@/lib/teknisi-profile-slug'
 import { openTeknisiChat } from '@/lib/open-teknisi-chat'
 import type { PublicTeknisiDto } from '@/lib/teknisi-public'
 import { TEKNISI_BADGE_DISPLAY, type TeknisiBadgeTier } from '@/lib/teknisi-badge'
@@ -368,7 +369,7 @@ export default function TeknisiListPage() {
                           className="h-8 min-h-8 flex-1 px-2 text-[11px]"
                         >
                           <Link
-                            href={`/teknisi/${t.userId}`}
+                            href={teknisiProfilePath(t.profileSlug, t.userId)}
                             prefetch
                             className="inline-flex w-full items-center justify-center"
                           >

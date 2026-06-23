@@ -37,7 +37,7 @@ export function TeknisiAkunView() {
 
     const edit = LEGACY_TAB_TO_EDIT[tab]
     if (edit) {
-      router.replace(`/teknisi/${userId}?tab=profil&edit=${edit}`)
+      router.replace(`/teknisi/profil?edit=${edit}`)
       return
     }
 
@@ -45,9 +45,8 @@ export function TeknisiAkunView() {
   }, [searchParams, session?.user?.id, router])
 
   const openPublicProfile = useCallback(() => {
-    const userId = session?.user?.id
-    if (userId) router.push(`/teknisi/${userId}?tab=profil`)
-  }, [router, session?.user?.id])
+    router.push('/teknisi/profil')
+  }, [router])
 
   return (
     <div className="space-y-6">

@@ -213,13 +213,15 @@ export function KonsultasiDetailModal({ konsultasi, onClose }: KonsultasiDetailM
                 </dl>
               </section>
 
-              {konsultasi.requiresRemote && konsultasi.remoteId && (
+              {konsultasi.requiresRemote && konsultasi.remoteId && konsultasi.remoteOtp && (
                 <IndodeskRemotePanel
                   remoteId={konsultasi.remoteId}
                   remoteOtp={konsultasi.remoteOtp}
                   device={konsultasi.device}
                   clientOs={konsultasi.clientOs}
                   role="teknisi"
+                  awaitingConfirmation={konsultasi.status === 'awaiting_confirmation'}
+                  confirmDeadlineAt={konsultasi.confirmDeadlineAt}
                 />
               )}
 

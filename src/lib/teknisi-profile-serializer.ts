@@ -13,6 +13,7 @@ import {
 
 export type TeknisiAccountProfileDto = {
   userId: string
+  profileSlug: string | null
   name: string
   email: string
   phone: string | null
@@ -54,6 +55,7 @@ export function serializeTeknisiAccountProfile(
   const content = profileContentFromDb(profile)
   return {
     userId: user.id,
+    profileSlug: profile.profileSlug,
     name: user.name,
     email: user.email,
     phone: user.phone,

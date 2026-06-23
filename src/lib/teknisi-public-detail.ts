@@ -66,6 +66,7 @@ export function serializePublicTeknisiDetail(
   const base = {
     id: profile.userId,
     userId: profile.userId,
+    profileSlug: profile.profileSlug,
     name: profile.user.name,
     image: resolveDisplayImageUrl(profile.user.image),
     isOnline: profile.isOnline,

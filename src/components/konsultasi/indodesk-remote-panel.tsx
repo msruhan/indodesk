@@ -16,6 +16,8 @@ type Props = {
   clientOs?: string | null
   role: 'user' | 'teknisi'
   compact?: boolean
+  awaitingConfirmation?: boolean
+  confirmDeadlineAt?: string | null
 }
 
 async function copyText(label: string, value: string) {
@@ -36,6 +38,8 @@ export function IndodeskRemotePanel({
   clientOs,
   role,
   compact = false,
+  awaitingConfirmation = false,
+  confirmDeadlineAt,
 }: Props) {
   const canConnect = role === 'teknisi' && remoteId && remoteOtp
   const canSetPassword = role === 'user' && remoteOtp
@@ -75,6 +79,18 @@ export function IndodeskRemotePanel({
 
       {remoteOtp ? (
         <>
+          {awaitingConfirmation && (
+            <p className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-amber-900">
+              Masa garansi remote — konfirmasi layanan dalam 24 jam
+              {confirmDeadlineAt
+                ? ` (batas ${new Date(confirmDeadlineAt).toLocaleString('id-ID')})`
+                : ''}
+              .
+            </p>
+          )}
+          <p className="text-surface-600">
+            Buka IndoDesk dan masukkan OTP ini saat aplikasi dimulai.
+          </p>
           <div className="flex flex-wrap items-center gap-1 font-mono text-primary-800">
             <Lock className="h-3 w-3 shrink-0" />
             OTP: {remoteOtp}

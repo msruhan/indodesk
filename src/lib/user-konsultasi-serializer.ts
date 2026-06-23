@@ -1,4 +1,5 @@
 import type { KonsultasiSession, User } from '@prisma/client'
+import { isIndodeskRemoteOtpVisible } from '@/lib/indodesk-session-policy'
 import {
   konsultasiStatusLabel,
   mapKonsultasiUiStatus,
@@ -58,8 +59,9 @@ export function serializeUserKonsultasi(
     clientOs: session.clientOs,
     requiresRemote: session.requiresRemote,
     remoteId: session.remoteId,
-    remoteOtp:
-      session.requiresRemote && status === 'active' ? session.remoteOtp : null,
+    remoteOtp: isIndodeskRemoteOtpVisible(session.status, session.requiresRemote)
+      ? session.remoteOtp
+      : null,
     note: session.note,
     rating: session.rating,
     review: session.review,

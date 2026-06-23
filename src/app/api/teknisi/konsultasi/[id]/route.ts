@@ -91,7 +91,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         }
         data = {
           status: 'AWAITING_CONFIRMATION',
-          remoteOtp: null,
           teknisiMarkedDoneAt: now,
           confirmDeadlineAt: computeConfirmDeadline(now),
         }

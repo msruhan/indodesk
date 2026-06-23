@@ -169,7 +169,11 @@ function TeknisiKonsultasiActions({
 }
 
 function TeknisiKonsultasiRemotePanel({ k, compact = false }: { k: TeknisiKonsultasiDto; compact?: boolean }) {
-  if (!k.requiresRemote || !k.remoteId || (k.status !== 'pending' && k.status !== 'active')) {
+  if (
+    !k.requiresRemote ||
+    !k.remoteId ||
+    (k.status !== 'pending' && k.status !== 'active' && k.status !== 'awaiting_confirmation')
+  ) {
     return null
   }
 
@@ -181,6 +185,8 @@ function TeknisiKonsultasiRemotePanel({ k, compact = false }: { k: TeknisiKonsul
       clientOs={k.clientOs}
       role="teknisi"
       compact={compact}
+      awaitingConfirmation={k.status === 'awaiting_confirmation'}
+      confirmDeadlineAt={k.confirmDeadlineAt}
     />
   )
 }

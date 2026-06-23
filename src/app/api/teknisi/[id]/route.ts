@@ -4,6 +4,7 @@ import { getPublicFeatureFlags } from '@/lib/platform-settings'
 import { serializePublicTeknisiDetail } from '@/lib/teknisi-public-detail'
 import { getTeknisiPlatformStats } from '@/lib/teknisi-platform-stats'
 import { isTeknisiProfilePubliclyVisible } from '@/lib/teknisi-profile-visibility'
+import { ensureTeknisiProfileSlugForUser, resolveTeknisiUserId } from '@/lib/teknisi-profile-slug-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,7 +13,7 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id } = await params
+  const { id: slugOrId } = await params
 
   try {
     const flags = await getPublicFeatureFlags()
@@ -20,8 +21,13 @@ export async function GET(
       return apiError('Cari Teknisi sedang dinonaktifkan', 403)
     }
 
+    const userId = await resolveTeknisiUserId(slugOrId)
+    if (!userId) {
+      return apiError('Teknisi tidak ditemukan', 404)
+    }
+
     const profile = await prisma.teknisiProfile.findFirst({
-      where: { userId: id },
+      where: { userId },
       include: {
         user: {
           select: {
@@ -50,12 +56,20 @@ export async function GET(
       data: { totalView: { increment: 1 } },
     }).catch(() => {})
 
-    const platformStats = await getTeknisiPlatformStats(id)
+    const platformStats = await getTeknisiPlatformStats(userId)
     const featureFlags = await getPublicFeatureFlags()
     const postCount = await prisma.teknisiPost.count({
-      where: { teknisiId: id, deletedAt: null },
+      where: { teknisiId: userId, deletedAt: null },
     })
-    return apiSuccess(serializePublicTeknisiDetail(profile, platformStats, featureFlags, postCount))
+
+    const profileSlug = profile.profileSlug ?? (await ensureTeknisiProfileSlugForUser(userId))
+    const payload = serializePublicTeknisiDetail(
+      profileSlug ? { ...profile, profileSlug } : profile,
+      platformStats,
+      featureFlags,
+      postCount,
+    )
+    return apiSuccess(payload)
   } catch (e) {
     console.error('[TEKNISI_DETAIL_GET]', e)
     return apiError('Gagal memuat profil teknisi', 500)

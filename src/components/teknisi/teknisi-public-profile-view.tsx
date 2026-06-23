@@ -48,6 +48,7 @@ import {
 } from '@/lib/konsultasi-services'
 import { allProfileSkills } from '@/lib/teknisi-profile-content'
 import { getProfileSummaryFields } from '@/lib/teknisi-profile-display'
+import { teknisiProfilePath } from '@/lib/teknisi-profile-slug'
 import { formatOperatingHoursLines } from '@/lib/store-operating-hours'
 import { cn } from '@/lib/utils'
 import {
@@ -131,11 +132,16 @@ function TeknisiPublicProfileViewInner({ teknisiId }: Props) {
   const isOwner =
     status === 'authenticated' &&
     session?.user?.role === 'TEKNISI' &&
-    session.user.id === teknisiId
+    teknisi != null &&
+    session.user.id === teknisi.userId
+
+  const profilePath = teknisi
+    ? teknisiProfilePath(teknisi.profileSlug, teknisi.userId)
+    : teknisiProfilePath(null, teknisiId)
 
   const reloadPublicProfile = useCallback(async () => {
     try {
-      const detailRes = await fetch(`/api/teknisi/${teknisiId}`)
+      const detailRes = await fetch(`/api/teknisi/${encodeURIComponent(teknisiId)}`)
       const detailJson = await detailRes.json()
       if (!detailRes.ok || !detailJson.success) return
       setTeknisi(detailJson.data)
@@ -155,7 +161,7 @@ function TeknisiPublicProfileViewInner({ teknisiId }: Props) {
       setLoading(true)
       setError(null)
       try {
-        const detailRes = await fetch(`/api/teknisi/${teknisiId}`)
+        const detailRes = await fetch(`/api/teknisi/${encodeURIComponent(teknisiId)}`)
         const detailJson = await detailRes.json()
         if (cancelled) return
         if (!detailRes.ok || !detailJson.success) {
@@ -163,8 +169,20 @@ function TeknisiPublicProfileViewInner({ teknisiId }: Props) {
           setTeknisi(null)
           return
         }
-        setTeknisi(detailJson.data)
-        setPostCount(Number(detailJson.data.postCount ?? 0))
+        const data = detailJson.data as PublicTeknisiDetailDto
+        setTeknisi(data)
+        setPostCount(Number(data.postCount ?? 0))
+
+        const canonicalPath = teknisiProfilePath(data.profileSlug, data.userId)
+        if (canonicalPath !== `/teknisi/${teknisiId}`) {
+          const tab = searchParams.get('tab')
+          const edit = searchParams.get('edit')
+          const qs = new URLSearchParams()
+          if (tab) qs.set('tab', tab)
+          if (edit) qs.set('edit', edit)
+          const suffix = qs.toString() ? `?${qs.toString()}` : ''
+          router.replace(`${canonicalPath}${suffix}`, { scroll: false })
+        }
       } catch {
         if (!cancelled) setError('Gagal memuat profil teknisi')
       } finally {
@@ -174,7 +192,7 @@ function TeknisiPublicProfileViewInner({ teknisiId }: Props) {
     return () => {
       cancelled = true
     }
-  }, [teknisiId])
+  }, [teknisiId, router, searchParams])
 
   useEffect(() => {
     if (status !== 'authenticated' || !isOwner) return
@@ -182,8 +200,8 @@ function TeknisiPublicProfileViewInner({ teknisiId }: Props) {
     if (!edit || !isTeknisiProfileEditSection(edit)) return
     setActiveEdit(edit)
     const tab = searchParams.get('tab') ?? 'profil'
-    router.replace(`/teknisi/${teknisiId}?tab=${tab}`, { scroll: false })
-  }, [searchParams, isOwner, status, teknisiId, router])
+    router.replace(`${profilePath}?tab=${tab}`, { scroll: false })
+  }, [searchParams, isOwner, status, profilePath, router])
 
   const openEdit = useCallback((section: TeknisiProfileEditSection) => {
     setActiveEdit(section)
@@ -192,7 +210,7 @@ function TeknisiPublicProfileViewInner({ teknisiId }: Props) {
   const openBooking = (svc?: TeknisiConsultationService) => {
     if (svc?.kind === 'inspection-online' || svc?.kind === 'inspection-offline') {
       if (status !== 'authenticated') {
-        router.push(`/login?callbackUrl=${encodeURIComponent(`/teknisi/${teknisiId}`)}`)
+        router.push(`/login?callbackUrl=${encodeURIComponent(profilePath)}`)
         return
       }
       setInspectionMode(svc.kind === 'inspection-online' ? 'ONLINE' : 'OFFLINE')
@@ -285,7 +303,7 @@ function TeknisiPublicProfileViewInner({ teknisiId }: Props) {
                 </motion.div>
 
                 <motion.div variants={fadeUp}>
-                  <TeknisiProfileTabs teknisiId={teknisiId} postCount={postCount} />
+                  <TeknisiProfileTabs profilePath={profilePath} postCount={postCount} />
                 </motion.div>
 
                 {activeTab === 'postingan' ? (
@@ -309,10 +327,6 @@ function TeknisiPublicProfileViewInner({ teknisiId }: Props) {
                   <SkillsConstellation skills={profileSkills} />
                 </motion.div>
 
-                <motion.div variants={fadeUp}>
-                  <PerformanceLedger teknisi={teknisi} />
-                </motion.div>
-
                 {teknisi.services.length > 0 || isOwner ? (
                   <motion.div variants={fadeUp}>
                     <ServicesMenu
@@ -322,6 +336,10 @@ function TeknisiPublicProfileViewInner({ teknisiId }: Props) {
                     />
                   </motion.div>
                 ) : null}
+
+                <motion.div variants={fadeUp}>
+                  <PerformanceLedger teknisi={teknisi} />
+                </motion.div>
 
                 {teknisi.portfolio.length > 0 || isOwner ? (
                   <motion.div variants={fadeUp}>
@@ -1662,7 +1680,7 @@ function ShimmerButton({
 }
 
 /* ============================================================================
-   PERFORMANCE LEDGER — editorial replacement for the rainbow KPI grid
+   OPERATIONAL LEDGER — platform stats (reviews shown in section below)
    ========================================================================== */
 function PerformanceLedger({ teknisi }: { teknisi: PublicTeknisiDetailDto }) {
   const indicator = teknisi.platformStats.performanceIndicator
@@ -1700,150 +1718,63 @@ function PerformanceLedger({ teknisi }: { teknisi: PublicTeknisiDetailDto }) {
       {/* Subtle radial accent */}
       <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-primary-100/50 blur-3xl" />
 
-      <div className="relative grid gap-0 lg:grid-cols-[1.1fr_1fr]">
-        {/* HERO METRIC — Rating, BIG */}
-        <div className="relative border-b border-surface-200/70 p-6 sm:p-8 lg:border-b-0 lg:border-r">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary-700">Performance</p>
-              <h2 className="mt-1 text-xl font-black tracking-tight text-ink sm:text-2xl">Track Record</h2>
-            </div>
-            <span className="hidden rounded-full border border-surface-200 bg-white px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.18em] text-surface-500 sm:inline-block">
-              Verified
-            </span>
-          </div>
+      <div className="relative p-6 sm:p-8">
+        <div className="flex items-baseline justify-between">
+          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary-700">Operational</p>
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-surface-400">Live</p>
+        </div>
 
-          <div className="mt-6 flex items-end gap-3">
-            <p className="text-[88px] font-black leading-none tracking-tight text-ink sm:text-[112px]">
-              {teknisi.platformStats.reviewCount > 0 ? (
-                <AnimatedNumber value={teknisi.platformStats.averageRating} decimal />
+        <motion.div className="mt-5 rounded-2xl border border-primary-200/60 bg-gradient-to-br from-primary-50/80 to-white p-4">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary-700">
+            Indikator performa
+          </p>
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mt-2 flex items-end gap-2"
+          >
+            <p className="text-[52px] font-black leading-none tracking-tight text-ink sm:text-[64px]">
+              {indicator.hasEnoughData && indicator.score != null ? (
+                <AnimatedNumber value={indicator.score} decimal />
               ) : (
                 <span className="text-surface-300">—</span>
               )}
             </p>
-            <div className="pb-2">
-              <div className="flex items-center gap-0.5 text-amber-500">
-                {Array.from({ length: 5 }).map((_, i) => {
-                  const filled = teknisi.platformStats.averageRating >= i + 1
-                  const half =
-                    !filled &&
-                    teknisi.platformStats.averageRating >= i + 0.5 &&
-                    teknisi.platformStats.reviewCount > 0
-                  return (
-                    <motion.span
-                      key={i}
-                      initial={{ scale: 0, rotate: -45 }}
-                      whileInView={{ scale: 1, rotate: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: 0.2 + i * 0.05, type: 'spring', stiffness: 240 }}
-                    >
-                      <Star
-                        className={cn('h-4 w-4', !filled && !half && 'text-surface-200')}
-                        weight={filled || half ? 'fill' : 'regular'}
-                      />
-                    </motion.span>
-                  )
-                })}
-              </div>
-              <p className="mt-1 text-[11px] font-medium text-surface-600">
-                <span className="font-bold tabular-nums text-ink">{teknisi.platformStats.reviewCount}</span>{' '}
-                {teknisi.platformStats.reviewCount === 1 ? 'verified review' : 'verified reviews'}
-              </p>
-            </div>
-          </div>
-
-          <p className="mt-3 max-w-sm text-[13px] leading-relaxed text-surface-600">
-            Rata-rata dari ulasan terverifikasi di platform. Distribusi di bawah dihitung langsung dari setiap rating.
-          </p>
-
-          {/* Distribusi rating — dari data ulasan */}
-          <div className="mt-6 space-y-1.5">
-            {teknisi.platformStats.reviewCount === 0 ? (
-              <p className="text-[12px] text-surface-500">Belum ada ulasan untuk menampilkan distribusi.</p>
-            ) : (
-              teknisi.platformStats.ratingDistribution
-                .filter((row) => row.star >= 3)
-                .map((row, idx) => (
-                  <div key={row.star} className="flex items-center gap-2 text-[11px]">
-                    <span className="w-3 font-bold text-surface-700">{row.star}</span>
-                    <Star className="h-2.5 w-2.5 text-amber-500" weight="fill" />
-                    <div className="h-[3px] flex-1 overflow-hidden rounded-full bg-surface-200/80">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        whileInView={{ width: `${row.percent}%` }}
-                        viewport={{ once: true }}
-                        transition={{ delay: 0.3 + idx * 0.08, duration: 0.9, ease }}
-                        className="h-full rounded-full bg-ink"
-                      />
-                    </div>
-                    <span className="w-8 text-right font-mono tabular-nums text-surface-500">
-                      {row.percent}%
-                    </span>
-                  </div>
-                ))
+            {indicator.hasEnoughData && indicator.score != null && (
+              <span className="pb-2 text-lg font-bold text-surface-400">/10</span>
             )}
-          </div>
-        </div>
-
-        {/* SECONDARY METRICS — list rows, no boxes/icons */}
-        <div className="p-6 sm:p-8">
-          <div className="flex items-baseline justify-between">
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary-700">Operational</p>
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-surface-400">Live</p>
-          </div>
-
-          <motion.div className="mt-5 rounded-2xl border border-primary-200/60 bg-gradient-to-br from-primary-50/80 to-white p-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary-700">
-              Indikator performa
-            </p>
-            <motion.div
-              initial={{ opacity: 0, y: 6 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="mt-2 flex items-end gap-2"
-            >
-              <p className="text-[52px] font-black leading-none tracking-tight text-ink sm:text-[64px]">
-                {indicator.hasEnoughData && indicator.score != null ? (
-                  <AnimatedNumber value={indicator.score} decimal />
-                ) : (
-                  <span className="text-surface-300">—</span>
-                )}
-              </p>
-              {indicator.hasEnoughData && indicator.score != null && (
-                <span className="pb-2 text-lg font-bold text-surface-400">/10</span>
-              )}
-            </motion.div>
-            <p className="mt-2 text-[12px] leading-relaxed text-surface-600">{indicator.summary}</p>
-            <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-surface-400">
-              Tanpa rating ulasan · completion, respons, volume & engagement
-            </p>
           </motion.div>
+          <p className="mt-2 text-[12px] leading-relaxed text-surface-600">{indicator.summary}</p>
+          <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-surface-400">
+            Tanpa rating ulasan · completion, respons, volume & engagement
+          </p>
+        </motion.div>
 
-          <ul className="mt-5 divide-y divide-surface-200/70">
-            {secondary.map((row, idx) => (
-              <motion.li
-                key={row.label}
-                initial={{ opacity: 0, y: 8 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-30px' }}
-                transition={{ delay: idx * 0.05 }}
-                className="group flex items-baseline justify-between gap-3 py-3 transition-colors hover:bg-primary-50/30"
-              >
-                <div className="min-w-0">
-                  <p className="text-[13px] font-semibold text-ink">{row.label}</p>
-                  {row.benchmark && <p className="mt-0.5 text-[10px] uppercase tracking-[0.14em] text-surface-400">{row.benchmark}</p>}
-                </div>
-                <p className="text-right text-[20px] font-black tracking-tight text-ink">
-                  {row.valueText
-                    ? row.valueText
-                    : row.numeric !== undefined
-                      ? <AnimatedNumber value={row.numeric} decimal={row.decimal} suffix={row.suffix} />
-                      : row.value}
-                </p>
-              </motion.li>
-            ))}
-          </ul>
-        </div>
+        <ul className="mt-5 divide-y divide-surface-200/70">
+          {secondary.map((row, idx) => (
+            <motion.li
+              key={row.label}
+              initial={{ opacity: 0, y: 8 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-30px' }}
+              transition={{ delay: idx * 0.05 }}
+              className="group flex items-baseline justify-between gap-3 py-3 transition-colors hover:bg-primary-50/30"
+            >
+              <div className="min-w-0">
+                <p className="text-[13px] font-semibold text-ink">{row.label}</p>
+                {row.benchmark && <p className="mt-0.5 text-[10px] uppercase tracking-[0.14em] text-surface-400">{row.benchmark}</p>}
+              </div>
+              <p className="text-right text-[20px] font-black tracking-tight text-ink">
+                {row.valueText
+                  ? row.valueText
+                  : row.numeric !== undefined
+                    ? <AnimatedNumber value={row.numeric} decimal={row.decimal} suffix={row.suffix} />
+                    : row.value}
+              </p>
+            </motion.li>
+          ))}
+        </ul>
       </div>
     </div>
   )

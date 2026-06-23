@@ -5,7 +5,7 @@ import {
 } from '@/lib/konsultasi-complete'
 import { walletTransaction } from '@/lib/wallet/transaction'
 
-export const KONSULTASI_CONFIRM_TIMEOUT_HOURS = 48
+export const KONSULTASI_CONFIRM_TIMEOUT_HOURS = 24
 
 export function computeConfirmDeadline(from: Date): Date {
   return new Date(from.getTime() + KONSULTASI_CONFIRM_TIMEOUT_HOURS * 60 * 60 * 1000)

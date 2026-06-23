@@ -5,6 +5,7 @@ import {
   fetchTeknisiUnifiedReviewStats,
 } from '@/lib/teknisi-unified-reviews'
 import { isTeknisiProfilePubliclyVisible } from '@/lib/teknisi-profile-visibility'
+import { resolveTeknisiUserId } from '@/lib/teknisi-profile-slug-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,9 +14,14 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id: teknisiId } = await params
+  const { id: slugOrId } = await params
 
   try {
+    const teknisiId = await resolveTeknisiUserId(slugOrId)
+    if (!teknisiId) {
+      return apiError('Teknisi tidak ditemukan', 404)
+    }
+
     const profile = await prisma.teknisiProfile.findUnique({
       where: { userId: teknisiId },
       select: { id: true, isProfileHidden: true },
