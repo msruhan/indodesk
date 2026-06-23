@@ -22,6 +22,13 @@ import {
   parseSaleConditionFromForm,
   shouldSkipUsedProductBenchmarkInput,
 } from '@/lib/product-sale-condition'
+import { notifyAdminProductPendingApproval } from '@/lib/telegram/notify'
+
+function fireAdminProductPendingNotify(productId: string) {
+  void notifyAdminProductPendingApproval(productId).catch((e) => {
+    console.error('[ADMIN_PRODUCT_PENDING_NOTIFY]', e)
+  })
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -135,6 +142,7 @@ export async function POST(req: Request) {
         },
       })
 
+      fireAdminProductPendingNotify(product.id)
       return apiSuccess(serializeTeknisiProduct(product), 201)
     }
 
@@ -177,6 +185,7 @@ export async function POST(req: Request) {
           pendingChangeSummary: NEW_PRODUCT_CHANGE_SUMMARY,
         },
       })
+      fireAdminProductPendingNotify(product.id)
       return apiSuccess(serializeTeknisiProduct(product), 201)
     }
 
@@ -196,6 +205,7 @@ export async function POST(req: Request) {
       },
     })
 
+    fireAdminProductPendingNotify(product.id)
     return apiSuccess(serializeTeknisiProduct(product), 201)
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Gagal menambah produk'

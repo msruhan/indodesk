@@ -14,7 +14,7 @@ import {
 } from '@/lib/product-listing-review'
 import { couponInputToDb, parseCouponFromForm } from '@/lib/product-coupon'
 import { serializeTeknisiProduct } from '@/lib/product-serializer'
-import { notifyProductPublishedIfTransition } from '@/lib/telegram/notify'
+import { notifyProductPublishedIfTransition, notifyAdminProductPendingIfTransition } from '@/lib/telegram/notify'
 import {
   parseBenchmarkFieldsFromForm,
   parseProductSpecsFromForm,
@@ -228,6 +228,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         where: { id },
         data,
       })
+      if (product.listingStatus === 'PENDING' && existing.listingStatus !== 'PENDING') {
+        void notifyAdminProductPendingIfTransition(product.id, existing.listingStatus).catch((e) => {
+          console.error('[ADMIN_PRODUCT_PENDING_NOTIFY]', e)
+        })
+      }
       if (togglePublish === 'true' && product.isPublished && !existing.isPublished) {
         void notifyProductPublishedIfTransition(product.id, false)
       }
@@ -256,6 +261,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       where: { id },
       data,
     })
+    if (product.listingStatus === 'PENDING' && existing.listingStatus !== 'PENDING') {
+      void notifyAdminProductPendingIfTransition(product.id, existing.listingStatus).catch((e) => {
+        console.error('[ADMIN_PRODUCT_PENDING_NOTIFY]', e)
+      })
+    }
     if (togglePublish && product.isPublished && !existing.isPublished) {
       void notifyProductPublishedIfTransition(product.id, false)
     }

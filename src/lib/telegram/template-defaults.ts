@@ -7,6 +7,7 @@ export const TELEGRAM_EVENT_KEYS = [
   'inspeksi.new',
   'admin.user.registered',
   'admin.teknisi.registered',
+  'admin.product.pending',
   'admin.marketplace.order.new',
   'admin.marketplace.order.paid',
   'admin.konsultasi.new',
@@ -106,6 +107,18 @@ Nama: {{namaTeknisi}}
 📍 Kota: {{kota}}
 
 Tinjau & setujui:
+{{linkDashboard}}`
+
+const ADMIN_PRODUCT_PENDING_BODY = `📋 *Iklan Produk Menunggu Approval*
+
+📦 {{namaProduk}}
+💰 {{harga}}
+🏷️ {{kategori}}
+🏪 Toko: {{namaToko}}
+👤 Penjual: {{namaTeknisi}}
+📝 {{ringkasan}}
+
+Tinjau di antrian approval:
 {{linkDashboard}}`
 
 const ADMIN_ORDER_NEW_BODY = `🛒 *Pesanan Marketplace Baru*
@@ -312,6 +325,32 @@ export const TELEGRAM_EVENT_CATALOG: Record<TelegramEventKey, TelegramEventDefin
       email: 'ahmad@example.com',
       telepon: '08198765432',
       kota: 'Jakarta Selatan',
+      linkDashboard: 'https://bantoo.in/admin/approval',
+    },
+  },
+  'admin.product.pending': {
+    eventKey: 'admin.product.pending',
+    label: 'Iklan produk menunggu approval',
+    description:
+      'Notifikasi pribadi ke admin saat teknisi mengirim iklan produk baru atau perubahan yang perlu ditinjau.',
+    audience: 'ADMINS',
+    placeholders: [
+      'namaProduk',
+      'harga',
+      'kategori',
+      'namaToko',
+      'namaTeknisi',
+      'ringkasan',
+      'linkDashboard',
+    ],
+    defaultBody: ADMIN_PRODUCT_PENDING_BODY,
+    sampleVars: {
+      namaProduk: 'iPhone 15 Pro 256GB',
+      harga: 'Rp 15.000.000',
+      kategori: 'iPhone',
+      namaToko: 'Toko Teknisi',
+      namaTeknisi: 'Ahmad Teknisi',
+      ringkasan: 'Iklan produk baru',
       linkDashboard: 'https://bantoo.in/admin/approval',
     },
   },

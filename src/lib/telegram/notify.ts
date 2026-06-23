@@ -62,6 +62,45 @@ export async function notifyProductPublishedIfTransition(
   await notifyProductPublished(productId)
 }
 
+export async function notifyAdminProductPendingApproval(productId: string): Promise<void> {
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    include: {
+      seller: {
+        select: {
+          name: true,
+          teknisiStore: { select: { name: true } },
+        },
+      },
+    },
+  })
+  if (!product || product.listingStatus !== 'PENDING') return
+
+  const base = appBaseUrl()
+  const photoUrls = resolveTelegramProductPhotoUrls(product, base)
+
+  await dispatchTelegramEvent('admin.product.pending', {
+    photoUrls,
+    vars: {
+      namaProduk: product.name,
+      harga: formatIdr(Number(product.price)),
+      kategori: categoryLabel(product.category),
+      namaToko: product.seller.teknisiStore?.name ?? product.seller.name ?? 'Toko',
+      namaTeknisi: product.seller.name ?? 'Teknisi',
+      ringkasan: product.pendingChangeSummary?.trim() || 'Iklan produk menunggu tinjauan admin',
+      linkDashboard: `${base}/admin/approval`,
+    },
+  })
+}
+
+export async function notifyAdminProductPendingIfTransition(
+  productId: string,
+  previousListingStatus: string,
+): Promise<void> {
+  if (previousListingStatus === 'PENDING') return
+  await notifyAdminProductPendingApproval(productId)
+}
+
 export async function notifyMarketplaceOrderNew(orderId: string): Promise<void> {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
