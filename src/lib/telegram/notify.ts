@@ -49,7 +49,7 @@ export async function notifyProductPublished(productId: string): Promise<void> {
       namaToko: product.seller.teknisiStore?.name ?? product.seller.name ?? 'Toko',
       namaTeknisi: product.seller.name ?? 'Teknisi',
       usernameTelegram,
-      linkProduk: `${base}/marketplace/products/${product.id}`,
+      linkProduk: `${base}/marketplace/${product.id}`,
     },
   })
 }

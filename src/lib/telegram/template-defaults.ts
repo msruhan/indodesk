@@ -187,7 +187,7 @@ export const TELEGRAM_EVENT_CATALOG: Record<TelegramEventKey, TelegramEventDefin
       namaToko: 'Ahmad Cell',
       namaTeknisi: 'Ahmad Teknisi',
       usernameTelegram: '@ahmad_teknisi',
-      linkProduk: 'https://bantoo.in/marketplace/products/contoh',
+      linkProduk: 'https://bantoo.in/marketplace/contoh',
     },
   },
   'marketplace.order.new': {

@@ -22,9 +22,9 @@ describe('renderTelegramTemplate', () => {
 
   it('wraps link placeholders as clickable markdown links', () => {
     const out = renderTelegramTemplate('👉 {{linkProduk}}', {
-      linkProduk: 'https://bantoo.in/marketplace/products/abc',
+      linkProduk: 'https://bantoo.in/marketplace/abc',
     })
-    expect(out).toBe('👉 [LINK PRODUK](https://bantoo.in/marketplace/products/abc)')
+    expect(out).toBe('👉 [LINK PRODUK](https://bantoo.in/marketplace/abc)')
   })
 })
 
