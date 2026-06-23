@@ -30,6 +30,15 @@ Sinkronisasi IndoDesk dengan web Bantoo agar remote hanya bisa lewat sesi konsul
 - Heartbeat IndoDesk → `/api/indodesk/heartbeat` dengan Bearer token
 - UI pairing di web (`/remote`) dan IndoDesk desktop
 
+## Fase 3 — Session gate (planned)
+
+Lihat [IndoDesk Session Gate Design](./2026-06-22-indodesk-session-gate-design.md).
+
+- OTP wajib setiap cold start app (di atas device pairing)
+- Remote hanya saat `ACTIVE` atau `AWAITING_CONFIRMATION` (garansi 24 jam)
+- Setelah `COMPLETED` → order ulang; OTP di-clear
+- Auto-logout via heartbeat; pasangan teknisi-user diperketat
+
 ## Batasan
 
 - Relay publik RustDesk tidak memblokir RustDesk stock — fokus IndoDesk saja
