@@ -5,6 +5,7 @@ import './globals.css'
 import { Providers } from '@/components/providers'
 import { CSP_NONCE_HEADER } from '@/lib/security/headers'
 import { PUBLIC_SHELL_HEADER } from '@/lib/public-shell-paths'
+import { getPublicComingSoonConfig } from '@/lib/platform-settings'
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -30,11 +31,16 @@ export default async function RootLayout({
   const requestHeaders = await headers()
   const nonce = requestHeaders.get(CSP_NONCE_HEADER) ?? undefined
   const publicShell = requestHeaders.get(PUBLIC_SHELL_HEADER) === '1'
+  const comingSoon = await getPublicComingSoonConfig()
 
   return (
     <html lang="id" className={outfit.variable}>
       <body className={outfit.className}>
-        <Providers cspNonce={nonce} publicShell={publicShell}>
+        <Providers
+          cspNonce={nonce}
+          publicShell={publicShell}
+          comingSoonEnabled={comingSoon.enabled}
+        >
           {children}
         </Providers>
       </body>

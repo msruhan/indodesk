@@ -63,12 +63,18 @@ function finalize(
   req: NextRequest,
   pathname: string,
   buildRes: (requestHeaders: Headers) => NextResponse,
-  options?: { comingSoonEnabled?: boolean },
+  options?: { comingSoonEnabled?: boolean; userRole?: string | null },
 ): NextResponse {
   const nonce = generateCspNonce()
   const requestHeaders = withSecurityRequestHeaders(req, pathname, nonce)
 
-  if (isPublicShellPath(pathname, options?.comingSoonEnabled ?? false)) {
+  const skipPublicShell =
+    options?.userRole != null && shouldBypassComingSoon(pathname, options.userRole)
+
+  if (
+    !skipPublicShell &&
+    isPublicShellPath(pathname, options?.comingSoonEnabled ?? false)
+  ) {
     requestHeaders.set(PUBLIC_SHELL_HEADER, '1')
   }
 
@@ -121,7 +127,7 @@ export const middleware = auth(async (req) => {
             },
             { status: 503 },
           ),
-          { comingSoonEnabled },
+          { comingSoonEnabled, userRole },
         )
       }
 
@@ -135,7 +141,7 @@ export const middleware = auth(async (req) => {
               url.pathname = '/coming-soon'
               return NextResponse.rewrite(url, { request: { headers: requestHeaders } })
             },
-            { comingSoonEnabled },
+            { comingSoonEnabled, userRole },
           )
         }
 
@@ -143,7 +149,7 @@ export const middleware = auth(async (req) => {
           req,
           pathname,
           () => NextResponse.redirect(new URL('/coming-soon', req.nextUrl.origin)),
-          { comingSoonEnabled },
+          { comingSoonEnabled, userRole },
         )
       }
     }
@@ -166,7 +172,7 @@ export const middleware = auth(async (req) => {
           req,
           pathname,
           () => NextResponse.redirect(new URL('/coming-soon', req.nextUrl.origin)),
-          { comingSoonEnabled },
+          { comingSoonEnabled, userRole },
         )
       }
     }
@@ -181,7 +187,7 @@ export const middleware = auth(async (req) => {
         req,
         pathname,
         () => NextResponse.redirect(loginUrl),
-        { comingSoonEnabled },
+        { comingSoonEnabled, userRole },
       )
     }
 
@@ -191,7 +197,7 @@ export const middleware = auth(async (req) => {
         req,
         pathname,
         () => NextResponse.redirect(new URL(homePathForRole(userRole), req.nextUrl.origin)),
-        { comingSoonEnabled },
+        { comingSoonEnabled, userRole },
       )
     }
 
@@ -206,7 +212,7 @@ export const middleware = auth(async (req) => {
           req,
           pathname,
           () => NextResponse.redirect(dest),
-          { comingSoonEnabled },
+          { comingSoonEnabled, userRole },
         )
       }
     }
@@ -216,7 +222,7 @@ export const middleware = auth(async (req) => {
     req,
     pathname,
     (requestHeaders) => NextResponse.next({ request: { headers: requestHeaders } }),
-    { comingSoonEnabled },
+    { comingSoonEnabled, userRole },
   )
 })
 

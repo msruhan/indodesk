@@ -23,16 +23,13 @@ type ProfileMenuSaldoItemProps = {
   size?: 'sm' | 'md'
 }
 
-export function ProfileMenuSaldoItem({
+function ProfileMenuSaldoItemInner({
   role,
   onNavigate,
   className,
   size = 'md',
 }: ProfileMenuSaldoItemProps) {
   const { wallet, isLoading } = useWallet()
-
-  if (!showProfileSaldoForRole(role)) return null
-
   const balanceText = isLoading ? '…' : formatWalletBalance(wallet?.balance ?? '0')
 
   return (
@@ -52,4 +49,9 @@ export function ProfileMenuSaldoItem({
       <span className="truncate font-semibold tabular-nums text-primary-700">{balanceText}</span>
     </Link>
   )
+}
+
+export function ProfileMenuSaldoItem(props: ProfileMenuSaldoItemProps) {
+  if (!showProfileSaldoForRole(props.role)) return null
+  return <ProfileMenuSaldoItemInner {...props} />
 }
