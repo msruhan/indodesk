@@ -191,18 +191,18 @@ export const middleware = auth(async (req) => {
       )
     }
 
-    const userRole = session.user.role as string
-    if (!matchedRoute.roles.includes(userRole)) {
+    const role = session.user.role as string
+    if (!matchedRoute.roles.includes(role)) {
       return finalize(
         req,
         pathname,
-        () => NextResponse.redirect(new URL(homePathForRole(userRole), req.nextUrl.origin)),
-        { comingSoonEnabled, userRole },
+        () => NextResponse.redirect(new URL(homePathForRole(role), req.nextUrl.origin)),
+        { comingSoonEnabled, userRole: role },
       )
     }
 
     if (session.user.mustChangePassword) {
-      const accountPath = accountPathForRole(userRole as UserRole)
+      const accountPath = accountPathForRole(role as UserRole)
       const onAccountSettings =
         pathname === accountPath || pathname.startsWith(`${accountPath}/`)
       if (!onAccountSettings) {
@@ -212,7 +212,7 @@ export const middleware = auth(async (req) => {
           req,
           pathname,
           () => NextResponse.redirect(dest),
-          { comingSoonEnabled, userRole },
+          { comingSoonEnabled, userRole: role },
         )
       }
     }
