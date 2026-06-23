@@ -87,7 +87,7 @@ export function KonsultasiBookingDialog({
     }
     if (requiresRemote) {
       if (!remoteId.trim()) {
-        setError('IndoDesk ID wajib untuk layanan remote')
+        setError('Kode pairing wajib — buat dan hubungkan di halaman Remote terlebih dahulu')
         return
       }
     }
@@ -240,23 +240,38 @@ export function KonsultasiBookingDialog({
 
         {requiresRemote && (
           <div className="mb-3 space-y-3 rounded-xl border border-primary-100 bg-primary-50/40 p-3">
-            <p className="text-xs text-primary-800">
-              Layanan ini membutuhkan IndoDesk. Masukkan ID dari aplikasi IndoDesk Anda. OTP sesi
-              akan diberikan setelah teknisi memulai.{' '}
+            <p className="text-xs leading-relaxed text-primary-800">
+              Layanan ini membutuhkan IndoDesk. Buat{' '}
+              <span className="font-medium">kode pairing</span> di{' '}
+              <Link href="/remote" className="font-semibold underline">
+                halaman Remote
+              </Link>
+              , klik tombol <span className="font-medium">&quot;Buat kode pairing&quot;</span>,
+              lalu masukkan kode 6 digit tersebut di aplikasi IndoDesk Anda (menu Pairing).
+            </p>
+            <p className="text-[11px] leading-relaxed text-primary-700/90">
+              Belum punya IndoDesk?{' '}
               <Link href="/remote" className="font-medium underline">
-                Download IndoDesk
+                Download &amp; petunjuk lengkap
               </Link>
             </p>
             <div>
               <label className="mb-1 block text-xs font-medium text-surface-600">
-                IndoDesk ID <span className="text-red-500">*</span>
+                Kode Pairing <span className="text-red-500">*</span>
               </label>
               <Input
                 value={remoteId}
                 onChange={(e) => setRemoteId(e.target.value)}
-                placeholder="123 456 789"
+                placeholder="Terisi otomatis setelah IndoDesk terhubung"
                 className="text-sm"
               />
+              <p className="mt-1 text-[10px] leading-relaxed text-surface-500">
+                Muncul otomatis setelah pairing berhasil. Jika kosong, buka{' '}
+                <Link href="/remote" className="font-medium text-primary-700 underline">
+                  /remote
+                </Link>{' '}
+                dan selesaikan langkah hubungkan IndoDesk.
+              </p>
             </div>
           </div>
         )}

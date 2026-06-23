@@ -610,9 +610,12 @@ export function TeknisiProfileForm({
         {section === 'full' ? (
         <div>
           <label className="mb-1 block text-sm font-medium text-surface-700">Deskripsi</label>
+          <p className="mb-2 text-[11px] leading-relaxed text-surface-500">
+            Pisahkan paragraf dengan baris baru agar profil publik lebih rapi.
+          </p>
           <textarea
             className={textareaClass}
-            rows={4}
+            rows={5}
             value={form.description}
             onChange={(e) => patchForm('description', e.target.value)}
           />
@@ -626,11 +629,16 @@ export function TeknisiProfileForm({
         {section === 'about' ? (
           <div>
             <label className="mb-1 block text-sm font-medium text-surface-700">Deskripsi</label>
+            <p className="mb-2 text-[11px] leading-relaxed text-surface-500">
+              Ceritakan pengalaman dan keahlian Anda. Pisahkan paragraf dengan baris baru agar
+              profil publik lebih rapi dan mudah dibaca.
+            </p>
             <textarea
               className={textareaClass}
-              rows={4}
+              rows={5}
               value={form.description}
               onChange={(e) => patchForm('description', e.target.value)}
+              placeholder={'Contoh:\nSaya teknisi HP dengan pengalaman servis Android dan iPhone.\n\nFokus pada kerusakan ringan–menengah: bootloop, ganti LCD, dan backup data.'}
             />
           </div>
         ) : null}

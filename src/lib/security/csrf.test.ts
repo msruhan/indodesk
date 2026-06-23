@@ -39,4 +39,13 @@ describe('CSRF Origin/Referer', () => {
       validateOriginRefererParts('POST', '/api/cron/imei-orders', null, null),
     ).toEqual({ ok: true })
   })
+
+  it('exempts IndoDesk native client APIs', () => {
+    expect(
+      validateOriginRefererParts('POST', '/api/indodesk/pair/confirm', null, null),
+    ).toEqual({ ok: true })
+    expect(
+      validateOriginRefererParts('POST', '/api/indodesk/heartbeat', null, null),
+    ).toEqual({ ok: true })
+  })
 })

@@ -3,12 +3,14 @@ import { getAllowedOrigins, originMatchesAllowlist } from '@/lib/security/origin
 
 const STATE_CHANGING = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 
-/** Paths exempt from Origin check (webhooks, cron, stress tooling). */
+/** Paths exempt from Origin check (webhooks, cron, native IndoDesk client, stress tooling). */
 const EXEMPT_PREFIXES = [
   '/api/telegram/webhook',
   '/api/cron/',
   '/api/stress-internal/',
   '/api/payments/',
+  /** IndoDesk desktop — no browser Origin/Referer on pair, heartbeat, authorize, unlock. */
+  '/api/indodesk/',
 ]
 
 export function isCsrfExemptPath(pathname: string): boolean {

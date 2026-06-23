@@ -32,6 +32,7 @@ import {
   ProfileSectionEditButton,
 } from '@/components/teknisi/teknisi-profile-edit-context'
 import { TeknisiProfileInlineEditHost } from '@/components/teknisi/teknisi-profile-inline-edit-host'
+import { ProfileDescriptionText } from '@/components/teknisi/profile-description-text'
 import {
   isTeknisiProfileEditSection,
   type TeknisiProfileEditSection,
@@ -557,7 +558,7 @@ function AboutSection({ teknisi }: { teknisi: PublicTeknisiDetailDto }) {
       <div className="grid gap-5 lg:grid-cols-[1.25fr_0.75fr]">
         <div className="space-y-4">
           {teknisi.description ? (
-            <p className="text-sm leading-relaxed text-surface-600">{teknisi.description}</p>
+            <ProfileDescriptionText text={teknisi.description} />
           ) : (
             <p className="text-sm leading-relaxed text-surface-500">
               {teknisi.specialty.length > 0
@@ -580,7 +581,11 @@ function AboutSection({ teknisi }: { teknisi: PublicTeknisiDetailDto }) {
                   <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-primary-700">
                     {item.label}
                   </p>
-                  <p className="mt-1 text-sm font-semibold leading-snug text-ink">{item.value}</p>
+                  <ProfileDescriptionText
+                    text={item.value}
+                    className="mt-2 space-y-2"
+                    paragraphClassName="text-sm font-medium leading-relaxed text-ink"
+                  />
                 </motion.div>
               ))}
             </div>

@@ -35,7 +35,7 @@ const steps = [
   {
     num: 3,
     title: 'Pesan konsultasi remote',
-    desc: 'Pilih teknisi dan pesan layanan yang mendukung IndoDesk. Masukkan IndoDesk ID Anda.',
+    desc: 'Pilih teknisi dan layanan IndoDesk. Pastikan kode pairing sudah terhubung — terisi otomatis di form.',
   },
   {
     num: 4,
