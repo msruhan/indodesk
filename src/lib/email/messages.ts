@@ -152,6 +152,67 @@ export function buildSecurityAlertEmail(opts: {
   }
 }
 
+export function buildTeknisiApprovedEmail(opts: {
+  name?: string | null
+}): Omit<EmailPayload, 'to'> {
+  const brand = getEmailBrandName()
+  const loginUrl = `${getEmailAppUrl()}/login`
+  const greeting = opts.name?.trim() ? `Halo ${opts.name.trim()},` : 'Halo,'
+  const doc = renderEmailDocument({
+    title: 'Pendaftaran teknisi disetujui',
+    preheader: `Akun teknisi ${brand} Anda telah aktif — silakan login.`,
+    greeting,
+    paragraphs: [
+      `Selamat! Pendaftaran Anda sebagai teknisi di ${brand} telah disetujui oleh tim admin.`,
+      'Akun Anda sudah aktif. Anda dapat login ke dashboard teknisi untuk melengkapi profil, mengelola layanan, dan mulai menerima pesanan.',
+    ],
+    cta: { label: 'Login ke Dashboard Teknisi', href: loginUrl },
+    secondaryLink: {
+      label: 'Tombol tidak berfungsi? Salin tautan berikut:',
+      href: loginUrl,
+    },
+    tone: 'default',
+    footerNote: 'Jika Anda tidak mendaftar sebagai teknisi, segera hubungi dukungan.',
+  })
+  return {
+    subject: `Pendaftaran teknisi disetujui — ${brand}`,
+    html: doc.html,
+    text: doc.text,
+  }
+}
+
+export function buildTeknisiRejectedEmail(opts: {
+  name?: string | null
+  rejectionReason?: string | null
+}): Omit<EmailPayload, 'to'> {
+  const brand = getEmailBrandName()
+  const reason = opts.rejectionReason?.trim()
+  const greeting = opts.name?.trim() ? `Halo ${opts.name.trim()},` : 'Halo,'
+  const reasonBlock = reason
+    ? renderKeyValueList([{ label: 'Alasan penolakan', value: reason }])
+    : undefined
+  const reasonText = reason ? `Alasan penolakan: ${reason}` : undefined
+  const doc = renderEmailDocument({
+    title: 'Pendaftaran teknisi tidak disetujui',
+    preheader: `Status pendaftaran teknisi ${brand} Anda.`,
+    greeting,
+    paragraphs: [
+      `Terima kasih atas minat Anda untuk bergabung sebagai teknisi di ${brand}.`,
+      'Setelah ditinjau, pendaftaran Anda belum dapat kami setujui saat ini. Jika Anda merasa ini sebuah kesalahan atau ingin mengajukan ulang dengan data yang diperbarui, silakan hubungi tim dukungan kami.',
+    ],
+    ...(reasonBlock
+      ? { highlightHtml: reasonBlock, highlightText: reasonText }
+      : {}),
+    tone: 'warning',
+    footerNote: 'Email ini dikirim otomatis — mohon tidak membalas langsung ke alamat ini.',
+  })
+  return {
+    subject: `Pendaftaran teknisi tidak disetujui — ${brand}`,
+    html: doc.html,
+    text: doc.text,
+  }
+}
+
 export function buildSmtpTestEmail(host: string): Omit<EmailPayload, 'to'> {
   const brand = getEmailBrandName()
   const doc = renderEmailDocument({

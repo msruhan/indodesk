@@ -10,6 +10,7 @@ import {
   buildTeknisiApprovalUserData,
   shouldBackfillEmailVerified,
 } from '@/lib/teknisi-admin-approval'
+import { notifyTeknisiApprovalEmail } from '@/lib/teknisi-approval-notify'
 
 export const dynamic = 'force-dynamic'
 
@@ -72,6 +73,7 @@ export async function PATCH(
     const passwordHash = data.password ? await hash(data.password, 12) : undefined
     const specialty = parseSpecialty(data.specialty)
     const profileIsVerified = existing.teknisiProfile?.isVerified ?? false
+    const wasPending = existing.teknisiProfile?.verificationStatus === 'PENDING'
     const backfillEmail = shouldBackfillEmailVerified(
       existing.emailVerified,
       profileIsVerified,
@@ -122,6 +124,16 @@ export async function PATCH(
 
     if (passwordHash || data.isActive === false) {
       await bumpSessionVersion(id)
+    }
+
+    if (wasPending && data.isVerified === true) {
+      void notifyTeknisiApprovalEmail({
+        email: user.email,
+        name: user.name,
+        action: 'approve',
+      }).catch((e) => {
+        console.error('[TEKNISI_APPROVAL_EMAIL]', e)
+      })
     }
 
     const dto = serializeAdminTeknisi(user)

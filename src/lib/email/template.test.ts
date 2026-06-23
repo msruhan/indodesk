@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { buildEmailVerificationEmail, buildWithdrawOtpEmail } from '@/lib/email/messages'
+import {
+  buildEmailVerificationEmail,
+  buildTeknisiApprovedEmail,
+  buildTeknisiRejectedEmail,
+  buildWithdrawOtpEmail,
+} from '@/lib/email/messages'
 import { escapeHtml, renderEmailDocument } from '@/lib/email/template'
 
 describe('email template', () => {
@@ -40,5 +45,23 @@ describe('email template', () => {
     expect(payload.html).toContain('123456')
     expect(payload.html).toContain('Budi')
     expect(payload.text).toContain('123456')
+  })
+
+  it('builds teknisi approved email with login CTA', () => {
+    const payload = buildTeknisiApprovedEmail({ name: 'Andi' })
+    expect(payload.subject).toContain('disetujui')
+    expect(payload.html).toContain('Andi')
+    expect(payload.html).toContain('/login')
+    expect(payload.text).toContain('Login ke Dashboard Teknisi')
+  })
+
+  it('builds teknisi rejected email with reason when provided', () => {
+    const payload = buildTeknisiRejectedEmail({
+      name: 'Budi',
+      rejectionReason: 'Dokumen tidak lengkap',
+    })
+    expect(payload.subject).toContain('tidak disetujui')
+    expect(payload.html).toContain('Dokumen tidak lengkap')
+    expect(payload.text).toContain('Alasan penolakan: Dokumen tidak lengkap')
   })
 })

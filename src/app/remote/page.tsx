@@ -10,13 +10,17 @@ import { buildServiceTabs } from '@/lib/section-tab-config'
 import { useAuth } from '@/contexts/auth-context'
 import { useFeatureFlags } from '@/contexts/feature-flags-context'
 import { canAccessRemoteService } from '@/lib/platform-settings-shared'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { PageHero } from '@/components/shared/page-hero'
 import { cn } from '@/lib/utils'
 import { teknisiProfilePath } from '@/lib/teknisi-profile-slug'
 import { SupportChatButton } from '@/components/chat/support-chat-button'
 import { IndodeskPairingPanel } from '@/components/indodesk/indodesk-pairing-panel'
+import {
+  IndodeskDownloadLinks,
+  type IndodeskDownloadItem,
+} from '@/components/indodesk/indodesk-download-links'
 import type { PublicTeknisiDto } from '@/lib/teknisi-public'
 import {
   Download,
@@ -44,15 +48,7 @@ const steps = [
   },
 ]
 
-type DownloadItem = {
-  platform: 'windows' | 'macos'
-  role: 'user' | 'teknisi'
-  platformLabel: string
-  roleLabel: string
-  downloadUrl: string
-  version: string
-  fileSize: string | null
-}
+type DownloadItem = IndodeskDownloadItem
 
 const fadeIn = { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.3 } }
 
@@ -65,6 +61,7 @@ export default function RemotePage() {
   const guardLoading = authLoading || flagsLoading
   const tabs = buildServiceTabs(role, flags)
   const [downloads, setDownloads] = useState<DownloadItem[]>([])
+  const [downloadsLoading, setDownloadsLoading] = useState(true)
   const [latestVersion, setLatestVersion] = useState('1.3.7')
   const [teknisiList, setTeknisiList] = useState<PublicTeknisiDto[]>([])
   const [teknisiLoading, setTeknisiLoading] = useState(true)
@@ -76,8 +73,9 @@ export default function RemotePage() {
 
   useEffect(() => {
     void (async () => {
+      setDownloadsLoading(true)
       try {
-        const res = await fetch('/api/indodesk/downloads?role=user')
+        const res = await fetch('/api/indodesk/downloads')
         const json = (await res.json()) as {
           success?: boolean
           data?: { version?: string; downloads?: DownloadItem[] }
@@ -88,6 +86,8 @@ export default function RemotePage() {
         }
       } catch {
         // keep defaults in UI
+      } finally {
+        setDownloadsLoading(false)
       }
     })()
   }, [])
@@ -208,45 +208,11 @@ export default function RemotePage() {
                     <Download className="h-4 w-4 text-primary-600" />
                     Download IndoDesk
                   </h2>
-                  <p className="mb-3 text-[12px] leading-relaxed text-surface-600">
-                    IndoDesk adalah aplikasi remote desktop berbasis open-source yang aman dan ringan.
-                    Download sesuai platform Anda:
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {downloads.length === 0 ? (
-                      <>
-                        <Button variant="outline" size="sm" className="h-9 gap-1.5" disabled>
-                          <Laptop className="h-3.5 w-3.5" />
-                          Windows
-                        </Button>
-                        <Button variant="outline" size="sm" className="h-9 gap-1.5" disabled>
-                          <Laptop className="h-3.5 w-3.5" />
-                          macOS
-                        </Button>
-                      </>
-                    ) : (
-                      downloads.map((p) => (
-                        <a
-                          key={`${p.platform}-${p.role}`}
-                          href={p.downloadUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          download
-                          className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'h-9')}
-                        >
-                          <span className="relative z-10 inline-flex items-center gap-1.5">
-                            <Laptop className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
-                            {p.platformLabel}
-                          </span>
-                        </a>
-                      ))
-                    )}
-                  </div>
-                  <p className="mt-3 text-[11px] text-surface-500">
-                    Versi terbaru:{' '}
-                    <span className="font-mono text-ink">v{latestVersion.replace(/^v/i, '')}</span>
-                    {downloads[0]?.fileSize ? ` · Ukuran: ${downloads[0].fileSize}` : ''} · Gratis
-                  </p>
+                  <IndodeskDownloadLinks
+                    downloads={downloads}
+                    latestVersion={latestVersion}
+                    loading={downloadsLoading}
+                  />
                 </CardContent>
               </Card>
             </motion.div>

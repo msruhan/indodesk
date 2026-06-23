@@ -27,8 +27,10 @@ import {
   ShoppingBag,
   Package,
   MapPin,
+  Plus,
 } from '@/lib/icons'
 import Link from 'next/link'
+import { buttonVariants } from '@/components/ui/button'
 import type { MarketplaceProductDto } from '@/lib/marketplace-product-serializer'
 import { CompareButton } from '@/components/marketplace/compare-button'
 import { FilterGroupSheet } from '@/components/ui/filter-group-sheet'
@@ -107,6 +109,7 @@ export function MarketplaceHubPage({ placement }: MarketplaceHubPageProps) {
     (user?.role as 'ADMIN' | 'TEKNISI' | 'USER' | undefined) ?? null,
     flags,
   )
+  const isTeknisi = user?.role === 'TEKNISI'
   const [products, setProducts] = useState<MarketplaceProductDto[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -245,6 +248,19 @@ export function MarketplaceHubPage({ placement }: MarketplaceHubPageProps) {
                   Handphone, laptop, aksesoris, sampai software. Pilih toko/teknisi terpercaya,
                   lihat rating asli, lalu checkout tanpa ribet.
                 </p>
+                {isTeknisi && (
+                  <div className="mt-4">
+                    <Link
+                      href="/teknisi/produk"
+                      className={cn(buttonVariants({ variant: 'primary', size: 'sm' }), 'h-10 px-5')}
+                    >
+                      <span className="relative z-10 inline-flex items-center gap-2">
+                        <Plus className="h-4 w-4 shrink-0" strokeWidth={2} />
+                        Buat Iklan
+                      </span>
+                    </Link>
+                  </div>
+                )}
             </div>
           </Reveal>
 

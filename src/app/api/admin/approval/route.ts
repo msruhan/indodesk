@@ -16,6 +16,7 @@ import {
 } from '@/lib/approval-queue'
 import { notifyProductPublishedIfTransition } from '@/lib/telegram/notify'
 import { buildTeknisiApprovalUserData } from '@/lib/teknisi-admin-approval'
+import { notifyTeknisiApprovalEmail } from '@/lib/teknisi-approval-notify'
 
 export const dynamic = 'force-dynamic'
 
@@ -201,7 +202,7 @@ export async function POST(req: Request) {
     } else if (entityType === 'teknisi') {
       const profile = await prisma.teknisiProfile.findUnique({
         where: { userId: id },
-        include: { user: { select: { emailVerified: true } } },
+        include: { user: { select: { emailVerified: true, email: true, name: true } } },
       })
       if (!profile) return apiError('Profil teknisi tidak ditemukan', 404)
       if (profile.verificationStatus === 'APPROVED' && action === 'approve') {
@@ -237,6 +238,14 @@ export async function POST(req: Request) {
             ]
           : []),
       ])
+      void notifyTeknisiApprovalEmail({
+        email: profile.user.email,
+        name: profile.user.name,
+        action,
+        rejectionReason,
+      }).catch((e) => {
+        console.error('[TEKNISI_APPROVAL_EMAIL]', e)
+      })
     } else {
       return apiError('Jenis entitas tidak dikenali')
     }

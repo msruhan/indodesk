@@ -10,6 +10,8 @@ export {
   buildWithdrawOtpEmail,
   buildSuspiciousLoginEmail,
   buildSecurityAlertEmail,
+  buildTeknisiApprovedEmail,
+  buildTeknisiRejectedEmail,
   buildSmtpTestEmail,
 } from '@/lib/email/messages'
 

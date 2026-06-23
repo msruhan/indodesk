@@ -6,6 +6,7 @@ import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { logAdminGovernance } from '@/lib/admin-audit'
 import { serializeAdminTeknisi } from '@/lib/admin-user-serializer'
 import { buildTeknisiApprovalUserData } from '@/lib/teknisi-admin-approval'
+import { notifyTeknisiApprovalEmail } from '@/lib/teknisi-approval-notify'
 
 export const dynamic = 'force-dynamic'
 
@@ -109,6 +110,16 @@ export async function POST(req: Request) {
       severity: 'WARNING',
       target: { type: 'teknisi', id: user.id, label: user.email },
     })
+
+    if (isVerified) {
+      void notifyTeknisiApprovalEmail({
+        email: user.email,
+        name: user.name,
+        action: 'approve',
+      }).catch((e) => {
+        console.error('[TEKNISI_APPROVAL_EMAIL]', e)
+      })
+    }
 
     return apiSuccess(dto, 201)
   } catch (e) {
