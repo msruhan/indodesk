@@ -153,7 +153,7 @@ async function main() {
   })
 
   // ---- TEKNISI PROFILES ----
-  const teknisi1Specialty = ['Unlock', 'Flashing', 'Root', 'Hardware Repair']
+  const teknisi1Specialty = ['Buka Kunci', 'Flashing', 'Root', 'Perbaikan Hardware']
   const teknisi1Price = 50000
 
   await prisma.teknisiProfile.create({
@@ -171,12 +171,12 @@ async function main() {
       serviceScope: DEFAULT_SERVICE_SCOPE,
       languages: ['Indonesia'],
       secondarySkills: [
-        'Screen Replacement',
-        'Water Damage',
-        'Remote Troubleshooting',
-        'Software Installation',
-        'Device Optimization',
-        'Data Recovery',
+        'Ganti LCD',
+        'Kerusakan Air',
+        'Troubleshooting Jarak Jauh',
+        'Instalasi Software',
+        'Optimasi Perangkat',
+        'Pemulihan Data',
       ],
       operatingHours: {
         senin: { open: '09:00', close: '21:00', closed: false },
@@ -203,7 +203,7 @@ async function main() {
   await prisma.teknisiProfile.create({
     data: {
       userId: teknisi2.id,
-      specialty: ['Hardware Repair', 'Screen Replacement', 'Water Damage'],
+      specialty: ['Perbaikan Hardware', 'Ganti LCD', 'Kerusakan Air'],
       experience: '5 tahun',
       coverImage: TEKNISI_COVER_BUDI,
       location: 'Jakarta Pusat',

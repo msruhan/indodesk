@@ -1,7 +1,9 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import { usePathname } from 'next/navigation'
 import { PublicProviders } from '@/components/public-providers'
+import { isPublicShellPath } from '@/lib/public-shell-paths'
 
 const HeavyProviders = dynamic(
   () => import('@/components/heavy-providers').then((m) => m.HeavyProviders),
@@ -18,7 +20,14 @@ export function Providers({
   /** When true, skip wallet/chat/cart bundles (coming-soon, auth). */
   publicShell?: boolean
 }) {
-  if (publicShell) {
+  const pathname = usePathname()
+  // Re-evaluate on client navigation — stale server flag from /login breaks useChat on /teknisi, /remote, etc.
+  const shell =
+    pathname != null
+      ? isPublicShellPath(pathname, false)
+      : publicShell
+
+  if (shell) {
     return <PublicProviders cspNonce={cspNonce}>{children}</PublicProviders>
   }
 

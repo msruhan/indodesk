@@ -56,7 +56,6 @@ function profileToForm(p: TeknisiAccountProfileDto) {
     brandFocus: p.brandFocus ?? '',
     workApproach: p.workApproach ?? '',
     responseTime: p.responseTime,
-    price: String(p.price),
     specialty: mergeSkillTags(p.specialty, p.secondarySkills),
     serviceScope: [...p.serviceScope],
     languages: [...p.languages],
@@ -302,7 +301,6 @@ export function TeknisiProfileForm({
         phone: form.phone.trim() || null,
         experience: form.experience.trim() || null,
         tagline: form.tagline.trim() || null,
-        price: Number(form.price) || 0,
         isProfileHidden: form.isProfileHidden,
       }
     }
@@ -334,7 +332,6 @@ export function TeknisiProfileForm({
       issuesHandled: form.issuesHandled.trim() || null,
       brandFocus: form.brandFocus.trim() || null,
       workApproach: form.workApproach.trim() || null,
-      price: Number(form.price) || 0,
       specialty: form.specialty,
       serviceScope: form.serviceScope.map((s) => s.trim()).filter(Boolean),
       languages: form.languages.map((s) => s.trim()).filter(Boolean),
@@ -597,24 +594,6 @@ export function TeknisiProfileForm({
               Dihitung otomatis dari rata-rata waktu respons sesi konsultasi dan remote Anda.
             </p>
           </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-surface-700">
-              Harga Konsultasi (Rp)
-            </label>
-            <Input
-              type="number"
-              min={0}
-              value={form.price}
-              onChange={(e) => patchForm('price', e.target.value)}
-            />
-            <p className="mt-1 text-[11px] text-surface-500">
-              Paket layanan dikelola di{' '}
-              <Link href="/teknisi/iklan-konsultasi" className="font-medium text-primary-700 underline">
-                Iklan konsultasi
-              </Link>
-              .
-            </p>
-          </div>
         </div>
 
         <div>
@@ -656,35 +635,35 @@ export function TeknisiProfileForm({
           </div>
         ) : null}
         <h3 className="text-sm font-semibold text-ink">Ringkasan profesional</h3>
-        <p className="text-[11px] text-surface-500">Kartu ringkasan di bagian About pada profil publik.</p>
+        <p className="text-[11px] text-surface-500">Kartu ringkasan di bagian Tentang Teknisi pada profil publik.</p>
         <div>
-          <label className="mb-1 block text-sm font-medium text-surface-700">Issue handled</label>
+          <label className="mb-1 block text-sm font-medium text-surface-700">Masalah yang ditangani</label>
           <textarea
             className={textareaClass}
             rows={2}
             value={form.issuesHandled}
             onChange={(e) => patchForm('issuesHandled', e.target.value)}
-            placeholder="Contoh: bootloop, layar mati, water damage, performa lambat"
+            placeholder="Contoh: bootloop, layar mati, kerusakan air, performa lambat"
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-surface-700">Brand focus</label>
+          <label className="mb-1 block text-sm font-medium text-surface-700">Fokus merek & perangkat</label>
           <textarea
             className={textareaClass}
             rows={2}
             value={form.brandFocus}
             onChange={(e) => patchForm('brandFocus', e.target.value)}
-            placeholder="Contoh: Android, iPhone, laptop consumer"
+            placeholder="Contoh: Android, iPhone, laptop konsumen"
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-surface-700">Work approach</label>
+          <label className="mb-1 block text-sm font-medium text-surface-700">Pendekatan kerja</label>
           <textarea
             className={textareaClass}
             rows={2}
             value={form.workApproach}
             onChange={(e) => patchForm('workApproach', e.target.value)}
-            placeholder="Contoh: diagnosis awal, estimasi, eksekusi, quality check"
+            placeholder="Contoh: diagnosis awal, estimasi, eksekusi, pengecekan kualitas"
           />
         </div>
       </section>
@@ -707,7 +686,7 @@ export function TeknisiProfileForm({
       <section className="space-y-4 border-t border-surface-100 pt-6">
         <TagListEditor
           label="Spesialisasi & keahlian"
-          hint="Ditampilkan di bagian Skills & Expertise pada profil publik."
+          hint="Ditampilkan di bagian Keahlian & kompetensi pada profil publik."
           tags={form.specialty}
           input={specialtyInput}
           onInputChange={setSpecialtyInput}
@@ -722,7 +701,7 @@ export function TeknisiProfileForm({
       <section className="space-y-4 border-t border-surface-100 pt-6">
         <StringListEditor
           label="Cakupan layanan"
-          hint="Daftar bullet di panel Service Scope pada profil publik."
+          hint="Daftar bullet di panel Cakupan layanan pada profil publik."
           items={form.serviceScope}
           onChange={(serviceScope) => patchForm('serviceScope', serviceScope)}
           placeholder="Konsultasi pra-servis dengan estimasi risiko"
@@ -730,7 +709,7 @@ export function TeknisiProfileForm({
         />
         <StringListEditor
           label="Bahasa"
-          hint="Ditampilkan di panel Service Scope (contoh: Bahasa: Indonesia)."
+          hint="Ditampilkan di panel Cakupan layanan (contoh: Bahasa: Indonesia)."
           items={form.languages}
           onChange={(languages) => patchForm('languages', languages)}
           placeholder="Indonesia"

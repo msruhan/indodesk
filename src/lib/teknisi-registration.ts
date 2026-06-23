@@ -3,15 +3,17 @@ import { z } from 'zod'
 export const TEKNISI_SPECIALTY_OPTIONS = [
   'FRP',
   'Flashing / Firmware',
-  'Hardware Repair',
-  'Software Repair',
-  'iPhone Specialist',
-  'Android Specialist',
-  'Data Recovery',
-  'Battery / LCD',
+  'Perbaikan Hardware',
+  'Perbaikan Software',
+  'Spesialis iPhone',
+  'Spesialis Android',
+  'Pemulihan Data',
+  'Baterai / LCD',
   'Motherboard / IC',
-  'Water Damage',
+  'Kerusakan Air',
   'Konsultasi Remote',
+  'Buka Kunci',
+  'Root',
 ] as const
 
 export type TeknisiSpecialtyOption = (typeof TEKNISI_SPECIALTY_OPTIONS)[number]

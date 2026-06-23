@@ -28,19 +28,19 @@ export type TeknisiProfileContent = {
 
 export const DEFAULT_SERVICE_SCOPE = [
   'Konsultasi pra-servis dengan estimasi risiko',
-  'Remote troubleshooting untuk kasus software',
+  'Troubleshooting jarak jauh untuk kasus software',
   'Pengecekan hardware dan rekomendasi sparepart',
   'Update progres dan dokumentasi hasil kerja',
 ]
 
 export const DEFAULT_ISSUES_HANDLED =
-  'Bootloop, layar, water damage, performa lambat, data recovery'
+  'Bootloop, layar, kerusakan air, performa lambat, pemulihan data'
 
 export const DEFAULT_BRAND_FOCUS =
-  'Android, iPhone, laptop consumer, dan perangkat daily driver'
+  'Android, iPhone, laptop konsumen, dan perangkat harian'
 
 export const DEFAULT_WORK_APPROACH =
-  'Diagnosis awal, estimasi, eksekusi, quality check, garansi'
+  'Diagnosis awal, estimasi, eksekusi, pengecekan kualitas, garansi'
 
 export const DEFAULT_TAGLINE_SUFFIX =
   'dengan diagnosis cepat, komunikasi jelas, dan garansi layanan melalui Bantoo.'

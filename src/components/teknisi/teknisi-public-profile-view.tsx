@@ -537,9 +537,9 @@ function OwnerSectionPlaceholder({ children }: { children: ReactNode }) {
 function AboutSection({ teknisi }: { teknisi: PublicTeknisiDetailDto }) {
   const summary = getProfileSummaryFields(teknisi)
   const summaryCards = [
-    { label: 'Issue handled', value: summary.issuesHandled },
-    { label: 'Brand focus', value: summary.brandFocus },
-    { label: 'Work approach', value: summary.workApproach },
+    { label: 'Masalah yang ditangani', value: summary.issuesHandled },
+    { label: 'Fokus merek & perangkat', value: summary.brandFocus },
+    { label: 'Pendekatan kerja', value: summary.workApproach },
   ].filter((item): item is { label: string; value: string } => Boolean(item.value))
   const scopeItems = [
     ...teknisi.serviceScope,
@@ -593,7 +593,7 @@ function AboutSection({ teknisi }: { teknisi: PublicTeknisiDetailDto }) {
           >
             <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-gradient-to-br from-primary-300 to-accent-300 opacity-20 blur-2xl" />
             <p className="relative text-[10px] font-bold uppercase tracking-[0.16em] text-primary-700">
-              Service Scope
+              Cakupan layanan
             </p>
             <div className="relative mt-4 space-y-3">
               {scopeItems.map((item, idx) => (
@@ -1525,10 +1525,10 @@ function SkillsConstellation({ skills }: { skills: string[] }) {
       <div className="relative flex items-end justify-between gap-4">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary-700">
-            Specialization
+            Spesialisasi
           </p>
           <h2 className="mt-1 text-xl font-black tracking-tight text-ink sm:text-2xl">
-            Skills & Expertise
+            Keahlian & kompetensi
           </h2>
           <p className="mt-1.5 text-[12.5px] leading-relaxed text-surface-500">
             Total <span className="font-bold tabular-nums text-ink">{skills.length}</span> kompetensi

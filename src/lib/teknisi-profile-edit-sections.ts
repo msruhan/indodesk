@@ -24,7 +24,7 @@ export function isTeknisiProfileEditSection(value: string | null): value is Tekn
 export const PROFILE_EDIT_SECTION_LABELS: Record<TeknisiProfileEditSection, string> = {
   hero: 'Identitas & Banner',
   about: 'Tentang Teknisi',
-  skills: 'Skills & Expertise',
+  skills: 'Keahlian & kompetensi',
   services: 'Layanan Konsultasi',
   portfolio: 'Portofolio',
   jadwal: 'Jadwal Ketersediaan',
