@@ -13,12 +13,16 @@ import { DataPagination } from '@/components/ui/data-pagination'
 import { useClientPagination } from '@/hooks/use-client-pagination'
 import type { AdminUserDto } from '@/lib/admin-user-serializer'
 
+const selectClass =
+  'h-10 w-full rounded-xl border border-surface-200/80 bg-white px-3 text-sm text-surface-800 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100'
+
 type UserFormState = {
   name: string
   email: string
   phone: string
   password: string
   isActive: boolean
+  role: 'USER' | 'TEKNISI'
 }
 
 const emptyForm = (): UserFormState => ({
@@ -27,6 +31,7 @@ const emptyForm = (): UserFormState => ({
   phone: '',
   password: '',
   isActive: true,
+  role: 'USER',
 })
 
 function toForm(row: AdminUserDto): UserFormState {
@@ -36,6 +41,7 @@ function toForm(row: AdminUserDto): UserFormState {
     phone: row.phone ?? '',
     password: '',
     isActive: row.isActive,
+    role: 'USER',
   }
 }
 
@@ -49,6 +55,7 @@ export function AdminUsersPanel() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<UserFormState>(emptyForm())
   const [generatedShown, setGeneratedShown] = useState<string | null>(null)
+  const [roleChangeMessage, setRoleChangeMessage] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -106,6 +113,7 @@ export function AdminUsersPanel() {
         phone: form.phone || null,
         isActive: form.isActive,
       }
+      if (editingId) payload.role = form.role
       if (form.password) payload.password = form.password
       if (!editingId) payload.password = form.password
 
@@ -119,6 +127,14 @@ export function AdminUsersPanel() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'Gagal menyimpan')
+
+      if (json.data?.roleChanged) {
+        setRoleChangeMessage(json.data.message ?? 'Akun dipindahkan ke tab Teknisi.')
+        setShowForm(false)
+        setEditingId(null)
+        await load()
+        return
+      }
 
       if (!editingId && form.password) {
         setGeneratedShown(form.password)
@@ -151,6 +167,15 @@ export function AdminUsersPanel() {
     <div className="space-y-4">
       {error && (
         <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>
+      )}
+
+      {roleChangeMessage && (
+        <p className="rounded-xl border border-primary-200 bg-primary-50 px-4 py-2 text-sm text-primary-800">
+          {roleChangeMessage}
+          <Button type="button" variant="ghost" size="sm" className="ml-2 h-7" onClick={() => setRoleChangeMessage(null)}>
+            Tutup
+          </Button>
+        </p>
       )}
 
       {generatedShown && (
@@ -188,6 +213,26 @@ export function AdminUsersPanel() {
                   required={!editingId}
                   hint={editingId ? 'Isi hanya jika ingin mengganti password.' : undefined}
                 />
+                {editingId && (
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-surface-700">Role</label>
+                    <select
+                      className={selectClass}
+                      value={form.role}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, role: e.target.value as UserFormState['role'] }))
+                      }
+                    >
+                      <option value="USER">User</option>
+                      <option value="TEKNISI">Teknisi</option>
+                    </select>
+                    {form.role === 'TEKNISI' && (
+                      <p className="mt-1 text-[11px] text-surface-500">
+                        Akun akan dipindahkan ke tab Teknisi setelah disimpan.
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
               <label className="flex items-center gap-2 text-sm text-surface-700">
                 <input type="checkbox" checked={form.isActive} onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))} />

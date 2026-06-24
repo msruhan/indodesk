@@ -181,6 +181,81 @@ export function buildTeknisiApprovedEmail(opts: {
   }
 }
 
+export function buildUserRegistrationWelcomeEmail(opts: {
+  name?: string | null
+  emailAlreadyVerified?: boolean
+}): Omit<EmailPayload, 'to'> {
+  const brand = getEmailBrandName()
+  const loginUrl = `${getEmailAppUrl()}/login`
+  const greeting = opts.name?.trim() ? `Halo ${opts.name.trim()},` : 'Halo,'
+  const paragraphs = opts.emailAlreadyVerified
+    ? [
+        `Terima kasih telah mendaftar di ${brand}. Pendaftaran Anda telah kami terima.`,
+        'Akun Anda sudah aktif. Anda dapat login kapan saja untuk mulai mencari teknisi, berkonsultasi, dan menggunakan layanan di platform.',
+        'Jika ada pertanyaan, tim dukungan kami siap membantu.',
+      ]
+    : [
+        `Terima kasih telah mendaftar di ${brand}. Pendaftaran Anda telah kami terima.`,
+        'Sebagai langkah berikutnya, silakan verifikasi alamat email Anda melalui tautan yang kami kirim terpisah di inbox Anda.',
+        'Setelah email terverifikasi, Anda dapat login dan mulai menggunakan layanan Bantoo.',
+        'Informasi lebih lanjut akan kami sampaikan melalui email jika diperlukan.',
+      ]
+
+  const doc = renderEmailDocument({
+    title: 'Pendaftaran berhasil',
+    preheader: `Terima kasih telah mendaftar di ${brand}.`,
+    greeting,
+    paragraphs,
+    cta: { label: 'Masuk ke Bantoo', href: loginUrl },
+    secondaryLink: {
+      label: 'Tombol tidak berfungsi? Salin tautan berikut:',
+      href: loginUrl,
+    },
+    tone: 'default',
+    footerNote: 'Email ini dikirim otomatis — mohon tidak membalas langsung ke alamat ini.',
+  })
+  return {
+    subject: `Pendaftaran berhasil — ${brand}`,
+    html: doc.html,
+    text: doc.text,
+  }
+}
+
+export function buildTeknisiRegistrationWelcomeEmail(opts: {
+  name?: string | null
+  emailAlreadyVerified?: boolean
+}): Omit<EmailPayload, 'to'> {
+  const brand = getEmailBrandName()
+  const greeting = opts.name?.trim() ? `Halo ${opts.name.trim()},` : 'Halo,'
+  const paragraphs = opts.emailAlreadyVerified
+    ? [
+        `Terima kasih telah mendaftar sebagai teknisi di ${brand}. Pendaftaran Anda telah kami terima.`,
+        'Saat ini aplikasi Anda sedang dalam proses peninjauan oleh tim admin. Mohon menunggu persetujuan — kami akan menginformasikan hasilnya melalui email.',
+        'Setelah disetujui, Anda dapat login ke dashboard teknisi untuk melengkapi profil dan mulai menerima pesanan.',
+        'Informasi lebih lanjut akan kami sampaikan setelah proses peninjauan selesai.',
+      ]
+    : [
+        `Terima kasih telah mendaftar sebagai teknisi di ${brand}. Pendaftaran Anda telah kami terima.`,
+        'Sebagai langkah berikutnya, silakan verifikasi alamat email Anda melalui tautan yang kami kirim terpisah di inbox Anda.',
+        'Setelah email terverifikasi, aplikasi Anda akan ditinjau oleh tim admin. Mohon menunggu persetujuan — kami akan menginformasikan hasilnya melalui email.',
+        'Informasi lebih lanjut akan kami sampaikan setelah proses peninjauan selesai.',
+      ]
+
+  const doc = renderEmailDocument({
+    title: 'Pendaftaran teknisi diterima',
+    preheader: `Terima kasih telah mendaftar sebagai teknisi di ${brand}.`,
+    greeting,
+    paragraphs,
+    tone: 'default',
+    footerNote: 'Email ini dikirim otomatis — mohon tidak membalas langsung ke alamat ini.',
+  })
+  return {
+    subject: `Pendaftaran teknisi diterima — ${brand}`,
+    html: doc.html,
+    text: doc.text,
+  }
+}
+
 export function buildTeknisiRejectedEmail(opts: {
   name?: string | null
   rejectionReason?: string | null

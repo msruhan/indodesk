@@ -27,6 +27,7 @@ type TeknisiFormState = {
   location: string
   description: string
   isVerified: boolean
+  role: 'USER' | 'TEKNISI'
 }
 
 const emptyForm = (): TeknisiFormState => ({
@@ -39,6 +40,7 @@ const emptyForm = (): TeknisiFormState => ({
   location: '',
   description: '',
   isVerified: false,
+  role: 'TEKNISI',
 })
 
 function toForm(row: AdminTeknisiDto): TeknisiFormState {
@@ -52,6 +54,7 @@ function toForm(row: AdminTeknisiDto): TeknisiFormState {
     location: row.location ?? '',
     description: row.description ?? '',
     isVerified: row.isVerified,
+    role: 'TEKNISI',
   }
 }
 
@@ -65,6 +68,7 @@ export function AdminTeknisiPanel() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<TeknisiFormState>(emptyForm())
   const [generatedShown, setGeneratedShown] = useState<string | null>(null)
+  const [roleChangeMessage, setRoleChangeMessage] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -126,6 +130,7 @@ export function AdminTeknisiPanel() {
         description: form.description || null,
         isVerified: form.isVerified,
       }
+      if (editingId) payload.role = form.role
       if (form.password) payload.password = form.password
       if (!editingId) payload.password = form.password
 
@@ -139,6 +144,14 @@ export function AdminTeknisiPanel() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'Gagal menyimpan')
+
+      if (json.data?.roleChanged) {
+        setRoleChangeMessage(json.data.message ?? 'Akun dipindahkan ke tab Pengguna.')
+        setShowForm(false)
+        setEditingId(null)
+        await load()
+        return
+      }
 
       if (!editingId && form.password) {
         setGeneratedShown(form.password)
@@ -171,6 +184,15 @@ export function AdminTeknisiPanel() {
     <div className="space-y-4">
       {error && (
         <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>
+      )}
+
+      {roleChangeMessage && (
+        <p className="rounded-xl border border-primary-200 bg-primary-50 px-4 py-2 text-sm text-primary-800">
+          {roleChangeMessage}
+          <Button type="button" variant="ghost" size="sm" className="ml-2 h-7" onClick={() => setRoleChangeMessage(null)}>
+            Tutup
+          </Button>
+        </p>
       )}
 
       {generatedShown && (
@@ -208,6 +230,26 @@ export function AdminTeknisiPanel() {
                   required={!editingId}
                   hint={editingId ? 'Isi hanya jika ingin mengganti password.' : undefined}
                 />
+                {editingId && (
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-surface-700">Role</label>
+                    <select
+                      className={selectClass}
+                      value={form.role}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, role: e.target.value as TeknisiFormState['role'] }))
+                      }
+                    >
+                      <option value="TEKNISI">Teknisi</option>
+                      <option value="USER">User</option>
+                    </select>
+                    {form.role === 'USER' && (
+                      <p className="mt-1 text-[11px] text-surface-500">
+                        Akun akan dipindahkan ke tab Pengguna setelah disimpan. Profil teknisi tetap tersimpan di database.
+                      </p>
+                    )}
+                  </div>
+                )}
                 <div className="md:col-span-2">
                   <label className="mb-1 block text-sm font-medium text-surface-700">Spesialisasi (pisahkan koma)</label>
                   <Input value={form.specialty} onChange={(e) => setForm((f) => ({ ...f, specialty: e.target.value }))} />

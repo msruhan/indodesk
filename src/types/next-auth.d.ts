@@ -9,10 +9,12 @@ declare module 'next-auth' {
       mustChangePassword?: boolean
     } & DefaultSession['user']
     sessionVersion?: number
+    rememberMe?: boolean
   }
 
   interface User {
     role: UserRole
+    rememberMe?: boolean
   }
 }
 
@@ -23,6 +25,7 @@ declare module 'next-auth/jwt' {
     mustChangePassword?: boolean
     passwordChangedAt?: number
     sessionVersion?: number
+    rememberMe?: boolean
     lastActivity?: number
   }
 }

@@ -12,6 +12,8 @@ export {
   buildSecurityAlertEmail,
   buildTeknisiApprovedEmail,
   buildTeknisiRejectedEmail,
+  buildTeknisiRegistrationWelcomeEmail,
+  buildUserRegistrationWelcomeEmail,
   buildSmtpTestEmail,
 } from '@/lib/email/messages'
 

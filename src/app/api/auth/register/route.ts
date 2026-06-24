@@ -5,6 +5,7 @@ import { registerSchema } from '@/lib/validations/auth'
 import { extractRequestContext, logAccountEvent } from '@/lib/activity-log'
 import { sendEmailVerification } from '@/lib/email-verification'
 import { notifyAdminUserRegistered } from '@/lib/telegram/notify'
+import { notifyRegistrationWelcomeEmail } from '@/lib/registration-welcome-notify'
 import { getClientIp, RATE_LIMITS, withRateLimit, rateLimitResponse } from '@/lib/rate-limit-store'
 import {
   isUserRegistrationOpen,
@@ -85,6 +86,14 @@ export async function POST(req: Request) {
 
     void sendEmailVerification(user.id, user.email).catch((e) => {
       console.error('[REGISTER_SEND_VERIFICATION]', e)
+    })
+
+    void notifyRegistrationWelcomeEmail({
+      email: user.email,
+      name: user.name,
+      role: 'USER',
+    }).catch((e) => {
+      console.error('[REGISTER_WELCOME_EMAIL]', e)
     })
 
     void notifyAdminUserRegistered(user.id).catch((e) => {

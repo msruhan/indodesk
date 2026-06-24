@@ -6,6 +6,7 @@ import { apiError, apiSuccess, requireApiRole } from '@/lib/api-auth'
 import { logAdminGovernance } from '@/lib/admin-audit'
 import { serializeAdminUser } from '@/lib/admin-user-serializer'
 import { bumpSessionVersion } from '@/lib/session-version'
+import { applyAdminRoleSwitch } from '@/lib/admin-role-switch'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,6 +16,7 @@ const updateSchema = z.object({
   password: z.string().min(8).max(128).optional(),
   phone: z.string().max(30).nullable().optional(),
   isActive: z.boolean().optional(),
+  role: z.enum(['USER', 'TEKNISI']).optional(),
 })
 
 export async function PATCH(
@@ -39,6 +41,10 @@ export async function PATCH(
 
     const data = parsed.data
 
+    if (data.role && id === session.user.id) {
+      return apiError('Tidak dapat mengubah role akun Anda sendiri', 400)
+    }
+
     if (data.email) {
       const email = data.email.trim().toLowerCase()
       const dup = await prisma.user.findFirst({
@@ -48,6 +54,51 @@ export async function PATCH(
     }
 
     const passwordHash = data.password ? await hash(data.password, 12) : undefined
+
+    const roleChanged = await applyAdminRoleSwitch(id, existing.role, data.role, {
+      name: data.name?.trim() ?? existing.name,
+      isVerified: false,
+    })
+
+    if (roleChanged && data.role === UserRole.TEKNISI) {
+      await prisma.user.update({
+        where: { id },
+        data: {
+          ...(data.name !== undefined && { name: data.name.trim() }),
+          ...(data.email !== undefined && { email: data.email.trim().toLowerCase() }),
+          ...(data.phone !== undefined && { phone: data.phone?.trim() || null }),
+          ...(data.isActive !== undefined && { isActive: data.isActive }),
+          ...(passwordHash && {
+            password: passwordHash,
+            passwordChangedAt: new Date(),
+          }),
+        },
+      })
+      await bumpSessionVersion(id)
+      const teknisi = await prisma.user.findUnique({
+        where: { id },
+        include: { teknisiProfile: true },
+      })
+      if (!teknisi?.teknisiProfile) {
+        return apiError('Gagal membuat profil teknisi', 500)
+      }
+
+      logAdminGovernance({
+        req,
+        actor: session.user,
+        action: 'admin.user.role_change',
+        summary: `Admin mengubah ${existing.email} menjadi teknisi`,
+        severity: 'CRITICAL',
+        target: { type: 'user', id, label: existing.email },
+        metadata: { from: existing.role, to: UserRole.TEKNISI },
+      })
+
+      return apiSuccess({
+        roleChanged: true,
+        newRole: UserRole.TEKNISI,
+        message: 'Akun dipindahkan ke daftar Teknisi.',
+      })
+    }
 
     const user = await prisma.user.update({
       where: { id },
@@ -64,7 +115,7 @@ export async function PATCH(
       include: { _count: { select: { ordersAsBuyer: true } } },
     })
 
-    if (passwordHash || data.isActive === false) {
+    if (passwordHash || data.isActive === false || roleChanged) {
       await bumpSessionVersion(id)
     }
 

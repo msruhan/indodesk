@@ -13,6 +13,7 @@ import {
   readTeknisiRegisterCompleteUserId,
 } from '@/lib/auth/google-register-cookie'
 import { notifyAdminTeknisiRegistered } from '@/lib/telegram/notify'
+import { notifyRegistrationWelcomeEmail } from '@/lib/registration-welcome-notify'
 import { allocateTeknisiProfileSlug } from '@/lib/teknisi-profile-slug-server'
 export async function POST(req: Request) {
   const ip = getClientIp(req)
@@ -99,6 +100,15 @@ export async function POST(req: Request) {
       ip: ctx.ip,
       userAgent: ctx.userAgent,
       metadata: { role: user.role, verificationStatus: 'PENDING', provider: 'google' },
+    })
+
+    void notifyRegistrationWelcomeEmail({
+      email: user.email,
+      name: user.name,
+      role: 'TEKNISI',
+      emailAlreadyVerified: true,
+    }).catch((e) => {
+      console.error('[REGISTER_TEKNISI_GOOGLE_WELCOME_EMAIL]', e)
     })
 
     void notifyAdminTeknisiRegistered(user.id).catch((e) => {

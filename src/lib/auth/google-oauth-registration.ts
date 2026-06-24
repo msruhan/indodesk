@@ -5,6 +5,7 @@ import {
   type GoogleRegisterRole,
 } from '@/lib/auth/google-register-cookie'
 import { notifyAdminUserRegistered } from '@/lib/telegram/notify'
+import { notifyRegistrationWelcomeEmail } from '@/lib/registration-welcome-notify'
 
 export type GoogleRegisterEligibility =
   | { eligible: true }
@@ -84,6 +85,15 @@ export async function finalizeGoogleRegistration(
     actor: { id: user.id, name: user.name, email: user.email, role: user.role },
     target: { type: 'user', id: user.id, label: user.email },
     metadata: { role: user.role, provider: 'google' },
+  })
+
+  void notifyRegistrationWelcomeEmail({
+    email: user.email,
+    name: user.name,
+    role: 'USER',
+    emailAlreadyVerified: true,
+  }).catch((e) => {
+    console.error('[GOOGLE_REGISTER_WELCOME_EMAIL]', e)
   })
 
   void notifyAdminUserRegistered(user.id).catch((e) => {

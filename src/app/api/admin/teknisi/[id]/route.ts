@@ -26,6 +26,7 @@ const updateSchema = z.object({
   isVerified: z.boolean().optional(),
   price: z.number().min(0).optional(),
   isActive: z.boolean().optional(),
+  role: z.enum(['USER', 'TEKNISI']).optional(),
 })
 
 function parseSpecialty(raw?: string): string[] | undefined {
@@ -62,6 +63,10 @@ export async function PATCH(
 
     const data = parsed.data
 
+    if (data.role && id === session.user.id) {
+      return apiError('Tidak dapat mengubah role akun Anda sendiri', 400)
+    }
+
     if (data.email) {
       const email = data.email.trim().toLowerCase()
       const dup = await prisma.user.findFirst({
@@ -79,6 +84,43 @@ export async function PATCH(
       profileIsVerified,
       data.isVerified,
     )
+
+    const demotingToUser =
+      data.role === UserRole.USER && existing.role === UserRole.TEKNISI
+
+    if (demotingToUser) {
+      await prisma.user.update({
+        where: { id },
+        data: {
+          role: UserRole.USER,
+          ...(data.name !== undefined && { name: data.name.trim() }),
+          ...(data.email !== undefined && { email: data.email.trim().toLowerCase() }),
+          ...(data.phone !== undefined && { phone: data.phone?.trim() || null }),
+          ...(data.isActive !== undefined && { isActive: data.isActive }),
+          ...(passwordHash && {
+            password: passwordHash,
+            passwordChangedAt: new Date(),
+          }),
+        },
+      })
+      await bumpSessionVersion(id)
+
+      logAdminGovernance({
+        req,
+        actor: session.user,
+        action: 'admin.teknisi.role_change',
+        summary: `Admin mengubah ${existing.email} menjadi user`,
+        severity: 'CRITICAL',
+        target: { type: 'teknisi', id, label: existing.email },
+        metadata: { from: existing.role, to: UserRole.USER },
+      })
+
+      return apiSuccess({
+        roleChanged: true,
+        newRole: UserRole.USER,
+        message: 'Akun dipindahkan ke daftar Pengguna.',
+      })
+    }
 
     const user = await prisma.user.update({
       where: { id },

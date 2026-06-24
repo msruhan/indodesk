@@ -30,6 +30,8 @@ import { AuroraBackground } from '@/components/motion'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 
+const REMEMBER_EMAIL_KEY = 'bantoo_login_remember_email'
+
 function isSafeCallbackUrl(url: string): boolean {
   return url.startsWith('/') && !url.startsWith('//')
 }
@@ -200,6 +202,7 @@ function LoginForm() {
   const idleLogout = searchParams.get('reason') === 'idle'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [rememberMe, setRememberMe] = useState(false)
   const [totp, setTotp] = useState('')
   const [needs2FA, setNeeds2FA] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -219,6 +222,18 @@ function LoginForm() {
       .catch(() => {})
   }, [])
 
+  useEffect(() => {
+    try {
+      const savedEmail = localStorage.getItem(REMEMBER_EMAIL_KEY)
+      if (savedEmail) {
+        setEmail(savedEmail)
+        setRememberMe(true)
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [])
+
   const handleOAuthError = useCallback((details: OAuthLoginErrorDetails) => {
     setOauthError(details)
     setError(null)
@@ -232,7 +247,7 @@ function LoginForm() {
     setInfo(null)
     setEmailNotVerified(false)
 
-    const result = await login(email, password, needs2FA ? totp : undefined)
+    const result = await login(email, password, needs2FA ? totp : undefined, rememberMe)
 
     if (result.requires2FA) {
       setNeeds2FA(true)
@@ -248,6 +263,16 @@ function LoginForm() {
       }
       setIsLoading(false)
       return
+    }
+
+    try {
+      if (rememberMe) {
+        localStorage.setItem(REMEMBER_EMAIL_KEY, email.trim().toLowerCase())
+      } else {
+        localStorage.removeItem(REMEMBER_EMAIL_KEY)
+      }
+    } catch {
+      /* ignore */
     }
 
     const session = await getSession()
@@ -425,7 +450,16 @@ function LoginForm() {
                         required
                       />
                     </div>
-                    <div className="text-right">
+                    <div className="flex items-center justify-between gap-3">
+                      <label className="flex cursor-pointer items-center gap-2 text-xs text-surface-700">
+                        <input
+                          type="checkbox"
+                          checked={rememberMe}
+                          onChange={(e) => setRememberMe(e.target.checked)}
+                          className="h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+                        />
+                        Ingat saya
+                      </label>
                       <Link
                         href="/lupa-password"
                         className="text-xs text-primary-700 hover:underline"

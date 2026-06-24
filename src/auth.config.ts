@@ -2,7 +2,7 @@ import type { NextAuthConfig } from 'next-auth'
 import { getCachedSessionVersion } from '@/lib/session-version-cache'
 import {
   isSessionIdleExpired,
-  SESSION_IDLE_SECONDS,
+  SESSION_REMEMBER_SECONDS,
   SESSION_UPDATE_AGE_SECONDS,
 } from '@/lib/auth/session-policy'
 
@@ -23,7 +23,7 @@ export const authConfig = {
   },
   session: {
     strategy: 'jwt',
-    maxAge: SESSION_IDLE_SECONDS,
+    maxAge: SESSION_REMEMBER_SECONDS,
     updateAge: SESSION_UPDATE_AGE_SECONDS,
   },
   providers: [],
@@ -36,13 +36,14 @@ export const authConfig = {
         token.role = (user as { role?: UserRole }).role
         token.sessionVersion = (user as { sessionVersion?: number }).sessionVersion ?? 0
         token.isActive = true
+        token.rememberMe = Boolean((user as { rememberMe?: boolean }).rememberMe)
         if (user.name) token.name = user.name
         if (user.image) token.picture = user.image
         touchSessionActivity(token as Record<string, unknown>)
       } else {
         const last =
           (token.lastActivity as number | undefined) ?? (token.iat as number | undefined)
-        if (last !== undefined && isSessionIdleExpired(last, now)) {
+        if (last !== undefined && isSessionIdleExpired(last, now, Boolean(token.rememberMe))) {
           return null as unknown as typeof token
         }
         touchSessionActivity(token as Record<string, unknown>)
@@ -84,6 +85,7 @@ export const authConfig = {
           // keep existing session image when not in token
         }
       }
+      session.rememberMe = Boolean(token.rememberMe)
       return session
     },
   },

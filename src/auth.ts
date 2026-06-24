@@ -241,6 +241,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
         totp: { label: 'TOTP', type: 'text' },
+        rememberMe: { label: 'Remember Me', type: 'text' },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
@@ -248,6 +249,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const email = (credentials.email as string).toLowerCase().trim()
         const password = credentials.password as string
         const totp = (credentials.totp as string | undefined)?.trim() ?? ''
+        const rememberMe = credentials.rememberMe === 'true'
 
         try {
           try {
@@ -317,6 +319,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             image: user.image,
             role: user.role,
             sessionVersion: user.sessionVersion,
+            rememberMe,
           }
         } catch (e) {
           console.error('[AUTH_CREDENTIALS_AUTHORIZE]', e)

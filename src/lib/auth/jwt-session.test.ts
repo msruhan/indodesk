@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isSessionIdleExpired, SESSION_IDLE_SECONDS } from '@/lib/auth/session-policy'
+import { isSessionIdleExpired, SESSION_IDLE_SECONDS, SESSION_REMEMBER_SECONDS } from '@/lib/auth/session-policy'
 
 /** Mirrors session invalidation check in auth.ts jwt callback. */
 function isSessionStale(tokenIatSec: number, passwordChangedAt: Date): boolean {
@@ -40,5 +40,11 @@ describe('session idle expiry', () => {
     const last = 1_000_000
     expect(isSessionIdleExpired(last, last + SESSION_IDLE_SECONDS)).toBe(false)
     expect(isSessionIdleExpired(last, last + SESSION_IDLE_SECONDS + 1)).toBe(true)
+  })
+
+  it('uses longer window when rememberMe is enabled', () => {
+    const last = 1_000_000
+    expect(isSessionIdleExpired(last, last + SESSION_IDLE_SECONDS + 1, true)).toBe(false)
+    expect(isSessionIdleExpired(last, last + SESSION_REMEMBER_SECONDS + 1, true)).toBe(true)
   })
 })

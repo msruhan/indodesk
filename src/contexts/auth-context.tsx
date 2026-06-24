@@ -22,6 +22,7 @@ interface AuthContextType {
     email: string,
     password: string,
     totp?: string,
+    rememberMe?: boolean,
   ) => Promise<{ success: boolean; error?: string; requires2FA?: boolean; code?: string }>
   register: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>
   registerTeknisi: (payload: Record<string, unknown>) => Promise<{ success: boolean; error?: string; message?: string }>
@@ -68,6 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: string,
       password: string,
       totp?: string,
+      rememberMe = false,
     ): Promise<{ success: boolean; error?: string; requires2FA?: boolean; code?: string }> => {
       try {
         if (!totp) {
@@ -94,6 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email,
           password,
           totp: totp ?? '',
+          rememberMe: rememberMe ? 'true' : 'false',
           redirect: false,
         })
 

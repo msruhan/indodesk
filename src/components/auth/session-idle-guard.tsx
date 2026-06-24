@@ -3,7 +3,7 @@
 import { useSession } from 'next-auth/react'
 import { useEffect, useRef } from 'react'
 import { completeClientLogout } from '@/lib/auth/client-logout'
-import { SESSION_IDLE_MS } from '@/lib/auth/session-policy'
+import { SESSION_IDLE_MS, SESSION_REMEMBER_MS } from '@/lib/auth/session-policy'
 
 const ACTIVITY_EVENTS = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'] as const
 
@@ -12,8 +12,9 @@ const ACTIVITY_EVENTS = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'
  * Complements server-side JWT maxAge (API navigations also refresh the cookie).
  */
 export function SessionIdleGuard() {
-  const { status } = useSession()
+  const { data: session, status } = useSession()
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const idleMs = session?.rememberMe ? SESSION_REMEMBER_MS : SESSION_IDLE_MS
 
   useEffect(() => {
     if (status !== 'authenticated') return
@@ -24,7 +25,7 @@ export function SessionIdleGuard() {
         void completeClientLogout({ callbackUrl: '/login?reason=idle' }).then(() => {
           window.location.assign('/login?reason=idle')
         })
-      }, SESSION_IDLE_MS)
+      }, idleMs)
     }
 
     const onActivity = () => scheduleLogout()
@@ -40,7 +41,7 @@ export function SessionIdleGuard() {
         window.removeEventListener(event, onActivity)
       }
     }
-  }, [status])
+  }, [status, idleMs])
 
   return null
 }

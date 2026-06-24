@@ -11,6 +11,7 @@ import {
 } from '@/lib/teknisi-registration'
 import { sendEmailVerification } from '@/lib/email-verification'
 import { notifyAdminTeknisiRegistered } from '@/lib/telegram/notify'
+import { notifyRegistrationWelcomeEmail } from '@/lib/registration-welcome-notify'
 import { allocateTeknisiProfileSlug } from '@/lib/teknisi-profile-slug-server'
 import {
   isTeknisiRegistrationOpen,
@@ -108,6 +109,14 @@ export async function POST(req: Request) {
 
     void sendEmailVerification(user.id, user.email).catch((e) => {
       console.error('[REGISTER_TEKNISI_SEND_VERIFICATION]', e)
+    })
+
+    void notifyRegistrationWelcomeEmail({
+      email: user.email,
+      name: user.name,
+      role: 'TEKNISI',
+    }).catch((e) => {
+      console.error('[REGISTER_TEKNISI_WELCOME_EMAIL]', e)
     })
 
     void notifyAdminTeknisiRegistered(user.id).catch((e) => {
